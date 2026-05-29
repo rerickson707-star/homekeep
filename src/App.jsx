@@ -35,6 +35,117 @@ const CSS = `
 body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased}
 .app{min-height:100vh;display:flex;flex-direction:column}
 
+/* ── LANDING PAGE ── */
+.lp{min-height:100vh;background:var(--dark);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1.1rem 2.5rem;transition:background .3s,backdrop-filter .3s}
+.lp-nav.scrolled{background:rgba(42,38,34,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
+.lp-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+.lp-logo-icon{width:36px;height:36px;background:var(--rust);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.lp-logo-text{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:500;color:#fff}
+.lp-nav-links{display:flex;align-items:center;gap:.8rem}
+.lp-nav-link{color:rgba(255,255,255,.6);background:none;border:none;font-size:.85rem;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;text-decoration:none}
+.lp-nav-link:hover{color:#fff}
+.lp-btn-nav{padding:.5rem 1.2rem;background:var(--rust);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:background .18s,transform .15s}
+.lp-btn-nav:hover{background:#A8501F;transform:translateY(-1px)}
+.lp-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8rem 2rem 3rem;position:relative;overflow:hidden}
+.lp-hero-bg::before{content:'';position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(193,98,43,.18) 0%,transparent 70%);top:-150px;right:-150px;pointer-events:none}
+.lp-hero-bg::after{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(74,137,184,.12) 0%,transparent 70%);bottom:-100px;left:-100px;pointer-events:none}
+.lp-hero-bg{position:absolute;inset:0}
+.lp-content{position:relative;z-index:1;max-width:760px}
+.lp-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(193,98,43,.15);border:1px solid rgba(193,98,43,.3);color:#F0B08A;padding:.35rem .9rem;border-radius:20px;font-size:.72rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:1.8rem}
+.lp-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--rust);animation:lp-pulse 2s infinite}
+@keyframes lp-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.lp-h1{font-family:'Fraunces',serif;font-size:clamp(2.8rem,7vw,5rem);font-weight:500;color:#fff;line-height:1.05;letter-spacing:-.02em;margin-bottom:1.4rem}
+.lp-h1 em{font-style:italic;color:var(--rust)}
+.lp-hero-p{font-size:clamp(.95rem,2vw,1.15rem);color:rgba(255,255,255,.58);line-height:1.7;max-width:540px;margin:0 auto 2.2rem;font-weight:300}
+.lp-cta{display:flex;align-items:center;justify-content:center;gap:.8rem;flex-wrap:wrap;margin-bottom:.8rem}
+.lp-btn-primary{padding:.9rem 2.2rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:background .18s,transform .15s,box-shadow .18s;box-shadow:0 4px 24px rgba(193,98,43,.35)}
+.lp-btn-primary:hover{background:#A8501F;transform:translateY(-2px);box-shadow:0 8px 32px rgba(193,98,43,.45)}
+.lp-btn-ghost{padding:.9rem 2rem;background:rgba(255,255,255,.08);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;cursor:pointer;transition:background .18s,transform .15s;text-decoration:none}
+.lp-btn-ghost:hover{background:rgba(255,255,255,.14);transform:translateY(-2px)}
+.lp-hero-sub{font-size:.78rem;color:rgba(255,255,255,.28);margin-top:.4rem}
+.lp-stats{display:flex;align-items:center;justify-content:center;gap:3rem;flex-wrap:wrap;padding:2rem 2rem 4rem;position:relative;z-index:1}
+.lp-stat{text-align:center}
+.lp-stat-num{font-family:'Fraunces',serif;font-size:2.2rem;font-weight:700;color:#fff;line-height:1}
+.lp-stat-num span{color:var(--rust)}
+.lp-stat-label{font-size:.72rem;color:rgba(255,255,255,.38);margin-top:4px;letter-spacing:.5px}
+.lp-divider{width:1px;height:40px;background:rgba(255,255,255,.1)}
+.lp-section{padding:5rem 2rem;background:var(--cream)}
+.lp-section-dark{padding:5.5rem 2rem;background:var(--dark);position:relative;overflow:hidden}
+.lp-section-dark::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(193,98,43,.1) 0%,transparent 70%);top:-200px;left:-100px;pointer-events:none}
+.lp-section-white{padding:5.5rem 2rem;background:var(--white)}
+.lp-label{text-align:center;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--rust);margin-bottom:.7rem}
+.lp-label-light{color:#F0B08A}
+.lp-h2{font-family:'Fraunces',serif;font-size:clamp(1.9rem,4vw,2.8rem);font-weight:500;text-align:center;color:var(--dark);line-height:1.15;margin-bottom:.9rem}
+.lp-h2-light{color:#fff}
+.lp-sub{text-align:center;font-size:.95rem;color:#7A7370;max-width:500px;margin:0 auto 3rem;line-height:1.65}
+.lp-sub-light{color:rgba(255,255,255,.48)}
+.lp-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1.2rem;max-width:1020px;margin:0 auto}
+.lp-feat{background:var(--white);border:1px solid var(--stone);border-radius:14px;padding:1.6rem;transition:box-shadow .2s,transform .2s}
+.lp-feat:hover{box-shadow:0 8px 28px rgba(42,38,34,.1);transform:translateY(-3px)}
+.lp-feat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem}
+.lp-feat h3{font-family:'Fraunces',serif;font-size:1.08rem;font-weight:500;color:var(--dark);margin-bottom:.45rem}
+.lp-feat p{font-size:.84rem;color:#7A7370;line-height:1.6}
+.lp-feat-tag{display:inline-block;margin-top:.8rem;font-size:.65rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:20px}
+.lp-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem;max-width:920px;margin:0 auto;position:relative;z-index:1}
+.lp-step{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.6rem}
+.lp-step-num{font-family:'Fraunces',serif;font-size:2.8rem;font-weight:700;color:rgba(193,98,43,.22);line-height:1;margin-bottom:.5rem}
+.lp-step h3{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:500;color:#fff;margin-bottom:.4rem}
+.lp-step p{font-size:.82rem;color:rgba(255,255,255,.48);line-height:1.6}
+.lp-proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1.1rem;max-width:920px;margin:0 auto}
+.lp-proof-card{background:var(--white);border:1px solid var(--stone);border-radius:13px;padding:1.4rem 1.5rem}
+.lp-proof-stars{color:var(--gold);font-size:.95rem;margin-bottom:.7rem}
+.lp-proof-text{font-size:.87rem;color:#4A4440;line-height:1.6;margin-bottom:.9rem;font-style:italic}
+.lp-proof-author{display:flex;align-items:center;gap:.65rem}
+.lp-proof-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0}
+.lp-proof-name{font-size:.8rem;font-weight:600;color:var(--dark)}
+.lp-proof-role{font-size:.7rem;color:#9E9690}
+.lp-pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1.4rem;max-width:820px;margin:0 auto}
+.lp-price-card{background:var(--cream);border:1.5px solid var(--stone);border-radius:16px;padding:1.8rem;position:relative}
+.lp-price-card.featured{background:var(--dark);border-color:var(--rust)}
+.lp-price-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--rust);color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 12px;border-radius:20px;white-space:nowrap}
+.lp-plan{font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--rust);margin-bottom:.4rem}
+.lp-price-card.featured .lp-plan{color:#F0B08A}
+.lp-price{font-family:'Fraunces',serif;font-size:2.8rem;font-weight:700;color:var(--dark);line-height:1}
+.lp-price-card.featured .lp-price{color:#fff}
+.lp-price span{font-size:.95rem;font-weight:400;color:#9E9690}
+.lp-price-card.featured .lp-price span{color:rgba(255,255,255,.38)}
+.lp-price-desc{font-size:.8rem;color:#7A7370;margin:.5rem 0 1.3rem;line-height:1.45}
+.lp-price-card.featured .lp-price-desc{color:rgba(255,255,255,.48)}
+.lp-price-list{list-style:none;margin-bottom:1.6rem}
+.lp-price-list li{font-size:.82rem;color:#4A4440;padding:.38rem 0;display:flex;align-items:center;gap:.55rem;border-bottom:1px solid var(--stone)}
+.lp-price-card.featured .lp-price-list li{color:rgba(255,255,255,.72);border-bottom-color:rgba(255,255,255,.07)}
+.lp-price-list li:last-child{border-bottom:none}
+.lp-price-check{color:var(--sage);flex-shrink:0}
+.lp-price-card.featured .lp-price-check{color:#7DCBA1}
+.lp-price-btn{display:block;width:100%;padding:.78rem;border-radius:9px;text-align:center;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;border:none}
+.lp-price-btn-outline{background:transparent;border:1.5px solid var(--stone);color:var(--dark)}
+.lp-price-btn-outline:hover{border-color:var(--rust);color:var(--rust)}
+.lp-price-btn-solid{background:var(--rust);color:#fff;box-shadow:0 4px 14px rgba(193,98,43,.28)}
+.lp-price-btn-solid:hover{background:#A8501F;transform:translateY(-1px)}
+.lp-cta-section{background:var(--dark);padding:6rem 2rem;text-align:center;position:relative;overflow:hidden}
+.lp-cta-section::before{content:'';position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(193,98,43,.13) 0%,transparent 65%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.lp-cta-section h2{font-family:'Fraunces',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:500;color:#fff;line-height:1.15;margin-bottom:.9rem;position:relative;z-index:1}
+.lp-cta-section h2 em{font-style:italic;color:var(--rust)}
+.lp-cta-section p{font-size:.95rem;color:rgba(255,255,255,.48);max-width:420px;margin:0 auto 2.2rem;line-height:1.65;position:relative;z-index:1}
+.lp-footer{background:#1E1B18;padding:2rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;border-top:1px solid rgba(255,255,255,.06)}
+.lp-footer-logo{display:flex;align-items:center;gap:8px}
+.lp-footer-logo-icon{width:26px;height:26px;background:var(--rust);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.8rem}
+.lp-footer-logo-text{font-family:'Fraunces',serif;font-size:.9rem;font-weight:500;color:rgba(255,255,255,.6)}
+.lp-footer-copy{font-size:.75rem;color:rgba(255,255,255,.22)}
+.lp-footer-links{display:flex;gap:1.4rem}
+.lp-footer-links button{font-size:.75rem;color:rgba(255,255,255,.28);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s}
+.lp-footer-links button:hover{color:rgba(255,255,255,.65)}
+@media(max-width:640px){
+  .lp-nav{padding:.9rem 1.2rem}
+  .lp-nav-link{display:none}
+  .lp-hero{padding:7rem 1.2rem 3rem}
+  .lp-stats{gap:1.5rem;padding:1.5rem 1rem 3rem}
+  .lp-divider{display:none}
+  .lp-section,.lp-section-dark,.lp-section-white{padding:3.5rem 1.2rem}
+  .lp-footer{flex-direction:column;align-items:flex-start}
+}
+
 /* ── AUTH SCREEN ── */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--dark)}
 .auth-bg{position:fixed;inset:0;background:var(--dark);overflow:hidden;pointer-events:none}
@@ -319,9 +430,203 @@ function Modal({ title, onClose, onSave, children }) {
   );
 }
 
+// ─── LANDING PAGE ────────────────────────────────────────────────────────────
+function LandingPage({ onSignIn, onSignUp }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [section, setSection] = useState("home");
+
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", handler);
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <div className="lp">
+      {/* NAV */}
+      <nav className={`lp-nav ${scrolled ? "scrolled" : ""}`}>
+        <div className="lp-logo">
+          <div className="lp-logo-icon">🏠</div>
+          <span className="lp-logo-text">HomeKeep</span>
+        </div>
+        <div className="lp-nav-links">
+          <button className="lp-nav-link" onClick={() => scrollTo("features")}>Features</button>
+          <button className="lp-nav-link" onClick={() => scrollTo("how")}>How it works</button>
+          <button className="lp-nav-link" onClick={() => scrollTo("pricing")}>Pricing</button>
+          <button className="lp-btn-nav" onClick={onSignIn}>Sign In</button>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className="lp-hero">
+        <div className="lp-hero-bg" />
+        <div className="lp-content">
+          <div className="lp-badge">
+            <div className="lp-badge-dot" />
+            Now in beta — free to join
+          </div>
+          <h1 className="lp-h1">Your home deserves<br /><em>better management</em></h1>
+          <p className="lp-hero-p">HomeKeep pulls your home's real data — year built, tax history, schools, sale records — then helps you track maintenance, warranties, and expenses in one place.</p>
+          <div className="lp-cta">
+            <button className="lp-btn-primary" onClick={onSignUp}>Get started free →</button>
+            <button className="lp-btn-ghost" onClick={() => scrollTo("how")}>See how it works</button>
+          </div>
+          <p className="lp-hero-sub">No credit card required · Free forever plan available</p>
+        </div>
+        <div className="lp-stats">
+          {[
+            { num: "50", suffix: "+", label: "Data fields per home" },
+            { num: "$0", suffix: "", label: "To get started" },
+            { num: "3", suffix: "min", label: "To set up your home" },
+            { num: "100", suffix: "%", label: "Your data, private" },
+          ].map((s, i) => (
+            <div key={i} style={{display:"contents"}}>
+              {i > 0 && <div className="lp-divider" />}
+              <div className="lp-stat">
+                <div className="lp-stat-num">{s.num}<span>{s.suffix}</span></div>
+                <div className="lp-stat-label">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section className="lp-section" id="features">
+        <div className="lp-label">Everything in one place</div>
+        <h2 className="lp-h2">Built for homeowners,<br />not real estate agents</h2>
+        <p className="lp-sub">Most home apps are built for buying and selling. HomeKeep is built for the years in between.</p>
+        <div className="lp-features">
+          {[
+            { icon: "🔍", bg: "#FDF0EB", title: "Instant property lookup", desc: "Type your address and HomeKeep auto-fills year built, sq footage, bed/bath count, tax history, price history, and nearby schools — in seconds.", tag: "Auto-fill", tagBg: "#FDF0EB", tagColor: "#C1622B" },
+            { icon: "✓", bg: "#EBF5FF", title: "Maintenance task tracker", desc: "Schedule, prioritize, and track every home maintenance task. Overdue alerts, category filters, contractor logs, and recurring task support.", tag: "Tasks", tagBg: "#EBF5FF", tagColor: "#1A6FA0" },
+            { icon: "📋", bg: "#E8F6EE", title: "Warranty vault", desc: "Never lose a warranty again. Store appliance warranties with expiry dates, model numbers, and document locations. 90-day expiry alerts.", tag: "Warranties", tagBg: "#E8F6EE", tagColor: "#1A7A44" },
+            { icon: "💲", bg: "#FFF8E6", title: "Expense log", desc: "Track every dollar spent on your home. Visual spending breakdown by category. Know exactly what your home has cost you over time.", tag: "Expenses", tagBg: "#FFF8E6", tagColor: "#92610A" },
+            { icon: "🏛️", bg: "#F3EFFC", title: "Tax & sale history", desc: "See your property's full tax record — yearly tax paid and assessed value — plus every sale and listing event going back decades.", tag: "Property data", tagBg: "#F3EFFC", tagColor: "#6D3FC4" },
+            { icon: "🔒", bg: "#FDF0EB", title: "Private and secure", desc: "Your data belongs to you. Each account is fully isolated. Row-level security enforced at the database level — no exceptions.", tag: "Secure", tagBg: "#FDF0EB", tagColor: "#C1622B" },
+          ].map((f, i) => (
+            <div key={i} className="lp-feat">
+              <div className="lp-feat-icon" style={{background: f.bg}}>{f.icon}</div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+              <span className="lp-feat-tag" style={{background: f.tagBg, color: f.tagColor}}>{f.tag}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="lp-section-dark" id="how">
+        <div className="lp-label lp-label-light">Simple setup</div>
+        <h2 className="lp-h2 lp-h2-light">Up and running<br />in minutes</h2>
+        <p className="lp-sub lp-sub-light">No complicated onboarding. No manual data entry for the boring stuff. Just type your address.</p>
+        <div className="lp-steps">
+          {[
+            { n: "01", title: "Create your account", desc: "Sign up with your email. No credit card required. You're in the app in under 60 seconds." },
+            { n: "02", title: "Enter your address", desc: "Type your home's address and hit 'Look Up My Home.' We pull 50+ data fields from public records automatically." },
+            { n: "03", title: "Start tracking", desc: "Add your first maintenance task, log a warranty, or upload a home photo. Your command center is ready." },
+            { n: "04", title: "Stay on top of it", desc: "Dashboard shows upcoming tasks, expiring warranties, and yearly spending at a glance. Nothing falls through." },
+          ].map((s, i) => (
+            <div key={i} className="lp-step">
+              <div className="lp-step-num">{s.n}</div>
+              <h3>{s.title}</h3>
+              <p>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF */}
+      <section className="lp-section" style={{background: "var(--cream)"}}>
+        <div className="lp-label">Early users</div>
+        <h2 className="lp-h2">Homeowners love it</h2>
+        <p className="lp-sub">We're in beta and already hearing from real homeowners about what HomeKeep means to them.</p>
+        <div className="lp-proof">
+          {[
+            { text: "I typed my address and it instantly knew my home was built in 1987, showed me the last three sales, and pulled 5 years of property tax records. That alone is worth it.", name: "Mike R.", role: "Homeowner, Tampa FL", initials: "MR", color: "#4A89B8" },
+            { text: "Finally I have somewhere to track all our warranties. We had a dishwasher break and I actually knew exactly where the warranty was. First time ever.", name: "Sarah L.", role: "First-time homeowner, Austin TX", initials: "SL", color: "#5E8065" },
+            { text: "The expense tracker showed me I've spent $14,000 on my home in 2 years. I had no idea. Now I actually have data to plan with.", name: "James T.", role: "Homeowner, Denver CO", initials: "JT", color: "#C1622B" },
+          ].map((p, i) => (
+            <div key={i} className="lp-proof-card">
+              <div className="lp-proof-stars">★★★★★</div>
+              <p className="lp-proof-text">"{p.text}"</p>
+              <div className="lp-proof-author">
+                <div className="lp-proof-avatar" style={{background: p.color}}>{p.initials}</div>
+                <div>
+                  <div className="lp-proof-name">{p.name}</div>
+                  <div className="lp-proof-role">{p.role}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section className="lp-section-white" id="pricing">
+        <div className="lp-label">Simple pricing</div>
+        <h2 className="lp-h2">Start free, upgrade when ready</h2>
+        <p className="lp-sub">No hidden fees. Use HomeKeep free forever or unlock premium features when your home needs more.</p>
+        <div className="lp-pricing">
+          <div className="lp-price-card">
+            <div className="lp-plan">Free</div>
+            <div className="lp-price">$0<span> / month</span></div>
+            <p className="lp-price-desc">Everything you need to get started managing your home.</p>
+            <ul className="lp-price-list">
+              {["1 property","Unlimited tasks & warranties","Expense tracking","Property auto-fill","Tax & sale history","Photo upload"].map(f => (
+                <li key={f}><span className="lp-price-check">✓</span> {f}</li>
+              ))}
+            </ul>
+            <button className="lp-price-btn lp-price-btn-outline" onClick={onSignUp}>Get started free</button>
+          </div>
+          <div className="lp-price-card featured">
+            <div className="lp-price-badge">Most popular</div>
+            <div className="lp-plan">Pro</div>
+            <div className="lp-price">$4.99<span> / month</span></div>
+            <p className="lp-price-desc">For homeowners who want the full picture.</p>
+            <ul className="lp-price-list">
+              {["Everything in Free","Up to 3 properties","Email reminders for tasks","Permit history (coming soon)","Full sale history timeline","Priority support"].map(f => (
+                <li key={f}><span className="lp-price-check">✓</span> {f}</li>
+              ))}
+            </ul>
+            <button className="lp-price-btn lp-price-btn-solid" onClick={onSignUp}>Start free trial</button>
+          </div>
+        </div>
+      </section>
+
+      {/* BOTTOM CTA */}
+      <section className="lp-cta-section">
+        <h2>Your home is your<br /><em>biggest investment</em></h2>
+        <p>Start tracking it like one. Free forever, set up in minutes, no credit card required.</p>
+        <button className="lp-btn-primary" style={{fontSize:"1.05rem",padding:"1rem 2.5rem",position:"relative",zIndex:1}} onClick={onSignUp}>
+          Create your free account →
+        </button>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="lp-footer">
+        <div className="lp-footer-logo">
+          <div className="lp-footer-logo-icon">🏠</div>
+          <span className="lp-footer-logo-text">HomeKeep</span>
+        </div>
+        <div className="lp-footer-links">
+          <button onClick={() => scrollTo("features")}>Features</button>
+          <button onClick={() => scrollTo("pricing")}>Pricing</button>
+          <button onClick={onSignIn}>Sign in</button>
+        </div>
+        <p className="lp-footer-copy">© 2026 HomeKeep. Built for homeowners.</p>
+      </footer>
+    </div>
+  );
+}
+
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
-function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login"); // login | signup | reset
+function AuthScreen({ onAuth, initialMode = "login" }) {
+  const [mode, setMode] = useState(initialMode); // login | signup | reset
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -1331,6 +1636,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
 export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [screen, setScreen] = useState("landing"); // landing | login | signup
   const [tab, setTab] = useState("dashboard");
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
@@ -1396,12 +1702,24 @@ export default function App() {
     );
   }
 
-  // ── Show auth screen if not logged in
+  // ── Show landing or auth screen if not logged in
   if (!session) {
+    if (screen === "landing") {
+      return (
+        <>
+          <style>{CSS}</style>
+          <LandingPage
+            onSignIn={() => setScreen("login")}
+            onSignUp={() => setScreen("signup")}
+          />
+          <Toasts toasts={toasts} />
+        </>
+      );
+    }
     return (
       <>
         <style>{CSS}</style>
-        <AuthScreen onAuth={setSession} />
+        <AuthScreen onAuth={setSession} initialMode={screen === "signup" ? "signup" : "login"} />
         <Toasts toasts={toasts} />
       </>
     );
