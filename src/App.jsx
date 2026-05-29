@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { lookupProperty } from "./services/property";
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliances","Roofing","Landscaping","Structural","Safety","Other"];
@@ -173,7 +174,55 @@ textarea{resize:vertical;min-height:65px;line-height:1.5}
 .bar-track{flex:1;height:20px;background:var(--cream);border-radius:4px;overflow:hidden}
 .bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:.68rem;font-weight:700;color:#fff;transition:width .6s;white-space:nowrap;overflow:hidden}
 .bar-amt{font-size:.72rem;min-width:50px;color:var(--dark);font-weight:600}
+/* ── PROPERTY LOOKUP ── */
+.lookup-box{background:var(--rust-light);border:1.5px solid #F0C4AD;border-radius:var(--r);padding:1.2rem 1.4rem;margin-bottom:1.2rem}
+.lookup-title{font-size:.75rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--rust);margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem}
+.lookup-row{display:flex;gap:.6rem;align-items:stretch}
+.lookup-row input{flex:1;padding:.65rem 1rem;border:1.5px solid #F0C4AD;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.87rem;color:var(--dark);background:#fff;outline:none;transition:border-color .15s}
+.lookup-row input:focus{border-color:var(--rust)}
+.lookup-btn{padding:.65rem 1.1rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .18s;display:flex;align-items:center;gap:6px}
+.lookup-btn:hover{background:#A8501F}
+.lookup-btn:disabled{opacity:.6;cursor:not-allowed}
+.lookup-status{font-size:.78rem;color:#9E9690;margin-top:.6rem;display:flex;align-items:center;gap:.4rem}
+.lookup-status.ok{color:#1A7A44}
+.lookup-status.err{color:var(--red)}
+.lookup-preview{margin-top:.9rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.5rem}
+.lookup-chip{background:#fff;border:1px solid #F0C4AD;border-radius:8px;padding:.5rem .8rem}
+.lookup-chip-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.8px;color:#9E9690;font-weight:600}
+.lookup-chip-val{font-size:.88rem;font-weight:600;color:var(--dark);margin-top:1px}
 .profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.2rem}
+.home-photo-wrap{position:relative;margin-bottom:1.2rem}
+.home-photo-wrap img{width:100%;height:220px;object-fit:cover;border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow)}
+.home-photo-badge{position:absolute;bottom:.7rem;right:.7rem;background:rgba(42,38,34,.7);color:#fff;font-size:.65rem;padding:3px 8px;border-radius:10px;backdrop-filter:blur(4px)}
+.photo-upload-wrap{margin-bottom:1.2rem}
+.photo-drop{border:2px dashed var(--stone);border-radius:var(--r);padding:2rem 1rem;text-align:center;cursor:pointer;transition:all .18s;background:var(--white);position:relative}
+.photo-drop:hover,.photo-drop.drag{border-color:var(--rust);background:var(--rust-light)}
+.photo-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-drop-icon{font-size:2rem;margin-bottom:.5rem}
+.photo-drop-text{font-size:.85rem;color:#9E9690}
+.photo-drop-text strong{color:var(--rust)}
+.photo-preview{position:relative;display:inline-block;width:100%}
+.photo-preview img{width:100%;height:200px;object-fit:cover;border-radius:var(--r);border:1px solid var(--stone)}
+.photo-preview-remove{position:absolute;top:.5rem;right:.5rem;background:rgba(42,38,34,.8);color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:.72rem;cursor:pointer;font-family:'DM Sans',sans-serif}
+.photo-preview-remove:hover{background:var(--red)}
+.photo-uploading{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem;background:var(--rust-light);border-radius:var(--r-sm);font-size:.82rem;color:var(--rust);margin-top:.5rem}
+.data-panel{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:1.1rem 1.3rem;box-shadow:var(--shadow);margin-bottom:1rem}
+.data-panel-title{font-size:.72rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9E9690;margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem}
+.tax-row{display:flex;align-items:center;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--stone);font-size:.84rem}
+.tax-row:last-child{border-bottom:none}
+.tax-year{font-weight:700;color:var(--dark);min-width:50px}
+.tax-val{color:#7A7370}
+.tax-val strong{color:var(--dark);font-weight:600}
+.school-item{display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--stone)}
+.school-item:last-child{border-bottom:none}
+.school-rating{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0}
+.school-name{font-size:.85rem;font-weight:600;color:var(--dark)}
+.school-meta{font-size:.72rem;color:#9E9690;margin-top:1px}
+.price-event{display:flex;align-items:center;gap:.8rem;padding:.55rem 0;border-bottom:1px solid var(--stone);font-size:.82rem}
+.price-event:last-child{border-bottom:none}
+.price-event-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.price-event-label{flex:1;color:#7A7370}
+.price-event-val{font-weight:600;color:var(--dark)}
 .profile-field{background:var(--white);border:1px solid var(--stone);border-radius:var(--r-sm);padding:.9rem 1.1rem}
 .pf-label{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#9E9690;font-weight:600;margin-bottom:3px}
 .pf-val{font-size:.92rem;font-weight:500;color:var(--dark)}
@@ -467,18 +516,224 @@ function ExpenseForm({ data, onChange }) {
   );
 }
 
-function ProfileForm({ data, onChange }) {
-  const f = (k,v) => onChange({...data,[k]:v});
+// ─── PHOTO UPLOAD ─────────────────────────────────────────────────────────────
+function PhotoUpload({ userId, currentUrl, onUploaded }) {
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(currentUrl || null);
+  const [error, setError] = useState("");
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Please select an image file."); return; }
+    if (file.size > 10 * 1024 * 1024) { setError("Image must be under 10MB."); return; }
+    setError("");
+    setUploading(true);
+
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setPreview(localUrl);
+
+    // Upload to Supabase Storage under user's folder
+    const ext = file.name.split(".").pop();
+    const path = `${userId}/home-photo.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("home-photos")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      setError("Upload failed — " + uploadError.message);
+      setPreview(currentUrl || null);
+      setUploading(false);
+      return;
+    }
+
+    // Get public URL
+    const { data } = supabase.storage.from("home-photos").getPublicUrl(path);
+    const publicUrl = data.publicUrl + "?t=" + Date.now(); // cache bust
+    setPreview(publicUrl);
+    onUploaded(publicUrl);
+    setUploading(false);
+  };
+
+  const handleRemove = async () => {
+    const path = `${userId}/home-photo`;
+    // Try common extensions
+    for (const ext of ["jpg","jpeg","png","webp","heic"]) {
+      await supabase.storage.from("home-photos").remove([`${path}.${ext}`]);
+    }
+    setPreview(null);
+    onUploaded("");
+  };
+
   return (
-    <div className="fg">
-      <div className="field s2"><label>Home Name / Nickname</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. The Johnson Home" /></div>
-      <div className="field s2"><label>Address</label><input value={data.address||""} onChange={e=>f("address",e.target.value)} placeholder="123 Main St, City, State ZIP" /></div>
-      <div className="field"><label>Home Type</label><select value={data.type||""} onChange={e=>f("type",e.target.value)}><option value="">Select…</option>{HOME_TYPES.map(h=><option key={h}>{h}</option>)}</select></div>
-      <div className="field"><label>Year Built</label><input type="number" value={data.year||""} onChange={e=>f("year",e.target.value)} placeholder="e.g. 1998" /></div>
-      <div className="field"><label>Square Footage</label><input value={data.sqft||""} onChange={e=>f("sqft",e.target.value)} placeholder="e.g. 2,150" /></div>
-      <div className="field"><label>Bedrooms</label><input type="number" value={data.bedrooms||""} onChange={e=>f("bedrooms",e.target.value)} /></div>
-      <div className="field"><label>Bathrooms</label><input type="number" value={data.bathrooms||""} onChange={e=>f("bathrooms",e.target.value)} /></div>
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Key systems, past renovations…" /></div>
+    <div className="photo-upload-wrap">
+      <label style={{fontSize:".7rem",fontWeight:700,letterSpacing:".6px",textTransform:"uppercase",color:"#7A7370",display:"block",marginBottom:"6px"}}>
+        Home Photo
+      </label>
+
+      {preview ? (
+        <div className="photo-preview">
+          <img src={preview} alt="Your home" />
+          <button className="photo-preview-remove" onClick={handleRemove}>✕ Remove</button>
+        </div>
+      ) : (
+        <div
+          className={`photo-drop ${dragging ? "drag" : ""}`}
+          onDragOver={e=>{e.preventDefault();setDragging(true);}}
+          onDragLeave={()=>setDragging(false)}
+          onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0]);}}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            onChange={e=>handleFile(e.target.files[0])}
+          />
+          <div className="photo-drop-icon">📷</div>
+          <div className="photo-drop-text">
+            <strong>Click to upload</strong> or drag & drop<br/>
+            JPG, PNG, HEIC up to 10MB
+          </div>
+        </div>
+      )}
+
+      {uploading && (
+        <div className="photo-uploading">
+          <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
+          Uploading photo…
+        </div>
+      )}
+      {error && <div style={{color:"var(--red)",fontSize:".78rem",marginTop:".4rem"}}>⚠️ {error}</div>}
+    </div>
+  );
+}
+
+
+function ProfileForm({ data, onChange, userId }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  const [lookupAddr, setLookupAddr] = useState(data.address || "");
+  const [lookupState, setLookupState] = useState("idle"); // idle | loading | ok | error
+  const [lookupMsg, setLookupMsg] = useState("");
+  const [preview, setPreview] = useState(null);
+
+  const handleLookup = async () => {
+    if (!lookupAddr.trim()) return;
+    setLookupState("loading");
+    setLookupMsg("Looking up property data — this takes 10–30 seconds…");
+    setPreview(null);
+    try {
+      const result = await lookupProperty(lookupAddr.trim());
+      if (!result) {
+        setLookupState("error");
+        setLookupMsg("No property found. Try a more specific address (include city and state).");
+        return;
+      }
+      onChange({
+        ...data,
+        address:         result.address        || lookupAddr,
+        type:            result.type           || data.type,
+        year:            result.year           || data.year,
+        sqft:            result.sqft           || data.sqft,
+        bedrooms:        result.bedrooms       || data.bedrooms,
+        bathrooms:       result.bathrooms      || data.bathrooms,
+        lot_size:        result.lot_size       || data.lot_size,
+        last_sale_price: result.last_sale_price|| data.last_sale_price,
+        last_sale_date:  result.last_sale_date || data.last_sale_date,
+        zestimate:       result.zestimate      || data.zestimate,
+        rent_zestimate:  result.rent_zestimate || data.rent_zestimate,
+        hoa_fee:         result.hoa_fee        || data.hoa_fee,
+        photo_url:       result.photo_url      || data.photo_url,
+        description:     result.description    || data.description,
+        zpid:            result.zpid           || data.zpid,
+        tax_history:     result.tax_history    || data.tax_history,
+        price_history:   result.price_history  || data.price_history,
+        schools:         result.schools        || data.schools,
+      });
+      setPreview(result);
+      setLookupState("ok");
+      setLookupMsg("Property found! Fields have been filled in — review and edit anything below.");
+    } catch (err) {
+      setLookupState("error");
+      setLookupMsg("Lookup failed. Check your address and try again, or fill in manually.");
+    }
+  };
+
+  return (
+    <div>
+      {/* ── Property Lookup Box ── */}
+      <div className="lookup-box">
+        <div className="lookup-title">🔍 Auto-Fill from Address</div>
+        <div className="lookup-row">
+          <input
+            value={lookupAddr}
+            onChange={e => setLookupAddr(e.target.value)}
+            placeholder="123 Main St, City, State ZIP"
+            onKeyDown={e => e.key === "Enter" && handleLookup()}
+          />
+          <button
+            className="lookup-btn"
+            onClick={handleLookup}
+            disabled={lookupState === "loading"}
+          >
+            {lookupState === "loading" ? (
+              <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Looking up…</>
+            ) : "Look Up My Home"}
+          </button>
+        </div>
+        {lookupMsg && (
+          <div className={`lookup-status ${lookupState === "ok" ? "ok" : lookupState === "error" ? "err" : ""}`}>
+            {lookupState === "ok" ? "✓" : lookupState === "error" ? "⚠️" : "⏳"} {lookupMsg}
+          </div>
+        )}
+        {preview && (
+          <div className="lookup-preview">
+            {[
+              { label: "Type",          val: preview.type },
+              { label: "Year Built",    val: preview.year },
+              { label: "Sq Ft",         val: preview.sqft ? Number(preview.sqft).toLocaleString() : null },
+              { label: "Beds",          val: preview.bedrooms },
+              { label: "Baths",         val: preview.bathrooms },
+              { label: "Lot Size",      val: preview.lot_size },
+              { label: "Last Sale",     val: preview.last_sale_price ? `$${Number(preview.last_sale_price).toLocaleString()}` : null },
+              { label: "Zestimate",     val: preview.zestimate ? `$${Number(preview.zestimate).toLocaleString()}` : null },
+              { label: "Rent Estimate", val: preview.rent_zestimate ? `$${Number(preview.rent_zestimate).toLocaleString()}/mo` : null },
+              { label: "HOA Fee",       val: preview.hoa_fee ? `$${Number(preview.hoa_fee).toLocaleString()}/mo` : null },
+              { label: "Tax Records",   val: preview.tax_history?.length ? `${preview.tax_history.length} years` : null },
+              { label: "Schools",       val: preview.schools?.length ? `${preview.schools.length} nearby` : null },
+            ].filter(c => c.val).map(c => (
+              <div key={c.label} className="lookup-chip">
+                <div className="lookup-chip-label">{c.label}</div>
+                <div className="lookup-chip-val">{c.val}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Photo Upload ── */}
+      <PhotoUpload
+        userId={userId}
+        currentUrl={data.user_photo_url || ""}
+        onUploaded={url => onChange({...data, user_photo_url: url})}
+      />
+
+      {/* ── Manual Fields ── */}
+      <div className="fg">
+        <div className="field s2"><label>Home Name / Nickname</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. The Johnson Home" /></div>
+        <div className="field s2"><label>Address</label><input value={data.address||""} onChange={e=>f("address",e.target.value)} placeholder="123 Main St, City, State ZIP" /></div>
+        <div className="field"><label>Home Type</label><select value={data.type||""} onChange={e=>f("type",e.target.value)}><option value="">Select…</option>{HOME_TYPES.map(h=><option key={h}>{h}</option>)}</select></div>
+        <div className="field"><label>Year Built</label><input type="number" value={data.year||""} onChange={e=>f("year",e.target.value)} placeholder="e.g. 1998" /></div>
+        <div className="field"><label>Square Footage</label><input value={data.sqft||""} onChange={e=>f("sqft",e.target.value)} placeholder="e.g. 2,150" /></div>
+        <div className="field"><label>Bedrooms</label><input type="number" value={data.bedrooms||""} onChange={e=>f("bedrooms",e.target.value)} /></div>
+        <div className="field"><label>Bathrooms</label><input type="number" value={data.bathrooms||""} onChange={e=>f("bathrooms",e.target.value)} /></div>
+        <div className="field"><label>Lot Size</label><input value={data.lot_size||""} onChange={e=>f("lot_size",e.target.value)} placeholder="e.g. 8,500 sqft" /></div>
+        <div className="field"><label>Last Sale Price</label><input value={data.last_sale_price||""} onChange={e=>f("last_sale_price",e.target.value)} placeholder="e.g. 425000" /></div>
+        <div className="field"><label>Last Sale Date</label><input type="date" value={data.last_sale_date||""} onChange={e=>f("last_sale_date",e.target.value)} /></div>
+        <div className="field"><label>Zestimate</label><input value={data.zestimate||""} onChange={e=>f("zestimate",e.target.value)} placeholder="Estimated value" /></div>
+        <div className="field"><label>Rent Estimate / mo</label><input value={data.rent_zestimate||""} onChange={e=>f("rent_zestimate",e.target.value)} placeholder="e.g. 2400" /></div>
+        <div className="field"><label>HOA Fee / mo</label><input value={data.hoa_fee||""} onChange={e=>f("hoa_fee",e.target.value)} placeholder="e.g. 350" /></div>
+        <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Key systems, past renovations…" /></div>
+      </div>
     </div>
   );
 }
@@ -902,20 +1157,39 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
   const openEdit = () => { setEditData({...profile}); setModal(true); };
 
   const save = async () => {
+    const payload = {...editData};
+    // Store rich data as JSON strings in Supabase
+    if (typeof payload.tax_history === "object") payload.tax_history = JSON.stringify(payload.tax_history);
+    if (typeof payload.price_history === "object") payload.price_history = JSON.stringify(payload.price_history);
+    if (typeof payload.schools === "object") payload.schools = JSON.stringify(payload.schools);
+    // user_photo_url is already a plain string — no serialization needed
+
     if(profile?.id) {
-      const { error } = await supabase.from("profiles").update(editData).eq("id", profile.id).eq("user_id", userId);
+      const { error } = await supabase.from("profiles").update(payload).eq("id", profile.id).eq("user_id", userId);
       if(!error) { setProfile({...editData, id:profile.id}); toast("Home profile saved ✓"); }
       else toast("Error saving","error");
     } else {
-      const { data, error } = await supabase.from("profiles").insert([{...editData, user_id: userId}]).select();
-      if(!error && data) { setProfile(data[0]); toast("Home profile saved ✓"); }
+      const { data, error } = await supabase.from("profiles").insert([{...payload, user_id: userId}]).select();
+      if(!error && data) { setProfile({...editData, id:data[0].id}); toast("Home profile saved ✓"); }
       else toast("Error saving","error");
     }
     setModal(false);
   };
 
+  // Parse JSON fields from Supabase
+  const taxHistory = (() => { try { return typeof profile?.tax_history === "string" ? JSON.parse(profile.tax_history) : (profile?.tax_history || []); } catch { return []; } })();
+  const priceHistory = (() => { try { return typeof profile?.price_history === "string" ? JSON.parse(profile.price_history) : (profile?.price_history || []); } catch { return []; } })();
+  const schools = (() => { try { return typeof profile?.schools === "string" ? JSON.parse(profile.schools) : (profile?.schools || []); } catch { return []; } })();
+
   const totalCost = expenses.reduce((s,e)=>s+Number(e.amount||0),0);
   const activeW = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
+
+  const schoolRatingColor = r => {
+    if (!r) return "#C2B8AE";
+    if (r >= 8) return "#1A7A44";
+    if (r >= 6) return "#E0A84A";
+    return "#B91C1C";
+  };
 
   return (
     <div>
@@ -924,14 +1198,56 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
         <button className="btn btn-primary" onClick={openEdit}>✏️ Edit Profile</button>
       </div>
       {profile?.address && <p style={{fontSize:".85rem",color:"#9E9690",marginBottom:"1.2rem"}}>📍 {profile.address}</p>}
+
+      {/* ── Home Photo — user upload takes priority over Zillow ── */}
+      {(profile?.user_photo_url || profile?.photo_url) && (
+        <div className="home-photo-wrap">
+          <img
+            src={profile.user_photo_url || profile.photo_url}
+            alt="Your home"
+            onError={e => { if(e.target.src !== profile.photo_url) e.target.src = profile.photo_url; else e.target.style.display="none"; }}
+          />
+          <div className="home-photo-badge">
+            {profile.user_photo_url ? "📷 Your Photo" : "📷 Zillow Photo"}
+          </div>
+        </div>
+      )}
+
+      {/* ── Core Stats ── */}
       <div className="profile-grid">
-        {[{label:"Home Type",val:profile?.type},{label:"Year Built",val:profile?.year},{label:"Square Footage",val:profile?.sqft?profile.sqft+" sq ft":null},{label:"Bedrooms",val:profile?.bedrooms},{label:"Bathrooms",val:profile?.bathrooms}].map(f=>f.val&&(
+        {[
+          {label:"Home Type",       val:profile?.type},
+          {label:"Year Built",      val:profile?.year},
+          {label:"Square Footage",  val:profile?.sqft ? Number(profile.sqft).toLocaleString()+" sq ft" : null},
+          {label:"Bedrooms",        val:profile?.bedrooms},
+          {label:"Bathrooms",       val:profile?.bathrooms},
+          {label:"Lot Size",        val:profile?.lot_size},
+          {label:"Last Sale Price", val:profile?.last_sale_price ? "$"+Number(profile.last_sale_price).toLocaleString() : null},
+          {label:"Last Sale Date",  val:profile?.last_sale_date ? fmtD(profile.last_sale_date) : null},
+          {label:"Zestimate",       val:profile?.zestimate ? "$"+Number(profile.zestimate).toLocaleString() : null},
+          {label:"Rent Estimate",   val:profile?.rent_zestimate ? "$"+Number(profile.rent_zestimate).toLocaleString()+"/mo" : null},
+          {label:"HOA Fee",         val:profile?.hoa_fee ? "$"+Number(profile.hoa_fee).toLocaleString()+"/mo" : null},
+        ].map(f=>f.val&&(
           <div key={f.label} className="profile-field"><div className="pf-label">{f.label}</div><div className="pf-val">{f.val}</div></div>
         ))}
       </div>
-      {profile?.notes && <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem 1.2rem",marginBottom:"1.2rem"}}><div className="pf-label" style={{marginBottom:"6px"}}>Notes</div><p style={{fontSize:".87rem",lineHeight:1.6}}>{profile.notes}</p></div>}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:".85rem",marginTop:"1rem"}}>
-        {[{label:"Total Tasks",val:tasks.length,sub:"records",color:"var(--sky)"},{label:"Active Warranties",val:activeW,sub:"items covered",color:"#5E8065"},{label:"Lifetime Spend",val:fmt$(totalCost),sub:"tracked",color:"var(--rust)"},{label:"Completed",val:tasks.filter(t=>t.status==="Completed").length,sub:"tasks done",color:"#5E8065"}].map(s=>(
+
+      {/* ── Notes ── */}
+      {profile?.notes && (
+        <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem 1.2rem",marginBottom:"1rem"}}>
+          <div className="pf-label" style={{marginBottom:"6px"}}>Notes</div>
+          <p style={{fontSize:".87rem",lineHeight:1.6}}>{profile.notes}</p>
+        </div>
+      )}
+
+      {/* ── App Stats ── */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:".85rem",marginBottom:"1rem"}}>
+        {[
+          {label:"Total Tasks",     val:tasks.length,                                    sub:"records",       color:"var(--sky)"},
+          {label:"Active Warranties",val:activeW,                                        sub:"items covered", color:"#5E8065"},
+          {label:"Lifetime Spend",  val:fmt$(totalCost),                                 sub:"tracked",       color:"var(--rust)"},
+          {label:"Completed",       val:tasks.filter(t=>t.status==="Completed").length,  sub:"tasks done",    color:"#5E8065"},
+        ].map(s=>(
           <div key={s.label} style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem 1.2rem",boxShadow:"var(--shadow)"}}>
             <div className="stat-label">{s.label}</div>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:700,color:s.color,lineHeight:1}}>{s.val}</div>
@@ -939,15 +1255,74 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
           </div>
         ))}
       </div>
+
+      {/* ── Rich Data Panels ── */}
+      <div className="two-col">
+
+        {/* Tax History */}
+        {taxHistory.length > 0 && (
+          <div className="data-panel">
+            <div className="data-panel-title">🏛️ Property Tax History</div>
+            {taxHistory.map((t,i) => (
+              <div key={i} className="tax-row">
+                <span className="tax-year">{t.year}</span>
+                <span className="tax-val">Tax: <strong>{t.tax_paid ? "$"+Number(t.tax_paid).toLocaleString() : "—"}</strong></span>
+                <span className="tax-val">Assessed: <strong>{t.assessed_value ? "$"+Number(t.assessed_value).toLocaleString() : "—"}</strong></span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Price History */}
+        {priceHistory.length > 0 && (
+          <div className="data-panel">
+            <div className="data-panel-title">📈 Price History</div>
+            {priceHistory.slice(0,8).map((h,i) => {
+              const isSold = h.event?.toLowerCase().includes("sold");
+              const isListed = h.event?.toLowerCase().includes("listed") || h.event?.toLowerCase().includes("list");
+              const dotColor = isSold ? "#1A7A44" : isListed ? "#4A89B8" : "#C2B8AE";
+              return (
+                <div key={i} className="price-event">
+                  <div className="price-event-dot" style={{background:dotColor}}/>
+                  <span className="price-event-label">{h.event} {h.date ? "· "+h.date : ""}</span>
+                  <span className="price-event-val">{h.price ? "$"+Number(h.price).toLocaleString() : "—"}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Nearby Schools */}
+        {schools.length > 0 && (
+          <div className="data-panel">
+            <div className="data-panel-title">🎓 Nearby Schools</div>
+            {schools.map((s,i) => (
+              <div key={i} className="school-item">
+                <div className="school-rating" style={{background:schoolRatingColor(s.rating)+"22",color:schoolRatingColor(s.rating)}}>
+                  {s.rating || "?"}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div className="school-name">{s.name}</div>
+                  <div className="school-meta">{[s.grades, s.distance ? s.distance+" mi" : null].filter(Boolean).join(" · ")}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>
+
+      {/* ── Empty State ── */}
       {!profile?.name && (
         <div style={{textAlign:"center",padding:"3rem",background:"var(--white)",borderRadius:"var(--r)",border:"2px dashed var(--stone)",marginTop:"1rem"}}>
           <div style={{fontSize:"2.5rem",marginBottom:".8rem"}}>🏡</div>
           <strong>Set up your home profile</strong>
-          <p style={{fontSize:".85rem",color:"#9E9690",margin:".4rem 0 1rem"}}>Add your home's details to personalize the app</p>
+          <p style={{fontSize:".85rem",color:"#9E9690",margin:".4rem 0 1rem"}}>Add your address to auto-fill your home's details</p>
           <button className="btn btn-primary" onClick={openEdit}>Get Started</button>
         </div>
       )}
-      {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData}/></Modal>}
+
+      {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId}/></Modal>}
     </div>
   );
 }
