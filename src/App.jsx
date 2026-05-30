@@ -613,6 +613,40 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lightbox img{max-width:92vw;max-height:88vh;border-radius:var(--r-sm);box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .lightbox-close{position:absolute;top:1.2rem;right:1.2rem;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
+/* ══ ASSETS ══ */
+.asset-card{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);margin-bottom:.75rem;overflow:hidden;transition:box-shadow .18s}
+.asset-card:hover{box-shadow:var(--shadow-md)}
+.asset-card-header{display:flex;align-items:flex-start;gap:.85rem;padding:1rem 1.1rem}
+.asset-card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.asset-card-body{flex:1;min-width:0}
+.asset-card-title{font-weight:700;font-size:.95rem;color:var(--dark);margin-bottom:3px}
+.asset-card-meta{font-size:.73rem;color:#A8A09A;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.asset-card-actions{display:flex;gap:4px;flex-shrink:0}
+.asset-condition{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:700;border:1px solid;white-space:nowrap}
+.asset-lifespan-row{padding:.7rem 1.1rem;border-top:1px solid var(--stone);display:flex;flex-direction:column;gap:5px}
+.asset-lifespan-label{display:flex;justify-content:space-between;font-size:.68rem;color:#A8A09A;font-weight:500}
+.asset-lifespan-bar{height:6px;border-radius:3px;background:var(--stone);overflow:hidden}
+.asset-lifespan-fill{height:100%;border-radius:3px;transition:width .5s}
+.asset-photo{width:100%;height:150px;object-fit:cover;border-top:1px solid var(--stone);cursor:pointer;transition:opacity .15s}
+.asset-photo:hover{opacity:.9}
+.asset-warranty-row{display:flex;align-items:center;gap:.65rem;padding:.6rem 1.1rem;border-top:1px solid var(--stone);font-size:.8rem}
+.asset-service-section{border-top:1px solid var(--stone)}
+.asset-service-header{display:flex;align-items:center;justify-content:space-between;padding:.55rem .9rem;background:var(--cream);cursor:pointer}
+.asset-service-title{font-size:.68rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A09A}
+.asset-service-log{padding:.5rem .9rem}
+.asset-service-entry{display:flex;align-items:flex-start;gap:.65rem;padding:.55rem 0;border-bottom:1px solid var(--stone);font-size:.82rem}
+.asset-service-entry:last-child{border-bottom:none}
+.asset-service-dot{width:8px;height:8px;border-radius:50%;background:var(--rust);flex-shrink:0;margin-top:4px}
+.asset-service-body{flex:1;min-width:0}
+.asset-service-desc{font-weight:600;color:var(--dark);margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asset-service-meta{font-size:.7rem;color:#A8A09A;display:flex;gap:.5rem}
+.asset-service-cost{font-family:'Fraunces',serif;font-weight:700;color:var(--dark);flex-shrink:0;font-size:.88rem}
+.asset-stats-row{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--stone)}
+.asset-stat{padding:.6rem .7rem;text-align:center;border-right:1px solid var(--stone)}
+.asset-stat:last-child{border-right:none}
+.asset-stat-val{font-family:'Fraunces',serif;font-size:.95rem;font-weight:700;color:var(--dark);line-height:1}
+.asset-stat-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.5px;color:#A8A09A;margin-top:2px;font-weight:600}
+
 /* ══ MY HOME REDESIGN ══ */
 .home-hero{border-radius:var(--r);overflow:hidden;margin-bottom:1rem;position:relative}
 .home-hero-photo{width:100%;height:200px;object-fit:cover;display:block}
@@ -1302,18 +1336,74 @@ function TaskForm({ data, onChange }) {
   );
 }
 
-function WarrantyForm({ data, onChange }) {
+const ASSET_CATEGORIES = ["HVAC","Appliance","Roofing","Plumbing","Electrical","Structure","Safety","Landscaping","Other"];
+const ASSET_CONDITIONS = ["Good","Fair","Needs Attention","Failed"];
+const CONDITION_STYLE = {
+  "Good":            {bg:"var(--sage-light)",  text:"var(--sage)",  border:"#B8D9CC"},
+  "Fair":            {bg:"#FFF8E6",            text:"#92610A",      border:"#F5CC76"},
+  "Needs Attention": {bg:"var(--rust-light)",  text:"var(--rust)",  border:"#EDCDB8"},
+  "Failed":          {bg:"var(--red-light)",   text:"var(--red)",   border:"#EFCFCC"},
+};
+// Default lifespans by category (years)
+const DEFAULT_LIFESPAN = {
+  HVAC:20, Appliance:12, Roofing:25, Plumbing:50,
+  Electrical:40, Structure:50, Safety:10, Landscaping:15, Other:15,
+};
+const ASSET_ICONS = {
+  HVAC:"🌡️", Appliance:"🍳", Roofing:"🏚️", Plumbing:"🚿",
+  Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
+};
+
+function AssetForm({ data, onChange, userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
+  // Auto-set lifespan when category changes
+  const handleCategory = (cat) => {
+    onChange({...data, category:cat, lifespan_years: data.lifespan_years || DEFAULT_LIFESPAN[cat] || 15});
+  };
   return (
     <div className="fg">
-      <div className="field s2"><label>Item / Appliance *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Samsung Refrigerator" /></div>
+      <div className="field s2"><label>Asset Name *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Carrier HVAC System, Samsung Fridge" /></div>
+      <div className="field"><label>Category</label>
+        <select value={data.category||""} onChange={e=>handleCategory(e.target.value)}>
+          <option value="">Select…</option>
+          {ASSET_CATEGORIES.map(c=><option key={c}>{c}</option>)}
+        </select>
+      </div>
+      <div className="field"><label>Condition</label>
+        <select value={data.condition||"Good"} onChange={e=>f("condition",e.target.value)}>
+          {ASSET_CONDITIONS.map(c=><option key={c}>{c}</option>)}
+        </select>
+      </div>
       <div className="field"><label>Model / Serial #</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} /></div>
       <div className="field"><label>Vendor / Store</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} /></div>
       <div className="field"><label>Purchase Date</label><input type="date" value={data.purchase_date||""} onChange={e=>f("purchase_date",e.target.value)} /></div>
-      <div className="field"><label>Warranty Expiry</label><input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
+      <div className="field"><label>Install Date</label><input type="date" value={data.install_date||""} onChange={e=>f("install_date",e.target.value)} /></div>
       <div className="field"><label>Purchase Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} /></div>
+      <div className="field"><label>Replacement Cost ($)</label><input type="number" value={data.replacement_cost||""} onChange={e=>f("replacement_cost",e.target.value)} placeholder="Est. today's cost" /></div>
+      <div className="field"><label>Expected Lifespan (yrs)</label><input type="number" value={data.lifespan_years||""} onChange={e=>f("lifespan_years",e.target.value)} placeholder="e.g. 20" /></div>
+      <div className="field"><label>Warranty Expiry</label><input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
+      <div className="field"><label>Last Serviced</label><input type="date" value={data.last_serviced||""} onChange={e=>f("last_serviced",e.target.value)} /></div>
       <div className="field s2"><label>Document Location</label><input value={data.document_ref||""} onChange={e=>f("document_ref",e.target.value)} placeholder="e.g. Filing Cabinet, Google Drive" /></div>
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Coverage details, claim process…" /></div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Coverage details, serial numbers, service contacts…" /></div>
+      <ExpenseFileUpload
+        userId={userId}
+        expenseId={`asset-${data.id||"new"}`}
+        currentUrl={data.asset_photo_url||""}
+        onUploaded={url=>f("asset_photo_url",url)}
+        label="Asset Photo"
+      />
+    </div>
+  );
+}
+
+function ServiceLogForm({ data, onChange }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  return (
+    <div className="fg">
+      <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. Annual tune-up, replaced capacitor" /></div>
+      <div className="field"><label>Service Date *</label><input type="date" value={data.service_date||""} onChange={e=>f("service_date",e.target.value)} /></div>
+      <div className="field"><label>Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Technician, parts used, findings…" /></div>
     </div>
   );
 }
@@ -1708,7 +1798,7 @@ function SearchBar({ tasks, warranties, expenses, onNavigate }) {
 
   const results = q.trim().length < 2 ? [] : [
     ...tasks.filter(t => t.title?.toLowerCase().includes(q.toLowerCase()) || t.category?.toLowerCase().includes(q.toLowerCase())).slice(0,3).map(t => ({type:"Task",icon:CAT_ICONS[t.category]||"🔧",label:t.title,sub:t.status,tab:"tasks"})),
-    ...warranties.filter(w => w.item?.toLowerCase().includes(q.toLowerCase())).slice(0,2).map(w => ({type:"Warranty",icon:"📋",label:w.item,sub:w.vendor,tab:"warranties"})),
+    ...warranties.filter(w => w.item?.toLowerCase().includes(q.toLowerCase())).slice(0,2).map(w => ({type:"Asset",icon:ASSET_ICONS[w.category]||"🔧",label:w.item,sub:w.condition||w.vendor,tab:"warranties"})),
     ...expenses.filter(e => e.description?.toLowerCase().includes(q.toLowerCase())).slice(0,2).map(e => ({type:"Expense",icon:"💲",label:e.description,sub:fmt$(e.amount),tab:"expenses"})),
   ];
 
@@ -1996,9 +2086,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
             <div className="stat-sub">{fmt$(totalSpend)} lifetime</div>
           </div>
           <div className="stat c-sage" onClick={() => onNavigate("warranties")} style={{marginBottom:0}}>
-            <div className="stat-label">Warranties</div>
+            <div className="stat-label">Assets</div>
             <div className="stat-val">{activeW}</div>
-            <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} expiring` : "all current"}</div>
+            <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} warranty expiring` : "tracked"}</div>
           </div>
         </div>
       </div>
@@ -2065,7 +2155,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         </div>
 
         <div className="panel">
-          <div className="panel-title">🛡️ Expiring warranties</div>
+          <div className="panel-title">🏠 Asset warranty alerts</div>
           {expiringW.length===0 ? (
             <div className="empty" style={{padding:"1.5rem .5rem"}}>
               <span className="ei">🛡️</span>
@@ -2361,100 +2451,306 @@ function Tasks({ tasks, setTasks, toast, userId, profile }) {
   );
 }
 
-// ─── WARRANTIES ───────────────────────────────────────────────────────────────
-function Warranties({ warranties, setWarranties, toast, userId }) {
+// ─── ASSETS ───────────────────────────────────────────────────────────────────
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId }) {
   const [modal, setModal] = useState(false);
-  const [editData, setEditData] = useState({});
+  const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [filter, setFilter] = useState("All");
+  const [lightbox, setLightbox] = useState(null);
+  const [serviceLogs, setServiceLogs] = useState([]);
+  const [serviceModal, setServiceModal] = useState(false);
+  const [serviceEditData, setServiceEditData] = useState({});
+  const [serviceEditId, setServiceEditId] = useState(null);
+  const [serviceAssetId, setServiceAssetId] = useState(null);
+  const [serviceConfirm, setServiceConfirm] = useState(null);
+  const [expandedService, setExpandedService] = useState(null);
 
-  const openNew = () => { setEditData({}); setEditId(null); setModal(true); };
-  const openEdit = w => { setEditData({...w}); setEditId(w.id); setModal(true); };
+  // Load service logs
+  useEffect(() => {
+    if(!userId) return;
+    supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false})
+      .then(({data})=>{ if(data) setServiceLogs(data); });
+  }, [userId]);
+
+  // Asset CRUD
+  const openNew = () => { setEditData({condition:"Good"}); setEditId(null); setModal(true); };
+  const openEdit = a => { setEditData({...a}); setEditId(a.id); setModal(true); };
 
   const save = async () => {
     if(!editData.item?.trim()) return;
     if(editId) {
-      const { error } = await supabase.from("warranties").update(editData).eq("id", editId).eq("user_id", userId);
-      if(!error) { setWarranties(warranties.map(w=>w.id===editId?{...editData,id:editId}:w)); toast("Warranty updated ✓"); }
+      const {error} = await supabase.from("warranties").update(editData).eq("id",editId).eq("user_id",userId);
+      if(!error) { setAssets(assets.map(a=>a.id===editId?{...editData,id:editId}:a)); toast("Asset updated ✓"); }
       else toast("Error saving","error");
     } else {
-      const { data, error } = await supabase.from("warranties").insert([{...editData, user_id: userId}]).select();
-      if(!error && data) { setWarranties([...warranties, data[0]]); toast("Warranty added ✓"); }
+      const {data,error} = await supabase.from("warranties").insert([{...editData,user_id:userId}]).select();
+      if(!error&&data) { setAssets([...assets,data[0]]); toast("Asset added ✓"); }
       else toast("Error adding","error");
     }
     setModal(false);
   };
 
   const confirmDel = async () => {
-    const { error } = await supabase.from("warranties").delete().eq("id", confirm).eq("user_id", userId);
-    if(!error) { setWarranties(warranties.filter(w=>w.id!==confirm)); toast("Warranty deleted","error"); }
+    const {error} = await supabase.from("warranties").delete().eq("id",confirm).eq("user_id",userId);
+    if(!error) { setAssets(assets.filter(a=>a.id!==confirm)); toast("Asset deleted","error"); }
     setConfirm(null);
   };
 
-  let list = [...warranties];
-  if(filter==="Active") list = list.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; });
-  if(filter==="Expiring Soon") list = list.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0&&d<=90; });
-  if(filter==="Expired") list = list.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; });
-  list = list.sort((a,b)=>new Date(a.expiry_date)-new Date(b.expiry_date));
+  // Service log CRUD
+  const openNewService = (assetId) => {
+    setServiceEditData({service_date:new Date().toISOString().slice(0,10), asset_id:assetId});
+    setServiceEditId(null);
+    setServiceAssetId(assetId);
+    setServiceModal(true);
+  };
+  const openEditService = (s) => {
+    setServiceEditData({...s});
+    setServiceEditId(s.id);
+    setServiceAssetId(s.asset_id);
+    setServiceModal(true);
+  };
+
+  const saveService = async () => {
+    if(!serviceEditData.description?.trim()||!serviceEditData.service_date) return;
+    if(serviceEditId) {
+      const {error} = await supabase.from("asset_service_log").update(serviceEditData).eq("id",serviceEditId).eq("user_id",userId);
+      if(!error) {
+        setServiceLogs(serviceLogs.map(s=>s.id===serviceEditId?{...serviceEditData,id:serviceEditId}:s));
+        // Update last_serviced on asset
+        await supabase.from("warranties").update({last_serviced:serviceEditData.service_date}).eq("id",serviceEditData.asset_id).eq("user_id",userId);
+        setAssets(assets.map(a=>a.id===serviceEditData.asset_id?{...a,last_serviced:serviceEditData.service_date}:a));
+        toast("Service log updated ✓");
+      } else toast("Error saving","error");
+    } else {
+      const {data,error} = await supabase.from("asset_service_log").insert([{...serviceEditData,user_id:userId}]).select();
+      if(!error&&data) {
+        setServiceLogs([data[0],...serviceLogs]);
+        // Update last_serviced on asset
+        await supabase.from("warranties").update({last_serviced:serviceEditData.service_date}).eq("id",serviceEditData.asset_id).eq("user_id",userId);
+        setAssets(assets.map(a=>a.id===serviceEditData.asset_id?{...a,last_serviced:serviceEditData.service_date}:a));
+        toast("Service logged ✓");
+      } else toast("Error logging","error");
+    }
+    setServiceModal(false);
+  };
+
+  const confirmDelService = async () => {
+    const {error} = await supabase.from("asset_service_log").delete().eq("id",serviceConfirm).eq("user_id",userId);
+    if(!error) { setServiceLogs(serviceLogs.filter(s=>s.id!==serviceConfirm)); toast("Service log deleted","error"); }
+    setServiceConfirm(null);
+  };
+
+  // Filter list
+  const FILTER_OPTIONS = ["All","Good","Fair","Needs Attention","Failed","Warranty Active","Warranty Expiring"];
+  let list = [...assets];
+  if(filter==="Warranty Active")   list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
+  if(filter==="Warranty Expiring") list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0&&d<=90; });
+  if(ASSET_CONDITIONS.includes(filter)) list = list.filter(a=>a.condition===filter);
+  list = list.sort((a,b)=>(a.item||"").localeCompare(b.item||""));
+
+  // Summary stats
+  const totalValue = assets.reduce((s,a)=>s+Number(a.cost||0),0);
+  const totalReplacement = assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0);
+  const needsAttention = assets.filter(a=>a.condition==="Needs Attention"||a.condition==="Failed").length;
 
   return (
     <div>
       <div className="sh">
-        <span className="sh-title">Warranties & Documents</span>
-        <button className="btn btn-primary" onClick={openNew}>＋ Add Warranty</button>
+        <span className="sh-title">Assets</span>
+        <button className="btn btn-primary" onClick={openNew}>＋ Add Asset</button>
       </div>
-      <div className="toolbar">
-        {["All","Active","Expiring Soon","Expired"].map(f=><button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{f}</button>)}
-      </div>
-      {list.length===0 && (
-        <div className="empty">
-          <span className="ei">📋</span>
-          <strong>{warranties.length === 0 ? "No warranties yet" : "No matching warranties"}</strong>
-          <p>{warranties.length === 0 ? "Store your appliance warranties so you never miss a claim window" : "Try a different filter"}</p>
-          {warranties.length === 0 && <button className="btn btn-primary" onClick={openNew}>＋ Add a warranty</button>}
+
+      {/* Summary stats */}
+      {assets.length > 0 && (
+        <div className="stats" style={{marginBottom:"1rem"}}>
+          <div className="stat c-rust">
+            <div className="stat-label">Total Assets</div>
+            <div className="stat-val">{assets.length}</div>
+            <div className="stat-sub">tracked items</div>
+          </div>
+          <div className="stat c-sage">
+            <div className="stat-label">Original Value</div>
+            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(totalValue)}</div>
+            <div className="stat-sub">purchase price</div>
+          </div>
+          <div className="stat c-gold">
+            <div className="stat-label">Replacement Cost</div>
+            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(totalReplacement)}</div>
+            <div className="stat-sub">today's estimate</div>
+          </div>
+          {needsAttention > 0 && (
+            <div className="stat c-red">
+              <div className="stat-label">Needs Attention</div>
+              <div className="stat-val" style={{color:"var(--red)"}}>{needsAttention}</div>
+              <div className="stat-sub">items</div>
+            </div>
+          )}
         </div>
       )}
-      {list.map(w => {
-        const d = daysTo(w.expiry_date);
-        const expired = d!==null&&d<0;
-        const soon = d!==null&&d>=0&&d<=90;
-        const pct = w.purchase_date&&w.expiry_date ? wPct(w.purchase_date,w.expiry_date) : 0;
+
+      {/* Filter chips */}
+      <div className="toolbar">
+        {FILTER_OPTIONS.map(f=>(
+          <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{f}</button>
+        ))}
+      </div>
+
+      {/* Empty state */}
+      {list.length===0 && (
+        <div className="empty">
+          <span className="ei">🏠</span>
+          <strong>{assets.length===0?"No assets yet":"No matching assets"}</strong>
+          <p>{assets.length===0?"Track your home's major systems and appliances — HVAC, roof, appliances, electrical. Know their age, condition, and when they need service.":"Try a different filter"}</p>
+          {assets.length===0 && <button className="btn btn-primary" onClick={openNew}>＋ Add your first asset</button>}
+        </div>
+      )}
+
+      {/* Asset cards */}
+      {list.map(a => {
+        const sc = CONDITION_STYLE[a.condition||"Good"]||CONDITION_STYLE.Good;
+        const icon = ASSET_ICONS[a.category]||"🔧";
+        const installDate = a.install_date || a.purchase_date;
+        const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
+        const lifespanYears = Number(a.lifespan_years || DEFAULT_LIFESPAN[a.category] || 15);
+        const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
+        const lifespanStatus = lifespanPct === null ? "ok" : lifespanPct >= 100 ? "alert" : lifespanPct >= 75 ? "warn" : "ok";
+        const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
+        const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
+        const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
+        const assetLogs = serviceLogs.filter(s=>s.asset_id===a.id);
+        const totalServiceCost = assetLogs.reduce((s,l)=>s+Number(l.cost||0),0);
+        const isExpanded = expandedService===a.id;
+
         return (
-          <div className="card" key={w.id}>
-            <div className="card-ico">📋</div>
-            <div className="card-body">
-              <div className="card-title-row">
-                <span className="card-title">{w.item}</span>
-                {expired && <span className="badge" style={{background:"#FDEEEE",color:"#B91C1C",borderColor:"#F5A0A0"}}>Expired</span>}
-                {soon&&!expired && <span className="badge" style={{background:"#FFF8E6",color:"#92610A",borderColor:"#F5CC76"}}>Expiring Soon</span>}
-                {!expired&&!soon&&d!==null && <span className="badge" style={{background:"#E8F6EE",color:"#1A7A44",borderColor:"#7DCBA1"}}>Active</span>}
+          <div key={a.id} className="asset-card">
+            {/* Header */}
+            <div className="asset-card-header">
+              <div className="asset-card-icon" style={{background:CONDITION_STYLE[a.condition||"Good"].bg}}>
+                {icon}
               </div>
-              <div className="card-meta">
-                {w.model && <span>Model: {w.model}</span>}
-                {w.vendor && <span>🏪 {w.vendor}</span>}
-                {w.purchase_date && <span>Purchased: {fmtD(w.purchase_date)}</span>}
-                {w.expiry_date && <span style={{color:expired?"#B91C1C":soon?"#92610A":"inherit"}}>Expires: {fmtD(w.expiry_date)}{expired?" (EXPIRED)":soon?` (${d} days)`:""}</span>}
-                {w.cost>0 && <span>{fmt$(w.cost)}</span>}
-                {w.document_ref && <span>📁 {w.document_ref}</span>}
+              <div className="asset-card-body">
+                <div className="asset-card-title">{a.item}</div>
+                <div className="asset-card-meta">
+                  <span className="asset-condition" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>
+                    {a.condition||"Good"}
+                  </span>
+                  {a.category && <span>{a.category}</span>}
+                  {a.model && <span>#{a.model}</span>}
+                  {ageYears !== null && <span>{ageYears}yr old</span>}
+                  {a.vendor && <span>🏪 {a.vendor}</span>}
+                </div>
+                {a.notes && <div className="card-note">{a.notes}</div>}
               </div>
-              {w.notes && <div className="card-note">{w.notes}</div>}
-              {w.purchase_date && w.expiry_date && (
-                <div style={{marginTop:"8px"}}>
-                  <div style={{fontSize:".68rem",color:"#9E9690",marginBottom:"3px"}}>{expired?"Expired":`${d} days remaining`}</div>
-                  <div className="wbar"><div className="wbar-fill" style={{width:`${pct}%`,background:expired?"#B91C1C":soon?"#E0A84A":"#5E8065"}} /></div>
+              <div className="asset-card-actions">
+                <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(a.id)} title="Log service">🔧</button>
+                <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(a)}>Edit</button>
+                <button className="btn btn-danger btn-sm" onClick={()=>setConfirm(a.id)}>✕</button>
+              </div>
+            </div>
+
+            {/* Asset photo */}
+            {a.asset_photo_url && (
+              <img src={a.asset_photo_url} alt={a.item} className="asset-photo" onClick={()=>setLightbox(a.asset_photo_url)} />
+            )}
+
+            {/* Stats row */}
+            <div className="asset-stats-row">
+              <div className="asset-stat">
+                <div className="asset-stat-val">{a.cost>0?fmt$(a.cost):"—"}</div>
+                <div className="asset-stat-label">Paid</div>
+              </div>
+              <div className="asset-stat">
+                <div className="asset-stat-val">{a.replacement_cost>0?fmt$(a.replacement_cost):"—"}</div>
+                <div className="asset-stat-label">Replace</div>
+              </div>
+              <div className="asset-stat">
+                <div className="asset-stat-val">{totalServiceCost>0?fmt$(totalServiceCost):assetLogs.length>0?"$0":"—"}</div>
+                <div className="asset-stat-label">Serviced</div>
+              </div>
+            </div>
+
+            {/* Lifespan bar */}
+            {lifespanPct !== null && (
+              <div className="asset-lifespan-row">
+                <div className="asset-lifespan-label">
+                  <span>Lifespan · {ageYears}yr of ~{lifespanYears}yr</span>
+                  <span style={{color:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"#92610A":"var(--sage)",fontWeight:700}}>
+                    {lifespanStatus==="alert"?"Past expected lifespan":lifespanStatus==="warn"?"Aging":"Good"}
+                  </span>
+                </div>
+                <div className="asset-lifespan-bar">
+                  <div className="asset-lifespan-fill" style={{
+                    width:`${lifespanPct}%`,
+                    background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)"
+                  }}/>
+                </div>
+              </div>
+            )}
+
+            {/* Warranty row */}
+            {a.expiry_date && (
+              <div className="asset-warranty-row" style={{
+                background:warrantyExpired?"var(--cream)":warrantySoon?"#FFF8E6":"var(--sage-light)",
+                color:warrantyExpired?"#A8A09A":warrantySoon?"#92610A":"var(--sage)"
+              }}>
+                <span style={{fontSize:"1rem"}}>🛡️</span>
+                <span style={{flex:1,fontSize:".78rem",fontWeight:500}}>
+                  {warrantyExpired ? `Warranty expired ${fmtD(a.expiry_date)}` :
+                   warrantySoon ? `Warranty expires in ${warrantyDays} days — ${fmtD(a.expiry_date)}` :
+                   `Warranty active — expires ${fmtD(a.expiry_date)}`}
+                </span>
+                {a.last_serviced && <span style={{fontSize:".7rem",color:"#A8A09A"}}>Last serviced {fmtD(a.last_serviced)}</span>}
+              </div>
+            )}
+
+            {/* Service log */}
+            <div className="asset-service-section">
+              <div className="asset-service-header" onClick={()=>setExpandedService(isExpanded?null:a.id)}>
+                <span className="asset-service-title">
+                  Service Log · {assetLogs.length} entr{assetLogs.length!==1?"ies":"y"}
+                </span>
+                <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
+                  <button className="btn btn-ghost btn-sm" style={{fontSize:".68rem"}} onClick={e=>{e.stopPropagation();openNewService(a.id);}}>＋ Log</button>
+                  <span style={{fontSize:".72rem",color:"#A8A09A"}}>{isExpanded?"▲":"▼"}</span>
+                </div>
+              </div>
+              {isExpanded && (
+                <div className="asset-service-log">
+                  {assetLogs.length===0 ? (
+                    <div style={{textAlign:"center",padding:"1rem",fontSize:".82rem",color:"#A8A09A"}}>
+                      No service history yet — <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(a.id)}>Log first service</button>
+                    </div>
+                  ) : assetLogs.map(s=>(
+                    <div key={s.id} className="asset-service-entry">
+                      <div className="asset-service-dot"/>
+                      <div className="asset-service-body">
+                        <div className="asset-service-desc">{s.description}</div>
+                        <div className="asset-service-meta">
+                          <span>{fmtD(s.service_date)}</span>
+                          {s.notes && <span>{s.notes}</span>}
+                        </div>
+                      </div>
+                      <div className="asset-service-cost">{s.cost>0?fmt$(s.cost):"—"}</div>
+                      <div style={{display:"flex",gap:"3px",marginLeft:".3rem"}}>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)}>Edit</button>
+                        <button className="btn btn-danger btn-sm" onClick={()=>setServiceConfirm(s.id)}>✕</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
-            <div className="card-actions">
-              <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(w)}>Edit</button>
-              <button className="btn btn-danger btn-sm" onClick={()=>setConfirm(w.id)}>Delete</button>
             </div>
           </div>
         );
       })}
-      {modal && <Modal title={editId?"Edit Warranty":"New Warranty"} onClose={()=>setModal(false)} onSave={save}><WarrantyForm data={editData} onChange={setEditData}/></Modal>}
-      {confirm && <Confirm message="This warranty will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+
+      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId}/></Modal>}
+      {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData}/></Modal>}
+      {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
+      {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
   );
 }
@@ -3475,7 +3771,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
             {[
               {label:"Total Tasks",      val:tasks.length,                                   sub:"maintenance records",color:"var(--sky)"},
               {label:"Completed",        val:tasks.filter(t=>t.status==="Completed").length,  sub:"tasks done",        color:"var(--sage)"},
-              {label:"Active Warranties",val:activeW,                                         sub:"items covered",     color:"#B8861E"},
+              {label:"Active Warranties",val:activeW,                                         sub:"assets covered",     color:"#B8861E"},
               {label:"Lifetime Spend",   val:fmt$(totalCost),                                 sub:"tracked",           color:"var(--rust)"},
             ].map(s=>(
               <div key={s.label} style={{background:"var(--cream)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".8rem .9rem"}}>
@@ -3652,7 +3948,7 @@ export default function App() {
   const TABS = [
     {id:"dashboard", label:"Home",       icon:"🏠"},
     {id:"tasks",     label:"Tasks",      icon:"✓",  badge:overdue},
-    {id:"warranties",label:"Warranties", icon:"🛡️"},
+    {id:"warranties",label:"Assets",    icon:"🏠", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
     {id:"expenses",  label:"Expenses",   icon:"💲"},
     {id:"profile",   label:"My Home",    icon:"🏡"},
   ];
@@ -3698,7 +3994,7 @@ export default function App() {
             <>
               {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username}/>}
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile}/>}
-              {tab==="warranties" && <Warranties warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid}/>}
               {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid}/>}
             </>
