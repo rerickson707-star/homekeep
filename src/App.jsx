@@ -379,7 +379,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pf-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.8px;color:#A8A09A;font-weight:600;margin-bottom:3px}
 .pf-val{font-size:.9rem;font-weight:600;color:var(--dark)}
 .home-photo-wrap{position:relative;margin-bottom:1.1rem}
-.home-photo-wrap img{width:100%;height:200px;object-fit:cover;border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow)}
+.home-photo-wrap img{width:100%;height:220px;object-fit:cover;object-position:center top;border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow)}
 .home-photo-badge{position:absolute;bottom:.6rem;right:.6rem;background:rgba(38,33,28,.72);color:#fff;font-size:.63rem;padding:3px 8px;border-radius:10px;backdrop-filter:blur(4px)}
 .data-panel{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:1rem 1.1rem;box-shadow:var(--shadow);margin-bottom:.85rem}
 .data-panel-title{font-size:.7rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#A8A09A;margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem}
@@ -660,7 +660,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* ══ MY HOME REDESIGN ══ */
 .home-hero{border-radius:var(--r);overflow:hidden;margin-bottom:1rem;position:relative}
-.home-hero-photo{width:100%;height:200px;object-fit:cover;display:block}
+.home-hero-photo{width:100%;height:240px;object-fit:cover;object-position:center top;display:block}
 .home-hero-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(38,33,28,.85) 0%,transparent 100%);padding:1.2rem 1.2rem .9rem}
 .home-hero-name{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:#fff;line-height:1.2}
 .home-hero-address{font-size:.78rem;color:rgba(255,255,255,.65);margin-top:3px}
@@ -894,8 +894,51 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* ── AUTH SCREEN ── */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--dark)}
 .auth-bg{position:fixed;inset:0;background:var(--dark);overflow:hidden;pointer-events:none}
+/* ══ ONBOARDING WIZARD ══ */
+.wizard-wrap{min-height:100vh;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;position:relative;overflow:hidden}
+.wizard-wrap::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(193,98,43,.15) 0%,transparent 70%);top:-150px;right:-150px;pointer-events:none}
+.wizard-wrap::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(74,137,184,.1) 0%,transparent 70%);bottom:-100px;left:-100px;pointer-events:none}
+.wizard-card{background:var(--white);border-radius:22px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.4);position:relative;z-index:1}
+.wizard-progress{display:flex;gap:4px;padding:1.2rem 1.4rem .8rem}
+.wizard-step-dot{flex:1;height:4px;border-radius:2px;transition:background .3s}
+.wizard-step-dot.done{background:var(--rust)}
+.wizard-step-dot.active{background:var(--rust);opacity:.5}
+.wizard-step-dot.pending{background:var(--stone)}
+.wizard-body{padding:1.4rem 1.6rem 1rem}
+.wizard-icon{font-size:2.5rem;margin-bottom:.8rem;display:block}
+.wizard-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;color:var(--dark);margin-bottom:.4rem;line-height:1.2}
+.wizard-sub{font-size:.88rem;color:#9E9690;line-height:1.6;margin-bottom:1.4rem}
+.wizard-footer{padding:.8rem 1.6rem 1.4rem;display:flex;gap:.6rem;justify-content:space-between;align-items:center;border-top:1px solid var(--stone)}
+.wizard-back{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.84rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
+.wizard-back:hover{color:var(--dark)}
+.wizard-next{padding:.75rem 1.6rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .18s;box-shadow:0 3px 12px rgba(192,90,40,.3)}
+.wizard-next:hover{background:#A84820;transform:translateY(-1px)}
+.wizard-next:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.wizard-skip{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.82rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
+.wizard-skip:hover{color:var(--dark)}
+.wizard-field{display:flex;flex-direction:column;gap:5px;margin-bottom:.9rem}
+.wizard-field label{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
+.wizard-field input,.wizard-field select,.wizard-field textarea{width:100%;padding:.65rem .9rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s}
+.wizard-field input:focus,.wizard-field select:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(192,90,40,.1)}
+.wizard-lookup-btn{width:100%;padding:.72rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.5rem}
+.wizard-lookup-btn:hover{background:#A84820}
+.wizard-lookup-btn:disabled{opacity:.6;cursor:not-allowed}
+.wizard-found{background:var(--sage-light);border:1px solid #B8D9CC;border-radius:var(--r-sm);padding:.75rem 1rem;margin-top:.7rem;font-size:.82rem;color:var(--sage);font-weight:500}
+.wizard-notfound{background:var(--cream2);border:1px solid var(--stone);border-radius:var(--r-sm);padding:.75rem 1rem;margin-top:.7rem;font-size:.82rem;color:#7A7370;line-height:1.5}
+.wizard-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem}
+.wizard-chip{background:var(--white);border:1px solid #B8D9CC;border-radius:8px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;color:var(--dark)}
+.wizard-done-list{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem}
+.wizard-done-item{display:flex;align-items:center;gap:.75rem;padding:.75rem .9rem;background:var(--cream);border-radius:12px;border:1px solid var(--stone)}
+.wizard-done-icon{font-size:1.3rem;flex-shrink:0}
+.wizard-done-title{font-weight:600;font-size:.88rem;color:var(--dark)}
+.wizard-done-sub{font-size:.74rem;color:#9E9690;margin-top:1px}
+.wizard-autocomplete{position:relative}
+.wizard-suggestions{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);z-index:500;overflow:hidden;max-height:200px;overflow-y:auto}
+.wizard-suggestion{padding:.6rem .9rem;font-size:.84rem;cursor:pointer;border-bottom:1px solid var(--stone);color:var(--dark);display:flex;align-items:flex-start;gap:.5rem;transition:background .12s}
+.wizard-suggestion:last-child{border-bottom:none}
+.wizard-suggestion:hover{background:var(--rust-light)}
+
 /* ══ AUTH SCREEN ══ */
-.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--dark)}
 .auth-bg{position:fixed;inset:0;background:var(--dark);overflow:hidden;pointer-events:none}
 .auth-bg::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(192,90,40,.15) 0%,transparent 70%);top:-100px;right:-100px}
 .auth-bg::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(58,122,175,.1) 0%,transparent 70%);bottom:-50px;left:-50px}
@@ -1180,6 +1223,344 @@ function LandingPage({ onSignIn, onSignUp }) {
       </footer>
     </div>
   );
+}
+
+// ─── ONBOARDING WIZARD ───────────────────────────────────────────────────────
+function OnboardingWizard({ session, onComplete }) {
+  const TOTAL_STEPS = 4;
+  const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  // Step 2 — Address
+  const [address, setAddress] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound
+  const [propertyData, setPropertyData] = useState(null);
+  const debounceRef = useRef(null);
+  const suggestRef = useRef(null);
+  const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
+
+  // Step 3 — First task
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskCategory, setTaskCategory] = useState("Other");
+  const [taskDate, setTaskDate] = useState(new Date(Date.now() + 7*86400000).toISOString().slice(0,10));
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = e => { if(suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggestions(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Geoapify autocomplete
+  const handleAddressInput = (val) => {
+    setAddress(val);
+    setShowSuggestions(true);
+    setLookupState("idle");
+    setPropertyData(null);
+    clearTimeout(debounceRef.current);
+    if (val.length < 4) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(val)}&filter=countrycode:us&type=street&limit=5&apiKey=${GEO_KEY}`;
+        const resp = await fetch(url);
+        const json = await resp.json();
+        setSuggestions((json.features||[]).map(f => ({
+          formatted: f.properties.formatted,
+          line1: f.properties.address_line1 || f.properties.street || "",
+          city:  f.properties.city || "",
+          state: f.properties.state_code || f.properties.state || "",
+          zip:   f.properties.postcode || "",
+        })));
+      } catch { setSuggestions([]); }
+    }, 350);
+  };
+
+  const selectSuggestion = (s) => {
+    const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
+    setAddress(addr);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const handleLookup = async () => {
+    if (!address.trim()) return;
+    setLookupState("loading");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    try {
+      const result = await lookupProperty(address.trim());
+      if (result) {
+        setPropertyData(result);
+        setLookupState("found");
+      } else {
+        setLookupState("notfound");
+      }
+    } catch {
+      setLookupState("notfound");
+    }
+  };
+
+  // Progress dots
+  const ProgressDots = () => (
+    <div className="wizard-progress">
+      {Array.from({length:TOTAL_STEPS}).map((_,i) => (
+        <div key={i} className={`wizard-step-dot ${i+1 < step ? "done" : i+1 === step ? "active" : "pending"}`}/>
+      ))}
+    </div>
+  );
+
+  // Step 1 — Welcome
+  if (step === 1) return (
+    <div className="wizard-wrap">
+      <div className="wizard-card">
+        <ProgressDots />
+        <div className="wizard-body">
+          <span className="wizard-icon">🏠</span>
+          <div className="wizard-title">Welcome to HomeKeep</div>
+          <div className="wizard-sub">Your home's command center. We'll get you set up in about 2 minutes — starting with your home address.</div>
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginTop:".5rem"}}>
+            {[
+              {icon:"🔍", text:"Auto-fill your home's details from public records"},
+              {icon:"✓",  text:"Track maintenance tasks with climate-aware tips"},
+              {icon:"💲", text:"Log expenses and track your home investment"},
+              {icon:"🛡️", text:"Store warranties, assets, and insurance info"},
+            ].map((f,i) => (
+              <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".55rem .75rem",background:"var(--cream)",borderRadius:"10px"}}>
+                <span style={{fontSize:"1.1rem"}}>{f.icon}</span>
+                <span style={{fontSize:".84rem",color:"#4A4440"}}>{f.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="wizard-footer" style={{justifyContent:"flex-end"}}>
+          <button className="wizard-next" onClick={() => setStep(2)}>Get started →</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 2 — Address (required)
+  if (step === 2) return (
+    <div className="wizard-wrap">
+      <div className="wizard-card">
+        <ProgressDots />
+        <div className="wizard-body">
+          <span className="wizard-icon">📍</span>
+          <div className="wizard-title">What's your home address?</div>
+          <div className="wizard-sub">We'll use this to auto-fill your home's details — year built, square footage, tax history, and more.</div>
+
+          <div className="wizard-autocomplete" ref={suggestRef}>
+            <div className="wizard-field">
+              <label>Home Address</label>
+              <input
+                value={address}
+                onChange={e => handleAddressInput(e.target.value)}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                placeholder="Start typing your address…"
+                autoComplete="off"
+                onKeyDown={e => { if(e.key==="Enter") { setShowSuggestions(false); handleLookup(); } if(e.key==="Escape") setShowSuggestions(false); }}
+              />
+            </div>
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="wizard-suggestions">
+                {suggestions.map((s,i) => (
+                  <div key={i} className="wizard-suggestion" onMouseDown={() => selectSuggestion(s)}>
+                    <span>📍</span>
+                    <div>
+                      <div style={{fontWeight:500}}>{s.line1}</div>
+                      <div style={{fontSize:".72rem",color:"#A8A09A"}}>{[s.city,s.state,s.zip].filter(Boolean).join(", ")}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            className="wizard-lookup-btn"
+            onClick={handleLookup}
+            disabled={!address.trim() || lookupState === "loading"}
+          >
+            {lookupState === "loading"
+              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Looking up your home…</>
+              : "Look up my home →"
+            }
+          </button>
+
+          {lookupState === "found" && propertyData && (
+            <div className="wizard-found">
+              ✓ Home found! We pulled your property details.
+              <div className="wizard-chips">
+                {[
+                  propertyData.type,
+                  propertyData.year ? `Built ${propertyData.year}` : null,
+                  propertyData.sqft ? `${Number(propertyData.sqft).toLocaleString()} sqft` : null,
+                  propertyData.bedrooms ? `${propertyData.bedrooms} bed` : null,
+                  propertyData.bathrooms ? `${propertyData.bathrooms} bath` : null,
+                ].filter(Boolean).map((v,i) => (
+                  <span key={i} className="wizard-chip">{v}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {lookupState === "notfound" && (
+            <div className="wizard-notfound">
+              No property data found — that's okay. This sometimes happens with older homes. Your address is saved and you can fill in details manually in the My Home tab.
+            </div>
+          )}
+        </div>
+        <div className="wizard-footer">
+          <button className="wizard-back" onClick={() => setStep(1)}>← Back</button>
+          <button
+            className="wizard-next"
+            disabled={!address.trim() || lookupState === "loading"}
+            onClick={() => setStep(3)}
+          >
+            {lookupState === "found" ? "Looks good →" : lookupState === "notfound" ? "Continue anyway →" : "Continue →"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 3 — First task (skippable)
+  if (step === 3) return (
+    <div className="wizard-wrap">
+      <div className="wizard-card">
+        <ProgressDots />
+        <div className="wizard-body">
+          <span className="wizard-icon">✓</span>
+          <div className="wizard-title">What's on your home to-do list?</div>
+          <div className="wizard-sub">Add one maintenance task to get started. You can always add more later.</div>
+          <div className="wizard-field">
+            <label>Task</label>
+            <input
+              value={taskTitle}
+              onChange={e => setTaskTitle(e.target.value)}
+              placeholder="e.g. Replace HVAC filter, clean gutters…"
+              autoFocus
+            />
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".7rem"}}>
+            <div className="wizard-field" style={{marginBottom:0}}>
+              <label>Category</label>
+              <select value={taskCategory} onChange={e => setTaskCategory(e.target.value)}>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="wizard-field" style={{marginBottom:0}}>
+              <label>Due Date</label>
+              <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="wizard-footer">
+          <button className="wizard-back" onClick={() => setStep(2)}>← Back</button>
+          <div style={{display:"flex",gap:".6rem",alignItems:"center"}}>
+            <button className="wizard-skip" onClick={() => setStep(4)}>Skip</button>
+            <button
+              className="wizard-next"
+              disabled={!taskTitle.trim()}
+              onClick={() => setStep(4)}
+            >
+              Add task →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 4 — Done
+  if (step === 4) {
+    const handleFinish = async () => {
+      setSaving(true);
+      const uid = session.user.id;
+      try {
+        // Save profile with address and property data
+        const profilePayload = {
+          user_id: uid,
+          address: propertyData?.address || address,
+          type: propertyData?.type || "",
+          year: propertyData?.year || "",
+          sqft: propertyData?.sqft || "",
+          bedrooms: propertyData?.bedrooms || "",
+          bathrooms: propertyData?.bathrooms || "",
+          lot_size: propertyData?.lot_size || "",
+          last_sale_price: propertyData?.last_sale_price || "",
+          last_sale_date: propertyData?.last_sale_date || "",
+          zestimate: propertyData?.zestimate || "",
+          rent_zestimate: propertyData?.rent_zestimate || "",
+          hoa_fee: propertyData?.hoa_fee || "",
+          photo_url: propertyData?.photo_url || "",
+          tax_history: propertyData?.tax_history ? JSON.stringify(propertyData.tax_history) : "",
+          price_history: propertyData?.price_history ? JSON.stringify(propertyData.price_history) : "",
+          schools: propertyData?.schools ? JSON.stringify(propertyData.schools) : "",
+          onboarding_complete: true,
+        };
+
+        // Check if profile exists
+        const {data: existing} = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
+        if (existing && existing.length > 0) {
+          await supabase.from("profiles").update(profilePayload).eq("user_id", uid);
+        } else {
+          await supabase.from("profiles").insert([profilePayload]);
+        }
+
+        // Save first task if provided
+        if (taskTitle.trim()) {
+          await supabase.from("tasks").insert([{
+            user_id: uid,
+            title: taskTitle.trim(),
+            category: taskCategory,
+            due_date: taskDate,
+            status: "Scheduled",
+            priority: "Medium",
+          }]);
+        }
+      } catch(e) {
+        console.error("Onboarding save error:", e);
+      }
+      setSaving(false);
+      onComplete();
+    };
+
+    return (
+      <div className="wizard-wrap">
+        <div className="wizard-card">
+          <ProgressDots />
+          <div className="wizard-body">
+            <span className="wizard-icon">🎉</span>
+            <div className="wizard-title">You're all set!</div>
+            <div className="wizard-sub">Your home is ready to manage. Here's what you can do next.</div>
+            <div className="wizard-done-list">
+              {[
+                {icon:"🏡", title:"Complete your home profile", sub:"Add a nickname, photo, and insurance details in My Home"},
+                {icon:"💲", title:"Log your first expense", sub:"Track what you spend maintaining your home over time"},
+                {icon:"🏠", title:"Add home assets", sub:"Track your HVAC, appliances, roof, and their service history"},
+              ].map((item,i) => (
+                <div key={i} className="wizard-done-item">
+                  <span className="wizard-done-icon">{item.icon}</span>
+                  <div>
+                    <div className="wizard-done-title">{item.title}</div>
+                    <div className="wizard-done-sub">{item.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="wizard-footer" style={{justifyContent:"flex-end"}}>
+            <button className="wizard-next" onClick={handleFinish} disabled={saving}>
+              {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Saving…</> : "Go to my dashboard →"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
 
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
@@ -4101,6 +4482,51 @@ export default function App() {
       <>
         <style>{CSS}</style>
         <AuthScreen onAuth={setSession} initialMode={screen === "signup" ? "signup" : "login"} />
+        <Toasts toasts={toasts} />
+      </>
+    );
+  }
+
+  // ── Show onboarding wizard for new users
+  if (session && !dataLoading && profile !== null && !profile?.onboarding_complete) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <OnboardingWizard
+          session={session}
+          onComplete={async () => {
+            // Reload profile and tasks after wizard saves them
+            const uid = session.user.id;
+            const [p, t] = await Promise.all([
+              supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
+              supabase.from("tasks").select("*").eq("user_id", uid).order("created_at", {ascending:false}),
+            ]);
+            if(p.data && p.data.length > 0) setProfile(p.data[0]);
+            if(t.data) setTasks(t.data);
+          }}
+        />
+        <Toasts toasts={toasts} />
+      </>
+    );
+  }
+
+  // ── Show wizard for brand new users (no profile yet)
+  if (session && !dataLoading && profile === null) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <OnboardingWizard
+          session={session}
+          onComplete={async () => {
+            const uid = session.user.id;
+            const [p, t] = await Promise.all([
+              supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
+              supabase.from("tasks").select("*").eq("user_id", uid).order("created_at", {ascending:false}),
+            ]);
+            if(p.data && p.data.length > 0) setProfile(p.data[0]);
+            if(t.data) setTasks(t.data);
+          }}
+        />
         <Toasts toasts={toasts} />
       </>
     );
