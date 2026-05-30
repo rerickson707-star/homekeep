@@ -2156,7 +2156,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       })()}
 
       {/* Health score + stats */}
-      <div style={{display:"grid",gridTemplateColumns:healthScore!==null?"auto 1fr":"1fr",gap:".75rem",marginBottom:".85rem",alignItems:"stretch"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:".75rem",marginBottom:".85rem"}}>
         {healthScore !== null && (
           <div className="health-card" style={{marginBottom:0}}>
             <div className="health-ring">
