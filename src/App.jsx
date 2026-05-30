@@ -613,6 +613,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lightbox img{max-width:92vw;max-height:88vh;border-radius:var(--r-sm);box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .lightbox-close{position:absolute;top:1.2rem;right:1.2rem;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
+.lookup-autocomplete{position:relative}
+.lookup-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid #EDCDB8;border-radius:var(--r-sm);box-shadow:var(--shadow-lg);z-index:500;overflow:hidden;max-height:220px;overflow-y:auto}
+.lookup-suggestion{padding:.65rem .9rem;font-size:.84rem;cursor:pointer;border-bottom:1px solid var(--stone);color:var(--dark);display:flex;align-items:center;gap:.6rem;transition:background .12s}
+.lookup-suggestion:last-child{border-bottom:none}
+.lookup-suggestion:hover{background:var(--rust-light)}
+.lookup-suggestion-icon{font-size:.9rem;flex-shrink:0;opacity:.6}
+.lookup-suggestion-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lookup-suggestion-sub{font-size:.72rem;color:#A8A09A;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lookup-not-found{background:var(--cream2);border:1px solid var(--stone);border-radius:var(--r-sm);padding:.8rem 1rem;margin-top:.55rem;font-size:.8rem;color:#7A7370;line-height:1.55}
+.lookup-not-found strong{color:var(--dark);display:block;margin-bottom:3px}
+
 /* ══ ASSETS ══ */
 .asset-card{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);margin-bottom:.75rem;overflow:hidden;transition:box-shadow .18s}
 .asset-card:hover{box-shadow:var(--shadow-md)}
@@ -1640,20 +1651,72 @@ function PhotoUpload({ userId, currentUrl, onUploaded }) {
 function ProfileForm({ data, onChange, userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const [lookupAddr, setLookupAddr] = useState(data.address || "");
-  const [lookupState, setLookupState] = useState("idle"); // idle | loading | ok | error
+  const [lookupState, setLookupState] = useState("idle");
   const [lookupMsg, setLookupMsg] = useState("");
   const [preview, setPreview] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const suggestRef = useRef(null);
+  const debounceRef = useRef(null);
+  const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = e => { if(suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggestions(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Debounced address autocomplete via Geoapify
+  const handleAddrInput = (val) => {
+    setLookupAddr(val);
+    setShowSuggestions(true);
+    clearTimeout(debounceRef.current);
+    if (val.length < 4) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSuggestLoading(true);
+      try {
+        const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(val)}&filter=countrycode:us&type=street&limit=6&apiKey=${GEO_KEY}`;
+        const resp = await fetch(url);
+        const json = await resp.json();
+        const features = json.features || [];
+        setSuggestions(features.map(f => ({
+          formatted: f.properties.formatted,
+          line1: f.properties.address_line1 || f.properties.street || "",
+          city:  f.properties.city || f.properties.county || "",
+          state: f.properties.state_code || f.properties.state || "",
+          zip:   f.properties.postcode || "",
+        })));
+      } catch(e) {
+        setSuggestions([]);
+      }
+      setSuggestLoading(false);
+    }, 350);
+  };
+
+  const selectSuggestion = (s) => {
+    const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
+    setLookupAddr(addr);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const handleLookup = async () => {
     if (!lookupAddr.trim()) return;
     setLookupState("loading");
     setLookupMsg("Looking up property data — this takes 10–30 seconds…");
     setPreview(null);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    // Always pre-fill address so user isn't left with nothing
+    onChange({...data, address: lookupAddr.trim()});
     try {
       const result = await lookupProperty(lookupAddr.trim());
       if (!result) {
-        setLookupState("error");
-        setLookupMsg("No property found. Try a more specific address (include city and state).");
+        setLookupState("notfound");
+        setLookupMsg("");
+        // Still save the address they typed
         return;
       }
       onChange({
@@ -1681,8 +1744,8 @@ function ProfileForm({ data, onChange, userId }) {
       setLookupState("ok");
       setLookupMsg("Property found! Fields have been filled in — review and edit anything below.");
     } catch (err) {
-      setLookupState("error");
-      setLookupMsg("Lookup failed. Check your address and try again, or fill in manually.");
+      setLookupState("notfound");
+      setLookupMsg("");
     }
   };
 
@@ -1691,28 +1754,66 @@ function ProfileForm({ data, onChange, userId }) {
       {/* ── Property Lookup Box ── */}
       <div className="lookup-box">
         <div className="lookup-title">🔍 Auto-Fill from Address</div>
-        <div className="lookup-row">
-          <input
-            value={lookupAddr}
-            onChange={e => setLookupAddr(e.target.value)}
-            placeholder="123 Main St, City, State ZIP"
-            onKeyDown={e => e.key === "Enter" && handleLookup()}
-          />
-          <button
-            className="lookup-btn"
-            onClick={handleLookup}
-            disabled={lookupState === "loading"}
-          >
-            {lookupState === "loading" ? (
-              <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Looking up…</>
-            ) : "Look Up My Home"}
-          </button>
+        <div className="lookup-autocomplete" ref={suggestRef}>
+          <div className="lookup-row">
+            <input
+              value={lookupAddr}
+              onChange={e => handleAddrInput(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              placeholder="Start typing your address…"
+              onKeyDown={e => { if(e.key === "Enter") { setShowSuggestions(false); handleLookup(); } if(e.key === "Escape") setShowSuggestions(false); }}
+              autoComplete="off"
+            />
+            <button
+              className="lookup-btn"
+              onClick={handleLookup}
+              disabled={lookupState === "loading"}
+            >
+              {lookupState === "loading" ? (
+                <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Looking up…</>
+              ) : "Look Up"}
+            </button>
+          </div>
+
+          {/* Autocomplete suggestions */}
+          {showSuggestions && (suggestions.length > 0 || suggestLoading) && (
+            <div className="lookup-suggestions">
+              {suggestLoading && suggestions.length === 0 && (
+                <div className="lookup-suggestion" style={{color:"#A8A09A",cursor:"default"}}>
+                  <span className="spinner" style={{width:12,height:12,borderWidth:2,flexShrink:0}}/>
+                  <span>Finding addresses…</span>
+                </div>
+              )}
+              {suggestions.map((s, i) => (
+                <div key={i} className="lookup-suggestion" onMouseDown={()=>selectSuggestion(s)}>
+                  <span className="lookup-suggestion-icon">📍</span>
+                  <div>
+                    <div className="lookup-suggestion-text">{s.line1}</div>
+                    <div className="lookup-suggestion-sub">{[s.city, s.state, s.zip].filter(Boolean).join(", ")}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        {lookupMsg && (
-          <div className={`lookup-status ${lookupState === "ok" ? "ok" : lookupState === "error" ? "err" : ""}`}>
-            {lookupState === "ok" ? "✓" : lookupState === "error" ? "⚠️" : "⏳"} {lookupMsg}
+
+        {/* Status messages */}
+        {lookupState === "ok" && lookupMsg && (
+          <div className="lookup-status ok">✓ {lookupMsg}</div>
+        )}
+        {lookupState === "loading" && (
+          <div className="lookup-status">⏳ {lookupMsg}</div>
+        )}
+
+        {/* Not found — friendly message */}
+        {lookupState === "notfound" && (
+          <div className="lookup-not-found">
+            <strong>No property data found for this address</strong>
+            This can happen with older homes, rural properties, or addresses not yet indexed. Your address has been saved — fill in the details below manually. Everything is editable.
           </div>
         )}
+
+        {/* Preview chips on success */}
         {preview && (
           <div className="lookup-preview">
             {[
