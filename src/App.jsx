@@ -695,7 +695,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* system age warnings */
 .system-age-list{display:flex;flex-direction:column;gap:.4rem;margin-top:.65rem}
-.system-age-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .75rem;border-radius:var(--r-sm);border:1px solid}
+.system-age-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .75rem;border-radius:var(--r-sm);border:1px solid;transition:box-shadow .15s}
+.system-age-item.clickable{cursor:pointer}
+.system-age-item.clickable:hover{box-shadow:var(--shadow-md)}
 .system-age-item.warn{background:#FFF8E6;border-color:#F5CC76}
 .system-age-item.ok{background:var(--sage-light);border-color:#B8D9CC}
 .system-age-item.alert{background:var(--red-light);border-color:#EFCFCC}
@@ -3580,7 +3582,7 @@ function Expenses({ expenses, setExpenses, toast, userId }) {
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, toast, userId }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, toast, userId, onNavigate }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -3641,18 +3643,57 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
   // Home age
   const homeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
 
-  // System age warnings based on home age
+  // System age warnings — linked to real assets where available
   const SYSTEMS = [
-    {name:"HVAC System",        icon:"🌡️", lifespan:20, ageNote:"15–20 year lifespan"},
-    {name:"Water Heater",       icon:"🚿", lifespan:12, ageNote:"10–15 year lifespan"},
-    {name:"Roof",               icon:"🏚️", lifespan:25, ageNote:"20–30 year lifespan"},
-    {name:"Electrical Panel",   icon:"⚡", lifespan:40, ageNote:"30–40 year lifespan"},
-    {name:"Plumbing (galvanized)",icon:"🛠️",lifespan:50, ageNote:"40–70 years for copper"},
+    {name:"HVAC System",          icon:"🌡️", lifespan:20, ageNote:"15–20 year lifespan", categories:["HVAC"],        keywords:["hvac","heat","air","furnace","ac","cooling"]},
+    {name:"Water Heater",         icon:"🚿", lifespan:12, ageNote:"10–15 year lifespan", categories:["Plumbing"],    keywords:["water heater","hot water"]},
+    {name:"Roof",                 icon:"🏚️", lifespan:25, ageNote:"20–30 year lifespan", categories:["Roofing"],     keywords:["roof"]},
+    {name:"Electrical Panel",     icon:"⚡", lifespan:40, ageNote:"30–40 year lifespan", categories:["Electrical"],  keywords:["panel","electrical","breaker"]},
+    {name:"Plumbing",             icon:"🛠️", lifespan:50, ageNote:"40–70 year lifespan", categories:["Plumbing"],    keywords:["plumbing","pipe"]},
   ];
+
   const systemAlerts = homeAge ? SYSTEMS.map(s => {
-    const pct = homeAge / s.lifespan;
-    const status = pct >= 1 ? "alert" : pct >= 0.75 ? "warn" : "ok";
-    return {...s, pct, status, homeAge};
+    // Try to find a matching asset — check category and item name keywords
+    const linkedAsset = warranties.find(a => {
+      const catMatch = s.categories.includes(a.category);
+      const nameMatch = s.keywords.some(kw => a.item?.toLowerCase().includes(kw));
+      return catMatch || nameMatch;
+    }) || null;
+
+    let ageYears, status, detail, fromAsset;
+
+    if (linkedAsset) {
+      // Use actual asset data
+      const installDate = linkedAsset.install_date || linkedAsset.purchase_date;
+      ageYears = installDate
+        ? Math.floor((new Date() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000))
+        : homeAge;
+      const lifespan = Number(linkedAsset.lifespan_years || s.lifespan);
+      const pct = ageYears / lifespan;
+
+      // Condition overrides age calculation
+      if (linkedAsset.condition === "Good") {
+        status = "ok";
+      } else if (linkedAsset.condition === "Failed") {
+        status = "alert";
+      } else if (linkedAsset.condition === "Needs Attention") {
+        status = "warn";
+      } else {
+        status = pct >= 1 ? "alert" : pct >= 0.75 ? "warn" : "ok";
+      }
+
+      fromAsset = true;
+      detail = `${linkedAsset.item}${installDate ? ` · installed ${fmtD(installDate)}` : ""} · ${ageYears}yr old`;
+    } else {
+      // Fall back to home age estimate
+      const pct = homeAge / s.lifespan;
+      status = pct >= 1 ? "alert" : pct >= 0.75 ? "warn" : "ok";
+      ageYears = homeAge;
+      fromAsset = false;
+      detail = `${s.ageNote} · estimated from home age (${homeAge}yr)`;
+    }
+
+    return {...s, ageYears, status, detail, fromAsset, linkedAsset};
   }) : [];
 
   // Insurance renewal
@@ -3774,17 +3815,38 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
           {systemAlerts.length > 0 && homeAge >= 10 && (
             <div className="system-age-list">
               {systemAlerts.filter(s=>s.status!=="ok").map((s,i)=>(
-                <div key={i} className={`system-age-item ${s.status}`}>
+                <div
+                  key={i}
+                  className={`system-age-item ${s.status} ${onNavigate?"clickable":""}`}
+                  onClick={() => onNavigate && onNavigate("warranties")}
+                >
                   <span className="system-age-icon">{s.icon}</span>
                   <div style={{flex:1}}>
-                    <div className="system-age-name">{s.name}</div>
-                    <div className="system-age-detail">{s.ageNote} · your home is {homeAge}yr old</div>
+                    <div className="system-age-name">
+                      {s.name}
+                      {s.fromAsset && (
+                        <span style={{fontSize:".65rem",fontWeight:400,color:"#A8A09A",marginLeft:"6px"}}>
+                          linked to asset
+                        </span>
+                      )}
+                    </div>
+                    <div className="system-age-detail">{s.detail}</div>
                   </div>
-                  <span style={{fontSize:".7rem",fontWeight:700,color:s.status==="alert"?"var(--red)":"#92610A",flexShrink:0}}>
-                    {s.status==="alert"?"Past lifespan":"Aging"}
-                  </span>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"3px",flexShrink:0}}>
+                    <span style={{fontSize:".7rem",fontWeight:700,color:s.status==="alert"?"var(--red)":"#92610A"}}>
+                      {s.status==="alert"?"Past lifespan":"Aging"}
+                    </span>
+                    {onNavigate && (
+                      <span style={{fontSize:".65rem",color:"#A8A09A"}}>
+                        {s.fromAsset ? "Update asset →" : "Add to assets →"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
+              <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:".3rem",paddingLeft:".2rem"}}>
+                💡 Add these systems to your Assets tab to track their actual age and condition
+              </div>
             </div>
           )}
 
@@ -4097,7 +4159,7 @@ export default function App() {
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid} onNavigate={setTab}/>}
             </>
           )}
         </main>
