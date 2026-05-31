@@ -772,6 +772,31 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pro-gate-text{flex:1;font-size:.78rem;color:rgba(255,255,255,.8);font-weight:500}
 .pro-gate-badge{background:var(--rust);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;flex-shrink:0}
 
+/* ══ AI SCAN ══ */
+.scan-btn{width:100%;padding:.8rem;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .18s;position:relative;overflow:hidden}
+.scan-btn-bg{background:linear-gradient(135deg,#2A2622 0%,#4A3828 50%,#2A2622 100%);background-size:200% 100%;animation:shimmer 3s infinite;color:#fff}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.scan-btn-badge{background:var(--rust);color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;flex-shrink:0}
+.scan-divider{display:flex;align-items:center;gap:.6rem;margin:.6rem 0;color:#A8A09A;font-size:.75rem}
+.scan-divider::before,.scan-divider::after{content:'';flex:1;height:1px;background:var(--stone)}
+.pro-modal-wrap{position:fixed;inset:0;background:rgba(38,33,28,.65);z-index:500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
+@media(min-width:640px){.pro-modal-wrap{align-items:center}}
+.pro-modal{background:var(--dark);border-radius:22px 22px 0 0;width:100%;max-width:480px;padding:2rem 1.8rem 2.5rem;position:relative;z-index:1;box-shadow:0 -8px 40px rgba(0,0,0,.4)}
+@media(min-width:640px){.pro-modal{border-radius:22px}}
+.pro-modal-handle{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:0 auto 1.5rem}
+.pro-modal-icon{font-size:2.5rem;text-align:center;margin-bottom:.75rem}
+.pro-modal-title{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:#fff;text-align:center;margin-bottom:.4rem}
+.pro-modal-sub{font-size:.88rem;color:rgba(255,255,255,.55);text-align:center;line-height:1.6;margin-bottom:1.5rem}
+.pro-modal-features{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem}
+.pro-modal-feature{display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;background:rgba(255,255,255,.05);border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+.pro-modal-feature-icon{font-size:1.1rem;flex-shrink:0}
+.pro-modal-feature-text{font-size:.83rem;color:rgba(255,255,255,.8)}
+.pro-modal-feature-text strong{color:#fff;display:block;margin-bottom:1px}
+.pro-modal-cta{width:100%;padding:.9rem;background:var(--rust);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 4px 20px rgba(192,90,40,.4);margin-bottom:.75rem}
+.pro-modal-cta:hover{background:#A84820;transform:translateY(-1px)}
+.pro-modal-dismiss{width:100%;padding:.6rem;background:none;border:none;color:rgba(255,255,255,.4);font-family:'DM Sans',sans-serif;font-size:.83rem;cursor:pointer}
+.pro-modal-dismiss:hover{color:rgba(255,255,255,.7)}
+
 /* ══ EXPENSE TABLE ══ */
 .exp-table{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);overflow:hidden}
 .exp-table table{width:100%;border-collapse:collapse;font-size:.83rem}
@@ -1773,7 +1798,14 @@ function AssetForm({ data, onChange, userId }) {
     onChange({...data, category:cat, lifespan_years: data.lifespan_years || DEFAULT_LIFESPAN[cat] || 15});
   };
   return (
-    <div className="fg">
+    <div>
+      <AIScanButton
+        onScanComplete={fields => onChange({...data,...fields})}
+        label="Scan Receipt or Warranty Card with AI"
+        description="Auto-fill asset name, model, purchase date, cost & warranty expiry"
+      />
+      <div className="scan-divider">or fill in manually</div>
+      <div className="fg">
       <div className="field s2"><label>Asset Name *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Carrier HVAC System, Samsung Fridge" /></div>
       <div className="field"><label>Category</label>
         <select value={data.category||""} onChange={e=>handleCategory(e.target.value)}>
@@ -1804,6 +1836,7 @@ function AssetForm({ data, onChange, userId }) {
         onUploaded={url=>f("asset_photo_url",url)}
         label="Asset Photo"
       />
+      </div>
     </div>
   );
 }
@@ -1811,12 +1844,86 @@ function AssetForm({ data, onChange, userId }) {
 function ServiceLogForm({ data, onChange }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
-    <div className="fg">
-      <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. Annual tune-up, replaced capacitor" /></div>
-      <div className="field"><label>Service Date *</label><input type="date" value={data.service_date||""} onChange={e=>f("service_date",e.target.value)} /></div>
-      <div className="field"><label>Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Technician, parts used, findings…" /></div>
+    <div>
+      <AIScanButton
+        onScanComplete={fields => onChange({...data,...fields})}
+        label="Scan Contractor Invoice with AI"
+        description="Auto-fill service description, date & cost from an invoice"
+      />
+      <div className="scan-divider">or fill in manually</div>
+      <div className="fg">
+        <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. Annual tune-up, replaced capacitor" /></div>
+        <div className="field"><label>Service Date *</label><input type="date" value={data.service_date||""} onChange={e=>f("service_date",e.target.value)} /></div>
+        <div className="field"><label>Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
+        <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Technician, parts used, findings…" /></div>
+      </div>
     </div>
+  );
+}
+
+// ─── PRO UPGRADE MODAL ───────────────────────────────────────────────────────
+function ProUpgradeModal({ onClose }) {
+  return (
+    <div className="pro-modal-wrap" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="pro-modal">
+        <div className="pro-modal-handle"/>
+        <div className="pro-modal-icon">✨</div>
+        <div className="pro-modal-title">HomeKeep Pro</div>
+        <div className="pro-modal-sub">
+          Unlock AI-powered features that automate your home management — so you spend less time logging and more time living.
+        </div>
+        <div className="pro-modal-features">
+          {[
+            {icon:"📷", title:"AI Receipt Scanning", desc:"Photograph any receipt — amount, vendor, and category fill in automatically"},
+            {icon:"⚡", title:"AI Utility Bill Scanning", desc:"Snap your electric or gas bill — usage and cost extracted instantly"},
+            {icon:"📧", title:"Email Import (coming soon)", desc:"Forward any home-related email to your personal HomeKeep address"},
+            {icon:"🔔", title:"Smart Reminders", desc:"Weekly digest emails and alerts for overdue tasks and renewals"},
+          ].map((f,i) => (
+            <div key={i} className="pro-modal-feature">
+              <span className="pro-modal-feature-icon">{f.icon}</span>
+              <div className="pro-modal-feature-text">
+                <strong>{f.title}</strong>
+                {f.desc}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button className="pro-modal-cta" onClick={() => {
+          alert("Pro subscriptions are coming soon! We'll notify you when they launch.");
+          onClose();
+        }}>
+          Join the Pro waitlist →
+        </button>
+        <button className="pro-modal-dismiss" onClick={onClose}>
+          Maybe later
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── AI SCAN BUTTON ───────────────────────────────────────────────────────────
+function AIScanButton({ onScanComplete, label="Scan Receipt with AI", description="Auto-fill amount, vendor, date & category from a photo" }) {
+  const [showProModal, setShowProModal] = useState(false);
+
+  return (
+    <>
+      <div style={{marginBottom:".85rem"}}>
+        <button
+          type="button"
+          className="scan-btn scan-btn-bg"
+          onClick={() => setShowProModal(true)}
+        >
+          <span style={{fontSize:"1rem"}}>✨</span>
+          {label}
+          <span className="scan-btn-badge">Pro</span>
+        </button>
+        <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginTop:".35rem"}}>
+          {description}
+        </div>
+      </div>
+      {showProModal && <ProUpgradeModal onClose={() => setShowProModal(false)} />}
+    </>
   );
 }
 
@@ -1899,28 +2006,37 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
 function ExpenseForm({ data, onChange, projects=[], userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
-    <div className="fg">
-      <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. HVAC Service Call" /></div>
-      <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-      <div className="field"><label>Amount ($)</label><input type="number" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
-      <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
-      <div className="field s2"><label>Vendor / Contractor</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} /></div>
-      {projects.length > 0 && (
-        <div className="field s2">
-          <label>Link to Project (optional)</label>
-          <select value={data.project_id||""} onChange={e=>f("project_id",e.target.value?Number(e.target.value):null)}>
-            <option value="">No project</option>
-            {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
-      )}
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Invoice #, notes…" /></div>
-      <ExpenseFileUpload
-        userId={userId}
-        expenseId={data.id}
-        currentUrl={data.file_url||""}
-        onUploaded={url=>f("file_url",url)}
+    <div>
+      {/* AI Scan — Pro gate */}
+      <AIScanButton
+        onScanComplete={fields => onChange({...data,...fields})}
+        label="Scan Receipt with AI"
+        description="Auto-fill amount, vendor, date & category from a photo"
       />
+      <div className="scan-divider">or fill in manually</div>
+      <div className="fg">
+        <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. HVAC Service Call" /></div>
+        <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+        <div className="field"><label>Amount ($)</label><input type="number" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
+        <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
+        <div className="field s2"><label>Vendor / Contractor</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} /></div>
+        {projects.length > 0 && (
+          <div className="field s2">
+            <label>Link to Project (optional)</label>
+            <select value={data.project_id||""} onChange={e=>f("project_id",e.target.value?Number(e.target.value):null)}>
+              <option value="">No project</option>
+              {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Invoice #, notes…" /></div>
+        <ExpenseFileUpload
+          userId={userId}
+          expenseId={data.id}
+          currentUrl={data.file_url||""}
+          onUploaded={url=>f("file_url",url)}
+        />
+      </div>
     </div>
   );
 }
@@ -2271,17 +2387,25 @@ function ProfileForm({ data, onChange, userId }) {
 function InsuranceForm({ data, onChange }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
-    <div className="fg">
-      <div className="field s2"><label>Insurance Company *</label><input value={data.ins_company||""} onChange={e=>f("ins_company",e.target.value)} placeholder="e.g. State Farm" /></div>
-      <div className="field s2"><label>Policy Number</label><input value={data.ins_policy_number||""} onChange={e=>f("ins_policy_number",e.target.value)} placeholder="e.g. HO-123456789" /></div>
-      <div className="field"><label>Agent Name</label><input value={data.ins_agent_name||""} onChange={e=>f("ins_agent_name",e.target.value)} placeholder="Agent's name" /></div>
-      <div className="field"><label>Agent Phone</label><input value={data.ins_agent_phone||""} onChange={e=>f("ins_agent_phone",e.target.value)} placeholder="(555) 555-5555" /></div>
-      <div className="field"><label>Annual Premium ($)</label><input type="number" value={data.ins_premium||""} onChange={e=>f("ins_premium",e.target.value)} placeholder="e.g. 1800" /></div>
-      <div className="field"><label>Deductible ($)</label><input type="number" value={data.ins_deductible||""} onChange={e=>f("ins_deductible",e.target.value)} placeholder="e.g. 1000" /></div>
-      <div className="field"><label>Dwelling Coverage ($)</label><input type="number" value={data.ins_dwelling_coverage||""} onChange={e=>f("ins_dwelling_coverage",e.target.value)} placeholder="e.g. 350000" /></div>
-      <div className="field"><label>Liability Coverage ($)</label><input type="number" value={data.ins_liability_coverage||""} onChange={e=>f("ins_liability_coverage",e.target.value)} placeholder="e.g. 100000" /></div>
-      <div className="field s2"><label>Policy Renewal Date</label><input type="date" value={data.ins_renewal_date||""} onChange={e=>f("ins_renewal_date",e.target.value)} /></div>
-      <div className="field s2"><label>Notes</label><textarea value={data.ins_notes||""} onChange={e=>f("ins_notes",e.target.value)} placeholder="Special riders, flood/earthquake coverage, claim history…" /></div>
+    <div>
+      <AIScanButton
+        onScanComplete={fields => onChange({...data,...fields})}
+        label="Scan Policy Document with AI"
+        description="Auto-fill company, policy number, premium, coverage & renewal date"
+      />
+      <div className="scan-divider">or fill in manually</div>
+      <div className="fg">
+        <div className="field s2"><label>Insurance Company *</label><input value={data.ins_company||""} onChange={e=>f("ins_company",e.target.value)} placeholder="e.g. State Farm" /></div>
+        <div className="field s2"><label>Policy Number</label><input value={data.ins_policy_number||""} onChange={e=>f("ins_policy_number",e.target.value)} placeholder="e.g. HO-123456789" /></div>
+        <div className="field"><label>Agent Name</label><input value={data.ins_agent_name||""} onChange={e=>f("ins_agent_name",e.target.value)} placeholder="Agent's name" /></div>
+        <div className="field"><label>Agent Phone</label><input value={data.ins_agent_phone||""} onChange={e=>f("ins_agent_phone",e.target.value)} placeholder="(555) 555-5555" /></div>
+        <div className="field"><label>Annual Premium ($)</label><input type="number" value={data.ins_premium||""} onChange={e=>f("ins_premium",e.target.value)} placeholder="e.g. 1800" /></div>
+        <div className="field"><label>Deductible ($)</label><input type="number" value={data.ins_deductible||""} onChange={e=>f("ins_deductible",e.target.value)} placeholder="e.g. 1000" /></div>
+        <div className="field"><label>Dwelling Coverage ($)</label><input type="number" value={data.ins_dwelling_coverage||""} onChange={e=>f("ins_dwelling_coverage",e.target.value)} placeholder="e.g. 350000" /></div>
+        <div className="field"><label>Liability Coverage ($)</label><input type="number" value={data.ins_liability_coverage||""} onChange={e=>f("ins_liability_coverage",e.target.value)} placeholder="e.g. 100000" /></div>
+        <div className="field s2"><label>Policy Renewal Date</label><input type="date" value={data.ins_renewal_date||""} onChange={e=>f("ins_renewal_date",e.target.value)} /></div>
+        <div className="field s2"><label>Notes</label><textarea value={data.ins_notes||""} onChange={e=>f("ins_notes",e.target.value)} placeholder="Special riders, flood/earthquake coverage, claim history…" /></div>
+      </div>
     </div>
   );
 }
@@ -3403,21 +3527,11 @@ function BillForm({ data, onChange, utility, userId }) {
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any notes about this bill…" /></div>
       {/* Pro gate for AI scan */}
       <div className="field s2">
-        <label>Bill Photo / Receipt</label>
-        <div className="pro-gate" onClick={()=>alert("AI bill scanning is a Pro feature — coming soon!")}>
-          <span style={{fontSize:"1.1rem"}}>✨</span>
-          <span className="pro-gate-text">Scan bill with AI — auto-fill amount & usage</span>
-          <span className="pro-gate-badge">Pro</span>
-        </div>
-        <div style={{marginTop:".5rem"}}>
-          <ExpenseFileUpload
-            userId={userId}
-            expenseId={`bill-${data.id||"new"}`}
-            currentUrl={data.file_url||""}
-            onUploaded={url=>f("file_url",url)}
-            label="Or attach manually"
-          />
-        </div>
+        <AIScanButton
+          onScanComplete={fields => { if(fields.amount) onChange({...data, amount: fields.amount}); }}
+          label="Scan Utility Bill with AI"
+          description="Auto-fill amount & usage from your bill photo"
+        />
       </div>
     </div>
   );
