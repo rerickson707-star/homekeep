@@ -96,14 +96,17 @@ const ZIP_CLIMATE = (() => {
 })();
 
 function getClimateZone(profile) {
-  if (!profile) return 5; // default to zone 5 (moderate)
-  // Try zip from address string — look for 5-digit zip at end
+  if (!profile) return 2; // default to zone 2 (hot/humid) since app is FL-based
   const addr = profile.address || "";
-  const match = addr.match(/\b(\d{5})(?:-\d{4})?\b/);
-  const zip = match ? match[1] : null;
-  if (!zip) return 5;
-  const prefix = parseInt(zip.substring(0,3), 10);
-  return ZIP_CLIMATE[prefix] || 5;
+  // Try multiple zip extraction patterns
+  // Pattern 1: 5-digit zip anywhere in address
+  const match = addr.match(/\b(\d{5})(?:-\d{4})?\b/g);
+  // Take the last match — usually the zip is at the end: "123 Main St, Tampa, FL 33601"
+  const zip = match ? match[match.length - 1].slice(0, 5) : null;
+  if (!zip) return 2; // default hot/humid if no zip found
+  const prefix = parseInt(zip.substring(0, 3), 10);
+  const zone = ZIP_CLIMATE[prefix];
+  return zone || 5; // default zone 5 only if prefix not in table
 }
 
 // Climate-aware seasonal maintenance tasks
@@ -355,9 +358,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 @media(min-width:769px){.dash-grid{grid-template-columns:1fr 1fr}}
 .panel{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:1.1rem 1.2rem;box-shadow:var(--shadow)}
 .panel-title{font-family:'Fraunces',serif;font-size:1rem;font-weight:500;color:var(--dark);margin-bottom:.85rem;display:flex;align-items:center;gap:.5rem}
-.up-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .8rem;border:1px solid var(--stone);border-radius:12px;margin-bottom:.45rem;transition:box-shadow .15s,transform .15s;cursor:pointer}
+.up-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .8rem;border:1px solid var(--stone);border-radius:12px;margin-bottom:.45rem;transition:box-shadow .15s,transform .15s;cursor:pointer;width:100%;background:var(--white);text-align:left;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:rgba(192,90,40,.15)}
 .up-item:last-child{margin-bottom:0}
-.up-item:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+.up-item:hover,.up-item:active{box-shadow:var(--shadow);transform:translateY(-1px);background:var(--cream)}
 .up-days{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
 
 /* ══ WARRANTY BAR ══ */
@@ -2475,15 +2478,17 @@ function DayDetail({ date, tasks, onClose, onEdit }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username }) {
+function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[] }) {
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
-  const totalSpend = expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-  const yrSpend  = expenses.filter(e=>e.date?.startsWith(new Date().getFullYear().toString())).reduce((s,e)=>s+Number(e.amount||0),0);
+  const yr = new Date().getFullYear();
+  const serviceAllTime = serviceLogs.reduce((s,l)=>s+Number(l.cost||0),0);
+  const serviceThisYr  = serviceLogs.filter(l=>l.service_date?.startsWith(String(yr))).reduce((s,l)=>s+Number(l.cost||0),0);
+  const totalSpend = expenses.reduce((s,e)=>s+Number(e.amount||0),0) + serviceAllTime;
+  const yrSpend    = expenses.filter(e=>e.date?.startsWith(String(yr))).reduce((s,e)=>s+Number(e.amount||0),0) + serviceThisYr;
   const expiringW = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0&&d<=90; });
   const activeW  = warranties.length; // total assets tracked
   const expiringWCount = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
-  const yr = new Date().getFullYear();
   const completed = tasks.filter(t=>t.status==="Completed").length;
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
@@ -2508,16 +2513,19 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const circumference = 2 * Math.PI * 30;
   const dashOffset = circumference - (healthScore / 100) * circumference;
 
-  // ── Seasonal tip
+  // ── Seasonal tip — climate aware
   const month = new Date().getMonth();
   const season = month >= 2 && month <= 4 ? "spring" : month >= 5 && month <= 7 ? "summer" : month >= 8 && month <= 10 ? "fall" : "winter";
-  const SEASONAL = {
-    spring: { icon:"🌸", color:"#FBF0F5", border:"#EEC8D8", title:"Spring home checklist", tip:"Check gutters for winter debris, test smoke detectors, service your AC before summer heat." },
-    summer: { icon:"☀️", color:"#FFFBEB", border:"#F5DFA0", title:"Summer maintenance time", tip:"Inspect your roof, clean dryer vents, check window seals before the humid months." },
-    fall:   { icon:"🍂", color:"#FBF3E8", border:"#E8C89A", title:"Fall prep checklist", tip:"Service your furnace, drain outdoor hoses, clean gutters before leaves pile up." },
-    winter: { icon:"❄️", color:"#EBF3FA", border:"#A8C8E8", title:"Winter home protection", tip:"Insulate exposed pipes, check weatherstripping, keep heating vents clear of furniture." },
+  const dashClimateZone = getClimateZone(profile);
+  const dashClimate = getClimateProfile(dashClimateZone);
+  const seasonIcons = {spring:"🌸", summer:"☀️", fall:"🍂", winter:"❄️"};
+  const tip = {
+    icon:   dashClimate.icon || seasonIcons[season],
+    color:  dashClimate.color,
+    border: dashClimate.border,
+    title:  `${season.charAt(0).toUpperCase()+season.slice(1)} checklist · ${dashClimate.label}`,
+    tip:    (dashClimate[season] || []).slice(0, 3).join(" · "),
   };
-  const tip = SEASONAL[season];
 
   return (
     <div>
@@ -2624,7 +2632,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       {/* Panels */}
       <div className="dash-grid">
         <div className="panel">
-          <div className="panel-title">📋 Coming up</div>
+          <div className="panel-title" style={{cursor:"pointer"}} onClick={() => onNavigate("tasks")}>📋 Coming up <span style={{fontSize:".7rem",color:"#A8A09A",fontWeight:400,fontFamily:"'DM Sans',sans-serif"}}>· tap to view all →</span></div>
           {upcoming.length===0 ? (
             <div className="empty" style={{padding:"1.5rem .5rem"}}>
               <span className="ei">✅</span>
@@ -2635,7 +2643,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           ) : upcoming.slice(0,5).map(t => {
             const d = daysTo(t.due_date);
             return (
-              <div className="up-item" key={t.id} onClick={() => onNavigate("tasks")}>
+              <button className="up-item" key={t.id} onClick={() => onNavigate("tasks")}>
                 <span style={{fontSize:"1.15rem"}}>{CAT_ICONS[t.category]||"🔧"}</span>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:600,fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
@@ -2644,7 +2652,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
                 <div className="up-days" style={{background:d===0?"var(--red-light)":d<=7?"#FFF8E6":"var(--sky-light)",color:d===0?"var(--red)":d<=7?"#92610A":"var(--sky)"}}>
                   {d===0?"Today":d===1?"Tomorrow":`${d}d`}
                 </div>
-              </div>
+                <span style={{color:"#C2B8AE",fontSize:".8rem",marginLeft:"2px",flexShrink:0}}>›</span>
+              </button>
             );
           })}
           {upcoming.length > 5 && (
@@ -2665,14 +2674,15 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           ) : expiringW.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).slice(0,5).map(w => {
             const d = daysTo(w.expiry_date);
             return (
-              <div className="up-item" key={w.id} onClick={() => onNavigate("warranties")}>
+              <button className="up-item" key={w.id} onClick={() => onNavigate("warranties")}>
                 <span style={{fontSize:"1.15rem"}}>📋</span>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:600,fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.item}</div>
                   <div style={{fontSize:".71rem",color:"#A8A09A",marginTop:"1px"}}>Expires {fmtD(w.expiry_date)}</div>
                 </div>
                 <div className="up-days" style={{background:d<=30?"var(--red-light)":"#FFF8E6",color:d<=30?"var(--red)":"#92610A"}}>{d}d left</div>
-              </div>
+                <span style={{color:"#C2B8AE",fontSize:".8rem",marginLeft:"2px",flexShrink:0}}>›</span>
+              </button>
             );
           })}
         </div>
@@ -2765,7 +2775,9 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
       setTasks(tasks.map(x=>x.id===t.id?{...x,status:s}:x));
       toast(`Marked as ${s} ✓`);
       // Auto-log service entry when task linked to an asset is completed
-      if(s === "Completed" && t.asset_id) {
+      // Skip if this task was auto-created from a service log (notes starts with [Service] or [Auto-created)
+      const isServiceTask = t.notes?.startsWith("[Service]") || t.notes?.startsWith("[Auto-created from service");
+      if(s === "Completed" && t.asset_id && !isServiceTask) {
         await supabase.from("asset_service_log").insert([{
           user_id:      userId,
           asset_id:     t.asset_id,
@@ -2846,6 +2858,9 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
               )}
               {t.recurring && (
                 <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>🔁 {t.recurring}</span>
+              )}
+              {(t.notes?.startsWith("[Service]") || t.notes?.startsWith("[Auto-created from service")) && (
+                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>🔧 Service record</span>
               )}
               {t.asset_id && (() => {
                 const linked = assets.find(a => a.id === t.asset_id);
@@ -2985,7 +3000,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs, tasks, setTasks }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -3082,7 +3097,30 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
         await reloadServiceLogs();
         await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id).eq("user_id",userId);
         setAssets(assets.map(a=>a.id===payload.asset_id?{...a,last_serviced:payload.service_date}:a));
-        toast("Service logged ✓");
+
+        // Auto-create a Completed task for this service entry
+        // Find the asset to get its category
+        const linkedAsset = assets.find(a => a.id === payload.asset_id);
+        const taskPayload = {
+          user_id:    userId,
+          title:      payload.description,
+          status:     "Completed",
+          priority:   "Medium",
+          due_date:   payload.service_date,
+          cost:       payload.cost || null,
+          notes:      payload.notes ? `[Service] ${payload.notes}` : "[Auto-created from service log]",
+          asset_id:   payload.asset_id,
+          category:   linkedAsset?.category || "Other",
+          vendor:     serviceEditData.vendor || "",
+        };
+        const {data: taskData, error: taskError} = await supabase.from("tasks").insert([taskPayload]).select();
+        if(!taskError && taskData) {
+          setTasks(prev => [taskData[0], ...prev]);
+        } else if(taskError) {
+          console.error("Auto-task error:", taskError);
+        }
+
+        toast("Service logged + task created ✓");
       } else { console.error("Service insert error:", error); toast("Error logging: "+error.message,"error"); }
     }
     setServiceModal(false);
@@ -3172,7 +3210,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
         const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
         const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
         const assetLogs = serviceLogs.filter(s => s.asset_id === a.id);
-        console.log(`[HomeKeep] Asset ${a.id} (${a.item}): serviceLogs total=${serviceLogs.length}, matching=${assetLogs.length}`, serviceLogs.map(s=>({id:s.id,asset_id:s.asset_id,type:typeof s.asset_id})));
         const totalServiceCost = assetLogs.reduce((s,l)=>s+Number(l.cost||0),0);
         const isExpanded = expandedService===a.id;
 
@@ -3387,7 +3424,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId }) {
+function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -3541,30 +3578,54 @@ function Expenses({ expenses, setExpenses, toast, userId }) {
 
   // ── Analytics
   const yr = new Date().getFullYear();
-  const thisYear = expenses.filter(e=>e.date?.startsWith(String(yr)));
+
+  // Convert service logs to expense-like objects for display
+  const serviceAsExpenses = serviceLogs
+    .filter(s => s.cost > 0)
+    .map(s => {
+      // Find linked asset name
+      const asset = projects; // placeholder — we use the description directly
+      return {
+        id: `svc-${s.id}`,
+        description: s.description,
+        amount: s.cost,
+        date: s.service_date,
+        category: "Maintenance",
+        vendor: "",
+        notes: s.notes || "",
+        _isServiceLog: true,
+        _serviceLogId: s.id,
+      };
+    });
+
+  // Combine expenses + service log line items for display
+  const allExpenseItems = [...expenses, ...serviceAsExpenses];
+
+  const thisYear = allExpenseItems.filter(e=>e.date?.startsWith(String(yr)));
   const lastYear = expenses.filter(e=>e.date?.startsWith(String(yr-1)));
   const thisYrTotal = thisYear.reduce((s,e)=>s+Number(e.amount||0),0);
   const lastYrTotal = lastYear.reduce((s,e)=>s+Number(e.amount||0),0);
   const utilThisYr = bills.filter(b=>b.bill_date?.startsWith(String(yr))).reduce((s,b)=>s+Number(b.amount||0),0);
-  const allTotal = expenses.reduce((s,e)=>s+Number(e.amount||0),0) + bills.reduce((s,b)=>s+Number(b.amount||0),0);
-  const trend = lastYrTotal > 0 ? ((thisYrTotal - lastYrTotal) / lastYrTotal * 100).toFixed(0) : null;
+  const allTotal = allExpenseItems.reduce((s,e)=>s+Number(e.amount||0),0) + bills.reduce((s,b)=>s+Number(b.amount||0),0);
+  const thisYrTotalWithService = thisYrTotal + utilThisYr;
+  const trend = lastYrTotal > 0 ? ((thisYrTotalWithService - lastYrTotal) / lastYrTotal * 100).toFixed(0) : null;
 
-  // Monthly chart data — current year
+  // Monthly chart data — current year (expenses only, no service for chart simplicity)
   const curMonth = new Date().getMonth();
   const monthlyData = Array.from({length:12},(_,i)=>{
     const m = String(i+1).padStart(2,"0");
-    const total = thisYear.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
+    const total = expenses.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
     return {month:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i], total, isCur: i===curMonth};
   });
   const maxMonth = Math.max(...monthlyData.map(m=>m.total), 1);
 
-  // Category breakdown
+  // Category breakdown — include service as "Maintenance"
   const bycat = {};
-  expenses.forEach(e=>{ if(e.category) bycat[e.category]=(bycat[e.category]||{total:0,count:0}); bycat[e.category].total+=Number(e.amount||0); bycat[e.category].count+=1; });
+  allExpenseItems.forEach(e=>{ if(e.category) { bycat[e.category]=(bycat[e.category]||{total:0,count:0}); bycat[e.category].total+=Number(e.amount||0); bycat[e.category].count+=1; }});
   const catData = Object.entries(bycat).sort((a,b)=>b[1].total-a[1].total);
 
-  // Filtered expense list
-  const filtered = catF==="All" ? expenses : expenses.filter(e=>e.category===catF);
+  // Filtered expense list — includes service log line items
+  const filtered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>e.category===catF);
   const sorted = [...filtered].sort((a,b) => {
     if(sort==="date_desc") return new Date(b.date||0)-new Date(a.date||0);
     if(sort==="date_asc")  return new Date(a.date||0)-new Date(b.date||0);
@@ -3607,7 +3668,7 @@ function Expenses({ expenses, setExpenses, toast, userId }) {
             <div className="invest-hero-amount">{fmt$(allTotal)}</div>
             <div className="invest-hero-row">
               <div className="invest-hero-stat">
-                <div className="invest-hero-stat-val">{fmt$(thisYrTotal)}</div>
+                <div className="invest-hero-stat-val">{fmt$(thisYrTotalWithService)}</div>
                 <div className="invest-hero-stat-label">{yr}</div>
                 {trend !== null && (
                   <div className={`invest-hero-trend ${Number(trend)>0?"trend-up":Number(trend)<0?"trend-down":"trend-flat"}`}>
@@ -3633,8 +3694,6 @@ function Expenses({ expenses, setExpenses, toast, userId }) {
               )}
             </div>
           </div>
-
-          {/* Monthly chart */}
           {thisYear.length > 0 && (
             <div className="month-chart">
               <div className="month-chart-title">{yr} monthly spending</div>
@@ -3716,11 +3775,12 @@ function Expenses({ expenses, setExpenses, toast, userId }) {
                 const proj = e.project_id ? projects.find(p=>p.id===e.project_id) : null;
                 const isImage = e.file_url && e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
                 const isPdf = e.file_url && e.file_url.match(/\.pdf/i);
+                const isServiceLog = e._isServiceLog;
                 return (
                   <div key={e.id} className="exp-card" style={{flexDirection:"column",gap:0}}>
                     <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
-                      <div className="exp-card-icon" style={{background:CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length]+"22"}}>
-                        {CAT_ICONS[e.category]||"🔧"}
+                      <div className="exp-card-icon" style={{background: isServiceLog ? "var(--rust-light)" : CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length]+"22"}}>
+                        {isServiceLog ? "🔧" : CAT_ICONS[e.category]||"🔧"}
                       </div>
                       <div className="exp-card-body">
                         <div className="exp-card-title">{e.description}</div>
@@ -3729,27 +3789,30 @@ function Expenses({ expenses, setExpenses, toast, userId }) {
                           {e.category && <span>{e.category}</span>}
                           {e.vendor && <span>👤 {e.vendor}</span>}
                           {proj && <span className="exp-project-tag">🔨 {proj.name}</span>}
+                          {isServiceLog && (
+                            <span style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:".65rem",fontWeight:600,color:"var(--rust)",background:"var(--rust-light)",padding:"1px 7px",borderRadius:10}}>
+                              🔧 Asset service
+                            </span>
+                          )}
                           {e.file_url && <span style={{color:"var(--rust)",fontSize:".65rem",fontWeight:600}}>📎 receipt</span>}
                         </div>
+                        {e.notes && !isServiceLog && <div style={{fontSize:".72rem",color:"#7A7370",marginTop:"3px"}}>{e.notes}</div>}
                       </div>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:0}}>
                         <div className="exp-card-amount">{fmt$(e.amount)}</div>
-                        <div style={{display:"flex",gap:"3px"}}>
-                          <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(e)}>Edit</button>
-                          <button className="btn btn-danger btn-sm" onClick={()=>setConfirm(e.id)}>✕</button>
-                        </div>
+                        {!isServiceLog && (
+                          <div style={{display:"flex",gap:"3px"}}>
+                            <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(e)}>Edit</button>
+                            <button className="btn btn-danger btn-sm" onClick={()=>setConfirm(e.id)}>✕</button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    {/* File preview */}
-                    {e.file_url && (
+                    {/* File preview — only for regular expenses */}
+                    {!isServiceLog && e.file_url && (
                       <div className="exp-card-file">
                         {isImage ? (
-                          <img
-                            src={e.file_url}
-                            alt="Receipt"
-                            className="exp-file-thumb"
-                            onClick={()=>setLightbox(e.file_url)}
-                          />
+                          <img src={e.file_url} alt="Receipt" className="exp-file-thumb" onClick={()=>setLightbox(e.file_url)} />
                         ) : isPdf ? (
                           <a href={e.file_url} target="_blank" rel="noopener noreferrer" className="exp-file-pdf">
                             📄 View PDF receipt — tap to open
@@ -4509,9 +4572,6 @@ export default function App() {
       if(w.data) setWarranties(w.data);
       if(e.data) setExpenses(e.data);
       if(p.data && p.data.length > 0) setProfile(p.data[0]);
-      console.log("[HomeKeep] serviceLogs raw:", sl);
-      console.log("[HomeKeep] serviceLogs data:", sl.data);
-      console.log("[HomeKeep] serviceLogs error:", sl.error);
       if(sl.data) setServiceLogs(sl.data);
       setDataLoading(false);
     }
@@ -4656,10 +4716,10 @@ export default function App() {
             </div>
           ) : (
             <>
-              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username}/>}
+              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs}/>}
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
-              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks}/>}
+              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs}/>}
               {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid} onNavigate={setTab}/>}
             </>
           )}
