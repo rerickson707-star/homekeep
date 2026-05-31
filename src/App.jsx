@@ -1480,7 +1480,7 @@ function OnboardingWizard({ session, onComplete }) {
       setSaving(true);
       const uid = session.user.id;
       try {
-        // Save profile with address and property data
+        // Save profile
         const profilePayload = {
           user_id: uid,
           address: propertyData?.address || address,
@@ -1502,7 +1502,7 @@ function OnboardingWizard({ session, onComplete }) {
           onboarding_complete: true,
         };
 
-        // Check if profile exists
+        // Upsert profile
         const {data: existing} = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
         if (existing && existing.length > 0) {
           await supabase.from("profiles").update(profilePayload).eq("user_id", uid);
@@ -1510,9 +1510,9 @@ function OnboardingWizard({ session, onComplete }) {
           await supabase.from("profiles").insert([profilePayload]);
         }
 
-        // Save first task if provided
+        // Save first task — wait for it to complete before calling onComplete
         if (taskTitle.trim()) {
-          await supabase.from("tasks").insert([{
+          const {error: taskError} = await supabase.from("tasks").insert([{
             user_id: uid,
             title: taskTitle.trim(),
             category: taskCategory,
@@ -1520,12 +1520,16 @@ function OnboardingWizard({ session, onComplete }) {
             status: "Scheduled",
             priority: "Medium",
           }]);
+          if (taskError) console.error("Task insert error:", taskError);
         }
+
+        // Call onComplete — this reloads profile and tasks from Supabase
+        await onComplete();
       } catch(e) {
         console.error("Onboarding save error:", e);
+        setSaving(false);
+        await onComplete(); // still proceed even on error
       }
-      setSaving(false);
-      onComplete();
     };
 
     return (
@@ -1713,7 +1717,7 @@ function UserMenu({ user, onSignOut }) {
 }
 
 // ─── FORMS ───────────────────────────────────────────────────────────────────
-function TaskForm({ data, onChange }) {
+function TaskForm({ data, onChange, assets=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div className="fg">
@@ -1725,6 +1729,17 @@ function TaskForm({ data, onChange }) {
       <div className="field"><label>Est. Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
       <div className="field"><label>Vendor / Contractor</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} placeholder="DIY or company name" /></div>
       <div className="field"><label>Recurring Schedule</label><input value={data.recurring||""} onChange={e=>f("recurring",e.target.value)} placeholder="e.g. Every 3 months" /></div>
+      {assets.length > 0 && (
+        <div className="field s2">
+          <label>Linked Asset (optional)</label>
+          <select value={data.asset_id||""} onChange={e=>f("asset_id",e.target.value||null)}>
+            <option value="">No asset linked</option>
+            {assets.map(a=>(
+              <option key={a.id} value={a.id}>{ASSET_ICONS[a.category]||"🔧"} {a.item}{a.category?` · ${a.category}`:""}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Details, part numbers, access instructions…" /></div>
     </div>
   );
@@ -2466,7 +2481,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const totalSpend = expenses.reduce((s,e)=>s+Number(e.amount||0),0);
   const yrSpend  = expenses.filter(e=>e.date?.startsWith(new Date().getFullYear().toString())).reduce((s,e)=>s+Number(e.amount||0),0);
   const expiringW = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0&&d<=90; });
-  const activeW  = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
+  const activeW  = warranties.length; // total assets tracked
+  const expiringWCount = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
   const yr = new Date().getFullYear();
   const completed = tasks.filter(t=>t.status==="Completed").length;
   const [selectedDay, setSelectedDay] = useState(null);
@@ -2482,7 +2498,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     if(tasks.length === 0 && warranties.length === 0) return null;
     let score = 100;
     if(tasks.length > 0) score -= Math.min(40, overdue * 10);
-    if(warranties.length > 0) score -= Math.min(20, expiringW.length * 7);
+    if(expiringW.length > 0) score -= Math.min(20, expiringW.length * 7);
     const completionRate = tasks.length > 0 ? completed / tasks.length : 1;
     score = Math.round(score * (.6 + completionRate * .4));
     return Math.max(10, Math.min(100, score));
@@ -2685,7 +2701,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
-function Tasks({ tasks, setTasks, toast, userId, profile }) {
+function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[], serviceLogs, setServiceLogs }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone);
   const month = new Date().getMonth();
@@ -2720,12 +2736,17 @@ function Tasks({ tasks, setTasks, toast, userId, profile }) {
 
   const save = async () => {
     if(!editData.title?.trim()) return;
+    // Ensure asset_id is numeric or null
+    const payload = {
+      ...editData,
+      asset_id: editData.asset_id || null,
+    };
     if(editId) {
-      const { error } = await supabase.from("tasks").update(editData).eq("id",editId).eq("user_id",userId);
-      if(!error) { setTasks(tasks.map(t=>t.id===editId?{...editData,id:editId}:t)); toast("Task updated ✓"); }
+      const {error} = await supabase.from("tasks").update(payload).eq("id",editId).eq("user_id",userId);
+      if(!error) { setTasks(tasks.map(t=>t.id===editId?{...payload,id:editId}:t)); toast("Task updated ✓"); }
       else toast("Error saving","error");
     } else {
-      const { data, error } = await supabase.from("tasks").insert([{...editData,user_id:userId}]).select();
+      const {data,error} = await supabase.from("tasks").insert([{...payload,user_id:userId}]).select();
       if(!error&&data) { setTasks([...tasks,data[0]]); toast("Task added ✓"); }
       else toast("Error adding","error");
     }
@@ -2733,14 +2754,34 @@ function Tasks({ tasks, setTasks, toast, userId, profile }) {
   };
 
   const confirmDel = async () => {
-    const { error } = await supabase.from("tasks").delete().eq("id",confirm).eq("user_id",userId);
+    const {error} = await supabase.from("tasks").delete().eq("id",confirm).eq("user_id",userId);
     if(!error) { setTasks(tasks.filter(t=>t.id!==confirm)); toast("Task deleted","error"); }
     setConfirm(null);
   };
 
   const toggleStatus = async (t, s) => {
-    const { error } = await supabase.from("tasks").update({status:s}).eq("id",t.id).eq("user_id",userId);
-    if(!error) { setTasks(tasks.map(x=>x.id===t.id?{...x,status:s}:x)); toast(`Marked as ${s} ✓`); }
+    const {error} = await supabase.from("tasks").update({status:s}).eq("id",t.id).eq("user_id",userId);
+    if(!error) {
+      setTasks(tasks.map(x=>x.id===t.id?{...x,status:s}:x));
+      toast(`Marked as ${s} ✓`);
+      // Auto-log service entry when task linked to an asset is completed
+      if(s === "Completed" && t.asset_id) {
+        await supabase.from("asset_service_log").insert([{
+          user_id:      userId,
+          asset_id:     t.asset_id,
+          service_date: new Date().toISOString().slice(0,10),
+          description:  t.title,
+          cost:         t.cost ? Number(t.cost) : null,
+          notes:        `Auto-logged from task completion${t.vendor ? ` · ${t.vendor}` : ""}`,
+        }]);
+        // Update last_serviced on the asset
+        await supabase.from("warranties").update({last_serviced: new Date().toISOString().slice(0,10)}).eq("id",t.asset_id).eq("user_id",userId);
+        // Reload shared service logs so Assets tab updates immediately
+        const {data: sl} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false});
+        if(sl) setServiceLogs(sl);
+        toast("Service auto-logged to asset ✓");
+      }
+    }
   };
 
   const addSeasonalTask = (title) => {
@@ -2806,6 +2847,14 @@ function Tasks({ tasks, setTasks, toast, userId, profile }) {
               {t.recurring && (
                 <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>🔁 {t.recurring}</span>
               )}
+              {t.asset_id && (() => {
+                const linked = assets.find(a => a.id === t.asset_id);
+                return linked ? (
+                  <span className="task-meta-pill" style={{background:"var(--rust-light)",color:"var(--rust)"}}>
+                    {ASSET_ICONS[linked.category]||"🔧"} {linked.item}
+                  </span>
+                ) : null;
+              })()}
             </div>
             {t.notes && <div className="task-card-note">{t.notes}</div>}
           </div>
@@ -2921,7 +2970,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile }) {
         </div>
       )}
 
-      {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData}/></Modal>}
+      {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets}/></Modal>}
       {confirm && <Confirm message="This task will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {selectedDay && (
         <DayDetail
@@ -2936,14 +2985,13 @@ function Tasks({ tasks, setTasks, toast, userId, profile }) {
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [filter, setFilter] = useState("All");
   const [lightbox, setLightbox] = useState(null);
-  const [serviceLogs, setServiceLogs] = useState([]);
   const [serviceModal, setServiceModal] = useState(false);
   const [serviceEditData, setServiceEditData] = useState({});
   const [serviceEditId, setServiceEditId] = useState(null);
@@ -2951,27 +2999,37 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId })
   const [serviceConfirm, setServiceConfirm] = useState(null);
   const [expandedService, setExpandedService] = useState(null);
 
-  // Load service logs
-  useEffect(() => {
-    if(!userId) return;
-    supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false})
-      .then(({data})=>{ if(data) setServiceLogs(data); });
-  }, [userId]);
-
   // Asset CRUD
   const openNew = () => { setEditData({condition:"Good"}); setEditId(null); setModal(true); };
   const openEdit = a => { setEditData({...a}); setEditId(a.id); setModal(true); };
 
   const save = async () => {
     if(!editData.item?.trim()) return;
+    const payload = {
+      item:             editData.item||"",
+      category:         editData.category||"",
+      model:            editData.model||"",
+      vendor:           editData.vendor||"",
+      purchase_date:    editData.purchase_date||null,
+      install_date:     editData.install_date||null,
+      expiry_date:      editData.expiry_date||null,
+      cost:             editData.cost ? Number(editData.cost) : null,
+      replacement_cost: editData.replacement_cost ? Number(editData.replacement_cost) : null,
+      lifespan_years:   editData.lifespan_years ? Number(editData.lifespan_years) : null,
+      last_serviced:    editData.last_serviced||null,
+      condition:        editData.condition||"Good",
+      asset_photo_url:  editData.asset_photo_url||"",
+      document_ref:     editData.document_ref||"",
+      notes:            editData.notes||"",
+    };
     if(editId) {
-      const {error} = await supabase.from("warranties").update(editData).eq("id",editId).eq("user_id",userId);
+      const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
       if(!error) { setAssets(assets.map(a=>a.id===editId?{...editData,id:editId}:a)); toast("Asset updated ✓"); }
-      else toast("Error saving","error");
+      else { console.error("Asset update error:", error); toast("Error saving: "+error.message,"error"); }
     } else {
-      const {data,error} = await supabase.from("warranties").insert([{...editData,user_id:userId}]).select();
+      const {data,error} = await supabase.from("warranties").insert([{...payload,user_id:userId}]).select();
       if(!error&&data) { setAssets([...assets,data[0]]); toast("Asset added ✓"); }
-      else toast("Error adding","error");
+      else { console.error("Asset insert error:", error); toast("Error adding: "+error.message,"error"); }
     }
     setModal(false);
   };
@@ -2996,26 +3054,36 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId })
     setServiceModal(true);
   };
 
+  const reloadServiceLogs = async () => {
+    const {data} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false});
+    if(data) setServiceLogs(data);
+  };
+
   const saveService = async () => {
     if(!serviceEditData.description?.trim()||!serviceEditData.service_date) return;
+    const payload = {
+      asset_id:     serviceEditData.asset_id,
+      service_date: serviceEditData.service_date,
+      description:  serviceEditData.description||"",
+      cost:         serviceEditData.cost ? Number(serviceEditData.cost) : null,
+      notes:        serviceEditData.notes||"",
+    };
     if(serviceEditId) {
-      const {error} = await supabase.from("asset_service_log").update(serviceEditData).eq("id",serviceEditId).eq("user_id",userId);
+      const {error} = await supabase.from("asset_service_log").update(payload).eq("id",serviceEditId).eq("user_id",userId);
       if(!error) {
-        setServiceLogs(serviceLogs.map(s=>s.id===serviceEditId?{...serviceEditData,id:serviceEditId}:s));
-        // Update last_serviced on asset
-        await supabase.from("warranties").update({last_serviced:serviceEditData.service_date}).eq("id",serviceEditData.asset_id).eq("user_id",userId);
-        setAssets(assets.map(a=>a.id===serviceEditData.asset_id?{...a,last_serviced:serviceEditData.service_date}:a));
+        await reloadServiceLogs();
+        await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id).eq("user_id",userId);
+        setAssets(assets.map(a=>a.id===payload.asset_id?{...a,last_serviced:payload.service_date}:a));
         toast("Service log updated ✓");
-      } else toast("Error saving","error");
+      } else { console.error("Service update error:", error); toast("Error saving: "+error.message,"error"); }
     } else {
-      const {data,error} = await supabase.from("asset_service_log").insert([{...serviceEditData,user_id:userId}]).select();
-      if(!error&&data) {
-        setServiceLogs([data[0],...serviceLogs]);
-        // Update last_serviced on asset
-        await supabase.from("warranties").update({last_serviced:serviceEditData.service_date}).eq("id",serviceEditData.asset_id).eq("user_id",userId);
-        setAssets(assets.map(a=>a.id===serviceEditData.asset_id?{...a,last_serviced:serviceEditData.service_date}:a));
+      const {error} = await supabase.from("asset_service_log").insert([{...payload,user_id:userId}]);
+      if(!error) {
+        await reloadServiceLogs();
+        await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id).eq("user_id",userId);
+        setAssets(assets.map(a=>a.id===payload.asset_id?{...a,last_serviced:payload.service_date}:a));
         toast("Service logged ✓");
-      } else toast("Error logging","error");
+      } else { console.error("Service insert error:", error); toast("Error logging: "+error.message,"error"); }
     }
     setServiceModal(false);
   };
@@ -3103,7 +3171,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId })
         const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
         const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
         const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
-        const assetLogs = serviceLogs.filter(s=>s.asset_id===a.id);
+        const assetLogs = serviceLogs.filter(s => s.asset_id === a.id);
+        console.log(`[HomeKeep] Asset ${a.id} (${a.item}): serviceLogs total=${serviceLogs.length}, matching=${assetLogs.length}`, serviceLogs.map(s=>({id:s.id,asset_id:s.asset_id,type:typeof s.asset_id})));
         const totalServiceCost = assetLogs.reduce((s,l)=>s+Number(l.cost||0),0);
         const isExpanded = expandedService===a.id;
 
@@ -3150,7 +3219,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId })
                 <div className="asset-stat-label">Replace</div>
               </div>
               <div className="asset-stat">
-                <div className="asset-stat-val">{totalServiceCost>0?fmt$(totalServiceCost):assetLogs.length>0?"$0":"—"}</div>
+                <div className="asset-stat-val">{assetLogs.length > 0 ? (totalServiceCost > 0 ? fmt$(totalServiceCost) : "$0") : "—"}</div>
                 <div className="asset-stat-label">Serviced</div>
               </div>
             </div>
@@ -4404,6 +4473,7 @@ export default function App() {
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [serviceLogs, setServiceLogs] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
   const { toasts, show: toast } = useToast();
 
@@ -4422,22 +4492,27 @@ export default function App() {
   // ── Load data when user logs in
   useEffect(() => {
     if (!session?.user) {
-      setTasks([]); setWarranties([]); setExpenses([]); setProfile(null);
+      setTasks([]); setWarranties([]); setExpenses([]); setProfile(null); setServiceLogs([]);
       return;
     }
     const uid = session.user.id;
     async function loadData() {
       setDataLoading(true);
-      const [t, w, e, p] = await Promise.all([
+      const [t, w, e, p, sl] = await Promise.all([
         supabase.from("tasks").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("warranties").select("*").eq("user_id", uid).order("expiry_date", { ascending: true }),
         supabase.from("expenses").select("*").eq("user_id", uid).order("date", { ascending: false }),
         supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
+        supabase.from("asset_service_log").select("*").eq("user_id", uid).order("service_date", { ascending: false }),
       ]);
       if(t.data) setTasks(t.data);
       if(w.data) setWarranties(w.data);
       if(e.data) setExpenses(e.data);
       if(p.data && p.data.length > 0) setProfile(p.data[0]);
+      console.log("[HomeKeep] serviceLogs raw:", sl);
+      console.log("[HomeKeep] serviceLogs data:", sl.data);
+      console.log("[HomeKeep] serviceLogs error:", sl.error);
+      if(sl.data) setServiceLogs(sl.data);
       setDataLoading(false);
     }
     loadData();
@@ -4582,8 +4657,8 @@ export default function App() {
           ) : (
             <>
               {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username}/>}
-              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid}/>}
+              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid}/>}
               {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid} onNavigate={setTab}/>}
             </>
