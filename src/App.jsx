@@ -772,6 +772,38 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pro-gate-text{flex:1;font-size:.78rem;color:rgba(255,255,255,.8);font-weight:500}
 .pro-gate-badge{background:var(--rust);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;flex-shrink:0}
 
+/* ══ DOCUMENT VAULT ══ */
+.doc-vault{margin-bottom:1rem}
+.doc-category{margin-bottom:1rem;background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);overflow:hidden}
+.doc-category-header{display:flex;align-items:center;gap:.75rem;padding:.85rem 1.1rem;cursor:pointer;transition:background .12s;user-select:none}
+.doc-category-header:hover{background:var(--cream)}
+.doc-category-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.doc-category-name{font-family:'Fraunces',serif;font-size:.95rem;font-weight:500;color:var(--dark);flex:1}
+.doc-category-count{font-size:.7rem;color:#A8A09A;background:var(--cream2);padding:2px 8px;border-radius:10px;font-weight:600}
+.doc-category-arrow{font-size:.75rem;color:#A8A09A;transition:transform .2s}
+.doc-category-arrow.open{transform:rotate(90deg)}
+.doc-list{border-top:1px solid var(--stone)}
+.doc-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.1rem;border-bottom:1px solid var(--stone);transition:background .12s}
+.doc-item:last-child{border-bottom:none}
+.doc-item:hover{background:var(--cream)}
+.doc-item-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;background:var(--cream2)}
+.doc-item-body{flex:1;min-width:0}
+.doc-item-name{font-size:.87rem;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-item-meta{font-size:.7rem;color:#A8A09A;display:flex;gap:.5rem;flex-wrap:wrap;margin-top:2px;align-items:center}
+.doc-item-actions{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.doc-item:hover .doc-item-actions{opacity:1}
+.doc-add-row{display:flex;align-items:center;gap:.5rem;padding:.6rem 1.1rem;border-top:1px solid var(--stone);background:var(--cream)}
+.doc-upload-zone{border:2px dashed var(--stone);border-radius:var(--r-sm);padding:1.2rem;text-align:center;cursor:pointer;transition:all .18s;background:var(--white);position:relative;margin-bottom:.5rem}
+.doc-upload-zone:hover,.doc-upload-zone.drag{border-color:var(--rust);background:var(--rust-light)}
+.doc-upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.doc-upload-icon{font-size:1.5rem;margin-bottom:.3rem}
+.doc-upload-text{font-size:.8rem;color:#A8A09A}
+.doc-upload-text strong{color:var(--rust)}
+.doc-expiry-badge{display:inline-flex;align-items:center;gap:3px;font-size:.62rem;font-weight:700;padding:1px 6px;border-radius:8px}
+.doc-expiry-ok{background:var(--sage-light);color:var(--sage)}
+.doc-expiry-soon{background:#FFF8E6;color:#92610A}
+.doc-expiry-expired{background:var(--red-light);color:var(--red)}
+
 /* ══ AI SCAN ══ */
 .scan-btn{width:100%;padding:.8rem;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .18s;position:relative;overflow:hidden}
 .scan-btn-bg{background:linear-gradient(135deg,#2A2622 0%,#4A3828 50%,#2A2622 100%);background-size:200% 100%;animation:shimmer 3s infinite;color:#fff}
@@ -4208,12 +4240,310 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
   );
 }
 
+// ─── DOCUMENT VAULT ───────────────────────────────────────────────────────────
+const DOC_CATEGORIES = [
+  { id:"legal",      label:"Legal & Ownership",     icon:"📜", color:"#F3EFFC", desc:"Deed, title, survey, closing docs, easements" },
+  { id:"mortgage",   label:"Mortgage & Finance",     icon:"🏦", color:"#EBF5FF", desc:"Loan docs, statements, refinance, HELOC" },
+  { id:"inspection", label:"Inspection Reports",     icon:"🔍", color:"#FBF0E8", desc:"Home, pest, radon, mold, septic, pool" },
+  { id:"insurance",  label:"Insurance Policies",     icon:"🛡️", color:"#EAF2EE", desc:"Homeowners, flood, umbrella, full policy docs" },
+  { id:"permits",    label:"Permits & Work",         icon:"🔨", color:"#FFF8E6", desc:"Building permits, certificates of occupancy" },
+  { id:"tax",        label:"Property Tax",           icon:"🧾", color:"#FBF3E8", desc:"Tax bills, assessments, payment records" },
+  { id:"contracts",  label:"Contracts & Agreements", icon:"📝", color:"#F3EFFC", desc:"HOA docs, service contracts, home warranty plan" },
+  { id:"other",      label:"Other",                  icon:"📁", color:"var(--cream2)", desc:"Any other home documents" },
+];
+
+function DocumentForm({ data, onChange, userId, assets=[], projects=[] }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [dragging, setDragging] = useState(false);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { setUploadError("File must be under 50MB"); return; }
+    setUploadError("");
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g,"_");
+    const path = `${userId}/documents/${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from("expense-files").upload(path, file, { upsert: false, contentType: file.type });
+    if (error) { setUploadError("Upload failed — " + error.message); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
+    onChange({...data, file_url: urlData.publicUrl, file_type: file.type, name: data.name || file.name.replace(/\.[^/.]+$/,"")});
+    setUploading(false);
+  };
+
+  return (
+    <div className="fg">
+      {/* File upload */}
+      <div className="field s2">
+        <label>Document File</label>
+        {data.file_url ? (
+          <div style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",background:"var(--sage-light)",border:"1px solid #B8D9CC",borderRadius:"var(--r-sm)"}}>
+            <span style={{fontSize:"1.2rem"}}>{data.file_type?.includes("pdf")?"📄":"🖼️"}</span>
+            <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"var(--sage)"}}>File attached ✓</span>
+            <button className="btn btn-ghost btn-sm" onClick={()=>onChange({...data,file_url:"",file_type:""})}>Remove</button>
+          </div>
+        ) : (
+          <div
+            className={`doc-upload-zone ${dragging?"drag":""}`}
+            onDragOver={e=>{e.preventDefault();setDragging(true)}}
+            onDragLeave={()=>setDragging(false)}
+            onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0]);}}
+          >
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" onChange={e=>handleFile(e.target.files[0])} />
+            <div className="doc-upload-icon">📎</div>
+            <div className="doc-upload-text"><strong>Click to upload</strong> or drag & drop<br/>PDF, JPG, PNG, HEIC, DOC — up to 50MB</div>
+          </div>
+        )}
+        {uploading && <div style={{fontSize:".75rem",color:"var(--rust)",marginTop:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}><span className="spinner" style={{width:12,height:12,borderWidth:2}}/>Uploading…</div>}
+        {uploadError && <div style={{fontSize:".75rem",color:"var(--red)",marginTop:".3rem"}}>⚠️ {uploadError}</div>}
+      </div>
+
+      <div className="field s2"><label>Document Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Home Inspection Report 2024" /></div>
+      <div className="field s2">
+        <label>Category</label>
+        <select value={data.category||""} onChange={e=>f("category",e.target.value)}>
+          <option value="">Select…</option>
+          {DOC_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
+      </div>
+      <div className="field s2"><label>Description</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="Brief description of this document" /></div>
+      <div className="field"><label>Expiry / Review Date</label><input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
+      {assets.length > 0 && (
+        <div className="field">
+          <label>Linked Asset (optional)</label>
+          <select value={data.asset_id||""} onChange={e=>f("asset_id",e.target.value||null)}>
+            <option value="">No asset</option>
+            {assets.map(a=><option key={a.id} value={a.id}>{a.item}</option>)}
+          </select>
+        </div>
+      )}
+      {projects.length > 0 && (
+        <div className="field">
+          <label>Linked Project (optional)</label>
+          <select value={data.project_id||""} onChange={e=>f("project_id",e.target.value?Number(e.target.value):null)}>
+            <option value="">No project</option>
+            {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+      )}
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any notes about this document…" /></div>
+    </div>
+  );
+}
+
+function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox }) {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [editId, setEditId] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [expanded, setExpanded] = useState({});
+  const [projects, setProjects] = useState([]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!userId) return;
+    Promise.all([
+      supabase.from("home_documents").select("*").eq("user_id", userId).order("created_at", {ascending:false}),
+      supabase.from("projects").select("id,name").eq("user_id", userId),
+    ]).then(([docs, proj]) => {
+      if (docs.data) setDocuments(docs.data);
+      if (proj.data) setProjects(proj.data);
+      setLoading(false);
+    });
+  }, [userId]);
+
+  const openNew = (category="") => { setEditData({category}); setEditId(null); setModal(true); };
+  const openEdit = d => { setEditData({...d}); setEditId(d.id); setModal(true); };
+
+  const save = async () => {
+    if (!editData.name?.trim()) return;
+    if (editId) {
+      const {error} = await supabase.from("home_documents").update(editData).eq("id",editId).eq("user_id",userId);
+      if (!error) setDocuments(documents.map(d=>d.id===editId?{...editData,id:editId}:d));
+    } else {
+      const {data,error} = await supabase.from("home_documents").insert([{...editData,user_id:userId}]).select();
+      if (!error&&data) setDocuments([data[0],...documents]);
+    }
+    setModal(false);
+  };
+
+  const confirmDel = async () => {
+    const doc = documents.find(d=>d.id===confirm);
+    if (doc?.file_url) {
+      const path = doc.file_url.split("/expense-files/")[1]?.split("?")[0];
+      if (path) await supabase.storage.from("expense-files").remove([path]);
+    }
+    await supabase.from("home_documents").delete().eq("id",confirm).eq("user_id",userId);
+    setDocuments(documents.filter(d=>d.id!==confirm));
+    setConfirm(null);
+  };
+
+  const toggleExpanded = (id) => setExpanded(e=>({...e,[id]:!e[id]}));
+
+  const searchFiltered = search
+    ? documents.filter(d=>d.name?.toLowerCase().includes(search.toLowerCase())||d.description?.toLowerCase().includes(search.toLowerCase()))
+    : null;
+
+  const totalDocs = documents.length;
+
+  const getExpiryStatus = (date) => {
+    if (!date) return null;
+    const d = daysTo(date);
+    if (d < 0) return "expired";
+    if (d <= 30) return "soon";
+    return "ok";
+  };
+
+  const fileIcon = (type) => {
+    if (!type) return "📄";
+    if (type.includes("pdf")) return "📄";
+    if (type.includes("image")) return "🖼️";
+    if (type.includes("word") || type.includes("document")) return "📝";
+    return "📎";
+  };
+
+  if (loading) return <div className="loading" style={{padding:"2rem"}}><div className="spinner"/></div>;
+
+  return (
+    <div className="home-section">
+      <div className="home-section-header">
+        <span className="home-section-title">📂 Document Vault</span>
+        <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
+          {totalDocs > 0 && <span style={{fontSize:".72rem",color:"#A8A09A"}}>{totalDocs} doc{totalDocs!==1?"s":""}</span>}
+          <button className="btn btn-primary btn-sm" onClick={()=>openNew()}>＋ Add</button>
+        </div>
+      </div>
+
+      <div style={{padding:".75rem 1.1rem",borderBottom:"1px solid var(--stone)"}}>
+        {/* Search */}
+        {totalDocs > 3 && (
+          <input
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            placeholder="🔍 Search documents…"
+            style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'DM Sans',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"var(--cream)",outline:"none",marginBottom:".75rem"}}
+            onFocus={e=>e.target.style.borderColor="var(--rust)"}
+            onBlur={e=>e.target.style.borderColor="var(--stone)"}
+          />
+        )}
+
+        {/* Search results */}
+        {searchFiltered && (
+          <div>
+            {searchFiltered.length === 0 ? (
+              <div style={{textAlign:"center",padding:"1rem",color:"#A8A09A",fontSize:".84rem"}}>No documents match "{search}"</div>
+            ) : searchFiltered.map(d => (
+              <DocItem key={d.id} doc={d} assets={assets} onEdit={openEdit} onDelete={setConfirm} onView={setLightbox} fileIcon={fileIcon} getExpiryStatus={getExpiryStatus} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Category folders */}
+      {!searchFiltered && (
+        <div style={{padding:".75rem 1.1rem"}}>
+          {documents.length === 0 ? (
+            <div className="empty" style={{padding:"2rem .5rem"}}>
+              <span className="ei">📂</span>
+              <strong>No documents yet</strong>
+              <p>Store your deed, mortgage, inspection report, insurance policy, and any other important home documents — all in one secure place</p>
+              <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add your first document</button>
+            </div>
+          ) : (
+            DOC_CATEGORIES.map(cat => {
+              const catDocs = documents.filter(d=>d.category===cat.id);
+              const isOpen = expanded[cat.id];
+              const expiringCount = catDocs.filter(d=>getExpiryStatus(d.expiry_date)==="soon"||getExpiryStatus(d.expiry_date)==="expired").length;
+              return (
+                <div key={cat.id} className="doc-category">
+                  <div className="doc-category-header" onClick={()=>toggleExpanded(cat.id)}>
+                    <div className="doc-category-icon" style={{background:cat.color}}>{cat.icon}</div>
+                    <div style={{flex:1}}>
+                      <div className="doc-category-name">{cat.label}</div>
+                      <div style={{fontSize:".7rem",color:"#A8A09A"}}>{cat.desc}</div>
+                    </div>
+                    <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
+                      {expiringCount > 0 && <span style={{fontSize:".65rem",fontWeight:700,color:"var(--red)",background:"var(--red-light)",padding:"1px 6px",borderRadius:"8px"}}>⚠️ {expiringCount}</span>}
+                      {catDocs.length > 0 && <span className="doc-category-count">{catDocs.length}</span>}
+                      <button className="btn btn-ghost btn-sm" style={{padding:"2px 6px",fontSize:".7rem"}} onClick={e=>{e.stopPropagation();openNew(cat.id);}}>＋</button>
+                      <span className={`doc-category-arrow ${isOpen?"open":""}`}>›</span>
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div className="doc-list">
+                      {catDocs.length === 0 ? (
+                        <div style={{padding:".8rem 1.1rem",fontSize:".82rem",color:"#A8A09A",textAlign:"center"}}>
+                          No documents yet — <button className="btn btn-ghost btn-sm" onClick={()=>openNew(cat.id)}>Add one</button>
+                        </div>
+                      ) : catDocs.map(d => (
+                        <DocItem key={d.id} doc={d} assets={assets} onEdit={openEdit} onDelete={setConfirm} onView={setLightbox} fileIcon={fileIcon} getExpiryStatus={getExpiryStatus} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {modal && (
+        <Modal title={editId?"Edit Document":"Add Document"} onClose={()=>setModal(false)} onSave={save}>
+          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects}/>
+        </Modal>
+      )}
+      {confirm && <Confirm message="This document and its file will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+    </div>
+  );
+}
+
+function DocItem({ doc, assets, onEdit, onDelete, onView, fileIcon, getExpiryStatus }) {
+  const expiryStatus = getExpiryStatus(doc.expiry_date);
+  const linkedAsset = doc.asset_id ? assets.find(a=>a.id===doc.asset_id) : null;
+  const isImage = doc.file_url && doc.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
+
+  return (
+    <div className="doc-item">
+      <div className="doc-item-icon">{fileIcon(doc.file_type)}</div>
+      <div className="doc-item-body">
+        <div className="doc-item-name">{doc.name}</div>
+        <div className="doc-item-meta">
+          {doc.description && <span>{doc.description}</span>}
+          {linkedAsset && <span style={{color:"var(--rust)"}}>🔧 {linkedAsset.item}</span>}
+          {expiryStatus && (
+            <span className={`doc-expiry-badge ${
+              expiryStatus==="expired"?"doc-expiry-expired":
+              expiryStatus==="soon"?"doc-expiry-soon":"doc-expiry-ok"
+            }`}>
+              {expiryStatus==="expired"?"Expired":expiryStatus==="soon"?`Expires ${fmtD(doc.expiry_date)}`:`Valid to ${fmtD(doc.expiry_date)}`}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="doc-item-actions">
+        {doc.file_url && (
+          <button className="btn btn-ghost btn-sm" onClick={()=> isImage ? onView(doc.file_url) : window.open(doc.file_url,"_blank")} title="View">
+            {isImage ? "👁️" : "↗️"}
+          </button>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={()=>onEdit(doc)}>Edit</button>
+        <button className="btn btn-danger btn-sm" onClick={()=>onDelete(doc.id)}>✕</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
 function Profile({ profile, setProfile, tasks, expenses, warranties, toast, userId, onNavigate }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [insData, setInsData] = useState({});
+  const [docLightbox, setDocLightbox] = useState(null);
 
   const openEdit = () => { setEditData({...profile}); setModal(true); };
   const openIns  = () => { setInsData({...profile}); setInsModal(true); };
@@ -4632,6 +4962,15 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
           </div>
         </div>
       )}
+
+      {/* ── Document Vault ── */}
+      <DocumentVault
+        userId={userId}
+        warranties={warranties}
+        lightbox={docLightbox}
+        setLightbox={setDocLightbox}
+      />
+      {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
 
       {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId}/></Modal>}
       {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData}/></Modal>}
