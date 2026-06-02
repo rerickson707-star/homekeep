@@ -15,7 +15,7 @@ const STATUS_STYLE = {
   "Overdue":     { bg:"#FDEEEE", text:"#B91C1C", border:"#F5A0A0" },
 };
 const PRIORITY_COLOR = { Low:"#6B8F71", Medium:"#E0A84A", High:"#D9622B", Urgent:"#B91C1C" };
-const CHART_COLORS = ["#C1622B","#4A89B8","#6B8F71","#C9962A","#8B5CF6","#EC4899","#14B8A6","#F97316","#6366F1"];
+const CHART_COLORS = ["#C16140","#4A89B8","#6B8F71","#C9962A","#8B5CF6","#EC4899","#14B8A6","#F97316","#6366F1"];
 
 // ─── CLIMATE ZONE LOOKUP ─────────────────────────────────────────────────────
 // Maps first 3 digits of US zip code to IECC climate zone (1–8)
@@ -169,13 +169,14 @@ function getClimateProfile(zone) {
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root {
-  --cream:#F5F0E8; --cream2:#EDE7DB; --white:#FDFAF5; --stone:#DDD6CA; --mid:#BFB5A8;
-  --dark:#26211C; --brown:#7A5C3E; --rust:#C05A28; --rust-light:#FBF0E8; --rust-mid:#E8895A;
-  --sage:#4E7260; --sage-light:#EAF2EE; --gold:#B8861E; --sky:#3A7AAF; --sky-light:#EBF3FA;
+  --cream:#F4EDDF; --cream2:#ECE3D2; --white:#FBF7EE; --stone:#E0D8C9; --mid:#BFB5A8;
+  --dark:#2A2723; --brown:#7A5C3E; --rust:#C16140; --rust-light:#F6E9E1; --rust-mid:#D2876A;
+  --pine:#234A3D; --pine-deep:#173026;
+  --sage:#234A3D; --sage-light:#E7EDE7; --sage-soft:#A7BFA8; --gold:#B8861E; --sky:#3A7AAF; --sky-light:#EBF3FA;
   --red:#C0392B; --red-light:#FDECEA;
   --shadow:0 1px 4px rgba(38,33,28,.06),0 4px 16px rgba(38,33,28,.06);
   --shadow-md:0 4px 20px rgba(38,33,28,.1);
@@ -186,17 +187,17 @@ const CSS = `
 }
 
 html{scroll-behavior:smooth}
-body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 .app{min-height:100vh;display:flex;flex-direction:column;padding-bottom:var(--bottom-nav)}
 @media(min-width:769px){.app{padding-bottom:0}}
 
 /* ══ HEADER ══ */
-.hdr{height:var(--hdr);background:var(--dark);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:sticky;top:0;z-index:200;gap:.75rem}
+.hdr{height:var(--hdr);background:var(--pine);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:sticky;top:0;z-index:200;gap:.75rem}
 .hdr-logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .hdr-logo .ico{width:32px;height:32px;background:var(--rust);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .hdr-logo .name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#fff;letter-spacing:-.3px}
 .search-wrap{flex:1;max-width:380px;position:relative}
-.search-wrap input{width:100%;padding:.42rem .85rem .42rem 2.1rem;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;font-size:.82rem;color:#fff;outline:none;transition:all .2s;font-family:'DM Sans',sans-serif}
+.search-wrap input{width:100%;padding:.42rem .85rem .42rem 2.1rem;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;font-size:.82rem;color:#fff;outline:none;transition:all .2s;font-family:'Hanken Grotesk',sans-serif}
 .search-wrap input::placeholder{color:rgba(255,255,255,.35)}
 .search-wrap input:focus{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
 .search-icon{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);font-size:.8rem;pointer-events:none;opacity:.45}
@@ -208,7 +209,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--dark);
 
 /* user menu */
 .user-menu{position:relative;flex-shrink:0}
-.user-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;padding:.3rem .85rem .3rem .4rem;cursor:pointer;transition:all .18s;color:#fff;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500}
+.user-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;padding:.3rem .85rem .3rem .4rem;cursor:pointer;transition:all .18s;color:#fff;font-family:'Hanken Grotesk',sans-serif;font-size:.78rem;font-weight:500}
 .user-btn:hover{background:rgba(255,255,255,.17)}
 .user-avatar{width:26px;height:26px;border-radius:50%;background:var(--rust);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0}
 .user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);border:1px solid var(--stone);overflow:hidden;min-width:190px;z-index:300}
@@ -288,11 +289,11 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--dark);
 .chip{padding:.32rem .8rem;border-radius:22px;font-size:.72rem;font-weight:500;border:1.5px solid var(--stone);background:var(--white);color:#A8A09A;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
 .chip:hover{border-color:var(--mid);color:var(--dark)}
 .chip.on{border-color:var(--rust);background:var(--rust-light);color:var(--rust)}
-.sort-select{padding:.32rem .65rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-size:.74rem;font-family:'DM Sans',sans-serif;color:var(--dark);background:var(--white);cursor:pointer;outline:none;flex-shrink:0}
+.sort-select{padding:.32rem .65rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-size:.74rem;font-family:'Hanken Grotesk',sans-serif;color:var(--dark);background:var(--white);cursor:pointer;outline:none;flex-shrink:0}
 .sort-select:focus{border-color:var(--rust)}
 
 /* ══ BUTTONS ══ */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:.52rem 1.05rem;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;border:none;cursor:pointer;transition:all .18s;white-space:nowrap;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:.52rem 1.05rem;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.8rem;font-weight:600;border:none;cursor:pointer;transition:all .18s;white-space:nowrap;flex-shrink:0}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--rust);color:#fff;box-shadow:0 2px 8px rgba(192,90,40,.25)}
 .btn-primary:hover{background:#A84820;box-shadow:0 4px 14px rgba(192,90,40,.35)}
@@ -320,7 +321,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--dark);
 
 /* ══ QUICK STATUS BUTTONS ══ */
 .qs-wrap{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}
-.qs-btn{padding:3px 9px;border-radius:12px;font-size:.64rem;font-weight:700;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.qs-btn{padding:3px 9px;border-radius:12px;font-size:.64rem;font-weight:700;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:'Hanken Grotesk',sans-serif}
 
 /* ══ MODAL / OVERLAY ══ */
 .overlay{position:fixed;inset:0;background:rgba(38,33,28,.55);z-index:400;display:flex;align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(6px)}
@@ -348,7 +349,7 @@ body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--dark);
 .field.s2{grid-column:span 2}
 @media(max-width:480px){.field.s2{grid-column:span 1}}
 label{font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
-input,select,textarea{width:100%;padding:.6rem .9rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s;-webkit-appearance:none}
+input,select,textarea{width:100%;padding:.6rem .9rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s;-webkit-appearance:none}
 input:focus,select:focus,textarea:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(192,90,40,.1)}
 textarea{resize:vertical;min-height:70px;line-height:1.5}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23A8A09A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
@@ -358,7 +359,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 @media(min-width:769px){.dash-grid{grid-template-columns:1fr 1fr}}
 .panel{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:1.1rem 1.2rem;box-shadow:var(--shadow)}
 .panel-title{font-family:'Fraunces',serif;font-size:1rem;font-weight:500;color:var(--dark);margin-bottom:.85rem;display:flex;align-items:center;gap:.5rem}
-.up-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .8rem;border:1px solid var(--stone);border-radius:12px;margin-bottom:.45rem;transition:box-shadow .15s,transform .15s;cursor:pointer;width:100%;background:var(--white);text-align:left;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:rgba(192,90,40,.15)}
+.up-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .8rem;border:1px solid var(--stone);border-radius:12px;margin-bottom:.45rem;transition:box-shadow .15s,transform .15s;cursor:pointer;width:100%;background:var(--white);text-align:left;font-family:'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:rgba(192,90,40,.15)}
 .up-item:last-child{margin-bottom:0}
 .up-item:hover,.up-item:active{box-shadow:var(--shadow);transform:translateY(-1px);background:var(--cream)}
 .up-days{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
@@ -406,9 +407,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lookup-box{background:var(--rust-light);border:1.5px solid #EDCDB8;border-radius:var(--r);padding:1.1rem 1.2rem;margin-bottom:1.1rem}
 .lookup-title{font-size:.7rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--rust);margin-bottom:.65rem;display:flex;align-items:center;gap:.45rem}
 .lookup-row{display:flex;gap:.55rem;align-items:stretch}
-.lookup-row input{flex:1;padding:.6rem .9rem;border:1.5px solid #EDCDB8;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.86rem;color:var(--dark);background:#fff;outline:none;transition:border-color .15s}
+.lookup-row input{flex:1;padding:.6rem .9rem;border:1.5px solid #EDCDB8;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.86rem;color:var(--dark);background:#fff;outline:none;transition:border-color .15s}
 .lookup-row input:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(192,90,40,.1)}
-.lookup-btn{padding:.6rem 1rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .18s;display:flex;align-items:center;gap:5px}
+.lookup-btn{padding:.6rem 1rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .18s;display:flex;align-items:center;gap:5px}
 .lookup-btn:hover{background:#A84820}
 .lookup-btn:disabled{opacity:.6;cursor:not-allowed}
 .lookup-status{font-size:.77rem;color:#9E9690;margin-top:.55rem;display:flex;align-items:center;gap:.4rem}
@@ -429,7 +430,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .photo-drop-text strong{color:var(--rust)}
 .photo-preview{position:relative;display:inline-block;width:100%}
 .photo-preview img{width:100%;height:190px;object-fit:cover;border-radius:var(--r);border:1px solid var(--stone)}
-.photo-preview-remove{position:absolute;top:.5rem;right:.5rem;background:rgba(38,33,28,.8);color:#fff;border:none;border-radius:7px;padding:4px 9px;font-size:.7rem;cursor:pointer;font-family:'DM Sans',sans-serif}
+.photo-preview-remove{position:absolute;top:.5rem;right:.5rem;background:rgba(38,33,28,.8);color:#fff;border:none;border-radius:7px;padding:4px 9px;font-size:.7rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif}
 .photo-preview-remove:hover{background:var(--red)}
 .photo-uploading{display:flex;align-items:center;gap:.55rem;padding:.75rem .9rem;background:var(--rust-light);border-radius:var(--r-sm);font-size:.8rem;color:var(--rust);margin-top:.45rem}
 
@@ -461,7 +462,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* ══ TASK VIEW TOGGLE ══ */
 .view-toggle{display:flex;background:var(--cream2);border-radius:10px;padding:3px;gap:2px;flex-shrink:0}
-.view-btn{padding:.3rem .75rem;border-radius:8px;font-size:.73rem;font-weight:600;border:none;cursor:pointer;background:none;color:#A8A09A;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.view-btn{padding:.3rem .75rem;border-radius:8px;font-size:.73rem;font-weight:600;border:none;cursor:pointer;background:none;color:#A8A09A;font-family:'Hanken Grotesk',sans-serif;transition:all .15s;white-space:nowrap}
 .view-btn.active{background:var(--white);color:var(--dark);box-shadow:0 1px 4px rgba(38,33,28,.1)}
 
 /* ══ TASK CATEGORY GROUP ══ */
@@ -490,7 +491,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .task-card-actions{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
 .task-card:hover .task-card-actions{opacity:1}
 .task-card-bottom{margin-top:.65rem;padding-top:.6rem;border-top:1px solid var(--stone);display:flex;gap:.35rem;flex-wrap:wrap}
-.task-status-btn{padding:3px 9px;border-radius:10px;font-size:.65rem;font-weight:700;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.task-status-btn{padding:3px 9px;border-radius:10px;font-size:.65rem;font-weight:700;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:'Hanken Grotesk',sans-serif}
 
 /* ══ SEASONAL TASKS ══ */
 .seasonal-section{background:var(--cream2);border-radius:var(--r);padding:1rem 1.1rem;margin-bottom:1.1rem;border:1px solid var(--stone)}
@@ -762,7 +763,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .util-setup-card{background:var(--white);border:2px dashed var(--stone);border-radius:var(--r);padding:2rem;text-align:center;cursor:pointer;transition:all .18s}
 .util-setup-card:hover{border-color:var(--rust);background:var(--rust-light)}
 .util-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.5rem}
-.util-type-btn{padding:.7rem .4rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);background:var(--white);cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif}
+.util-type-btn{padding:.7rem .4rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);background:var(--white);cursor:pointer;text-align:center;transition:all .15s;font-family:'Hanken Grotesk',sans-serif}
 .util-type-btn:hover{border-color:var(--rust);background:var(--rust-light)}
 .util-type-btn.selected{border-color:var(--rust);background:var(--rust-light)}
 .util-type-icon{font-size:1.4rem;display:block;margin-bottom:3px}
@@ -805,7 +806,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .doc-expiry-expired{background:var(--red-light);color:var(--red)}
 
 /* ══ AI SCAN ══ */
-.scan-btn{width:100%;padding:.8rem;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .18s;position:relative;overflow:hidden}
+.scan-btn{width:100%;padding:.8rem;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .18s;position:relative;overflow:hidden}
 .scan-btn-bg{background:linear-gradient(135deg,#2A2622 0%,#4A3828 50%,#2A2622 100%);background-size:200% 100%;animation:shimmer 3s infinite;color:#fff}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .scan-btn-badge{background:var(--rust);color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;flex-shrink:0}
@@ -824,9 +825,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pro-modal-feature-icon{font-size:1.1rem;flex-shrink:0}
 .pro-modal-feature-text{font-size:.83rem;color:rgba(255,255,255,.8)}
 .pro-modal-feature-text strong{color:#fff;display:block;margin-bottom:1px}
-.pro-modal-cta{width:100%;padding:.9rem;background:var(--rust);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 4px 20px rgba(192,90,40,.4);margin-bottom:.75rem}
+.pro-modal-cta{width:100%;padding:.9rem;background:var(--rust);color:#fff;border:none;border-radius:12px;font-family:'Hanken Grotesk',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 4px 20px rgba(192,90,40,.4);margin-bottom:.75rem}
 .pro-modal-cta:hover{background:#A84820;transform:translateY(-1px)}
-.pro-modal-dismiss{width:100%;padding:.6rem;background:none;border:none;color:rgba(255,255,255,.4);font-family:'DM Sans',sans-serif;font-size:.83rem;cursor:pointer}
+.pro-modal-dismiss{width:100%;padding:.6rem;background:none;border:none;color:rgba(255,255,255,.4);font-family:'Hanken Grotesk',sans-serif;font-size:.83rem;cursor:pointer}
 .pro-modal-dismiss:hover{color:rgba(255,255,255,.7)}
 
 /* ══ EXPENSE TABLE ══ */
@@ -841,16 +842,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* ══ AUTH SCREEN ══ */
 
 /* ── LANDING PAGE ── */
-.lp{min-height:100vh;background:var(--dark);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+.lp{min-height:100vh;background:var(--dark);font-family:'Hanken Grotesk',sans-serif;overflow-x:hidden}
 .lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1.1rem 2.5rem;transition:background .3s,backdrop-filter .3s}
 .lp-nav.scrolled{background:rgba(42,38,34,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
 .lp-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
-.lp-logo-icon{width:36px;height:36px;background:var(--rust);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.lp-logo-icon{width:36px;height:36px;background:var(--pine);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
 .lp-logo-text{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:500;color:#fff}
 .lp-nav-links{display:flex;align-items:center;gap:.8rem}
-.lp-nav-link{color:rgba(255,255,255,.6);background:none;border:none;font-size:.85rem;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;text-decoration:none}
+.lp-nav-link{color:rgba(255,255,255,.6);background:none;border:none;font-size:.85rem;font-weight:500;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:color .15s;text-decoration:none}
 .lp-nav-link:hover{color:#fff}
-.lp-btn-nav{padding:.5rem 1.2rem;background:var(--rust);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:background .18s,transform .15s}
+.lp-btn-nav{padding:.5rem 1.2rem;background:var(--rust);color:#fff;border:none;border-radius:8px;font-family:'Hanken Grotesk',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:background .18s,transform .15s}
 .lp-btn-nav:hover{background:#A8501F;transform:translateY(-1px)}
 .lp-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8rem 2rem 3rem;position:relative;overflow:hidden}
 .lp-hero-bg::before{content:'';position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(193,98,43,.18) 0%,transparent 70%);top:-150px;right:-150px;pointer-events:none}
@@ -864,9 +865,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lp-h1 em{font-style:italic;color:var(--rust)}
 .lp-hero-p{font-size:clamp(.95rem,2vw,1.15rem);color:rgba(255,255,255,.58);line-height:1.7;max-width:540px;margin:0 auto 2.2rem;font-weight:300}
 .lp-cta{display:flex;align-items:center;justify-content:center;gap:.8rem;flex-wrap:wrap;margin-bottom:.8rem}
-.lp-btn-primary{padding:.9rem 2.2rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:background .18s,transform .15s,box-shadow .18s;box-shadow:0 4px 24px rgba(193,98,43,.35)}
+.lp-btn-primary{padding:.9rem 2.2rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'Hanken Grotesk',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:background .18s,transform .15s,box-shadow .18s;box-shadow:0 4px 24px rgba(193,98,43,.35)}
 .lp-btn-primary:hover{background:#A8501F;transform:translateY(-2px);box-shadow:0 8px 32px rgba(193,98,43,.45)}
-.lp-btn-ghost{padding:.9rem 2rem;background:rgba(255,255,255,.08);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;cursor:pointer;transition:background .18s,transform .15s;text-decoration:none}
+.lp-btn-ghost{padding:.9rem 2rem;background:rgba(255,255,255,.08);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;font-family:'Hanken Grotesk',sans-serif;font-size:1rem;font-weight:500;cursor:pointer;transition:background .18s,transform .15s;text-decoration:none}
 .lp-btn-ghost:hover{background:rgba(255,255,255,.14);transform:translateY(-2px)}
 .lp-hero-sub{font-size:.78rem;color:rgba(255,255,255,.28);margin-top:.4rem}
 .lp-stats{display:flex;align-items:center;justify-content:center;gap:3rem;flex-wrap:wrap;padding:2rem 2rem 4rem;position:relative;z-index:1}
@@ -923,7 +924,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lp-price-list li:last-child{border-bottom:none}
 .lp-price-check{color:var(--sage);flex-shrink:0}
 .lp-price-card.featured .lp-price-check{color:#7DCBA1}
-.lp-price-btn{display:block;width:100%;padding:.78rem;border-radius:9px;text-align:center;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;border:none}
+.lp-price-btn{display:block;width:100%;padding:.78rem;border-radius:9px;text-align:center;font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;border:none}
 .lp-price-btn-outline{background:transparent;border:1.5px solid var(--stone);color:var(--dark)}
 .lp-price-btn-outline:hover{border-color:var(--rust);color:var(--rust)}
 .lp-price-btn-solid{background:var(--rust);color:#fff;box-shadow:0 4px 14px rgba(193,98,43,.28)}
@@ -935,11 +936,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lp-cta-section p{font-size:.95rem;color:rgba(255,255,255,.48);max-width:420px;margin:0 auto 2.2rem;line-height:1.65;position:relative;z-index:1}
 .lp-footer{background:#1E1B18;padding:2rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;border-top:1px solid rgba(255,255,255,.06)}
 .lp-footer-logo{display:flex;align-items:center;gap:8px}
-.lp-footer-logo-icon{width:26px;height:26px;background:var(--rust);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.8rem}
+.lp-footer-logo-icon{width:26px;height:26px;background:var(--pine);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.8rem}
 .lp-footer-logo-text{font-family:'Fraunces',serif;font-size:.9rem;font-weight:500;color:rgba(255,255,255,.6)}
 .lp-footer-copy{font-size:.75rem;color:rgba(255,255,255,.22)}
 .lp-footer-links{display:flex;gap:1.4rem}
-.lp-footer-links button{font-size:.75rem;color:rgba(255,255,255,.28);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s}
+.lp-footer-links button{font-size:.75rem;color:rgba(255,255,255,.28);background:none;border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:color .15s}
 .lp-footer-links button:hover{color:rgba(255,255,255,.65)}
 @media(max-width:640px){
   .lp-nav{padding:.9rem 1.2rem}
@@ -969,18 +970,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .wizard-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;color:var(--dark);margin-bottom:.4rem;line-height:1.2}
 .wizard-sub{font-size:.88rem;color:#9E9690;line-height:1.6;margin-bottom:1.4rem}
 .wizard-footer{padding:.8rem 1.6rem 1.4rem;display:flex;gap:.6rem;justify-content:space-between;align-items:center;border-top:1px solid var(--stone)}
-.wizard-back{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.84rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
+.wizard-back{background:none;border:none;font-family:'Hanken Grotesk',sans-serif;font-size:.84rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
 .wizard-back:hover{color:var(--dark)}
-.wizard-next{padding:.75rem 1.6rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .18s;box-shadow:0 3px 12px rgba(192,90,40,.3)}
+.wizard-next{padding:.75rem 1.6rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .18s;box-shadow:0 3px 12px rgba(192,90,40,.3)}
 .wizard-next:hover{background:#A84820;transform:translateY(-1px)}
 .wizard-next:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.wizard-skip{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.82rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
+.wizard-skip{background:none;border:none;font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
 .wizard-skip:hover{color:var(--dark)}
 .wizard-field{display:flex;flex-direction:column;gap:5px;margin-bottom:.9rem}
 .wizard-field label{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
-.wizard-field input,.wizard-field select,.wizard-field textarea{width:100%;padding:.65rem .9rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s}
+.wizard-field input,.wizard-field select,.wizard-field textarea{width:100%;padding:.65rem .9rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s}
 .wizard-field input:focus,.wizard-field select:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(192,90,40,.1)}
-.wizard-lookup-btn{width:100%;padding:.72rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.5rem}
+.wizard-lookup-btn{width:100%;padding:.72rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.5rem}
 .wizard-lookup-btn:hover{background:#A84820}
 .wizard-lookup-btn:disabled{opacity:.6;cursor:not-allowed}
 .wizard-found{background:var(--sage-light);border:1px solid #B8D9CC;border-radius:var(--r-sm);padding:.75rem 1rem;margin-top:.7rem;font-size:.82rem;color:var(--sage);font-weight:500}
@@ -1004,25 +1005,25 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .auth-bg::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(58,122,175,.1) 0%,transparent 70%);bottom:-50px;left:-50px}
 .auth-card{background:var(--white);border-radius:22px;width:100%;max-width:420px;padding:2.5rem 2.5rem 2rem;box-shadow:0 32px 80px rgba(0,0,0,.4);position:relative;z-index:1}
 .auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:2rem}
-.auth-logo-icon{width:44px;height:44px;background:var(--rust);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+.auth-logo-icon{width:44px;height:44px;background:var(--pine);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
 .auth-logo-text{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:var(--dark)}
 .auth-logo-sub{font-size:.63rem;color:#9E9690;letter-spacing:1.5px;text-transform:uppercase}
 .auth-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;margin-bottom:.3rem;color:var(--dark)}
 .auth-sub{font-size:.84rem;color:#9E9690;margin-bottom:1.7rem}
 .auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:1rem}
 .auth-field label{font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
-.auth-field input{padding:.72rem 1rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s}
+.auth-field input{padding:.72rem 1rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s}
 .auth-field input:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(192,90,40,.1)}
-.auth-btn{width:100%;padding:.82rem;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;border:none;cursor:pointer;transition:all .18s;margin-top:.4rem}
+.auth-btn{width:100%;padding:.82rem;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;font-weight:600;border:none;cursor:pointer;transition:all .18s;margin-top:.4rem}
 .auth-btn-primary{background:var(--rust);color:#fff;box-shadow:0 3px 12px rgba(192,90,40,.3)}
 .auth-btn-primary:hover{background:#A84820}
 .auth-btn-primary:disabled{opacity:.6;cursor:not-allowed}
 .auth-switch{text-align:center;margin-top:1.3rem;font-size:.83rem;color:#9E9690}
-.auth-switch button{background:none;border:none;color:var(--rust);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.83rem}
+.auth-switch button{background:none;border:none;color:var(--rust);font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;font-size:.83rem}
 .auth-switch button:hover{text-decoration:underline}
 .auth-error{background:var(--red-light);border:1px solid #EFCFCC;color:#8B2020;padding:.62rem .9rem;border-radius:var(--r-sm);font-size:.81rem;margin-bottom:.9rem}
 .auth-success{background:var(--sage-light);border:1px solid #B8D9CC;color:#2A5E48;padding:.62rem .9rem;border-radius:var(--r-sm);font-size:.81rem;margin-bottom:.9rem}
-.auth-forgot{background:none;border:none;color:#9E9690;font-size:.77rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;margin-top:.2rem;text-align:right;display:block;width:100%}
+.auth-forgot{background:none;border:none;color:#9E9690;font-size:.77rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;padding:0;margin-top:.2rem;text-align:right;display:block;width:100%}
 .auth-forgot:hover{color:var(--rust)}
 `;
 
@@ -1111,8 +1112,8 @@ function LandingPage({ onSignIn, onSignUp }) {
       {/* NAV */}
       <nav className={`lp-nav ${scrolled ? "scrolled" : ""}`}>
         <div className="lp-logo">
-          <div className="lp-logo-icon">🏠</div>
-          <span className="lp-logo-text">HomeKeep</span>
+          <div className="lp-logo-icon"><svg viewBox="0 0 48 48" fill="none" width="60%" height="60%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg></div>
+          <span className="lp-logo-text">Steadwell</span>
         </div>
         <div className="lp-nav-links">
           <button className="lp-nav-link" onClick={() => scrollTo("features")}>Features</button>
@@ -1131,7 +1132,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             Now in beta — free to join
           </div>
           <h1 className="lp-h1">Your home deserves<br /><em>better management</em></h1>
-          <p className="lp-hero-p">HomeKeep pulls your home's real data — year built, tax history, schools, sale records — then helps you track maintenance, warranties, and expenses in one place.</p>
+          <p className="lp-hero-p">Steadwell pulls your home's real data — year built, tax history, schools, sale records — then helps you track maintenance, warranties, and expenses in one place.</p>
           <div className="lp-cta">
             <button className="lp-btn-primary" onClick={onSignUp}>Get started free →</button>
             <button className="lp-btn-ghost" onClick={() => scrollTo("how")}>See how it works</button>
@@ -1160,15 +1161,15 @@ function LandingPage({ onSignIn, onSignUp }) {
       <section className="lp-section" id="features">
         <div className="lp-label">Everything in one place</div>
         <h2 className="lp-h2">Built for homeowners,<br />not real estate agents</h2>
-        <p className="lp-sub">Most home apps are built for buying and selling. HomeKeep is built for the years in between.</p>
+        <p className="lp-sub">Most home apps are built for buying and selling. Steadwell is built for the years in between.</p>
         <div className="lp-features">
           {[
-            { icon: "🔍", bg: "#FDF0EB", title: "Instant property lookup", desc: "Type your address and HomeKeep auto-fills year built, sq footage, bed/bath count, tax history, price history, and nearby schools — in seconds.", tag: "Auto-fill", tagBg: "#FDF0EB", tagColor: "#C1622B" },
+            { icon: "🔍", bg: "#F6E9E1", title: "Instant property lookup", desc: "Type your address and Steadwell auto-fills year built, sq footage, bed/bath count, tax history, price history, and nearby schools — in seconds.", tag: "Auto-fill", tagBg: "#F6E9E1", tagColor: "#C16140" },
             { icon: "✓", bg: "#EBF5FF", title: "Maintenance task tracker", desc: "Schedule, prioritize, and track every home maintenance task. Overdue alerts, category filters, contractor logs, and recurring task support.", tag: "Tasks", tagBg: "#EBF5FF", tagColor: "#1A6FA0" },
             { icon: "📋", bg: "#E8F6EE", title: "Warranty vault", desc: "Never lose a warranty again. Store appliance warranties with expiry dates, model numbers, and document locations. 90-day expiry alerts.", tag: "Warranties", tagBg: "#E8F6EE", tagColor: "#1A7A44" },
             { icon: "💲", bg: "#FFF8E6", title: "Expense log", desc: "Track every dollar spent on your home. Visual spending breakdown by category. Know exactly what your home has cost you over time.", tag: "Expenses", tagBg: "#FFF8E6", tagColor: "#92610A" },
             { icon: "🏛️", bg: "#F3EFFC", title: "Tax & sale history", desc: "See your property's full tax record — yearly tax paid and assessed value — plus every sale and listing event going back decades.", tag: "Property data", tagBg: "#F3EFFC", tagColor: "#6D3FC4" },
-            { icon: "🔒", bg: "#FDF0EB", title: "Private and secure", desc: "Your data belongs to you. Each account is fully isolated. Row-level security enforced at the database level — no exceptions.", tag: "Secure", tagBg: "#FDF0EB", tagColor: "#C1622B" },
+            { icon: "🔒", bg: "#F6E9E1", title: "Private and secure", desc: "Your data belongs to you. Each account is fully isolated. Row-level security enforced at the database level — no exceptions.", tag: "Secure", tagBg: "#F6E9E1", tagColor: "#C16140" },
           ].map((f, i) => (
             <div key={i} className="lp-feat">
               <div className="lp-feat-icon" style={{background: f.bg}}>{f.icon}</div>
@@ -1205,12 +1206,12 @@ function LandingPage({ onSignIn, onSignUp }) {
       <section className="lp-section" style={{background: "var(--cream)"}}>
         <div className="lp-label">Early users</div>
         <h2 className="lp-h2">Homeowners love it</h2>
-        <p className="lp-sub">We're in beta and already hearing from real homeowners about what HomeKeep means to them.</p>
+        <p className="lp-sub">We're in beta and already hearing from real homeowners about what Steadwell means to them.</p>
         <div className="lp-proof">
           {[
             { text: "I typed my address and it instantly knew my home was built in 1987, showed me the last three sales, and pulled 5 years of property tax records. That alone is worth it.", name: "Mike R.", role: "Homeowner, Tampa FL", initials: "MR", color: "#4A89B8" },
             { text: "Finally I have somewhere to track all our warranties. We had a dishwasher break and I actually knew exactly where the warranty was. First time ever.", name: "Sarah L.", role: "First-time homeowner, Austin TX", initials: "SL", color: "#5E8065" },
-            { text: "The expense tracker showed me I've spent $14,000 on my home in 2 years. I had no idea. Now I actually have data to plan with.", name: "James T.", role: "Homeowner, Denver CO", initials: "JT", color: "#C1622B" },
+            { text: "The expense tracker showed me I've spent $14,000 on my home in 2 years. I had no idea. Now I actually have data to plan with.", name: "James T.", role: "Homeowner, Denver CO", initials: "JT", color: "#C16140" },
           ].map((p, i) => (
             <div key={i} className="lp-proof-card">
               <div className="lp-proof-stars">★★★★★</div>
@@ -1231,7 +1232,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       <section className="lp-section-white" id="pricing">
         <div className="lp-label">Simple pricing</div>
         <h2 className="lp-h2">Start free, upgrade when ready</h2>
-        <p className="lp-sub">No hidden fees. Use HomeKeep free forever or unlock premium features when your home needs more.</p>
+        <p className="lp-sub">No hidden fees. Use Steadwell free forever or unlock premium features when your home needs more.</p>
         <div className="lp-pricing">
           <div className="lp-price-card">
             <div className="lp-plan">Free</div>
@@ -1271,15 +1272,15 @@ function LandingPage({ onSignIn, onSignUp }) {
       {/* FOOTER */}
       <footer className="lp-footer">
         <div className="lp-footer-logo">
-          <div className="lp-footer-logo-icon">🏠</div>
-          <span className="lp-footer-logo-text">HomeKeep</span>
+          <div className="lp-footer-logo-icon"><svg viewBox="0 0 48 48" fill="none" width="60%" height="60%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3.1" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.6" fill="#D2876A"/></svg></div>
+          <span className="lp-footer-logo-text">Steadwell</span>
         </div>
         <div className="lp-footer-links">
           <button onClick={() => scrollTo("features")}>Features</button>
           <button onClick={() => scrollTo("pricing")}>Pricing</button>
           <button onClick={onSignIn}>Sign in</button>
         </div>
-        <p className="lp-footer-copy">© 2026 HomeKeep. Built for homeowners.</p>
+        <p className="lp-footer-copy">© 2026 Steadwell. Built for homeowners.</p>
       </footer>
     </div>
   );
@@ -1378,7 +1379,7 @@ function OnboardingWizard({ session, onComplete }) {
         <ProgressDots />
         <div className="wizard-body">
           <span className="wizard-icon">🏠</span>
-          <div className="wizard-title">Welcome to HomeKeep</div>
+          <div className="wizard-title">Welcome to Steadwell</div>
           <div className="wizard-sub">Your home's command center. We'll get you set up in about 2 minutes — starting with your home address.</div>
           <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginTop:".5rem"}}>
             {[
@@ -1677,10 +1678,10 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
       <div className="auth-bg" />
       <div className="auth-card">
         <div className="auth-logo">
-          <div className="auth-logo-icon">🏠</div>
+          <div className="auth-logo-icon"><svg viewBox="0 0 48 48" fill="none" width="60%" height="60%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg></div>
           <div>
-            <div className="auth-logo-text">HomeKeep</div>
-            <div className="auth-logo-sub">Maintenance Manager</div>
+            <div className="auth-logo-text">Steadwell</div>
+            <div className="auth-logo-sub">Your home, kept well</div>
           </div>
         </div>
 
@@ -1900,7 +1901,7 @@ function ProUpgradeModal({ onClose }) {
       <div className="pro-modal">
         <div className="pro-modal-handle"/>
         <div className="pro-modal-icon">✨</div>
-        <div className="pro-modal-title">HomeKeep Pro</div>
+        <div className="pro-modal-title">Steadwell Pro</div>
         <div className="pro-modal-sub">
           Unlock AI-powered features that automate your home management — so you spend less time logging and more time living.
         </div>
@@ -1908,7 +1909,7 @@ function ProUpgradeModal({ onClose }) {
           {[
             {icon:"📷", title:"AI Receipt Scanning", desc:"Photograph any receipt — amount, vendor, and category fill in automatically"},
             {icon:"⚡", title:"AI Utility Bill Scanning", desc:"Snap your electric or gas bill — usage and cost extracted instantly"},
-            {icon:"📧", title:"Email Import (coming soon)", desc:"Forward any home-related email to your personal HomeKeep address"},
+            {icon:"📧", title:"Email Import (coming soon)", desc:"Forward any home-related email to your personal Steadwell address"},
             {icon:"🔔", title:"Smart Reminders", desc:"Weekly digest emails and alerts for overdue tasks and renewals"},
           ].map((f,i) => (
             <div key={i} className="pro-modal-feature">
@@ -2537,8 +2538,8 @@ function Calendar({ tasks, mini = false, onDayClick }) {
   const STATUS_COLOR = {
     "Scheduled": "#4A89B8",
     "In Progress": "#B8861E",
-    "Completed": "#4E7260",
-    "Overdue": "#C05A28",
+    "Completed": "#234A3D",
+    "Overdue": "#C16140",
   };
 
   return (
@@ -2664,7 +2665,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     score = Math.round(score * (.6 + completionRate * .4));
     return Math.max(10, Math.min(100, score));
   })();
-  const healthColor = healthScore >= 80 ? "#4E7260" : healthScore >= 55 ? "#B8861E" : "#C05A28";
+  const healthColor = healthScore >= 80 ? "#234A3D" : healthScore >= 55 ? "#B8861E" : "#C16140";
   const healthLabel = healthScore >= 80 ? "Great shape" : healthScore >= 55 ? "Needs attention" : "Action required";
   const circumference = 2 * Math.PI * 30;
   const dashOffset = circumference - (healthScore / 100) * circumference;
@@ -2775,7 +2776,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           </div>
           <Calendar tasks={tasks} mini={true} onDayClick={handleDayClick} />
           <div style={{display:"flex",gap:"1rem",marginTop:".5rem",flexWrap:"wrap"}}>
-            {[["#4A89B8","Scheduled"],["#B8861E","In Progress"],["#4E7260","Completed"],["#C05A28","Overdue"]].map(([c,l])=>(
+            {[["#4A89B8","Scheduled"],["#B8861E","In Progress"],["#234A3D","Completed"],["#C16140","Overdue"]].map(([c,l])=>(
               <div key={l} style={{display:"flex",alignItems:"center",gap:"4px",fontSize:".65rem",color:"#A8A09A"}}>
                 <div style={{width:7,height:7,borderRadius:"50%",background:c,flexShrink:0}}/>
                 {l}
@@ -2788,7 +2789,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       {/* Panels */}
       <div className="dash-grid">
         <div className="panel">
-          <div className="panel-title" style={{cursor:"pointer"}} onClick={() => onNavigate("tasks")}>📋 Coming up <span style={{fontSize:".7rem",color:"#A8A09A",fontWeight:400,fontFamily:"'DM Sans',sans-serif"}}>· tap to view all →</span></div>
+          <div className="panel-title" style={{cursor:"pointer"}} onClick={() => onNavigate("tasks")}>📋 Coming up <span style={{fontSize:".7rem",color:"#A8A09A",fontWeight:400,fontFamily:"'Hanken Grotesk',sans-serif"}}>· tap to view all →</span></div>
           {upcoming.length===0 ? (
             <div className="empty" style={{padding:"1.5rem .5rem"}}>
               <span className="ei">✅</span>
@@ -3087,7 +3088,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         <div className="seasonal-section" style={{background:climate.color, borderColor:climate.border}}>
           <div className="seasonal-section-title">
             {seasonIcon} {seasonLabel} checklist — {climate.label}
-            <button onClick={()=>setShowSeasonal(false)} style={{marginLeft:"auto",background:"none",border:"none",color:"#A8A09A",cursor:"pointer",fontSize:".8rem",fontFamily:"'DM Sans',sans-serif"}}>Dismiss</button>
+            <button onClick={()=>setShowSeasonal(false)} style={{marginLeft:"auto",background:"none",border:"none",color:"#A8A09A",cursor:"pointer",fontSize:".8rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Dismiss</button>
           </div>
           {seasonalSuggestions.slice(0,4).map((title,i) => (
             <div key={i} className="seasonal-task-row" onClick={()=>addSeasonalTask(title)}>
@@ -3130,7 +3131,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         <div>
           <Calendar tasks={tasks} mini={false} onDayClick={handleDayClick} />
           <div style={{display:"flex",gap:"1rem",marginTop:".65rem",flexWrap:"wrap"}}>
-            {[["#4A89B8","Scheduled"],["#B8861E","In Progress"],["#4E7260","Completed"],["#C05A28","Overdue"]].map(([c,l])=>(
+            {[["#4A89B8","Scheduled"],["#B8861E","In Progress"],["#234A3D","Completed"],["#C16140","Overdue"]].map(([c,l])=>(
               <div key={l} style={{display:"flex",alignItems:"center",gap:"5px",fontSize:".72rem",color:"#A8A09A"}}>
                 <div style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
                 {l}
@@ -4425,7 +4426,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox })
             value={search}
             onChange={e=>setSearch(e.target.value)}
             placeholder="🔍 Search documents…"
-            style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'DM Sans',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"var(--cream)",outline:"none",marginBottom:".75rem"}}
+            style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"var(--cream)",outline:"none",marginBottom:".75rem"}}
             onFocus={e=>e.target.style.borderColor="var(--rust)"}
             onBlur={e=>e.target.style.borderColor="var(--stone)"}
           />
@@ -5143,8 +5144,8 @@ export default function App() {
         {/* ── Header ── */}
         <header className="hdr">
           <div className="hdr-logo">
-            <div className="ico">🏠</div>
-            <span className="name">HomeKeep</span>
+            <div className="ico"><svg viewBox="0 0 48 48" fill="none" width="58%" height="58%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg></div>
+            <span className="name">Steadwell</span>
           </div>
           <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
           <UserMenu user={session.user} onSignOut={handleSignOut} />
