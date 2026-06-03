@@ -195,7 +195,7 @@ const CSS = `
 html{scroll-behavior:smooth}
 body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 .app{min-height:100vh;display:flex;flex-direction:column;padding-bottom:var(--bottom-nav)}
-@media(min-width:769px){.app{padding-bottom:0}}
+/* app always pads for bottom-nav */
 
 /* ══ HEADER ══ */
 .hdr{height:var(--hdr);background:var(--pine);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:sticky;top:0;z-index:200;gap:.75rem}
@@ -227,7 +227,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 
 /* ══ DESKTOP NAV ══ */
 .nav{height:52px;background:var(--white);border-bottom:1px solid var(--stone);display:flex;padding:0 1rem;position:sticky;top:var(--hdr);z-index:190;overflow-x:auto;scrollbar-width:none;display:none}
-@media(min-width:769px){.nav{display:flex}}
+/* top nav hidden — bottom nav is used on all sizes */
 .nav::-webkit-scrollbar{display:none}
 .nav-btn{padding:0 1.1rem;height:100%;font-size:.82rem;font-weight:500;color:#9E9690;background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap;transition:all .18s;display:flex;align-items:center;gap:6px;flex-shrink:0}
 .nav-btn:hover{color:var(--dark)}
@@ -236,7 +236,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 
 /* ══ BOTTOM NAV (mobile) ══ */
 .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--stone);z-index:200;height:var(--bottom-nav);padding:0 .5rem;padding-bottom:env(safe-area-inset-bottom)}
-@media(min-width:769px){.bottom-nav{display:none}}
+/* bottom-nav always visible on all screen sizes */
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding:.5rem .25rem;min-width:0;position:relative;transition:transform .15s}
 .bnav-btn:active{transform:scale(.92)}
 .bnav-icon{font-size:1.35rem;line-height:1;transition:transform .18s}
@@ -244,6 +244,10 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .bnav-btn.active .bnav-icon{transform:scale(1.1)}
 .bnav-btn.active .bnav-label{color:var(--rust)}
 .bnav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:var(--red);color:#fff;border-radius:10px;font-size:.55rem;padding:1px 5px;font-weight:700;line-height:1.4;min-width:14px;text-align:center}
+@media(min-width:769px){.bottom-nav{justify-content:center;gap:.25rem;padding:0 2rem;border-top:1.5px solid var(--stone)}}
+@media(min-width:769px){.bnav-btn{max-width:140px;flex:0 1 140px;gap:5px}}
+@media(min-width:769px){.bnav-label{font-size:.68rem}}
+@media(min-width:769px){.bnav-icon{font-size:1.25rem}}
 
 /* ══ MAIN ══ */
 .main{flex:1;padding:1.25rem 1rem;max-width:var(--max);margin:0 auto;width:100%}
@@ -251,7 +255,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 
 /* ══ TOAST ══ */
 .toast-wrap{position:fixed;bottom:calc(var(--bottom-nav) + .75rem);right:.75rem;z-index:999;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
-@media(min-width:769px){.toast-wrap{bottom:1.25rem;right:1.25rem}}
+@media(min-width:769px){.toast-wrap{bottom:calc(var(--bottom-nav) + 1rem);right:1.25rem}}
 .toast{background:var(--dark);color:#fff;padding:.6rem 1rem;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:280px}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{border-left:3px solid var(--sage)}
@@ -1176,129 +1180,52 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .auth-forgot:hover{color:var(--rust)}
 
 
-/* ══ RESPONSIVE OPTIMIZATION ══ */
+/* ══ SAFE RESPONSIVE FIXES ══ */
 
-/* iOS zoom prevention — inputs must be ≥16px or Safari zooms the whole viewport */
+/* iOS Safari: inputs <16px font-size cause the viewport to zoom on focus */
 @media(max-width:768px){
   input,select,textarea{font-size:1rem}
   .search-wrap input{font-size:1rem}
   .wizard-field input,.wizard-field select,.wizard-field textarea{font-size:1rem}
 }
 
-/* Touch screens: card action buttons always visible (hover doesn't work on touch) */
-@media(hover:none),(max-width:768px){
+/* Touch devices: card action buttons are hover-only by default — always show on touch */
+@media(hover:none){
   .task-card-actions{opacity:1}
   .exp-card-actions{opacity:1}
   .asset-card-actions{opacity:1}
-  .doc-card-actions{opacity:1}
 }
 
-/* Touch targets — WCAG 2.5.5 minimum 44x44px */
-@media(max-width:768px){
-  .btn{min-height:44px}
-  .task-status-btn{min-height:36px;padding:.38rem .85rem}
-  .bnav-btn{min-height:60px}
-}
+/* Calendar: allow horizontal scroll on narrow screens */
+.cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
-/* Modal — full-width stacked buttons on mobile */
-@media(max-width:640px){
-  .modal-footer{flex-direction:column-reverse;padding:.75rem 1.1rem}
-  .modal-footer .btn{flex:none;min-height:48px;width:100%;justify-content:center}
-  .modal{padding-bottom:env(safe-area-inset-bottom)}
-}
-
-/* Search bar — shrink then hide on very narrow screens */
-@media(max-width:480px){.search-wrap{max-width:160px}}
-@media(max-width:380px){
-  .search-wrap{max-width:42px;overflow:hidden}
-  .search-wrap input{opacity:0;pointer-events:none;padding:0}
-  .search-wrap:focus-within{max-width:200px}
-  .search-wrap:focus-within input{opacity:1;pointer-events:all;padding:.42rem .85rem .42rem 2.1rem}
-}
-
-/* Asset stats row — 3col → 2col on tiny phones */
+/* Asset stats: wrap to 2-col on very narrow phones */
 @media(max-width:380px){
   .asset-stats-row{grid-template-columns:1fr 1fr}
   .asset-stat:nth-child(2){border-right:none}
   .asset-stat:nth-child(3){grid-column:span 2;border-top:1px solid var(--stone);border-right:none}
 }
 
-/* Calendar — horizontal scroll on mobile */
-.cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-@media(max-width:400px){.cal-grid{min-width:300px}}
+/* Search bar: shrink on narrow screens */
+@media(max-width:480px){.search-wrap{max-width:180px}}
+@media(max-width:360px){.search-wrap{max-width:120px}}
 
-/* Main content — correct padding for mobile bottom nav */
-@media(max-width:768px){.main{padding-bottom:calc(var(--bottom-nav) + 1.25rem)}}
-@media(min-width:769px){.main{padding-bottom:2.5rem}}
-
-/* Section headers — stack vertically on small phones */
-@media(max-width:480px){
-  .sh{flex-direction:column;align-items:stretch;gap:.55rem}
-  .sh-right{display:flex;justify-content:flex-end}
-}
-
-/* Toolbar — compact pills on mobile */
-@media(max-width:480px){
-  .toolbar{gap:.3rem}
-  .toolbar .btn,.toolbar button{font-size:.73rem;padding:.35rem .6rem;min-height:34px}
-}
-
-/* Form grid — force single column on very small phones */
-@media(max-width:420px){
-  .fg{grid-template-columns:1fr}
-  .field.s2{grid-column:span 1}
-}
-
-/* Stats — single col only on extremely narrow */
-@media(max-width:320px){.stats{grid-template-columns:1fr}}
-
-/* Task cards — comfortably tappable on mobile */
-@media(max-width:768px){
-  .task-card{padding:.9rem .95rem}
-  .task-card-check{width:24px;height:24px}
-}
-
-/* Desktop nav — improved active state and hover */
-@media(min-width:769px){
-  .nav{border-bottom:2px solid var(--stone)}
-  .nav-btn{font-size:.86rem;padding:0 1.2rem;gap:6px;letter-spacing:.01em;border-radius:0}
-  .nav-btn:hover{background:rgba(0,0,0,.03);color:var(--dark)}
-  .nav-btn.active{color:var(--rust);font-weight:600;border-bottom-width:2.5px;border-bottom-color:var(--rust)}
-}
-
-/* Desktop header — more breathing room */
-@media(min-width:769px){
-  .hdr{padding:0 2rem;gap:1.25rem}
-  .hdr-logo .name{font-size:1.15rem}
-  .search-wrap{max-width:440px}
-}
-
-/* Large desktop — wider, more spacious */
-@media(min-width:1200px){
-  .main{padding:2rem 3rem;padding-bottom:2.5rem}
+/* Desktop: wider padding and layout improvements */
+@media(min-width:1100px){
+  .main{padding:1.75rem 2.5rem}
   .hdr{padding:0 2.5rem}
-  .dash-grid{grid-template-columns:1.35fr 1fr}
 }
 
-/* Profile / home fact grids on tiny screens */
-@media(max-width:400px){
-  .profile-grid{grid-template-columns:1fr 1fr}
-  .home-facts{grid-template-columns:1fr 1fr}
+/* Desktop header: more breathing room */
+@media(min-width:769px){
+  .hdr{padding:0 2rem}
+  .search-wrap{max-width:420px}
 }
 
-/* Landing stats strip — 2x2 grid on very narrow */
-@media(max-width:600px){
-  .lp-stats{grid-template-columns:1fr 1fr;gap:10px}
-  .lp-stat-div{display:none}
-}
-
-/* Prevent text overflow everywhere */
+/* Prevent text overflow on narrow cards */
 .task-card-title,.exp-card-title{word-break:break-word;overflow-wrap:break-word}
 
-/* Smooth momentum scrolling on iOS */
-html,.toolbar,.cal-wrap,.search-results,.main{-webkit-overflow-scrolling:touch}
-
-/* ══ END RESPONSIVE OPTIMIZATION ══ */
+/* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
