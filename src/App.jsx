@@ -65,16 +65,16 @@ const ZIP_CLIMATE = (() => {
    840,841,842,843,844,845,846,847, // UT
    247,248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,265,266,267,268, // WV
    150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196, // PA
-   070,071,072,073,074,075,076,077,078,079,080,081,082,083,084,085,086,087,088,089, // NJ
+   70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89, // NJ
    100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119, // NY downstate/LI
    870,871,872,873,874,875,876,       // NM high
   ].forEach(p => { z[p]=5; });
   // Zone 6 — Cold (NY upstate, New England, MI, WI, MN south, ND south, SD, WY, MT south, ID)
   [120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149, // NY upstate
-   010,011,012,013,014,015,016,017,018,019,020,021,022,023,024,025,026,027, // MA/RI
-   030,031,032,033,034,035,036,037,038, // NH
-   039,040,041,042,043,044,045,046,047,048,049, // ME south
-   060,061,062,063,064,065,066,067,068,069, // CT
+   10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27, // MA/RI
+   30,31,32,33,34,35,36,37,38, // NH
+   39,40,41,42,43,44,45,46,47,48,49, // ME south
+   60,61,62,63,64,65,66,67,68,69, // CT
    480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495,496,497,498,499, // MI
    530,531,532,534,535,537,538,539,540,541,542,543,544,545,546,547,548,549, // WI
    550,551,553,554,555,556,557,558,559,560,561,562,563,564,565,566,567, // MN south
@@ -87,7 +87,7 @@ const ZIP_CLIMATE = (() => {
   // Zone 7 — Very Cold (MN north, ND, northern ME, northern MT, northern ID, AK south)
   [568,               // MN north
    580,581,582,583,584,585,586,587,588, // ND
-   047,048,049,       // ME north
+   47,48,49,       // ME north
    995,996,997,998,   // AK south
   ].forEach(p => { z[p]=7; });
   // Zone 8 — Subarctic (Interior/North AK)
@@ -169,14 +169,13 @@ function getClimateProfile(zone) {
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
-
 /* ── SKIP NAV & FOCUS ── */
 .skip-nav{position:absolute;top:-100%;left:8px;padding:8px 16px;background:var(--pine);color:var(--linen);border-radius:0 0 8px 8px;z-index:10000;font-weight:600;font-size:.85rem;text-decoration:none}
 .skip-nav:focus{top:0}
 :focus-visible{outline:2px solid var(--rust);outline-offset:2px;border-radius:3px}
 :focus:not(:focus-visible){outline:none}
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root {
@@ -189,14 +188,13 @@ const CSS = `
   --shadow-md:0 4px 20px rgba(38,33,28,.1);
   --shadow-lg:0 12px 40px rgba(38,33,28,.14);
   --r:18px; --r-sm:10px; --r-xs:6px;
-  --hdr:60px; --bottom-nav:68px; --bottom-safe:env(safe-area-inset-bottom, 0px);
+  --hdr:60px; --bottom-nav:68px;
   --max:1100px;
 }
 
 html{scroll-behavior:smooth}
-html,body,#root{min-height:100%}
-body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow-x:hidden}
-.app{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding-bottom:calc(var(--bottom-nav) + var(--bottom-safe))}
+body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+.app{min-height:100vh;display:flex;flex-direction:column;padding-bottom:var(--bottom-nav)}
 /* app always pads for bottom-nav */
 
 /* ══ HEADER ══ */
@@ -204,7 +202,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .hdr-logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .hdr-logo .ico{width:32px;height:32px;background:var(--rust);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .hdr-logo .name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#fff;letter-spacing:-.3px}
-.search-wrap{flex:1;max-width:380px;min-width:0;position:relative}
+.search-wrap{flex:1;max-width:380px;position:relative}
 .search-wrap input{width:100%;padding:.42rem .85rem .42rem 2.1rem;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;font-size:.82rem;color:#fff;outline:none;transition:all .2s;font-family:'Hanken Grotesk',sans-serif}
 .search-wrap input::placeholder{color:rgba(255,255,255,.35)}
 .search-wrap input:focus{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
@@ -227,17 +225,8 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .user-dd-item.danger{color:var(--red)}
 .user-dd-email{padding:.65rem 1rem;font-size:.72rem;color:#9E9690;border-bottom:1px solid var(--stone);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ══ DESKTOP NAV ══ */
-.nav{height:52px;background:var(--white);border-bottom:1px solid var(--stone);display:flex;padding:0 1rem;position:sticky;top:var(--hdr);z-index:190;overflow-x:auto;scrollbar-width:none;display:none}
-/* top nav hidden — bottom nav is used on all sizes */
-.nav::-webkit-scrollbar{display:none}
-.nav-btn{padding:0 1.1rem;height:100%;font-size:.82rem;font-weight:500;color:#9E9690;background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap;transition:all .18s;display:flex;align-items:center;gap:6px;flex-shrink:0}
-.nav-btn:hover{color:var(--dark)}
-.nav-btn.active{color:var(--rust);border-bottom-color:var(--rust)}
-.nav-badge{background:var(--red);color:#fff;border-radius:10px;font-size:.6rem;padding:1px 6px;font-weight:700;line-height:1.4;min-width:16px;text-align:center}
-
 /* ══ BOTTOM NAV (mobile) ══ */
-.bottom-nav{display:flex;position:fixed;top:auto;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--stone);border-bottom:0;z-index:900;height:calc(var(--bottom-nav) + var(--bottom-safe));padding:0 .5rem;padding-bottom:var(--bottom-safe);box-shadow:0 -8px 24px rgba(38,33,28,.08)}
+.bottom-nav{display:flex;position:fixed;bottom:0;top:auto;left:0;right:0;background:var(--white);border-top:1px solid var(--stone);z-index:200;height:var(--bottom-nav);padding:0 .5rem;padding-bottom:env(safe-area-inset-bottom)}
 /* bottom-nav always visible on all screen sizes */
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding:.5rem .25rem;min-width:0;position:relative;transition:transform .15s}
 .bnav-btn:active{transform:scale(.92)}
@@ -246,7 +235,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .bnav-btn.active .bnav-icon{transform:scale(1.1)}
 .bnav-btn.active .bnav-label{color:var(--rust)}
 .bnav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:var(--red);color:#fff;border-radius:10px;font-size:.55rem;padding:1px 5px;font-weight:700;line-height:1.4;min-width:14px;text-align:center}
-@media(min-width:769px){.bottom-nav{justify-content:center;gap:.25rem;padding:0 2rem var(--bottom-safe);border-top:1.5px solid var(--stone)}}
+@media(min-width:769px){.bottom-nav{justify-content:center;gap:.25rem;padding:0 2rem;border-top:1.5px solid var(--stone)}}
 @media(min-width:769px){.bnav-btn{max-width:140px;flex:0 1 140px;gap:5px}}
 @media(min-width:769px){.bnav-label{font-size:.68rem}}
 @media(min-width:769px){.bnav-icon{font-size:1.25rem}}
@@ -256,8 +245,8 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 @media(min-width:769px){.main{padding:1.75rem 1.5rem}}
 
 /* ══ TOAST ══ */
-.toast-wrap{position:fixed;bottom:calc(var(--bottom-nav) + var(--bottom-safe) + .75rem);right:.75rem;z-index:1100;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
-@media(min-width:769px){.toast-wrap{bottom:calc(var(--bottom-nav) + var(--bottom-safe) + 1rem);right:1.25rem}}
+.toast-wrap{position:fixed;bottom:calc(var(--bottom-nav) + .75rem);right:.75rem;z-index:999;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
+@media(min-width:769px){.toast-wrap{bottom:calc(var(--bottom-nav) + 1rem);right:1.25rem}}
 .toast{background:var(--dark);color:#fff;padding:.6rem 1rem;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:280px}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{border-left:3px solid var(--sage)}
@@ -856,7 +845,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* ── LANDING PAGE ── */
 .lp-root{min-height:100vh;overflow-x:hidden;position:relative}
 .lp-root::before{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.045;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-:root{
+.lp-root{
     --pine:#234A3D; --pine-deep:#173026; --pine-soft:#2C5A49;
     --terracotta:#C16140; --terracotta-soft:#D2876A;
     --sage:#A7BFA8; --sage-deep:#7FA088;
@@ -879,20 +868,19 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none}}
 
   /* ---------- NAV ---------- */
-  .lp-root{min-height:100vh;background:var(--linen);padding-bottom:calc(70px + var(--bottom-safe))}
-  .lp-nav{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:1000;transition:background .3s,box-shadow .3s,border-color .3s;border-top:1px solid rgba(255,255,255,.12);background:rgba(23,48,38,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding-bottom:var(--bottom-safe)}
-  .lp-nav.solid{background:rgba(244,237,223,.92);border-top-color:var(--line);box-shadow:0 -12px 30px -20px rgba(23,48,38,.45)}
-  .lp-root .nav-in{display:flex;align-items:center;justify-content:space-between;height:70px;max-width:1140px;margin:0 auto;padding:0 26px}
-  .lp-root .brand{display:flex;align-items:center;gap:11px;min-width:0}
-  .lp-root .brand .tile{width:38px;height:38px;border-radius:11px;background:radial-gradient(120% 120% at 30% 18%,var(--pine-soft),var(--pine) 55%,var(--pine-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 20px -12px rgba(23,48,38,.7);flex-shrink:0}
-  .lp-root .brand .tile svg{width:60%;height:60%;display:block}
-  .lp-root .brand .wm{font-family:var(--display);font-weight:600;font-size:1.4rem;letter-spacing:-.02em;color:var(--linen);transition:color .3s;white-space:nowrap}
-  .lp-nav.solid .brand .wm{color:var(--pine)}
-  .lp-root .nav-links{display:flex;align-items:center;gap:30px}
-  .lp-root .nav-links a{font-size:.92rem;font-weight:500;color:rgba(244,237,223,.75);opacity:1;transition:color .3s,opacity .15s}
-  .lp-nav.solid .nav-links a{color:var(--ink);opacity:.78}
-  .lp-root .nav-links a:hover{opacity:1}
-  .lp-root .nav-cta{display:flex;align-items:center;gap:14px;flex-shrink:0}
+  .lp-root nav{position:fixed;top:0;left:0;right:0;z-index:1000;transition:background .3s,box-shadow .3s,border-color .3s;border-bottom:1px solid transparent}
+  .lp-root nav.solid{background:rgba(244,237,223,.86);backdrop-filter:blur(14px);border-bottom-color:var(--line);box-shadow:0 6px 24px -18px rgba(23,48,38,.4)}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:70px;max-width:1140px;margin:0 auto;padding:0 26px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .tile{width:38px;height:38px;border-radius:11px;background:radial-gradient(120% 120% at 30% 18%,var(--pine-soft),var(--pine) 55%,var(--pine-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 20px -12px rgba(23,48,38,.7)}
+  .brand .tile svg{width:60%;height:60%;display:block}
+  .brand .wm{font-family:var(--display);font-weight:600;font-size:1.4rem;letter-spacing:-.02em;color:var(--linen);transition:color .3s}
+  .lp-root nav.solid .brand .wm{color:var(--pine)}
+  .nav-links{display:flex;align-items:center;gap:30px}
+  .nav-links a{font-size:.92rem;font-weight:500;color:rgba(244,237,223,.75);opacity:1;transition:color .3s,opacity .15s}
+  .lp-root nav.solid .nav-links a{color:var(--ink);opacity:.78}
+  .nav-links a:hover{opacity:1}
+  .nav-cta{display:flex;align-items:center;gap:14px}
   .lp-btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--body);font-weight:600;font-size:.94rem;border:none;border-radius:40px;cursor:pointer;transition:transform .15s,box-shadow .2s,background .2s;white-space:nowrap}
   .lp-btn-solid{background:var(--pine);color:var(--linen);padding:.72rem 1.4rem;box-shadow:0 12px 26px -12px rgba(23,48,38,.6)}
   .lp-btn-solid:hover{transform:translateY(-2px);box-shadow:0 18px 34px -12px rgba(23,48,38,.65);background:var(--pine-deep)}
@@ -900,26 +888,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .lp-btn-terra:hover{transform:translateY(-2px);background:#b0573a}
   .lp-btn-ghost{background:rgba(255,255,255,.07);color:rgba(244,237,223,.88);padding:.6rem 1.3rem;font-weight:600;border-radius:40px;border:1.5px solid rgba(255,255,255,.18);backdrop-filter:blur(6px)}
   .lp-btn-ghost:hover{background:rgba(255,255,255,.13);color:#fff;border-color:rgba(255,255,255,.32)}
-  .nav-signin{font-size:.92rem;font-weight:600;color:rgba(244,237,223,.82);cursor:pointer;transition:color .3s;white-space:nowrap}
-  .lp-nav.solid .nav-signin{color:var(--pine)}
+  .nav-signin{font-size:.92rem;font-weight:600;color:rgba(244,237,223,.82);cursor:pointer;transition:color .3s}
+  .lp-root nav.solid .nav-signin{color:var(--pine)}
   .nav-signin:hover{color:#fff}
-  .lp-nav.solid .nav-signin:hover{color:var(--terracotta)}
-  @media(max-width:820px){
-    .lp-root{padding-bottom:calc(64px + var(--bottom-safe))}
-    .lp-root .nav-in{height:64px;padding:0 14px}
-    .lp-root .nav-links{display:none}
-    .lp-root .brand .wm{font-size:1.12rem}
-    .lp-root .nav-cta{gap:9px}
-    .lp-root .nav-signin{font-size:.84rem}
-    .lp-root .nav-cta .lp-btn{padding:.62rem .95rem;font-size:.84rem}
-  }
-  @media(max-width:380px){
-    .lp-root .brand .wm{display:none}
-    .lp-root .nav-cta .lp-btn{padding:.58rem .72rem}
-  }
+  .lp-root nav.solid .nav-signin:hover{color:var(--terracotta)}
+  @media(max-width:820px){.nav-links{display:none}}
 
   /* ---------- HERO ---------- */
-  .hero{position:relative;padding:108px 0 92px;min-height:min(760px,calc(100svh - 70px - var(--bottom-safe)));display:flex;align-items:center;overflow:hidden;background:linear-gradient(155deg,var(--pine-deep) 0%,#1d3f33 40%,var(--pine) 100%)}
+  .hero{position:relative;padding:150px 0 80px;overflow:hidden;background:linear-gradient(155deg,var(--pine-deep) 0%,#1d3f33 40%,var(--pine) 100%)}
   .hero::before{content:"";position:absolute;top:-180px;right:-100px;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(193,97,64,.32),transparent 58%);pointer-events:none}
   .hero::after{content:"";position:absolute;bottom:-220px;left:-140px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(167,191,168,.18),transparent 62%);pointer-events:none}
   .hero-grid{position:relative;display:grid;grid-template-columns:1.04fr .96fr;gap:56px;align-items:center}
@@ -983,7 +959,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .lp-stat-div{width:1px;height:44px;background:rgba(255,255,255,.12);flex:none}
   @media(max-width:820px){
     .hero-grid{grid-template-columns:1fr;gap:30px}
-    .hero-right{order:-1;margin-top:8px}
+    .mock-stage{order:-1;min-height:380px;margin-top:8px}
     .hero-p{max-width:none}
     .lp-stats{flex-wrap:wrap;gap:18px 0;padding:22px}
     .lp-stat{flex:0 0 50%}
@@ -1000,7 +976,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .band h2 em{font-style:italic;color:var(--terracotta)}
 
   /* ---------- SECTION SHELL ---------- */
-  section.block{padding:96px 0}
+  .lp-root section.block{padding:96px 0}
   .eyebrow{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);font-weight:700;margin-bottom:16px}
   .h2{font-family:var(--display);font-weight:600;font-size:clamp(2.2rem,4.8vw,3.5rem);line-height:1.02;letter-spacing:-.025em;color:var(--pine)}
   .sub{font-size:1.12rem;color:#524b42;max-width:54ch;margin-top:16px}
@@ -1091,10 +1067,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .final h2 em{font-style:italic;color:var(--sage)}
   .final p{font-size:1.12rem;color:#cfdad0;max-width:46ch;margin:0 auto 34px}
   .lp-btn-xl{padding:1.05rem 2.6rem;font-size:1.05rem;background:var(--terracotta);color:#fff;box-shadow:0 18px 40px -16px rgba(193,97,64,.7)}
-  .lp-btn-xl:hover{transform:translateY(-2px);background:#b0573a}
+  .btn-xl:hover{transform:translateY(-2px);background:#b0573a}
 
   /* ---------- FOOTER ---------- */
-  footer{background:var(--pine-deep);color:rgba(244,237,223,.7);padding:50px 0 40px}
+  .lp-root footer{background:var(--pine-deep);color:rgba(244,237,223,.7);padding:50px 0 40px}
   .foot-in{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
   .foot-brand{display:flex;align-items:center;gap:10px}
   .foot-brand .tile{width:30px;height:30px;border-radius:8px;background:var(--terracotta);display:flex;align-items:center;justify-content:center}
@@ -1112,6 +1088,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   /* feature card glow on hover */
   .feat::after{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0;transition:opacity .35s;pointer-events:none;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(193,97,64,.1) 0%,transparent 62%)}
   .feat:hover::after{opacity:1}
+
+  /* stale mobile ref cleanup */
+  @media(max-width:820px){.hero-right{order:-1;margin-top:8px}}
 
   /* pricing card featured text */
   .pcard.feat-card .plan{color:rgba(244,237,223,.7)}
@@ -1222,19 +1201,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 @media(max-width:480px){.search-wrap{max-width:180px}}
 @media(max-width:360px){.search-wrap{max-width:120px}}
 
-/* Logged-in app: keep the header usable on phones */
-@media(max-width:640px){
-  .hdr{padding:0 .75rem;gap:.5rem}
-  .hdr-logo .name{display:none}
-  .search-wrap{max-width:none}
-  .search-results{left:-42px;right:-42px}
-  .user-btn{width:36px;height:36px;padding:.25rem;justify-content:center;border-radius:50%}
-  .user-btn span:not(.user-avatar){display:none}
-  .user-dropdown{right:-.25rem;max-width:calc(100vw - 1rem)}
-  .main{padding:.9rem .75rem}
-  .bottom-nav{padding-left:max(.35rem, env(safe-area-inset-left));padding-right:max(.35rem, env(safe-area-inset-right))}
-}
-
 /* Desktop: wider padding and layout improvements */
 @media(min-width:1100px){
   .main{padding:1.75rem 2.5rem}
@@ -1257,6 +1223,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 const fmt$ = v => "$" + Number(v||0).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtD = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); return dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:00")-new Date())/86400000); };
+// Local-timezone YYYY-MM-DD (avoids UTC off-by-one from toISOString in evening hours)
+const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const wPct = (p,e) => { const start=new Date(p+"T00:00:00"),end=new Date(e+"T00:00:00"),now=new Date(); return Math.min(100,Math.max(0,Math.round(((now-start)/(end-start))*100))); };
 const initials = email => email ? email.substring(0,2).toUpperCase() : "?";
 
@@ -1273,6 +1241,15 @@ function useToast() {
   return { toasts, show };
 }
 
+// Lock background scroll while an overlay/modal is mounted (mobile UX)
+function useBodyScrollLock() {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+}
+
 function Toasts({ toasts }) {
   return (
     <div className="toast-wrap" role="status" aria-live="polite" aria-atomic="false">
@@ -1282,6 +1259,7 @@ function Toasts({ toasts }) {
 }
 
 function Confirm({ message, onConfirm, onCancel }) {
+  useBodyScrollLock();
   return (
     <div className="overlay" role="dialog" aria-modal="true" onClick={e => e.target===e.currentTarget && onCancel()}>
       <div className="modal" style={{maxWidth:340}}>
@@ -1300,6 +1278,7 @@ function Confirm({ message, onConfirm, onCancel }) {
 }
 
 function Modal({ title, onClose, onSave, children }) {
+  useBodyScrollLock();
   return (
     <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
       <div className="modal">
@@ -1389,7 +1368,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       <a href="#lp-main" className="skip-nav">Skip to main content</a>
 
       {/* ── NAV ── */}
-      <nav className={`lp-nav${scrolled ? " solid" : ""}`} aria-label="Landing navigation">
+      <nav className={scrolled ? "solid" : ""}>
         <div className="nav-in">
           <div className="brand">
             <span className="tile" style={{width:38,height:38,borderRadius:11,background:"radial-gradient(120% 120% at 30% 18%,#2C5A49,#234A3D 55%,#173026)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 10px 20px -12px rgba(23,48,38,.7)"}}>
@@ -1674,7 +1653,7 @@ function OnboardingWizard({ session, onComplete }) {
   // Step 3 — First task
   const [taskTitle, setTaskTitle] = useState("");
   const [taskCategory, setTaskCategory] = useState("Other");
-  const [taskDate, setTaskDate] = useState(new Date(Date.now() + 7*86400000).toISOString().slice(0,10));
+  const [taskDate, setTaskDate] = useState(localISO(new Date(Date.now() + 7*86400000)));
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -2233,7 +2212,7 @@ function AssetForm({ data, onChange, userId }) {
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Coverage details, serial numbers, service contacts…" /></div>
       <ExpenseFileUpload
         userId={userId}
-        expenseId={`asset-${data.id||"new"}`}
+        expenseId={data.id ? `asset-${data.id}` : undefined}
         currentUrl={data.asset_photo_url||""}
         onUploaded={url=>f("asset_photo_url",url)}
         label="Asset Photo"
@@ -2331,6 +2310,7 @@ function AIScanButton({ onScanComplete, label="Scan Receipt with AI", descriptio
 
 // ─── LIGHTBOX ────────────────────────────────────────────────────────────────
 function Lightbox({ src, onClose }) {
+  useBodyScrollLock();
   useEffect(() => {
     const handler = e => { if(e.key==="Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -2464,7 +2444,7 @@ function ProjectForm({ data, onChange, userId }) {
       <div className="field s2"><label>Contractor / Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Contractors, permits, decisions…" /></div>
       <ExpenseFileUpload
         userId={userId}
-        expenseId={`project-${data.id||"new"}`}
+        expenseId={data.id ? `project-${data.id}` : undefined}
         currentUrl={data.photo_url||""}
         onUploaded={url=>f("photo_url", url)}
         label="Project Photo"
@@ -2903,7 +2883,7 @@ function Calendar({ tasks, mini = false, onDayClick }) {
     cells.push({ day: d, month: "next", date: null });
   }
 
-  const todayStr = today.toISOString().slice(0,10);
+  const todayStr = localISO(today);
   const STATUS_COLOR = {
     "Scheduled": "#4A89B8",
     "In Progress": "#B8861E",
@@ -3264,7 +3244,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
   };
 
   const openNew = (cat) => {
-    setEditData({status:"Scheduled",priority:"Medium",due_date:new Date().toISOString().slice(0,10),category:cat||""});
+    setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||""});
     setEditId(null);
     setModal(true);
   };
@@ -3307,13 +3287,13 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         await supabase.from("asset_service_log").insert([{
           user_id:      userId,
           asset_id:     t.asset_id,
-          service_date: new Date().toISOString().slice(0,10),
+          service_date: localISO(),
           description:  t.title,
           cost:         t.cost ? Number(t.cost) : null,
           notes:        `Auto-logged from task completion${t.vendor ? ` · ${t.vendor}` : ""}`,
         }]);
         // Update last_serviced on the asset
-        await supabase.from("warranties").update({last_serviced: new Date().toISOString().slice(0,10)}).eq("id",t.asset_id).eq("user_id",userId);
+        await supabase.from("warranties").update({last_serviced: localISO()}).eq("id",t.asset_id).eq("user_id",userId);
         // Reload shared service logs so Assets tab updates immediately
         const {data: sl} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false});
         if(sl) setServiceLogs(sl);
@@ -3323,7 +3303,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
   };
 
   const addSeasonalTask = (title) => {
-    setEditData({title, status:"Scheduled", priority:"Medium", category:"Other", due_date:new Date().toISOString().slice(0,10)});
+    setEditData({title, status:"Scheduled", priority:"Medium", category:"Other", due_date:localISO()});
     setEditId(null);
     setModal(true);
   };
@@ -3565,7 +3545,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
     };
     if(editId) {
       const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
-      if(!error) { setAssets(assets.map(a=>a.id===editId?{...editData,id:editId}:a)); toast("Asset updated ✓"); }
+      if(!error) { setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a)); toast("Asset updated ✓"); }
       else { console.error("Asset update error:", error); toast("Error saving: "+error.message,"error"); }
     } else {
       const {data,error} = await supabase.from("warranties").insert([{...payload,user_id:userId}]).select();
@@ -3583,7 +3563,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
 
   // Service log CRUD
   const openNewService = (assetId) => {
-    setServiceEditData({service_date:new Date().toISOString().slice(0,10), asset_id:assetId});
+    setServiceEditData({service_date:localISO(), asset_id:assetId});
     setServiceEditId(null);
     setServiceAssetId(assetId);
     setServiceModal(true);
@@ -3980,13 +3960,13 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
   }, [userId]);
 
   // ── Expense CRUD
-  const openNew = () => { setEditData({date:new Date().toISOString().slice(0,10)}); setEditId(null); setModal(true); };
+  const openNew = () => { setEditData({date:localISO()}); setEditId(null); setModal(true); };
   const openEdit = e => { setEditData({...e}); setEditId(e.id); setModal(true); };
 
   const save = async () => {
     if(!editData.description?.trim()) return;
     const payload = {...editData};
-    if(!payload.project_id) delete payload.project_id;
+    if(!payload.project_id) payload.project_id = null;
     if(editId) {
       const {error} = await supabase.from("expenses").update(payload).eq("id",editId).eq("user_id",userId);
       if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId}:e)); toast("Expense updated ✓"); }
@@ -4006,7 +3986,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
   };
 
   // ── Project CRUD
-  const openNewProject = () => { setProjectEditData({status:"Planning",start_date:new Date().toISOString().slice(0,10)}); setProjectEditId(null); setProjectModal(true); };
+  const openNewProject = () => { setProjectEditData({status:"Planning",start_date:localISO()}); setProjectEditId(null); setProjectModal(true); };
   const openEditProject = p => { setProjectEditData({...p}); setProjectEditId(p.id); setProjectModal(true); };
 
   const saveProject = async () => {
@@ -4059,7 +4039,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
 
   // ── Bill CRUD
   const openNewBill = (utilId) => {
-    setBillEditData({bill_date:new Date().toISOString().slice(0,7)+"-01", utility_id:utilId});
+    setBillEditData({bill_date:localISO().slice(0,7)+"-01", utility_id:utilId});
     setBillEditId(null);
     setBillModal(true);
     setActiveUtil(utilities.find(u=>u.id===utilId));
@@ -4419,7 +4399,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
                       </div>
                     )}
                   </>}
-                  <button className="btn btn-ghost btn-sm" style={{marginLeft:"auto"}} onClick={()=>{setEditData({date:new Date().toISOString().slice(0,10),project_id:p.id});setEditId(null);setModal(true);}}>
+                  <button className="btn btn-ghost btn-sm" style={{marginLeft:"auto"}} onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}}>
                     ＋ Add expense
                   </button>
                 </div>
@@ -5365,7 +5345,7 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [profile, setProfile] = useState(null);
   const [serviceLogs, setServiceLogs] = useState([]);
-  const [dataLoading, setDataLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const { toasts, show: toast } = useToast();
 
   // ── Listen for auth state changes
@@ -5384,6 +5364,7 @@ export default function App() {
   useEffect(() => {
     if (!session?.user) {
       setTasks([]); setWarranties([]); setExpenses([]); setProfile(null); setServiceLogs([]);
+      setDataLoading(true);
       return;
     }
     const uid = session.user.id;
@@ -5504,19 +5485,12 @@ export default function App() {
     {id:"expenses",  label:"Expenses",   icon:"💲"},
     {id:"profile",   label:"My Home",    icon:"🏡"},
   ];
-  const goToTab = (nextTab) => {
-    setTab(nextTab);
-    if (typeof window !== "undefined") {
-      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" }));
-    }
-  };
   const uid = session.user.id;
 
   // Time-based greeting
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const username = session.user.email.split("@")[0];
+  const username = (session.user.email || "there").split("@")[0];
 
   return (
     <>
@@ -5528,7 +5502,7 @@ export default function App() {
             <div className="ico"><svg viewBox="0 0 48 48" fill="none" width="58%" height="58%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg></div>
             <span className="name">Steadwell</span>
           </div>
-          <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={goToTab}/>
+          <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
           <UserMenu user={session.user} onSignOut={handleSignOut} />
         </header>
 
@@ -5541,19 +5515,19 @@ export default function App() {
             </div>
           ) : (
             <>
-              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={goToTab} greeting={greeting} username={username} serviceLogs={serviceLogs}/>}
+              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs}/>}
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid} onNavigate={goToTab}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid} onNavigate={setTab}/>}
             </>
           )}
         </main>
 
         {/* ── Navigation (all screen sizes) ── */}
-        <nav className="bottom-nav" aria-label="Primary navigation">
+        <nav className="bottom-nav">
           {TABS.map(t=>(
-            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>goToTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
+            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
               <span className="bnav-icon" aria-hidden="true">{t.icon}</span>
               <span className="bnav-label">{t.label}</span>
@@ -5647,3 +5621,5 @@ function PrivacyPage() {
     </div>
   );
 }
+
+
