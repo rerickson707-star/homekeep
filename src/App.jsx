@@ -169,11 +169,17 @@ function getClimateProfile(zone) {
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const CSS = `
+/* ── SKIP NAV & FOCUS ── */
+.skip-nav{position:absolute;top:-100%;left:8px;padding:8px 16px;background:var(--pine);color:var(--linen);border-radius:0 0 8px 8px;z-index:10000;font-weight:600;font-size:.85rem;text-decoration:none}
+.skip-nav:focus{top:0}
+:focus-visible{outline:2px solid var(--rust);outline-offset:2px;border-radius:3px}
+:focus:not(:focus-visible){outline:none}
+
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root {
-  --cream:#F4EDDF; --cream2:#ECE3D2; --white:#FBF7EE; --stone:#E0D8C9; --mid:#BFB5A8;
+  --cream:#F4EDDF; --cream2:#ECE3D2; --white:#FBF7EE; --stone:#E0D8C9; --stone-text:#5E574F; --mid:#BFB5A8;
   --dark:#2A2723; --brown:#7A5C3E; --rust:#C16140; --rust-light:#F6E9E1; --rust-mid:#D2876A;
   --pine:#234A3D; --pine-deep:#173026;
   --sage:#234A3D; --sage-light:#E7EDE7; --sage-soft:#A7BFA8; --gold:#B8861E; --sky:#3A7AAF; --sky-light:#EBF3FA;
@@ -1192,7 +1198,7 @@ function useToast() {
 
 function Toasts({ toasts }) {
   return (
-    <div className="toast-wrap">
+    <div className="toast-wrap" role="status" aria-live="polite" aria-atomic="false">
       {toasts.map(t => <div key={t.id} className={`toast ${t.type} ${t.visible?"show":""}`}>{t.msg}</div>)}
     </div>
   );
@@ -1200,7 +1206,7 @@ function Toasts({ toasts }) {
 
 function Confirm({ message, onConfirm, onCancel }) {
   return (
-    <div className="overlay" onClick={e => e.target===e.currentTarget && onCancel()}>
+    <div className="overlay" role="dialog" aria-modal="true" onClick={e => e.target===e.currentTarget && onCancel()}>
       <div className="modal" style={{maxWidth:340}}>
         <div className="confirm-body">
           <div className="ci">🗑️</div>
@@ -1303,6 +1309,7 @@ function LandingPage({ onSignIn, onSignUp }) {
 
   return (
     <div className="lp-root">
+      <a href="#lp-main" className="skip-nav">Skip to main content</a>
 
       {/* ── NAV ── */}
       <nav className={scrolled ? "solid" : ""}>
@@ -1326,7 +1333,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       </nav>
 
       {/* ── HERO ── */}
-      <header className="hero">
+      <header className="hero" id="lp-main" tabIndex={-1}>
         <div className="wrap hero-grid">
           <div className="rv">
             <span className="badge"><span className="pdot"></span> Now in beta &mdash; free to join</span>
@@ -1959,7 +1966,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
   const switchMode = (m) => { setMode(m); clear(); setPassword(""); setConfirm(""); };
 
   return (
-    <div className="auth-wrap">
+    <div className="auth-wrap" role="main">
       <div className="auth-bg" />
       <div className="auth-card">
         <div className="auth-logo">
@@ -2044,7 +2051,7 @@ function UserMenu({ user, onSignOut }) {
   }, []);
 
   return (
-    <div className="user-menu" ref={ref}>
+    <div className="user-menu" ref={ref} role="navigation" aria-label="User menu">
       <div className="user-btn" onClick={()=>setOpen(o=>!o)}>
         <span className="user-avatar">{initials(user.email)}</span>
         <span>{user.email.split("@")[0]}</span>
@@ -2729,7 +2736,7 @@ function InsuranceForm({ data, onChange }) {
 }
 
 // ─── SEARCH BAR ───────────────────────────────────────────────────────────────
-function SearchBar({ tasks, warranties, expenses, onNavigate }) {
+function SearchBar({ tasks, warranties, expenses, onNavigate }) { // role="search" added to container
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -5267,6 +5274,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
+  // URL-based routing for legal pages
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname;
+    if (path === "/terms" || path === "/terms.html") return <TermsPage />;
+    if (path === "/privacy" || path === "/privacy.html") return <PrivacyPage />;
+  }
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -5427,7 +5440,7 @@ export default function App() {
       <style>{CSS}</style>
       <div className="app">
         {/* ── Header ── */}
-        <header className="hdr">
+        <header className="hdr" role="banner">
           <div className="hdr-logo">
             <div className="ico"><svg viewBox="0 0 48 48" fill="none" width="58%" height="58%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg></div>
             <span className="name">Steadwell</span>
@@ -5467,9 +5480,9 @@ export default function App() {
         {/* ── Mobile Bottom Nav ── */}
         <nav className="bottom-nav">
           {TABS.map(t=>(
-            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>
+            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
-              <span className="bnav-icon">{t.icon}</span>
+              <span className="bnav-icon" aria-hidden="true">{t.icon}</span>
               <span className="bnav-label">{t.label}</span>
             </button>
           ))}
@@ -5480,3 +5493,86 @@ export default function App() {
     </>
   );
 }
+
+// ─── TERMS OF SERVICE PAGE ───────────────────────────────────────────────────
+function TermsPage() {
+  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:6,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
+  const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
+  const sections = [
+    {t:"1. Acceptance of Terms",b:"By creating an account or using the Steadwell platform (the \"Service\"), you agree to these Terms of Service. You must be at least 18 years old and a US resident. These Terms form a binding legal agreement between you and Steadwell."},
+    {t:"2. Description of Service",b:"Steadwell is a web-based home management platform for tracking maintenance tasks, warranties, service records, home expenses, utility bills, documents, and publicly available property data. It is not a licensed real estate, financial advisory, legal, or professional home inspection service."},
+    {t:"3. Account Registration",b:"You must register with a valid email address. You are responsible for your account credentials and all activity under your account. Contact hello@steadwell.app immediately if you suspect unauthorized access."},
+    {t:"4. Acceptable Use",b:"You agree not to use the Service for unlawful purposes, upload content you don\'t have the right to share, attempt unauthorized access, reverse-engineer the Service, use automated scraping tools, or misrepresent your identity or property ownership. Violations may result in immediate account termination."},
+    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost. Pro Plan: $4.99/month, billed monthly, auto-renews until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if Pro features were not materially used. Payments processed by Stripe — we do not store card information."},
+    {t:"6. Your Content and Data",b:"You retain full ownership of all content you create or upload. We store it solely to provide the Service. We do not sell your content. You may export or delete your data at any time from Settings."},
+    {t:"7. Property Data Disclaimer",b:"Property value estimates come from third-party sources including Zillow (via APIllow) and are informational only. THEY ARE NOT APPRAISALS, BROKER PRICE OPINIONS, OR PROFESSIONAL VALUATIONS. Do not rely on Steadwell\'s data as the sole basis for any real estate, financial, insurance, or legal decision."},
+    {t:"8. Third-Party Services",b:"The Service integrates with Supabase (database & auth), APIllow/Zillow (property data), Geoapify (address lookup), and Stripe (payments). Your use is also subject to their respective terms."},
+    {t:"9. Disclaimers",b:"THE SERVICE IS PROVIDED \"AS IS\" WITHOUT WARRANTY OF ANY KIND. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED OR ERROR-FREE. Steadwell is not a licensed contractor, inspector, insurance agent, real estate broker, financial advisor, or attorney."},
+    {t:"10. Limitation of Liability",b:"TO THE FULLEST EXTENT PERMITTED BY LAW, STEADWELL SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES. OUR TOTAL LIABILITY SHALL NOT EXCEED THE GREATER OF FEES PAID IN THE PRIOR 12 MONTHS OR $50 USD."},
+    {t:"11. Governing Law",b:"These Terms are governed by the laws of the State of Florida. Disputes shall be resolved by binding arbitration (AAA Consumer Rules) except that either party may seek injunctive relief in Pinellas County, Florida courts. YOU WAIVE CLASS-ACTION RIGHTS."},
+    {t:"12. Changes to These Terms",b:"We will notify you of material changes via email or in-app notice at least 30 days before they take effect. Continued use constitutes acceptance."},
+  ];
+  return (
+    <div style={S.page}>
+      <a href="#terms-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <header style={S.hdr} role="banner">
+        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
+        <a href="/privacy" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Privacy Policy</a>
+      </header>
+      <main id="terms-main" tabIndex={-1} style={S.main}>
+        <div style={S.eyebrow}>Legal</div>
+        <h1 style={S.title}>Terms of Service</h1>
+        <p style={S.meta}>Effective date: June 1, 2026 &nbsp;&middot;&nbsp; Last updated: June 1, 2026</p>
+        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell is a home management tool for US homeowners 18+. You own your data. Property values are estimates, not appraisals. Pro plan is $4.99/month. Florida law governs these terms.</div>
+        {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
+        <div style={S.cta}>
+          <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Questions About These Terms?</h2>
+          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact us at <a href="mailto:hello@steadwell.app" style={{color:"#F4EDDF"}}>hello@steadwell.app</a></p>
+          <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell &middot; St. Petersburg, Florida</p>
+        </div>
+      </main>
+      <footer role="contentinfo" style={S.ft}><span>&copy; 2026 Steadwell.</span><a href="/privacy" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Privacy Policy</a></footer>
+    </div>
+  );
+}
+
+// ─── PRIVACY POLICY PAGE ─────────────────────────────────────────────────────
+function PrivacyPage() {
+  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
+  const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
+  const sections = [
+    {t:"1. Who We Are",b:"Steadwell operates the home management platform at steadwell.app. Questions? Email privacy@steadwell.app."},
+    {t:"2. Information We Collect",b:"Account info (email, hashed password); home address and property details you enter or confirm; maintenance records, expenses, utility bills, and insurance details; uploaded documents and photos; property data retrieved from Zillow (via APIllow) and address suggestions from Geoapify on your behalf; log and device data for security."},
+    {t:"3. How We Use Your Information",b:"To provide and improve the Service; to retrieve property data on your behalf; to send maintenance reminders (Pro); to process payments; to respond to support requests; to detect and prevent security incidents; and to comply with legal obligations. We do NOT use your data to serve advertisements."},
+    {t:"4. How We Share Your Information",b:"Supabase (database, auth, and storage — SOC 2 Type II certified, row-level security enforced); APIllow/Zillow (property lookups, your address only); Geoapify (address autocomplete); Stripe (payment processing — we never store card numbers). We do not sell, rent, or share your data with any other third parties."},
+    {t:"5. Data Retention",b:"Active accounts: data retained while your account is active. Deleted accounts: deletion begins within 30 days of account closure; permanent purge after the 30-day grace period. Encrypted backups: up to 90 days. Legal holds: as required by law."},
+    {t:"6. Security",b:"Row-level security ensures users cannot access each other\'s data. All data is encrypted in transit (TLS 1.2+) and at rest. Passwords are hashed and never stored in plain text."},
+    {t:"7. Your Rights",b:"You may access, correct, export, or delete your data at any time from your account Settings. To submit a data request, email privacy@steadwell.app. We respond within 45 days."},
+    {t:"8. California Privacy Rights (CCPA/CPRA)",b:"California residents have the right to know, delete, correct, and opt out of sale (we don\'t sell data). Submit a CCPA request to privacy@steadwell.app with subject line \"California Privacy Request.\" We do not discriminate against users who exercise their privacy rights."},
+    {t:"9. Children\'s Privacy",b:"Steadwell is for users 18 and older. We do not knowingly collect data from children under 13. If you believe we have, contact privacy@steadwell.app immediately."},
+    {t:"10. Changes to This Policy",b:"We will notify you of material changes via email or in-app notice at least 30 days before they take effect."},
+  ];
+  return (
+    <div style={S.page}>
+      <a href="#privacy-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <header style={S.hdr} role="banner">
+        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
+        <a href="/terms" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Terms of Service</a>
+      </header>
+      <main id="privacy-main" tabIndex={-1} style={S.main}>
+        <div style={S.eyebrow}>Legal</div>
+        <h1 style={S.title}>Privacy Policy</h1>
+        <p style={S.meta}>Effective date: June 1, 2026 &nbsp;&middot;&nbsp; Last updated: June 1, 2026</p>
+        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> We store your home data to provide the service. We never sell it. Your documents are yours. California residents have CCPA rights. Delete your account and all data anytime from Settings.</div>
+        {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
+        <div style={S.cta}>
+          <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Privacy Questions?</h2>
+          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact <a href="mailto:privacy@steadwell.app" style={{color:"#F4EDDF"}}>privacy@steadwell.app</a> &mdash; we respond within 45 days.</p>
+        </div>
+      </main>
+      <footer role="contentinfo" style={S.ft}><span>&copy; 2026 Steadwell.</span><a href="/terms" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Terms of Service</a></footer>
+    </div>
+  );
+}
+
+

@@ -25,4 +25,10 @@
     "globals": "^17.6.0",
     "vite": "^8.0.12"
   }
+  {
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/((?!terms|privacy).*)", "destination": "/index.html" }
+  ]
+}
 }
