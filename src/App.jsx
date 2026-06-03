@@ -1174,6 +1174,131 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .auth-success{background:var(--sage-light);border:1px solid #B8D9CC;color:#2A5E48;padding:.62rem .9rem;border-radius:var(--r-sm);font-size:.81rem;margin-bottom:.9rem}
 .auth-forgot{background:none;border:none;color:#9E9690;font-size:.77rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;padding:0;margin-top:.2rem;text-align:right;display:block;width:100%}
 .auth-forgot:hover{color:var(--rust)}
+
+
+/* ══ RESPONSIVE OPTIMIZATION ══ */
+
+/* iOS zoom prevention — inputs must be ≥16px or Safari zooms the whole viewport */
+@media(max-width:768px){
+  input,select,textarea{font-size:1rem}
+  .search-wrap input{font-size:1rem}
+  .wizard-field input,.wizard-field select,.wizard-field textarea{font-size:1rem}
+}
+
+/* Touch screens: card action buttons always visible (hover doesn't work on touch) */
+@media(hover:none),(max-width:768px){
+  .task-card-actions{opacity:1}
+  .exp-card-actions{opacity:1}
+  .asset-card-actions{opacity:1}
+  .doc-card-actions{opacity:1}
+}
+
+/* Touch targets — WCAG 2.5.5 minimum 44x44px */
+@media(max-width:768px){
+  .btn{min-height:44px}
+  .task-status-btn{min-height:36px;padding:.38rem .85rem}
+  .bnav-btn{min-height:60px}
+}
+
+/* Modal — full-width stacked buttons on mobile */
+@media(max-width:640px){
+  .modal-footer{flex-direction:column-reverse;padding:.75rem 1.1rem}
+  .modal-footer .btn{flex:none;min-height:48px;width:100%;justify-content:center}
+  .modal{padding-bottom:env(safe-area-inset-bottom)}
+}
+
+/* Search bar — shrink then hide on very narrow screens */
+@media(max-width:480px){.search-wrap{max-width:160px}}
+@media(max-width:380px){
+  .search-wrap{max-width:42px;overflow:hidden}
+  .search-wrap input{opacity:0;pointer-events:none;padding:0}
+  .search-wrap:focus-within{max-width:200px}
+  .search-wrap:focus-within input{opacity:1;pointer-events:all;padding:.42rem .85rem .42rem 2.1rem}
+}
+
+/* Asset stats row — 3col → 2col on tiny phones */
+@media(max-width:380px){
+  .asset-stats-row{grid-template-columns:1fr 1fr}
+  .asset-stat:nth-child(2){border-right:none}
+  .asset-stat:nth-child(3){grid-column:span 2;border-top:1px solid var(--stone);border-right:none}
+}
+
+/* Calendar — horizontal scroll on mobile */
+.cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:400px){.cal-grid{min-width:300px}}
+
+/* Main content — correct padding for mobile bottom nav */
+@media(max-width:768px){.main{padding-bottom:calc(var(--bottom-nav) + 1.25rem)}}
+@media(min-width:769px){.main{padding-bottom:2.5rem}}
+
+/* Section headers — stack vertically on small phones */
+@media(max-width:480px){
+  .sh{flex-direction:column;align-items:stretch;gap:.55rem}
+  .sh-right{display:flex;justify-content:flex-end}
+}
+
+/* Toolbar — compact pills on mobile */
+@media(max-width:480px){
+  .toolbar{gap:.3rem}
+  .toolbar .btn,.toolbar button{font-size:.73rem;padding:.35rem .6rem;min-height:34px}
+}
+
+/* Form grid — force single column on very small phones */
+@media(max-width:420px){
+  .fg{grid-template-columns:1fr}
+  .field.s2{grid-column:span 1}
+}
+
+/* Stats — single col only on extremely narrow */
+@media(max-width:320px){.stats{grid-template-columns:1fr}}
+
+/* Task cards — comfortably tappable on mobile */
+@media(max-width:768px){
+  .task-card{padding:.9rem .95rem}
+  .task-card-check{width:24px;height:24px}
+}
+
+/* Desktop nav — improved active state and hover */
+@media(min-width:769px){
+  .nav{border-bottom:2px solid var(--stone)}
+  .nav-btn{font-size:.86rem;padding:0 1.2rem;gap:6px;letter-spacing:.01em;border-radius:0}
+  .nav-btn:hover{background:rgba(0,0,0,.03);color:var(--dark)}
+  .nav-btn.active{color:var(--rust);font-weight:600;border-bottom-width:2.5px;border-bottom-color:var(--rust)}
+}
+
+/* Desktop header — more breathing room */
+@media(min-width:769px){
+  .hdr{padding:0 2rem;gap:1.25rem}
+  .hdr-logo .name{font-size:1.15rem}
+  .search-wrap{max-width:440px}
+}
+
+/* Large desktop — wider, more spacious */
+@media(min-width:1200px){
+  .main{padding:2rem 3rem;padding-bottom:2.5rem}
+  .hdr{padding:0 2.5rem}
+  .dash-grid{grid-template-columns:1.35fr 1fr}
+}
+
+/* Profile / home fact grids on tiny screens */
+@media(max-width:400px){
+  .profile-grid{grid-template-columns:1fr 1fr}
+  .home-facts{grid-template-columns:1fr 1fr}
+}
+
+/* Landing stats strip — 2x2 grid on very narrow */
+@media(max-width:600px){
+  .lp-stats{grid-template-columns:1fr 1fr;gap:10px}
+  .lp-stat-div{display:none}
+}
+
+/* Prevent text overflow everywhere */
+.task-card-title,.exp-card-title{word-break:break-word;overflow-wrap:break-word}
+
+/* Smooth momentum scrolling on iOS */
+html,.toolbar,.cal-wrap,.search-results,.main{-webkit-overflow-scrolling:touch}
+
+/* ══ END RESPONSIVE OPTIMIZATION ══ */
 `;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -2756,7 +2881,7 @@ function SearchBar({ tasks, warranties, expenses, onNavigate }) { // role="searc
   return (
     <div className="search-wrap" ref={ref}>
       <span className="search-icon">🔍</span>
-      <input value={q} onChange={e=>{setQ(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} placeholder="Search tasks, warranties, expenses…" />
+      <input value={q} onChange={e=>{setQ(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} placeholder="Search…" aria-label="Search tasks, assets and expenses" />
       {open && results.length > 0 && (
         <div className="search-results">
           {results.map((r,i) => (
@@ -4049,11 +4174,11 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
   const thisYrTotalWithService = thisYrTotal + utilThisYr;
   const trend = lastYrTotal > 0 ? ((thisYrTotalWithService - lastYrTotal) / lastYrTotal * 100).toFixed(0) : null;
 
-  // Monthly chart data — current year (expenses only, no service for chart simplicity)
+  // Monthly chart data — current year, all expense items including service logs
   const curMonth = new Date().getMonth();
   const monthlyData = Array.from({length:12},(_,i)=>{
     const m = String(i+1).padStart(2,"0");
-    const total = expenses.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
+    const total = allExpenseItems.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
     return {month:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i], total, isCur: i===curMonth};
   });
   const maxMonth = Math.max(...monthlyData.map(m=>m.total), 1);
@@ -4207,7 +4332,6 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
                     <option value="amount_asc">Lowest amount</option>
                     <option value="desc_az">A–Z</option>
                   </select>
-                  <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"var(--sage)"}}>{fmt$(filteredTotal)}</span>
                 </div>
               </div>
               {sorted.map(e=>{
@@ -5424,7 +5548,7 @@ export default function App() {
   const TABS = [
     {id:"dashboard", label:"Home",       icon:"🏠"},
     {id:"tasks",     label:"Tasks",      icon:"✓",  badge:overdue},
-    {id:"warranties",label:"Assets",    icon:"🏠", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
+    {id:"warranties",label:"Assets",    icon:"🔧", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
     {id:"expenses",  label:"Expenses",   icon:"💲"},
     {id:"profile",   label:"My Home",    icon:"🏡"},
   ];
@@ -5450,7 +5574,7 @@ export default function App() {
         </header>
 
         {/* ── Desktop Nav ── */}
-        <nav className="nav">
+        <nav className="nav" aria-label="Main navigation">
           {TABS.map(t=>(
             <button key={t.id} className={`nav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>
               <span>{t.icon}</span> {t.label}
@@ -5460,7 +5584,7 @@ export default function App() {
         </nav>
 
         {/* ── Main Content ── */}
-        <main className="main">
+        <main className="main" id="main-content" tabIndex={-1}>
           {dataLoading ? (
             <div className="loading">
               <div className="spinner"/>
