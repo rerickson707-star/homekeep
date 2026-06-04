@@ -842,259 +842,315 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* ══ AUTH SCREEN ══ */
 
-/* ── LANDING PAGE ── */
-.lp-root{min-height:100vh;overflow-x:hidden;position:relative}
-.lp-root::before{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.045;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* ── LANDING PAGE (redesign) ── */
 .lp-root{
-    --pine:#234A3D; --pine-deep:#173026; --pine-soft:#2C5A49;
-    --terracotta:#C16140; --terracotta-soft:#D2876A;
-    --sage:#A7BFA8; --sage-deep:#7FA088;
-    --linen:#F4EDDF; --linen-2:#EFE7D7; --card:#FBF7EE;
-    --ink:#2A2723; --stone:#7C7466; --line:rgba(42,39,35,.12);
-    --display:'Fraunces',Georgia,serif;
-    --body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;
-  }
-  
-  
-  
-  
-  .wrap{max-width:1140px;margin:0 auto;padding:0 26px}
-  
-  
+  --pine:#234A3D; --pine-deep:#173026; --pine-soft:#2C5A49;
+  --terracotta:#C16140; --terracotta-soft:#D2876A; --terracotta-deep:#A84E30;
+  --sage:#A7BFA8; --sage-deep:#7FA088;
+  --linen:#F4EDDF; --linen-2:#EFE7D7; --linen-3:#E6DCC8; --card:#FBF7EE;
+  --ink:#2A2723; --ink-soft:#5A534B; --gold:#B8861E;
+  --line:rgba(42,39,35,.10);
+  --display:'Fraunces',Georgia,serif;
+  --body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;
+  --maxw:1180px;
+  min-height:100vh;overflow-x:hidden;position:relative;
+  background:var(--linen);color:var(--ink);
+  font-family:var(--body);-webkit-font-smoothing:antialiased;
+  line-height:1.6;letter-spacing:-.005em;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-wrap:break-word;
+  -webkit-tap-highlight-color:transparent;
+}
+.lp-root *{box-sizing:border-box}
+.lp-root::selection,.lp-root ::selection{background:var(--terracotta);color:#fff}
+/* grain overlay */
+.lp-root::before{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.05;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.lp-root .wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 28px}
 
-  /* reveal */
-  .rv{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
-  .rv.in{opacity:1;transform:none}
-  @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none}}
+/* reveal-on-scroll */
+.lp-root .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.lp-root .rv.in{opacity:1;transform:none}
 
-  /* ---------- NAV ---------- */
-  .lp-root nav{position:fixed;top:0;left:0;right:0;z-index:1000;transition:background .3s,box-shadow .3s,border-color .3s;border-bottom:1px solid transparent}
-  .lp-root nav.solid{background:rgba(244,237,223,.86);backdrop-filter:blur(14px);border-bottom-color:var(--line);box-shadow:0 6px 24px -18px rgba(23,48,38,.4)}
-  .nav-in{display:flex;align-items:center;justify-content:space-between;height:70px;max-width:1140px;margin:0 auto;padding:0 26px}
-  .brand{display:flex;align-items:center;gap:11px}
-  .brand .tile{width:38px;height:38px;border-radius:11px;background:radial-gradient(120% 120% at 30% 18%,var(--pine-soft),var(--pine) 55%,var(--pine-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 20px -12px rgba(23,48,38,.7)}
-  .brand .tile svg{width:60%;height:60%;display:block}
-  .brand .wm{font-family:var(--display);font-weight:600;font-size:1.4rem;letter-spacing:-.02em;color:var(--linen);transition:color .3s}
-  .lp-root nav.solid .brand .wm{color:var(--pine)}
-  .nav-links{display:flex;align-items:center;gap:30px}
-  .nav-links a{font-size:.92rem;font-weight:500;color:rgba(244,237,223,.75);opacity:1;transition:color .3s,opacity .15s}
-  .lp-root nav.solid .nav-links a{color:var(--ink);opacity:.78}
-  .nav-links a:hover{opacity:1}
-  .nav-cta{display:flex;align-items:center;gap:14px}
-  .lp-btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--body);font-weight:600;font-size:.94rem;border:none;border-radius:40px;cursor:pointer;transition:transform .15s,box-shadow .2s,background .2s;white-space:nowrap}
-  .lp-btn-solid{background:var(--pine);color:var(--linen);padding:.72rem 1.4rem;box-shadow:0 12px 26px -12px rgba(23,48,38,.6)}
-  .lp-btn-solid:hover{transform:translateY(-2px);box-shadow:0 18px 34px -12px rgba(23,48,38,.65);background:var(--pine-deep)}
-  .lp-btn-terra{background:var(--terracotta);color:#fff;padding:.72rem 1.4rem;box-shadow:0 12px 26px -12px rgba(193,97,64,.6)}
-  .lp-btn-terra:hover{transform:translateY(-2px);background:#b0573a}
-  .lp-btn-ghost{background:rgba(255,255,255,.07);color:rgba(244,237,223,.88);padding:.6rem 1.3rem;font-weight:600;border-radius:40px;border:1.5px solid rgba(255,255,255,.18);backdrop-filter:blur(6px)}
-  .lp-btn-ghost:hover{background:rgba(255,255,255,.13);color:#fff;border-color:rgba(255,255,255,.32)}
-  .nav-signin{font-size:.92rem;font-weight:600;color:rgba(244,237,223,.82);cursor:pointer;transition:color .3s}
-  .lp-root nav.solid .nav-signin{color:var(--pine)}
-  .nav-signin:hover{color:#fff}
-  .lp-root nav.solid .nav-signin:hover{color:var(--terracotta)}
-  @media(max-width:820px){.nav-links{display:none}}
+/* ---------- NAV ---------- */
+.lp-root .lp-nav{position:fixed;top:0;left:0;right:0;z-index:1000;transition:background .35s,box-shadow .35s,border-color .35s,backdrop-filter .35s;border-bottom:1px solid transparent}
+.lp-root .lp-nav.solid{background:rgba(244,237,223,.82);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border-bottom-color:var(--line);box-shadow:0 8px 30px -22px rgba(23,48,38,.5)}
+.lp-root .lp-nav-in{display:flex;align-items:center;justify-content:space-between;height:72px;max-width:var(--maxw);margin:0 auto;padding:0 28px}
+.lp-root .lp-brand{display:flex;align-items:center;gap:11px}
+.lp-root .lp-brand .tile{width:38px;height:38px;border-radius:11px;background:radial-gradient(120% 120% at 30% 18%,var(--pine-soft),var(--pine) 55%,var(--pine-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -12px rgba(23,48,38,.7);flex-shrink:0}
+.lp-root .lp-brand .tile svg{width:60%;height:60%;display:block}
+.lp-root .lp-brand .wm{font-family:var(--display);font-weight:600;font-size:1.4rem;letter-spacing:-.02em;color:var(--linen);transition:color .35s}
+.lp-root .lp-nav.solid .lp-brand .wm{color:var(--pine)}
+.lp-root .lp-nav-links{display:flex;align-items:center;gap:34px}
+.lp-root .lp-nav-links a{font-size:.92rem;font-weight:500;color:rgba(244,237,223,.78);cursor:pointer;transition:color .25s;position:relative}
+.lp-root .lp-nav-links a::after{content:"";position:absolute;left:0;right:100%;bottom:-5px;height:1.5px;background:var(--terracotta-soft);transition:right .3s cubic-bezier(.22,1,.36,1)}
+.lp-root .lp-nav-links a:hover::after{right:0}
+.lp-root .lp-nav.solid .lp-nav-links a{color:var(--ink-soft)}
+.lp-root .lp-nav-cta{display:flex;align-items:center;gap:18px}
+.lp-root .lp-signin{font-size:.92rem;font-weight:600;color:rgba(244,237,223,.85);cursor:pointer;transition:color .25s;background:none;border:none;font-family:var(--body)}
+.lp-root .lp-nav.solid .lp-signin{color:var(--pine)}
+.lp-root .lp-signin:hover{color:var(--terracotta)}
 
-  /* ---------- HERO ---------- */
-  .hero{position:relative;padding:150px 0 80px;overflow:hidden;background:linear-gradient(155deg,var(--pine-deep) 0%,#1d3f33 40%,var(--pine) 100%)}
-  .hero::before{content:"";position:absolute;top:-180px;right:-100px;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(193,97,64,.32),transparent 58%);pointer-events:none}
-  .hero::after{content:"";position:absolute;bottom:-220px;left:-140px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(167,191,168,.18),transparent 62%);pointer-events:none}
-  .hero-grid{position:relative;display:grid;grid-template-columns:1.04fr .96fr;gap:56px;align-items:center}
-  .badge{display:inline-flex;align-items:center;gap:9px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);border-radius:40px;padding:.5rem 1rem;font-size:.82rem;font-weight:600;color:rgba(244,237,223,.9);margin-bottom:26px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .badge .pdot{width:8px;height:8px;border-radius:50%;background:var(--terracotta);box-shadow:0 0 0 0 rgba(193,97,64,.5);animation:pulse 2.4s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(193,97,64,.5)}70%{box-shadow:0 0 0 9px rgba(193,97,64,0)}100%{box-shadow:0 0 0 0 rgba(193,97,64,0)}}
-  .lp-root h1{font-family:var(--display);font-weight:600;font-size:clamp(3.2rem,7.2vw,5.6rem);line-height:.94;letter-spacing:-.03em;color:#fff;margin-bottom:1.4rem}
-  .lp-root h1 em{font-style:italic;font-weight:600;background:linear-gradient(135deg,#F0C8A8,var(--terracotta-soft));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-  .hero-p{font-size:1.18rem;color:rgba(244,237,223,.78);max-width:34ch;margin-bottom:2rem}
-  .hero-btns{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  .hero-micro{margin-top:1.1rem;font-size:.86rem;color:rgba(244,237,223,.5);display:flex;align-items:center;gap:8px}
-  .hero-micro b{color:var(--sage);font-weight:600}
+/* buttons */
+.lp-root .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--body);font-weight:600;font-size:.95rem;border:none;border-radius:40px;cursor:pointer;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .25s,background .25s,color .25s;white-space:nowrap;line-height:1}
+.lp-root .btn:active{transform:translateY(0) scale(.985)}
+.lp-root .btn-terra{background:var(--terracotta);color:#fff;padding:.82rem 1.5rem;box-shadow:0 14px 30px -12px rgba(193,97,64,.7)}
+.lp-root .btn-terra:hover{transform:translateY(-2px);background:var(--terracotta-deep);box-shadow:0 20px 40px -14px rgba(193,97,64,.75)}
+.lp-root .btn-pine{background:var(--pine);color:var(--linen);padding:.82rem 1.5rem;box-shadow:0 14px 30px -14px rgba(23,48,38,.65)}
+.lp-root .btn-pine:hover{transform:translateY(-2px);background:var(--pine-deep)}
+.lp-root .btn-ghost{background:rgba(255,255,255,.06);color:rgba(244,237,223,.92);padding:.8rem 1.4rem;border:1.5px solid rgba(255,255,255,.2);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lp-root .btn-ghost:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.4)}
+.lp-root .btn-outline{background:transparent;color:var(--pine);padding:.82rem 1.5rem;border:1.5px solid rgba(35,74,61,.28)}
+.lp-root .btn-outline:hover{border-color:var(--pine);background:rgba(35,74,61,.04)}
+.lp-root .btn-xl{font-size:1.05rem;padding:1.05rem 2.1rem}
 
-  /* product mockup */
-  /* browser-frame mockup */
-  .hero-right{display:flex;align-items:center;justify-content:center}
-  .browser-frame{width:100%;max-width:490px;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 40px 80px -20px rgba(0,0,0,.6),0 0 80px 0 rgba(167,191,168,.12)}
-  .bf-chrome{background:var(--linen-2);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
-  .bf-dots{display:flex;gap:5px}
-  .bf-dots i{width:9px;height:9px;border-radius:50%}
-  .bf-dots i:nth-child(1){background:#FF6058}
-  .bf-dots i:nth-child(2){background:#FFBD2E}
-  .bf-dots i:nth-child(3){background:#28CA42}
-  .bf-url{flex:1;background:rgba(0,0,0,.07);border-radius:6px;padding:5px 12px;font-size:.68rem;color:var(--stone);text-align:center;font-weight:500}
-  .bf-hdr{background:linear-gradient(135deg,var(--pine-soft),var(--pine) 55%,var(--pine-deep));padding:11px 16px;display:flex;align-items:center;justify-content:space-between}
-  .bf-brand{display:flex;align-items:center;gap:8px}
-  .bf-tile{width:24px;height:24px;border-radius:7px;background:var(--terracotta);display:flex;align-items:center;justify-content:center;flex:none}
-  .bf-tile svg{width:62%;height:62%;display:block}
-  .bf-wm{font-family:var(--display);font-weight:600;color:var(--linen);font-size:.92rem;letter-spacing:-.01em}
-  .bf-tabs{display:flex;gap:2px}
-  .bf-tab{font-size:.64rem;font-weight:500;color:rgba(255,255,255,.48);padding:.3rem .65rem;border-radius:6px;white-space:nowrap}
-  .bf-tab.on{color:rgba(255,255,255,.92);background:rgba(255,255,255,.13)}
-  .bf-body{padding:16px 18px 20px;background:var(--linen)}
-  .bf-greet{font-family:var(--display);font-size:1.08rem;color:var(--ink);font-weight:500;margin-bottom:2px}
-  .bf-sub{font-size:.71rem;color:var(--stone);margin-bottom:13px}
-  .bf-scards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px}
-  .bsc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
-  .bsc .bk{font-size:.55rem;letter-spacing:.09em;text-transform:uppercase;color:var(--stone);font-weight:700}
-  .bsc .bv{font-family:var(--display);font-size:1.05rem;color:var(--pine);margin-top:4px;font-weight:500;line-height:1}
-  .bsc.accent .bv{color:var(--terracotta)}
-  .bsc.amber .bv{color:#9B6D12}
-  .bf-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line)}
-  .bf-row .bd{width:8px;height:8px;border-radius:50%;flex:none}
-  .bf-row .btl{font-size:.77rem;color:var(--ink);flex:1;font-weight:500}
-  .bf-row .btr{font-size:.67rem;color:var(--stone);white-space:nowrap}
-  /* questions strip */
-  .qs-strip{padding:28px 0;background:var(--pine-deep);overflow:hidden;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)}
-  .qs-label{font-size:.72rem;color:rgba(244,237,223,.45);font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;padding:0 26px}
-  .qs-track{display:flex;width:max-content;gap:10px;animation:marquee 32s linear infinite;will-change:transform}
-  .qs-track:hover{animation-play-state:paused}
-  .q-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:30px;padding:.42rem .95rem;font-size:.83rem;color:rgba(244,237,223,.82);font-weight:500;transition:background .18s,border-color .18s,color .18s;cursor:default;white-space:nowrap}
-  .q-pill::before{content:"?";color:var(--terracotta-soft);font-weight:800;font-size:.9rem;margin-right:2px}
-  .q-pill:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.28);color:#fff}
+/* ---------- HERO ---------- */
+.lp-root .hero{position:relative;background:var(--pine-deep);color:var(--linen);padding:148px 0 90px;overflow:hidden;isolation:isolate}
+.lp-root .hero-bg{position:absolute;inset:0;z-index:-1;overflow:hidden}
+.lp-root .hero-bg .glow1{position:absolute;width:760px;height:760px;top:-280px;right:-180px;border-radius:50%;background:radial-gradient(circle,rgba(44,90,73,.85),transparent 62%)}
+.lp-root .hero-bg .glow2{position:absolute;width:620px;height:620px;bottom:-300px;left:-200px;border-radius:50%;background:radial-gradient(circle,rgba(193,97,64,.22),transparent 65%)}
+.lp-root .hero-bg .contour{position:absolute;inset:0;opacity:.5;color:rgba(167,191,168,.14)}
+.lp-root .hero-bg .contour svg{width:100%;height:100%}
+.lp-root .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.lp-root .hero-badge{display:inline-flex;align-items:center;gap:9px;font-size:.78rem;font-weight:600;letter-spacing:.02em;color:rgba(244,237,223,.9);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);padding:.42rem .9rem;border-radius:40px;margin-bottom:30px}
+.lp-root .hero-badge .pdot{width:7px;height:7px;border-radius:50%;background:var(--terracotta-soft);box-shadow:0 0 0 0 rgba(210,135,106,.6);animation:lp-pulse 2.4s infinite}
+@keyframes lp-pulse{0%{box-shadow:0 0 0 0 rgba(210,135,106,.5)}70%{box-shadow:0 0 0 8px rgba(210,135,106,0)}100%{box-shadow:0 0 0 0 rgba(210,135,106,0)}}
+.lp-root .hero h1{font-family:var(--display);font-weight:340;font-size:clamp(3rem,6.6vw,5.4rem);line-height:.98;letter-spacing:-.035em;color:#fff;margin:0 0 1.5rem;font-optical-sizing:auto}
+.lp-root .hero h1 em{font-style:italic;font-weight:400;color:var(--terracotta-soft)}
+.lp-root .hero-p{font-size:clamp(1.05rem,1.5vw,1.22rem);line-height:1.62;color:rgba(244,237,223,.74);max-width:30rem;margin:0 0 2rem}
+/* faux address bar */
+.lp-root .hero-addr{display:flex;align-items:center;gap:12px;background:rgba(251,247,238,.96);border-radius:16px;padding:.7rem .7rem .7rem 1.1rem;max-width:30rem;box-shadow:0 24px 50px -22px rgba(0,0,0,.55);margin-bottom:1.6rem}
+.lp-root .hero-addr .pin{color:var(--terracotta);flex-shrink:0;display:flex}
+.lp-root .hero-addr .pin svg{width:20px;height:20px}
+.lp-root .hero-addr .typed{flex:1;font-size:.98rem;color:var(--ink);font-weight:500;min-width:0;overflow:hidden;white-space:nowrap}
+.lp-root .hero-addr .typed .caret{display:inline-block;width:2px;height:1.05em;background:var(--terracotta);margin-left:1px;vertical-align:-2px;animation:lp-blink 1.1s steps(1) infinite}
+@keyframes lp-blink{50%{opacity:0}}
+.lp-root .hero-addr .go{background:var(--pine);color:#fff;border-radius:11px;padding:.6rem .95rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.lp-root .hero-btns{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.3rem}
+.lp-root .hero-micro{font-size:.86rem;color:rgba(244,237,223,.55)}
+.lp-root .hero-micro b{color:rgba(244,237,223,.85);font-weight:600}
 
-  /* stats strip */
-  .lp-stats{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:60px;padding:26px 30px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-  .lp-stat{flex:1;text-align:center}
-  .lp-stat .n{font-family:var(--display);font-size:clamp(1.7rem,3.4vw,2.4rem);font-weight:600;color:#fff;line-height:1}
-  .lp-stat .n span{color:var(--terracotta)}
-  .lp-stat .l{font-size:.78rem;color:rgba(244,237,223,.52);margin-top:6px;font-weight:500}
-  .lp-stat-div{width:1px;height:44px;background:rgba(255,255,255,.12);flex:none}
-  @media(max-width:820px){
-    .hero-grid{grid-template-columns:1fr;gap:30px}
-    .mock-stage{order:-1;min-height:380px;margin-top:8px}
-    .hero-p{max-width:none}
-    .lp-stats{flex-wrap:wrap;gap:18px 0;padding:22px}
-    .lp-stat{flex:0 0 50%}
-    .lp-stat-div{display:none}
-  }
+/* product preview card */
+.lp-root .hero-vis{position:relative}
+.lp-root .hero-vis .blob{position:absolute;inset:-8% -6% -12% -4%;background:radial-gradient(120% 120% at 70% 20%,rgba(167,191,168,.22),transparent 60%);border-radius:30px;z-index:-1}
+.lp-root .pv{background:var(--card);border-radius:20px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);overflow:hidden;transform:perspective(1600px) rotateY(-6deg) rotateX(2.5deg);transform-origin:center;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.lp-root .hero-vis:hover .pv{transform:perspective(1600px) rotateY(-2deg) rotateX(1deg)}
+.lp-root .pv-bar{display:flex;align-items:center;gap:8px;padding:.7rem .9rem;background:var(--linen-2);border-bottom:1px solid var(--line)}
+.lp-root .pv-bar i{width:9px;height:9px;border-radius:50%;background:rgba(42,39,35,.16)}
+.lp-root .pv-url{margin-left:8px;font-size:.7rem;color:var(--ink-soft);background:var(--card);border-radius:20px;padding:.2rem .8rem}
+.lp-root .pv-body{padding:1.2rem 1.3rem 1.4rem}
+.lp-root .pv-greet{font-family:var(--display);font-size:1.25rem;font-weight:500;color:var(--pine);letter-spacing:-.01em}
+.lp-root .pv-sub{font-size:.78rem;color:var(--ink-soft);margin:.2rem 0 1rem}
+.lp-root .pv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-bottom:1rem}
+.lp-root .pv-stat{border-radius:12px;padding:.7rem .75rem;background:var(--linen);border:1px solid var(--line)}
+.lp-root .pv-stat.accent{background:rgba(193,97,64,.1);border-color:rgba(193,97,64,.2)}
+.lp-root .pv-stat.amber{background:rgba(184,134,30,.1);border-color:rgba(184,134,30,.22)}
+.lp-root .pv-stat .k{font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600}
+.lp-root .pv-stat .v{font-family:var(--display);font-size:1.35rem;font-weight:600;color:var(--pine);margin-top:2px}
+.lp-root .pv-stat.accent .v{color:var(--terracotta)}
+.lp-root .pv-stat.amber .v{color:var(--gold)}
+.lp-root .pv-row{display:flex;align-items:center;gap:.7rem;padding:.6rem .2rem;border-top:1px solid var(--line)}
+.lp-root .pv-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.lp-root .pv-row .tl{flex:1;font-size:.82rem;color:var(--ink);font-weight:500}
+.lp-root .pv-row .tr{font-size:.72rem;color:var(--ink-soft);font-weight:600}
 
-  /* ---------- INSIGHT BAND ---------- */
-  .band{position:relative;margin-top:0;background:var(--linen);color:var(--pine);overflow:hidden;border-top:1px solid var(--line)}
-  .band::before{display:none}
-  .band .ghost-mark{display:none}
-  .band-in{position:relative;padding:90px 0;text-align:center}
-  .band .eyebrow{font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--terracotta);font-weight:700;margin-bottom:20px}
-  .band h2{font-family:var(--display);font-weight:500;font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.08;letter-spacing:-.02em;max-width:22ch;margin:0 auto;color:var(--pine)}
-  .band h2 em{font-style:italic;color:var(--terracotta)}
+/* ---------- STATS BAND ---------- */
+.lp-root .stats{background:var(--linen);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.lp-root .stats-in{display:grid;grid-template-columns:repeat(4,1fr);padding:44px 0}
+.lp-root .stat-cell{text-align:center;padding:0 18px;border-right:1px solid var(--line)}
+.lp-root .stat-cell:last-child{border-right:none}
+.lp-root .stat-n{font-family:var(--display);font-weight:600;font-size:clamp(2rem,3.5vw,2.8rem);color:var(--pine);line-height:1;letter-spacing:-.02em}
+.lp-root .stat-n .suf{color:var(--terracotta)}
+.lp-root .stat-l{font-size:.82rem;color:var(--ink-soft);margin-top:.5rem;font-weight:500}
 
-  /* ---------- SECTION SHELL ---------- */
-  .lp-root section.block{padding:96px 0}
-  .eyebrow{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);font-weight:700;margin-bottom:16px}
-  .h2{font-family:var(--display);font-weight:600;font-size:clamp(2.2rem,4.8vw,3.5rem);line-height:1.02;letter-spacing:-.025em;color:var(--pine)}
-  .sub{font-size:1.12rem;color:#524b42;max-width:54ch;margin-top:16px}
-  .head-center{text-align:center;display:flex;flex-direction:column;align-items:center;margin-bottom:50px}
-  .head-center .sub{margin-left:auto;margin-right:auto}
+/* ---------- MARQUEE ---------- */
+.lp-root .qs{background:var(--pine);color:var(--linen);padding:34px 0;overflow:hidden;position:relative}
+.lp-root .qs-label{text-align:center;font-size:.74rem;text-transform:uppercase;letter-spacing:.22em;color:rgba(167,191,168,.85);font-weight:700;margin-bottom:22px}
+.lp-root .qs-track{display:flex;gap:14px;width:max-content;animation:lp-marquee 38s linear infinite}
+.lp-root .qs:hover .qs-track{animation-play-state:paused}
+@keyframes lp-marquee{to{transform:translateX(-50%)}}
+.lp-root .q-pill{flex-shrink:0;font-family:var(--display);font-style:italic;font-size:1.05rem;color:rgba(244,237,223,.9);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:.6rem 1.3rem;border-radius:40px;white-space:nowrap}
+.lp-root .qs::before,.lp-root .qs::after{content:"";position:absolute;top:0;bottom:0;width:90px;z-index:2;pointer-events:none}
+.lp-root .qs::before{left:0;background:linear-gradient(90deg,var(--pine),transparent)}
+.lp-root .qs::after{right:0;background:linear-gradient(270deg,var(--pine),transparent)}
 
-  /* ---------- FEATURES BENTO ---------- */
-  .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
-  .feat{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 28px;transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s,border-color .3s;position:relative;overflow:hidden}
-  .feat:hover{transform:translateY(-6px);box-shadow:0 28px 56px -28px rgba(23,48,38,.5);border-color:rgba(35,74,61,.22)}
-  .feat .ic{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;background:var(--linen)}
-  .feat .ic svg{width:24px;height:24px;stroke:var(--pine);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-  .feat h3{font-family:var(--display);font-weight:600;font-size:1.3rem;color:var(--ink);margin-bottom:8px;letter-spacing:-.01em}
-  .feat p{font-size:.95rem;color:#56504780;color:#574f44}
-  .feat .tag{display:inline-block;margin-top:16px;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--terracotta);background:#F6E9E1;padding:.28rem .7rem;border-radius:30px}
-  .feat.big{grid-column:span 3}
-  .feat.sm{grid-column:span 3}
-  .feat.third{grid-column:span 2}
-  /* featured hero feature */
-  .feat.spot{grid-column:span 6;display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center;background:linear-gradient(135deg,var(--pine),var(--pine-deep));color:var(--linen);border-color:transparent}
-  .feat.spot .ic{background:rgba(255,255,255,.1)}
-  .feat.spot .ic svg{stroke:var(--linen)}
-  .feat.spot h3{color:#fff;font-size:1.7rem}
-  .feat.spot p{color:#d9e2da;font-size:1.04rem;max-width:42ch}
-  .feat.spot .tag{color:#fff;background:rgba(255,255,255,.14)}
-  .spot-vis{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px}
-  .spot-vis .addr{display:flex;align-items:center;gap:9px;font-size:.85rem;color:#cdd8ce;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:12px;margin-bottom:12px}
-  .spot-vis .addr svg{width:16px;height:16px;stroke:var(--terracotta-soft);fill:none;stroke-width:1.8}
-  .spot-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .spot-grid div{font-size:.78rem;color:#bcc8be}
-  .spot-grid b{display:block;font-family:var(--display);font-size:1.05rem;color:#fff;font-weight:500;margin-top:2px}
-  @media(max-width:820px){
-    .bento{grid-template-columns:1fr}
-    .feat.big,.feat.sm,.feat.third,.feat.spot{grid-column:span 1}
-    .feat.spot{grid-template-columns:1fr;gap:20px}
-  }
+/* ---------- SECTION SHELL ---------- */
+.lp-root .block{padding:clamp(72px,9vw,118px) 0}
+.lp-root .eyebrow{font-size:.76rem;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);font-weight:700;margin-bottom:18px}
+.lp-root .h2{font-family:var(--display);font-weight:380;font-size:clamp(2.1rem,4.6vw,3.4rem);line-height:1.04;letter-spacing:-.028em;color:var(--pine);margin:0}
+.lp-root .h2 em{font-style:italic;color:var(--terracotta)}
+.lp-root .head{max-width:36rem;margin-bottom:56px}
+.lp-root .head.center{margin-left:auto;margin-right:auto;text-align:center}
+.lp-root .sub{font-size:1.06rem;line-height:1.6;color:var(--ink-soft);margin:18px 0 0}
 
-  /* ---------- HOW ---------- */
-  .how{background:var(--linen-2)}
-  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;position:relative}
-  .steps::before{content:"";position:absolute;top:34px;left:8%;right:8%;height:2px;background:repeating-linear-gradient(90deg,var(--sage-deep) 0 8px,transparent 8px 16px);opacity:.5;z-index:0}
-  .step{position:relative;z-index:1;text-align:center}
-  .step .num{width:72px;height:72px;border-radius:50%;background:var(--pine);color:#fff;font-family:var(--display);font-weight:600;font-size:1.5rem;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 14px 28px -14px rgba(23,48,38,.55)}
-  .step:nth-child(2) .num{background:var(--terracotta)}
-  .step h3{font-family:var(--display);font-weight:600;font-size:1.15rem;color:var(--ink);margin-bottom:8px}
-  .step p{font-size:.92rem;color:#574f44;max-width:24ch;margin:0 auto}
-  @media(max-width:820px){.steps{grid-template-columns:1fr 1fr;gap:32px 16px}.steps::before{display:none}}
+/* editorial statement band */
+.lp-root .band{background:var(--linen-2);padding:clamp(76px,10vw,128px) 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.lp-root .band .stmt{font-family:var(--display);font-weight:380;font-size:clamp(2rem,4.6vw,3.5rem);line-height:1.12;letter-spacing:-.025em;color:var(--pine);max-width:22ch;margin:0 auto;text-align:center}
+.lp-root .band .stmt em{font-style:italic;color:var(--terracotta)}
 
-  /* ---------- TESTIMONIALS ---------- */
-  .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-  .tcard{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 26px;display:flex;flex-direction:column}
-  .tcard .stars{color:var(--terracotta);letter-spacing:2px;font-size:.9rem;margin-bottom:14px}
-  .tcard .quote{font-size:1.02rem;color:var(--ink);line-height:1.6;flex:1}
-  .tcard .who{display:flex;align-items:center;gap:12px;margin-top:22px}
-  .tcard .av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem;flex:none}
-  .tcard .nm{font-weight:600;font-size:.92rem}
-  .tcard .ro{font-size:.78rem;color:var(--stone)}
-  @media(max-width:820px){.proof{grid-template-columns:1fr}}
+/* ---------- FEATURES BENTO ---------- */
+.lp-root .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+.lp-root .feat{position:relative;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px;overflow:hidden;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}
+.lp-root .feat::after{content:"";position:absolute;inset:0;border-radius:22px;opacity:0;transition:opacity .35s;background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(193,97,64,.08),transparent 45%);pointer-events:none}
+.lp-root .feat:hover{transform:translateY(-4px);box-shadow:0 28px 60px -34px rgba(23,48,38,.4);border-color:rgba(35,74,61,.16)}
+.lp-root .feat:hover::after{opacity:1}
+.lp-root .feat .ic{width:46px;height:46px;border-radius:13px;background:var(--sage-light,#E7EDE7);color:var(--pine);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.lp-root .feat .ic svg{width:23px;height:23px}
+.lp-root .feat h3{font-family:var(--display);font-weight:560;font-size:1.32rem;line-height:1.15;letter-spacing:-.015em;color:var(--pine);margin:0 0 .55rem}
+.lp-root .feat p{font-size:.93rem;line-height:1.58;color:var(--ink-soft);margin:0 0 1.1rem}
+.lp-root .feat .tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--terracotta);background:rgba(193,97,64,.09);padding:.3rem .7rem;border-radius:30px}
+/* big spotlight feature */
+.lp-root .feat.spot{grid-column:span 6;display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center;background:var(--pine);border-color:transparent;color:var(--linen);padding:40px 44px}
+.lp-root .feat.spot h3{color:#fff;font-size:clamp(1.6rem,2.6vw,2.1rem)}
+.lp-root .feat.spot p{color:rgba(244,237,223,.78);font-size:1rem;max-width:30rem}
+.lp-root .feat.spot .ic{background:rgba(255,255,255,.1);color:var(--terracotta-soft)}
+.lp-root .feat.spot .tag{color:var(--terracotta-soft);background:rgba(255,255,255,.08)}
+.lp-root .feat.spot::after{display:none}
+.lp-root .feat.spot:hover{transform:none;box-shadow:none}
+.lp-root .spot-vis{background:var(--card);border-radius:16px;padding:18px 20px;box-shadow:0 30px 60px -28px rgba(0,0,0,.55)}
+.lp-root .spot-vis .addr{display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:600;color:var(--pine);padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.lp-root .spot-vis .addr svg{width:18px;height:18px;color:var(--terracotta)}
+.lp-root .spot-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lp-root .spot-grid>div{font-size:.72rem;color:var(--ink-soft);display:flex;flex-direction:column;gap:3px}
+.lp-root .spot-grid b{font-family:var(--display);font-size:1.15rem;font-weight:600;color:var(--ink)}
+.lp-root .feat.third{grid-column:span 2}
 
-  /* ---------- PRICING ---------- */
-  .price-wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:840px;margin:0 auto}
-  .pcard{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:36px 34px;position:relative}
-  .pcard.feat-card{background:linear-gradient(150deg,var(--pine),var(--pine-deep));color:var(--linen);border-color:transparent;box-shadow:0 34px 70px -34px rgba(23,48,38,.7)}
-  .pbadge{position:absolute;top:22px;right:24px;background:var(--terracotta);color:#fff;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.34rem .8rem;border-radius:30px}
-  .plan{font-family:var(--display);font-weight:600;font-size:1.2rem;margin-bottom:10px}
-  .price{font-family:var(--display);font-weight:600;font-size:3rem;line-height:1;letter-spacing:-.02em}
-  .price span{font-family:var(--body);font-size:1rem;font-weight:500;opacity:.6}
-  .pcard.feat-card .price{color:#fff}
-  .pdesc{font-size:.95rem;color:var(--stone);margin:12px 0 22px}
-  .pcard.feat-card .pdesc{color:#cdd8ce}
-  .plist{list-style:none;margin-bottom:28px}
-  .plist li{display:flex;align-items:flex-start;gap:10px;padding:8px 0;font-size:.95rem;border-top:1px solid var(--line)}
-  .plist li:first-child{border-top:none}
-  .pcard.feat-card .plist li{border-color:rgba(255,255,255,.12)}
-  .plist .ck{color:var(--terracotta);font-weight:800;flex:none}
-  .pcard.feat-card .plist .ck{color:var(--sage)}
-  .pbtn{width:100%;justify-content:center}
-  .pbtn-out{background:transparent;border:1.8px solid var(--pine);color:var(--pine);padding:.85rem;border-radius:40px;font-weight:600;cursor:pointer;font-family:var(--body);font-size:.95rem;transition:all .18s}
-  .pbtn-out:hover{background:var(--pine);color:var(--linen)}
-  @media(max-width:560px){.price-wrap{grid-template-columns:1fr}}
+/* ---------- HOW ---------- */
+.lp-root .how{background:var(--pine-deep);color:var(--linen)}
+.lp-root .how .eyebrow{color:var(--terracotta-soft)}
+.lp-root .how .h2{color:#fff}
+.lp-root .how .sub{color:rgba(244,237,223,.72)}
+.lp-root .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;position:relative}
+.lp-root .steps::before{content:"";position:absolute;top:26px;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(167,191,168,.3),rgba(167,191,168,.3),transparent)}
+.lp-root .step{position:relative}
+.lp-root .step .num{width:54px;height:54px;border-radius:16px;background:var(--pine);border:1px solid rgba(167,191,168,.25);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:1.4rem;font-weight:600;color:var(--terracotta-soft);margin-bottom:20px;position:relative;z-index:1}
+.lp-root .step h3{font-family:var(--display);font-weight:560;font-size:1.2rem;color:#fff;margin:0 0 .4rem}
+.lp-root .step p{font-size:.92rem;line-height:1.55;color:rgba(244,237,223,.66);margin:0}
 
-  /* ---------- FINAL CTA ---------- */
-  .final{position:relative;background:linear-gradient(140deg,var(--pine),var(--pine-deep));color:var(--linen);text-align:center;overflow:hidden}
-  .final::before{content:"";position:absolute;top:-160px;left:50%;transform:translateX(-50%);width:700px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(193,97,64,.28),transparent 60%);pointer-events:none}
-  .final::after{content:"";position:absolute;inset:0;opacity:.06;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n3)'/%3E%3C/svg%3E")}
-  .final-in{position:relative;padding:104px 0}
-  .final h2{font-family:var(--display);font-weight:600;font-size:clamp(2.4rem,5.4vw,3.9rem);line-height:1.04;letter-spacing:-.025em;margin-bottom:18px}
-  .final h2 em{font-style:italic;color:var(--sage)}
-  .final p{font-size:1.12rem;color:#cfdad0;max-width:46ch;margin:0 auto 34px}
-  .lp-btn-xl{padding:1.05rem 2.6rem;font-size:1.05rem;background:var(--terracotta);color:#fff;box-shadow:0 18px 40px -16px rgba(193,97,64,.7)}
-  .btn-xl:hover{transform:translateY(-2px);background:#b0573a}
+/* ---------- TESTIMONIALS ---------- */
+.lp-root .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.lp-root .tcard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 28px;display:flex;flex-direction:column;transition:transform .3s,box-shadow .3s}
+.lp-root .tcard:hover{transform:translateY(-3px);box-shadow:0 26px 56px -34px rgba(23,48,38,.4)}
+.lp-root .tcard .mark{font-family:var(--display);font-size:3rem;line-height:.6;color:var(--sage-deep);height:1rem}
+.lp-root .tcard .quote{font-size:1rem;line-height:1.62;color:var(--ink);margin:1.4rem 0 1.6rem;flex:1}
+.lp-root .tcard .who{display:flex;align-items:center;gap:12px}
+.lp-root .tcard .av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.82rem;flex-shrink:0}
+.lp-root .tcard .nm{font-weight:600;font-size:.92rem;color:var(--ink)}
+.lp-root .tcard .ro{font-size:.78rem;color:var(--ink-soft)}
 
-  /* ---------- FOOTER ---------- */
-  .lp-root footer{background:var(--pine-deep);color:rgba(244,237,223,.7);padding:50px 0 40px}
-  .foot-in{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
-  .foot-brand{display:flex;align-items:center;gap:10px}
-  .foot-brand .tile{width:30px;height:30px;border-radius:8px;background:var(--terracotta);display:flex;align-items:center;justify-content:center}
-  .foot-brand .tile svg{width:60%;height:60%;display:block}
-  .foot-brand .wm{font-family:var(--display);font-weight:600;color:var(--linen);font-size:1.05rem}
-  .foot-tag{font-family:var(--display);font-style:italic;color:var(--sage);font-size:.95rem}
-  .foot-links{display:flex;gap:24px;font-size:.9rem}
-  .foot-links a{cursor:pointer;transition:color .15s}
-  .foot-links a:hover{color:var(--linen)}
-  .foot-copy{width:100%;border-top:1px solid rgba(255,255,255,.1);margin-top:30px;padding-top:24px;font-size:.82rem;color:rgba(244,237,223,.5);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+/* ---------- PRICING ---------- */
+.lp-root .pricing{background:var(--linen-2);border-top:1px solid var(--line)}
+.lp-root .price-wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:840px;margin:0 auto}
+.lp-root .pcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:36px 34px;display:flex;flex-direction:column}
+.lp-root .pcard.pro{background:var(--pine);color:var(--linen);border-color:transparent;box-shadow:0 36px 80px -36px rgba(23,48,38,.6)}
+.lp-root .pbadge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--terracotta);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.35rem .9rem;border-radius:30px;box-shadow:0 10px 22px -10px rgba(193,97,64,.7)}
+.lp-root .plan{font-size:.82rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.lp-root .pcard.pro .plan{color:var(--sage)}
+.lp-root .price{font-family:var(--display);font-weight:600;font-size:3rem;color:var(--pine);line-height:1;margin:.6rem 0 .2rem;letter-spacing:-.02em}
+.lp-root .pcard.pro .price{color:#fff}
+.lp-root .price span{font-family:var(--body);font-size:1rem;font-weight:500;color:var(--ink-soft)}
+.lp-root .pcard.pro .price span{color:rgba(244,237,223,.6)}
+.lp-root .pdesc{font-size:.92rem;color:var(--ink-soft);margin:.6rem 0 1.5rem;line-height:1.5}
+.lp-root .pcard.pro .pdesc{color:rgba(244,237,223,.72)}
+.lp-root .plist{list-style:none;padding:0;margin:0 0 1.8rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
+.lp-root .plist li{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--ink)}
+.lp-root .pcard.pro .plist li{color:rgba(244,237,223,.9)}
+.lp-root .plist .ck{width:18px;height:18px;border-radius:50%;background:rgba(167,191,168,.35);color:var(--pine);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;flex-shrink:0;margin-top:2px}
+.lp-root .pcard.pro .plist .ck{background:var(--terracotta);color:#fff}
+.lp-root .pbtn{width:100%}
 
-  /* marquee */
-  @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* ---------- FINAL CTA ---------- */
+.lp-root .final{position:relative;background:var(--pine-deep);color:var(--linen);padding:clamp(86px,11vw,140px) 0;overflow:hidden;text-align:center;isolation:isolate}
+.lp-root .final .glow{position:absolute;width:700px;height:700px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(193,97,64,.22),transparent 60%);z-index:-1}
+.lp-root .final h2{font-family:var(--display);font-weight:360;font-size:clamp(2.4rem,5.4vw,4rem);line-height:1.02;letter-spacing:-.03em;color:#fff;margin:0 0 1.2rem}
+.lp-root .final h2 em{font-style:italic;color:var(--terracotta-soft)}
+.lp-root .final p{font-size:1.1rem;color:rgba(244,237,223,.72);max-width:34rem;margin:0 auto 2.4rem;line-height:1.6}
 
-  /* feature card glow on hover */
-  .feat::after{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0;transition:opacity .35s;pointer-events:none;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(193,97,64,.1) 0%,transparent 62%)}
-  .feat:hover::after{opacity:1}
+/* ---------- FOOTER ---------- */
+.lp-root .foot{background:var(--pine-deep);color:rgba(244,237,223,.7);padding:40px 0;border-top:1px solid rgba(167,191,168,.12)}
+.lp-root .foot-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.lp-root .foot-brand{display:flex;align-items:center;gap:11px}
+.lp-root .foot-brand .tile{width:32px;height:32px;border-radius:9px;background:var(--terracotta);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lp-root .foot-brand .tile svg{width:60%;height:60%}
+.lp-root .foot-brand .wm{font-family:var(--display);font-weight:600;color:var(--linen);font-size:1.1rem}
+.lp-root .foot-tag{font-size:.84rem;color:rgba(244,237,223,.5)}
+.lp-root .foot-links{display:flex;gap:26px}
+.lp-root .foot-links a{font-size:.88rem;color:rgba(244,237,223,.72);cursor:pointer;transition:color .2s}
+.lp-root .foot-links a:hover{color:#fff}
+.lp-root .foot-copy{max-width:var(--maxw);margin:26px auto 0;padding-top:22px;border-top:1px solid rgba(167,191,168,.1);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.8rem;color:rgba(244,237,223,.45)}
 
-  /* stale mobile ref cleanup */
-  @media(max-width:820px){.hero-right{order:-1;margin-top:8px}}
-
-  /* pricing card featured text */
-  .pcard.feat-card .plan{color:rgba(244,237,223,.7)}
-  .pcard.feat-card .price{color:#fff}
+/* ---------- RESPONSIVE ---------- */
+@media(max-width:960px){
+  .lp-root .hero-grid{grid-template-columns:1fr;gap:48px}
+  .lp-root .hero-vis{max-width:480px}
+  .lp-root .feat.spot{grid-template-columns:1fr;gap:26px;padding:32px 30px}
+  .lp-root .feat.third{grid-column:span 3}
+}
+@media(max-width:860px){
+  .lp-root .lp-nav-links{display:none}
+  .lp-root .steps{grid-template-columns:1fr 1fr;gap:30px 22px}
+  .lp-root .steps::before{display:none}
+  .lp-root .proof{grid-template-columns:1fr}
+}
+@media(max-width:680px){
+  .lp-root .wrap{padding:0 20px}
+  .lp-root .hero{padding:116px 0 64px}
+  .lp-root .hero-grid{gap:40px}
+  .lp-root .hero-vis{margin:0 auto;max-width:420px;width:100%}
+  .lp-root .hero-p{font-size:1.05rem}
+  .lp-root .stats-in{grid-template-columns:1fr 1fr;gap:34px 0;padding:34px 0}
+  .lp-root .stat-cell:nth-child(2){border-right:none}
+  .lp-root .stat-cell{padding:0 10px}
+  .lp-root .bento{grid-template-columns:1fr;gap:16px}
+  .lp-root .feat.third{grid-column:span 1}
+  .lp-root .feat{padding:26px 24px}
+  .lp-root .feat.spot{padding:28px 24px}
+  .lp-root .feat.spot h3{font-size:1.5rem}
+  .lp-root .price-wrap{grid-template-columns:1fr;max-width:420px}
+  .lp-root .foot-in{flex-direction:column;align-items:flex-start;gap:18px}
+  .lp-root .foot-copy{justify-content:flex-start;flex-direction:column;gap:4px}
+  .lp-root .hero-btns{gap:10px}
+  .lp-root .hero-btns .btn{flex:1 1 100%}
+  .lp-root .pv{transform:none}
+  .lp-root::before{display:none}
+}
+@media(max-width:430px){
+  .lp-root .lp-nav-in{padding:0 16px;height:62px}
+  .lp-root .lp-nav-cta{gap:11px}
+  .lp-root .lp-nav .btn-pine{padding:.6rem 1.05rem;font-size:.86rem}
+  .lp-root .lp-signin{font-size:.88rem}
+  .lp-root .hero{padding:104px 0 60px}
+  .lp-root .hero h1{font-size:clamp(2.5rem,10vw,3.2rem)}
+  .lp-root .h2{font-size:clamp(1.85rem,8vw,2.4rem)}
+  .lp-root .band .stmt{font-size:clamp(1.7rem,7.6vw,2.4rem)}
+  .lp-root .steps{grid-template-columns:1fr}
+  .lp-root .hero-addr{padding:.6rem .6rem .6rem .9rem;gap:9px}
+  .lp-root .hero-addr .go{padding:.55rem .7rem;font-size:.8rem}
+  .lp-root .pv-stats{grid-template-columns:1fr 1fr}
+  .lp-root .pv-stat:nth-child(3){grid-column:span 2}
+  .lp-root .pcard{padding:30px 24px}
+  .lp-root .tcard{padding:26px 24px}
+}
+/* touch devices: disable 3D tilt + cursor glow (can shimmer/alias on mobile GPUs) */
+@media(hover:none){
+  .lp-root .pv,.lp-root .hero-vis:hover .pv{transform:none}
+  .lp-root .feat::after{display:none}
+  .lp-root::before{display:none}
+}
+@media(max-width:380px){
+  .lp-root .lp-nav-in{padding:0 13px}
+  .lp-root .lp-brand{gap:8px}
+  .lp-root .lp-brand .tile{width:34px;height:34px}
+  .lp-root .lp-brand .wm{font-size:1.16rem}
+  .lp-root .lp-nav-cta{gap:9px}
+  .lp-root .lp-signin{font-size:.82rem}
+  .lp-root .lp-nav .btn-pine{padding:.5rem .8rem;font-size:.81rem}
+  .lp-root .hero h1{font-size:clamp(2.25rem,11vw,3rem)}
+}
+@media(prefers-reduced-motion:reduce){
+  .lp-root .rv{opacity:1;transform:none;transition:none}
+  .lp-root .qs-track{animation:none}
+  .lp-root .hero-badge .pdot,.lp-root .hero-addr .typed .caret{animation:none}
+  .lp-root .pv{transform:none}
+}
 
 /* ── AUTH SCREEN ── */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--dark)}
@@ -1302,10 +1358,9 @@ function Modal({ title, onClose, onSave, children }) {
 // ─── LANDING PAGE ────────────────────────────────────────────────────────────
 function LandingPage({ onSignIn, onSignUp }) {
   const [scrolled, setScrolled] = useState(false);
+  const [typed, setTyped] = useState("1420 Maple Grove Dr");
 
-  const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
@@ -1314,10 +1369,29 @@ function LandingPage({ onSignIn, onSignUp }) {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
+  // Hero typewriter — cycles through example addresses
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const addrs = ["1420 Maple Grove Dr", "88 Lakeview Ave", "327 Birchwood Ln"];
+    let ai = 0, ci = addrs[0].length, deleting = true, timer;
+    const tick = () => {
+      const full = addrs[ai];
+      ci += deleting ? -1 : 1;
+      setTyped(full.slice(0, ci));
+      let delay = deleting ? 45 : 95;
+      if (!deleting && ci === full.length) { deleting = false; delay = 1900; setTimeout(() => { deleting = true; timer = setTimeout(tick, 45); }, delay); return; }
+      if (deleting && ci === 0) { deleting = false; ai = (ai + 1) % addrs.length; delay = 360; }
+      timer = setTimeout(tick, delay);
+    };
+    timer = setTimeout(tick, 2200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Scroll reveals, count-up, and feature glow
   useEffect(() => {
     const io = new IntersectionObserver(
       (es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
-      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
     );
     document.querySelectorAll(".lp-root .rv").forEach(el => io.observe(el));
 
@@ -1328,14 +1402,14 @@ function LandingPage({ onSignIn, onSignUp }) {
         let start = null;
         const step = ts => {
           if (!start) start = ts;
-          const pct = Math.min((ts - start) / 1600, 1);
+          const pct = Math.min((ts - start) / 1500, 1);
           el.textContent = Math.round((1 - Math.pow(1 - pct, 3)) * to);
           if (pct < 1) requestAnimationFrame(step); else el.textContent = to;
         };
         requestAnimationFrame(step);
         countIO.unobserve(el);
       });
-    }, { threshold: 0.5 });
+    }, { threshold: 0.6 });
     document.querySelectorAll(".lp-root .cnt").forEach(el => countIO.observe(el));
 
     const cards = document.querySelectorAll(".lp-root .feat");
@@ -1348,8 +1422,8 @@ function LandingPage({ onSignIn, onSignUp }) {
     return () => { io.disconnect(); countIO.disconnect(); cards.forEach(c => c.removeEventListener("mousemove", glow)); };
   }, []);
 
-  const HouseMark = ({ size = 48, stroke = "#F4EDDF" }) => (
-    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" style={{display:"block"}}>
+  const HouseMark = ({ stroke = "#F4EDDF" }) => (
+    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" style={{ display: "block" }}>
       <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke={stroke} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M11 34.5 L37 34.5" stroke={stroke} strokeWidth="2.8" strokeLinecap="round"/>
@@ -1358,9 +1432,18 @@ function LandingPage({ onSignIn, onSignUp }) {
   );
 
   const questions = [
-    "How old is my water heater?","What maintenance is due this season?",
-    "How much have I spent on my home?","When does my HVAC warranty expire?",
-    "Are my utility bills unusually high?","What has my home sold for historically?",
+    "How old is my water heater?", "What maintenance is due this season?",
+    "How much have I spent on my home?", "When does my HVAC warranty expire?",
+    "Are my utility bills unusually high?", "What has my home sold for historically?",
+  ];
+
+  const features = [
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 3C9 7 7 9.5 7 13a5 5 0 0 0 10 0c0-3.5-2-6-5-10z"/></svg>, title: "Climate-aware upkeep", desc: "Maintenance tuned to your zip code's climate zone and the season — so you're prepping for what your home actually faces.", tag: "Seasonal" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Utility spike alerts", desc: "Log your bills and Steadwell flags unusual jumps in usage — catch a leak or a failing system before it becomes a crisis.", tag: "Unique to Steadwell" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranties & assets", desc: "Every appliance, model number, and warranty with expiry alerts — plus service history that follows each asset.", tag: "Never lose a receipt" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & investment", desc: "See every dollar your home has cost you, broken down by category — and weigh it against what your home is worth.", tag: "Know your numbers" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>, title: "Document vault", desc: "Deeds, permits, inspections, insurance — filed, searchable, and tied to the asset or project they belong to.", tag: "All your paperwork" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>, title: "Tax & sale history", desc: "Years of property tax records and every past sale — your home's full financial story, on one timeline.", tag: "Property data" },
   ];
 
   return (
@@ -1368,124 +1451,120 @@ function LandingPage({ onSignIn, onSignUp }) {
       <a href="#lp-main" className="skip-nav">Skip to main content</a>
 
       {/* ── NAV ── */}
-      <nav className={scrolled ? "solid" : ""}>
-        <div className="nav-in">
-          <div className="brand">
-            <span className="tile" style={{width:38,height:38,borderRadius:11,background:"radial-gradient(120% 120% at 30% 18%,#2C5A49,#234A3D 55%,#173026)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 10px 20px -12px rgba(23,48,38,.7)"}}>
-              <HouseMark/>
-            </span>
+      <nav className={`lp-nav ${scrolled ? "solid" : ""}`} aria-label="Primary">
+        <div className="lp-nav-in">
+          <div className="lp-brand">
+            <span className="tile"><HouseMark/></span>
             <span className="wm">Steadwell</span>
           </div>
-          <div className="nav-links">
-            <a onClick={() => scrollTo("features")} style={{cursor:"pointer"}}>Features</a>
-            <a onClick={() => scrollTo("how")} style={{cursor:"pointer"}}>How it works</a>
-            <a onClick={() => scrollTo("pricing")} style={{cursor:"pointer"}}>Pricing</a>
+          <div className="lp-nav-links">
+            <a onClick={() => scrollTo("features")}>Features</a>
+            <a onClick={() => scrollTo("how")}>How it works</a>
+            <a onClick={() => scrollTo("pricing")}>Pricing</a>
           </div>
-          <div className="nav-cta">
-            <span className="nav-signin" onClick={onSignIn}>Sign in</span>
-            <button className="lp-btn lp-btn-solid" onClick={onSignUp}>Join the beta</button>
+          <div className="lp-nav-cta">
+            <button className="lp-signin" onClick={onSignIn}>Sign in</button>
+            <button className="btn btn-pine" onClick={onSignUp}>Join the beta</button>
           </div>
         </div>
       </nav>
 
       {/* ── HERO ── */}
       <header className="hero" id="lp-main" tabIndex={-1}>
+        <div className="hero-bg" aria-hidden="true">
+          <div className="glow1"/><div className="glow2"/>
+          <div className="contour">
+            <svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M-50 540 C 220 470 360 600 600 520 S 1000 420 1260 500"/>
+              <path d="M-50 600 C 240 540 380 660 620 580 S 1010 490 1260 560"/>
+              <path d="M-50 470 C 200 400 380 520 600 450 S 1010 360 1260 430"/>
+              <path d="M-50 400 C 220 350 360 440 600 380 S 1010 300 1260 360"/>
+              <path d="M-50 330 C 230 290 360 370 600 320 S 1010 250 1260 300"/>
+            </svg>
+          </div>
+        </div>
         <div className="wrap hero-grid">
           <div className="rv">
-            <span className="badge"><span className="pdot"></span> Now in beta &mdash; free to join</span>
+            <span className="hero-badge"><span className="pdot"/> Now in beta — free to join</span>
             <h1>Your home,<br/><em>kept well.</em></h1>
-            <p className="hero-p">Type your address and Steadwell fills in the rest &mdash; then keeps your maintenance, costs, and records in order, year after year.</p>
+            <p className="hero-p">Type your address and Steadwell fills in the rest — then keeps your maintenance, costs, and records in order, year after year.</p>
+            <div className="hero-addr" role="presentation">
+              <span className="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+              <span className="typed">{typed}<span className="caret"/></span>
+              <span className="go">Look up <span aria-hidden="true">→</span></span>
+            </div>
             <div className="hero-btns">
-              <button className="lp-btn lp-btn-terra" onClick={onSignUp}>Join the beta &mdash; it&apos;s free &rarr;</button>
-              <button className="lp-btn lp-btn-ghost" onClick={() => scrollTo("features")}>See how it works</button>
+              <button className="btn btn-terra" onClick={onSignUp}>Join the beta — it's free <span aria-hidden="true">→</span></button>
+              <button className="btn btn-ghost" onClick={() => scrollTo("features")}>See how it works</button>
             </div>
             <p className="hero-micro"><b>No credit card.</b> Free forever plan available.</p>
           </div>
-          <div className="hero-right rv" style={{transitionDelay:".12s"}}>
-            <div className="browser-frame">
-              <div className="bf-chrome">
-                <span className="bf-dots"><i/><i/><i/></span>
-                <span className="bf-url">steadwell.app</span>
-              </div>
-              <div className="bf-hdr">
-                <div className="bf-brand">
-                  <span className="bf-tile" style={{width:24,height:24,borderRadius:7,background:"var(--terracotta)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" style={{display:"block"}}>
-                      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/>
-                    </svg>
-                  </span>
-                  <span className="bf-wm">Steadwell</span>
+          <div className="hero-vis rv" style={{ transitionDelay: ".14s" }}>
+            <div className="blob" aria-hidden="true"/>
+            <div className="pv">
+              <div className="pv-bar"><i/><i/><i/><span className="pv-url">steadwell.app</span></div>
+              <div className="pv-body">
+                <div className="pv-greet">Good morning, Alex.</div>
+                <div className="pv-sub">Your home is in good shape — 2 things coming up this week.</div>
+                <div className="pv-stats">
+                  <div className="pv-stat"><div className="k">Home value</div><div className="v">$418k</div></div>
+                  <div className="pv-stat accent"><div className="k">Tasks due</div><div className="v">2</div></div>
+                  <div className="pv-stat amber"><div className="k">This year</div><div className="v">$3.2k</div></div>
                 </div>
-                <div className="bf-tabs">
-                  <span className="bf-tab on">Dashboard</span>
-                  <span className="bf-tab">My Home</span>
-                  <span className="bf-tab">Tasks</span>
-                  <span className="bf-tab">Expenses</span>
-                </div>
-              </div>
-              <div className="bf-body">
-                <div className="bf-greet">Good morning, Alex.</div>
-                <div className="bf-sub">Your home is in good shape &mdash; 2 things coming up this week.</div>
-                <div className="bf-scards">
-                  <div className="bsc"><div className="bk">Home value</div><div className="bv">$418k</div></div>
-                  <div className="bsc accent"><div className="bk">Tasks due</div><div className="bv">2</div></div>
-                  <div className="bsc amber"><div className="bk">This year</div><div className="bv">$3.2k</div></div>
-                </div>
-                <div className="bf-row"><span className="bd" style={{background:"var(--terracotta)"}}></span><span className="btl">Service HVAC filter</span><span className="btr">in 5 days</span></div>
-                <div className="bf-row"><span className="bd" style={{background:"var(--sage-deep)"}}></span><span className="btl">Roof inspection due</span><span className="btr">in 12 days</span></div>
-                <div className="bf-row"><span className="bd" style={{background:"var(--pine)"}}></span><span className="btl">Water heater warranty</span><span className="btr">3 yrs left</span></div>
+                <div className="pv-row"><span className="dot" style={{ background: "var(--terracotta)" }}/><span className="tl">Service HVAC filter</span><span className="tr">in 5 days</span></div>
+                <div className="pv-row"><span className="dot" style={{ background: "var(--sage-deep)" }}/><span className="tl">Roof inspection due</span><span className="tr">in 12 days</span></div>
+                <div className="pv-row"><span className="dot" style={{ background: "var(--pine)" }}/><span className="tl">Water heater warranty</span><span className="tr">3 yrs left</span></div>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="wrap">
-          <div className="lp-stats rv" style={{transitionDelay:".2s"}}>
-            <div className="lp-stat"><div className="n"><span className="cnt" data-to="50">50</span><span className="suf">+</span></div><div className="l">Data fields per home</div></div>
-            <div className="lp-stat-div"/>
-            <div className="lp-stat"><div className="n"><span>$0</span></div><div className="l">To get started</div></div>
-            <div className="lp-stat-div"/>
-            <div className="lp-stat"><div className="n"><span className="cnt" data-to="3">3</span><span className="suf">min</span></div><div className="l">To set up your home</div></div>
-            <div className="lp-stat-div"/>
-            <div className="lp-stat"><div className="n"><span className="cnt" data-to="100">100</span><span className="suf">%</span></div><div className="l">Your data, private</div></div>
           </div>
         </div>
       </header>
 
-      {/* ── QUESTIONS STRIP ── */}
-      <section className="qs-strip">
-        <div className="qs-label" style={{paddingLeft:26,paddingRight:26}}>Questions Steadwell answers for you</div>
-        <div className="qs-track">
-          {[...questions,...questions].map((q,i) => <span key={i} className="q-pill">{q}</span>)}
+      {/* ── STATS ── */}
+      <section className="stats">
+        <div className="wrap">
+          <div className="stats-in rv">
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="50">50</span><span className="suf">+</span></div><div className="stat-l">Data fields per home</div></div>
+            <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">To get started</div></div>
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="3">3</span><span className="suf"> min</span></div><div className="stat-l">To set up your home</div></div>
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="100">100</span><span className="suf">%</span></div><div className="stat-l">Your data, private</div></div>
+          </div>
         </div>
       </section>
 
-      {/* ── INSIGHT BAND ── */}
+      {/* ── QUESTIONS MARQUEE ── */}
+      <section className="qs" aria-label="Questions Steadwell answers">
+        <div className="qs-label">Questions Steadwell answers for you</div>
+        <div className="qs-track">
+          {[...questions, ...questions].map((q, i) => <span key={i} className="q-pill">{q}</span>)}
+        </div>
+      </section>
+
+      {/* ── EDITORIAL STATEMENT ── */}
       <section className="band">
-        <div className="wrap band-in rv">
-          <div className="eyebrow">Built for the long haul</div>
-          <h2 className="h2" style={{fontFamily:"var(--display)",fontWeight:500,fontSize:"clamp(2.2rem,5vw,3.8rem)",lineHeight:1.08,letterSpacing:"-.02em",maxWidth:"22ch",margin:"0 auto",color:"var(--pine)"}}>Most home apps are built for buying and selling. Steadwell is built for <em style={{fontStyle:"italic",color:"var(--terracotta)"}}>the years in between.</em></h2>
+        <div className="wrap rv">
+          <p className="stmt">Most home apps are built for buying and selling. Steadwell is built for <em>the years in between.</em></p>
         </div>
       </section>
 
       {/* ── FEATURES ── */}
       <section className="block" id="features">
         <div className="wrap">
-          <div className="head-center rv">
+          <div className="head center rv">
             <div className="eyebrow">Everything in one place</div>
             <h2 className="h2">Built for homeowners,<br/>not real estate agents</h2>
-            <p className="sub">From the moment you move in, Steadwell quietly keeps the whole picture &mdash; what your home is, what it needs, and what it&apos;s worth.</p>
+            <p className="sub">From the moment you move in, Steadwell quietly keeps the whole picture — what your home is, what it needs, and what it's worth.</p>
           </div>
           <div className="bento">
             <div className="feat spot rv">
               <div>
                 <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
                 <h3>Type your address. We do the rest.</h3>
-                <p>Steadwell pulls 50+ fields from public records in seconds &mdash; year built, square footage, beds &amp; baths, tax history, every past sale, and nearby schools. No forms, no manual entry.</p>
+                <p>Steadwell pulls 50+ fields from public records in seconds — year built, square footage, beds &amp; baths, tax history, every past sale, and nearby schools. No forms, no manual entry.</p>
                 <span className="tag">Instant property lookup</span>
               </div>
-              <div className="spot-vis">
-                <div className="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg> 1420 Maple Grove Dr</div>
+              <div className="spot-vis" aria-hidden="true">
+                <div className="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg> 1420 Maple Grove Dr</div>
                 <div className="spot-grid">
                   <div>Year built<b>1987</b></div>
                   <div>Square feet<b>2,140</b></div>
@@ -1494,15 +1573,8 @@ function LandingPage({ onSignIn, onSignUp }) {
                 </div>
               </div>
             </div>
-            {[
-              {ic:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 3C9 7 7 9.5 7 13a5 5 0 0 0 10 0c0-3.5-2-6-5-10z"/></svg>, title:"Climate-aware upkeep",desc:"Maintenance tasks tuned to your zip code’s climate zone and the season — so you’re prepping for what your home actually faces.",tag:"Seasonal"},
-              {ic:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title:"Utility spike alerts",desc:"Log your bills and Steadwell flags unusual jumps in usage — catch a leak or a failing system before it becomes a crisis.",tag:"Unique to Steadwell"},
-              {ic:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title:"Warranties & assets",desc:"Every appliance, model number, and warranty with expiry alerts — plus service history that follows each asset.",tag:"Never lose a receipt"},
-              {ic:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title:"Costs & investment",desc:"See every dollar your home has cost you, broken down by category — and weigh it against what your home is worth.",tag:"Know your numbers"},
-              {ic:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>, title:"Document vault",desc:"Deeds, permits, inspections, insurance — filed, searchable, and tied to the asset or project they belong to.",tag:"All your paperwork"},
-              {ic:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>, title:"Tax & sale history",desc:"Years of property tax records and every past sale — your home’s full financial story, on one timeline.",tag:"Property data"},
-            ].map((f,i) => (
-              <div key={i} className="feat third rv" style={{transitionDelay:(i%3*0.07)+"s"}}>
+            {features.map((f, i) => (
+              <div key={i} className="feat third rv" style={{ transitionDelay: (i % 3 * 0.07) + "s" }}>
                 <div className="ic">{f.ic}</div>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
@@ -1516,19 +1588,19 @@ function LandingPage({ onSignIn, onSignUp }) {
       {/* ── HOW IT WORKS ── */}
       <section className="block how" id="how">
         <div className="wrap">
-          <div className="head-center rv">
+          <div className="head center rv">
             <div className="eyebrow">Up and running in minutes</div>
             <h2 className="h2">No manual entry for<br/>the boring stuff</h2>
             <p className="sub">Steadwell does the heavy lifting from your address. You just keep it pointed in the right direction.</p>
           </div>
           <div className="steps">
             {[
-              {n:"1",t:"Create your account",d:"Email and you’re in — under 60 seconds, no card."},
-              {n:"2",t:"Enter your address",d:"We pull 50+ fields from public records automatically."},
-              {n:"3",t:"Start tracking",d:"Tasks, warranties, costs, and documents — all in one place."},
-              {n:"4",t:"Stay ahead",d:"Reminders surface what’s due before it slips."},
-            ].map((s,i) => (
-              <div key={i} className="step rv" style={{transitionDelay:(i*0.08)+"s"}}>
+              { n: "1", t: "Create your account", d: "Email and you're in — under 60 seconds, no card." },
+              { n: "2", t: "Enter your address", d: "We pull 50+ fields from public records automatically." },
+              { n: "3", t: "Start tracking", d: "Tasks, warranties, costs, and documents — all in one place." },
+              { n: "4", t: "Stay ahead", d: "Reminders surface what's due before it slips." },
+            ].map((s, i) => (
+              <div key={i} className="step rv" style={{ transitionDelay: (i * 0.08) + "s" }}>
                 <div className="num">{s.n}</div>
                 <h3>{s.t}</h3>
                 <p>{s.d}</p>
@@ -1541,21 +1613,21 @@ function LandingPage({ onSignIn, onSignUp }) {
       {/* ── TESTIMONIALS ── */}
       <section className="block">
         <div className="wrap">
-          <div className="head-center rv">
+          <div className="head center rv">
             <div className="eyebrow">Early homeowners</div>
             <h2 className="h2">Real homes, kept well</h2>
           </div>
           <div className="proof">
             {[
-              {q:"I typed my address and it instantly knew my home was built in 1987, showed me the last three sales, and pulled 5 years of property tax records. That alone is worth it.",n:"Mike R.",r:"Homeowner · Tampa, FL",i:"MR",c:"#4A89B8"},
-              {q:"Finally somewhere to track all our warranties. Our dishwasher broke and I actually knew exactly where the warranty was. First time ever.",n:"Sarah L.",r:"First-time homeowner · Austin, TX",i:"SL",c:"#5E8065"},
-              {q:"The expense tracker showed me I’ve spent $14,000 on my home in 2 years. I had no idea. Now I actually have data to plan with.",n:"James T.",r:"Homeowner · Denver, CO",i:"JT",c:"#C16140"},
-            ].map((p,i) => (
-              <div key={i} className="tcard rv" style={{transitionDelay:(i*0.1)+"s"}}>
-                <div className="stars">★★★★★</div>
-                <p className="quote">&ldquo;{p.q}&rdquo;</p>
+              { q: "I typed my address and it instantly knew my home was built in 1987, showed me the last three sales, and pulled 5 years of property tax records. That alone is worth it.", n: "Mike R.", r: "Homeowner · Tampa, FL", i: "MR", c: "#3A7AAF" },
+              { q: "Finally somewhere to track all our warranties. Our dishwasher broke and I actually knew exactly where the warranty was. First time ever.", n: "Sarah L.", r: "First-time homeowner · Austin, TX", i: "SL", c: "#7FA088" },
+              { q: "The expense tracker showed me I've spent $14,000 on my home in 2 years. I had no idea. Now I actually have data to plan with.", n: "James T.", r: "Homeowner · Denver, CO", i: "JT", c: "#C16140" },
+            ].map((p, i) => (
+              <div key={i} className="tcard rv" style={{ transitionDelay: (i * 0.09) + "s" }}>
+                <div className="mark">&ldquo;</div>
+                <p className="quote">{p.q}</p>
                 <div className="who">
-                  <span className="av" style={{background:p.c}}>{p.i}</span>
+                  <span className="av" style={{ background: p.c }}>{p.i}</span>
                   <div><div className="nm">{p.n}</div><div className="ro">{p.r}</div></div>
                 </div>
               </div>
@@ -1565,9 +1637,9 @@ function LandingPage({ onSignIn, onSignUp }) {
       </section>
 
       {/* ── PRICING ── */}
-      <section className="block" id="pricing" style={{background:"var(--linen-2)"}}>
+      <section className="block pricing" id="pricing">
         <div className="wrap">
-          <div className="head-center rv">
+          <div className="head center rv">
             <div className="eyebrow">Simple pricing</div>
             <h2 className="h2">Start free. Upgrade when ready.</h2>
             <p className="sub">Use Steadwell free for as long as you like. Unlock more when your home needs more.</p>
@@ -1578,19 +1650,19 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$0<span> / month</span></div>
               <p className="pdesc">Everything you need to start keeping your home well.</p>
               <ul className="plist">
-                {["1 property","Unlimited tasks & warranties","Expense tracking","Property auto-fill","Tax & sale history","Photo & document upload"].map(f=><li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["1 property", "Unlimited tasks & warranties", "Expense tracking", "Property auto-fill", "Tax & sale history", "Photo & document upload"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="pbtn-out pbtn lp-btn" onClick={onSignUp}>Get started free</button>
+              <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
-            <div className="pcard feat-card rv" style={{transitionDelay:".08s"}}>
+            <div className="pcard pro rv" style={{ transitionDelay: ".08s" }}>
               <span className="pbadge">Most popular</span>
               <div className="plan">Pro</div>
               <div className="price">$4.99<span> / month</span></div>
               <p className="pdesc">For homeowners who want the full picture.</p>
               <ul className="plist">
-                {["Everything in Free","Up to 3 properties","Email & smart reminders","AI receipt & document scan","Full sale-history timeline","Priority support"].map(f=><li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free", "Up to 3 properties", "Email & smart reminders", "AI receipt & document scan", "Full sale-history timeline", "Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="pbtn lp-btn lp-btn-terra" onClick={onSignUp}>Join the beta</button>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Join the beta</button>
             </div>
           </div>
         </div>
@@ -1598,28 +1670,27 @@ function LandingPage({ onSignIn, onSignUp }) {
 
       {/* ── FINAL CTA ── */}
       <section className="final">
-        <div className="wrap final-in rv">
+        <div className="glow" aria-hidden="true"/>
+        <div className="wrap rv">
           <h2>Your home is your<br/><em>biggest investment.</em></h2>
-          <p>Start keeping it well &mdash; free forever, set up in minutes, no credit card required.</p>
-          <button className="lp-btn lp-btn-xl" onClick={onSignUp}>Create your free account &rarr;</button>
+          <p>Start keeping it well — free forever, set up in minutes, no credit card required.</p>
+          <button className="btn btn-terra btn-xl" onClick={onSignUp}>Create your free account <span aria-hidden="true">→</span></button>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer>
+      <footer className="foot">
         <div className="wrap">
           <div className="foot-in">
             <div className="foot-brand">
-              <span className="tile" style={{width:30,height:30,borderRadius:8,background:"var(--terracotta)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <HouseMark/>
-              </span>
-              <span className="wm" style={{fontFamily:"var(--display)",fontWeight:600,color:"var(--linen)",fontSize:"1.05rem"}}>Steadwell</span>
-              <span className="foot-tag">&mdash; Your home, kept well.</span>
+              <span className="tile"><HouseMark/></span>
+              <span className="wm">Steadwell</span>
+              <span className="foot-tag">— Your home, kept well.</span>
             </div>
             <div className="foot-links">
-              <a onClick={() => scrollTo("features")} style={{cursor:"pointer"}}>Features</a>
-              <a onClick={() => scrollTo("pricing")} style={{cursor:"pointer"}}>Pricing</a>
-              <a onClick={onSignIn} style={{cursor:"pointer"}}>Sign in</a>
+              <a onClick={() => scrollTo("features")}>Features</a>
+              <a onClick={() => scrollTo("pricing")}>Pricing</a>
+              <a onClick={onSignIn}>Sign in</a>
             </div>
           </div>
           <div className="foot-copy">
@@ -1628,11 +1699,9 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
-
 
 // ─── ONBOARDING WIZARD ───────────────────────────────────────────────────────
 function OnboardingWizard({ session, onComplete }) {
