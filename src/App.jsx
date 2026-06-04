@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 
@@ -1226,6 +1226,89 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .auth-forgot{background:none;border:none;color:#9E9690;font-size:.77rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;padding:0;margin-top:.2rem;text-align:right;display:block;width:100%}
 .auth-forgot:hover{color:var(--rust)}
 
+
+/* ══ CALENDAR TAB ══ */
+.ct-wrap{display:flex;flex-direction:column;gap:1rem}
+.ct-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+.ct-vtoggle{display:flex;background:var(--cream2);border-radius:8px;padding:2px;gap:2px}
+.ct-vbtn{padding:.3rem .75rem;border-radius:6px;font-size:.77rem;font-weight:600;border:none;cursor:pointer;background:none;color:#9E9690;transition:all .15s;font-family:'Hanken Grotesk',sans-serif}
+.ct-vbtn.on{background:var(--white);color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.ct-gen-btn{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;padding:.45rem .9rem;border-radius:22px;border:1.5px solid var(--rust-light);background:none;color:var(--rust);cursor:pointer;transition:all .18s;font-family:'Hanken Grotesk',sans-serif}
+.ct-gen-btn:hover{background:var(--rust-light)}
+
+/* alerts strip */
+.ct-alerts{display:flex;gap:.55rem;overflow-x:auto;padding:.15rem 0 .4rem;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ct-alerts::-webkit-scrollbar{display:none}
+.ct-alert{flex-shrink:0;display:flex;align-items:center;gap:.55rem;background:var(--white);border:1px solid var(--stone);border-radius:10px;padding:.52rem .8rem;cursor:pointer;transition:box-shadow .12s;max-width:210px}
+.ct-alert:hover{box-shadow:var(--shadow)}
+.ct-alert-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.ct-alert-body{min-width:0}
+.ct-alert-title{font-size:.77rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+.ct-alert-when{font-size:.67rem;color:#9E9690}
+
+/* body grid: calendar + panel */
+.ct-body{display:grid;grid-template-columns:1fr;gap:1rem}
+@media(min-width:769px){.ct-body{grid-template-columns:1fr 320px}}
+
+/* calendar card */
+.ct-cal{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);overflow:hidden}
+.ct-cal-hdr{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid var(--stone)}
+.ct-month-lbl{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:500;color:var(--dark)}
+.ct-navs{display:flex;align-items:center;gap:4px}
+.ct-nav-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--stone);background:none;cursor:pointer;color:var(--dark);font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:background .12s}
+.ct-nav-btn:hover{background:var(--cream2)}
+.ct-today-btn{font-size:.62rem;font-weight:700;letter-spacing:.3px;padding:0 .5rem}
+.ct-cg{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--stone)}
+.ct-dow{background:var(--cream2);padding:.42rem 0;text-align:center;font-size:.63rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#9E9690}
+.ct-day{background:var(--white);padding:.32rem .38rem .4rem;min-height:58px;cursor:pointer;transition:background .1s;position:relative;user-select:none}
+.ct-day:hover:not(.ct-other){background:rgba(193,97,64,.05)}
+.ct-other{background:#F9F7F4;cursor:default}
+.ct-other .ct-dn{color:#C2B8AE}
+.ct-sel{background:rgba(193,97,64,.07) !important;box-shadow:inset 0 0 0 2px rgba(193,97,64,.3)}
+.ct-today .ct-dn{background:var(--rust);color:#fff;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.74rem;line-height:1;margin-bottom:2px}
+.ct-dn{font-size:.77rem;font-weight:500;color:var(--dark);line-height:1;margin-bottom:3px}
+.ct-dots{display:flex;flex-wrap:wrap;gap:2px}
+.ct-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ct-dotx{font-size:.54rem;color:#9E9690;font-weight:700;line-height:1;align-self:center}
+
+/* day panel */
+.ct-panel{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);display:flex;flex-direction:column;max-height:600px}
+.ct-ph{padding:.85rem 1rem;border-bottom:1px solid var(--stone);display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-shrink:0}
+.ct-pdate{font-family:'Fraunces',serif;font-size:.95rem;font-weight:500;color:var(--dark)}
+.ct-add-btn{display:flex;align-items:center;gap:5px;font-size:.78rem;font-weight:600;padding:.35rem .75rem;border-radius:20px;border:1.5px solid var(--stone);background:none;color:var(--dark);cursor:pointer;transition:all .15s;font-family:'Hanken Grotesk',sans-serif}
+.ct-add-btn:hover{border-color:var(--rust);color:var(--rust)}
+.ct-pb{flex:1;overflow-y:auto;padding:.7rem .75rem;display:flex;flex-direction:column;gap:.45rem}
+.ct-pe{display:flex;align-items:flex-start;gap:.6rem;background:var(--cream2);border-radius:10px;padding:.62rem .7rem;border:1px solid var(--stone)}
+.ct-pe-bar{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;min-height:28px}
+.ct-pe-info{flex:1;min-width:0}
+.ct-pe-title{font-size:.83rem;font-weight:600;color:var(--dark);line-height:1.3}
+.ct-pe-meta{font-size:.7rem;color:#9E9690;margin-top:2px;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.ct-pe-create{flex-shrink:0;font-size:.7rem;font-weight:700;padding:.28rem .6rem;border-radius:12px;border:1.5px solid var(--sage-deep);background:none;color:var(--sage-deep);cursor:pointer;transition:all .15s;font-family:'Hanken Grotesk',sans-serif;white-space:nowrap}
+.ct-pe-create:hover{background:var(--sage-deep);color:#fff}
+.ct-pe-create.done{border-color:#9E9690;color:#9E9690;cursor:default}
+.ct-suggest-hdr{font-size:.67rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9E9690;padding:.2rem .2rem .1rem;margin-top:.2rem}
+.ct-p-empty{text-align:center;color:#9E9690;font-size:.82rem;padding:2rem 1rem;line-height:1.6}
+
+/* upcoming list */
+.ct-upcoming{display:flex;flex-direction:column;gap:.35rem}
+.ct-up-group-lbl{font-size:.67rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9E9690;padding:.4rem .6rem;background:var(--cream2);border-radius:6px;margin-top:.4rem}
+.ct-up-row{display:flex;align-items:center;gap:.65rem;padding:.58rem .75rem;background:var(--white);border:1px solid var(--stone);border-radius:10px}
+.ct-up-bar{width:3px;height:30px;border-radius:2px;flex-shrink:0}
+.ct-up-info{flex:1;min-width:0}
+.ct-up-title{font-size:.83rem;font-weight:500;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-up-type{font-size:.68rem;color:#9E9690}
+.ct-up-date{font-size:.72rem;font-weight:700;color:var(--dark);white-space:nowrap}
+
+/* generate modal */
+.ct-gen-intro{font-size:.86rem;color:#5A534B;margin-bottom:1rem;line-height:1.55}
+.ct-gen-season{font-size:.7rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9E9690;padding:.4rem .4rem .15rem;margin-top:.5rem}
+.ct-gen-list{display:flex;flex-direction:column;gap:.35rem;max-height:52vh;overflow-y:auto;padding-right:.25rem}
+.ct-gen-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .7rem;background:var(--cream2);border-radius:9px;border:1px solid var(--stone);cursor:pointer;transition:background .1s}
+.ct-gen-item:hover{background:rgba(193,97,64,.07)}
+.ct-gen-item input[type=checkbox]{accent-color:var(--rust);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.ct-gen-info{flex:1;min-width:0}
+.ct-gen-title{font-size:.82rem;font-weight:500;color:var(--dark);line-height:1.3}
+.ct-gen-sub{font-size:.7rem;color:#9E9690;margin-top:1px}
 
 /* ══ SAFE RESPONSIVE FIXES ══ */
 
@@ -3294,7 +3377,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
   const seasonIcon = {spring:"🌸",summer:"☀️",fall:"🍂",winter:"❄️"}[season];
   const seasonalSuggestions = climate[season] || [];
 
-  const [view, setView] = useState("list");
+  const [view, setView] = useState("calendar");
   const [statusF, setStatusF] = useState("All");
   const [catF, setCatF] = useState("All");
   const [sort, setSort] = useState("due_date");
@@ -3482,7 +3565,8 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters — hidden in calendar mode */}
+      {view !== "calendar" && (
       <div className="toolbar">
         {["All",...STATUS_OPTIONS].map(s=>(
           <button key={s} className={`chip ${statusF===s?"on":""}`} onClick={()=>setStatusF(s)}>{s}</button>
@@ -3494,6 +3578,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
           <option value="cost">Cost</option>
         </select>
       </div>
+      )}
       {view==="list" && (
         <div className="toolbar">
           {["All",...CATEGORIES].map(c=>(
@@ -3501,7 +3586,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
           ))}
         </div>
       )}      {/* Seasonal suggestions */}
-      {showSeasonal && (
+      {view !== "calendar" && showSeasonal && (
         <div className="seasonal-section" style={{background:climate.color, borderColor:climate.border}}>
           <div className="seasonal-section-title">
             {seasonIcon} {seasonLabel} checklist — {climate.label}
@@ -3518,7 +3603,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
       )}
 
       {/* Empty state */}
-      {filtered.length===0 && (
+      {view !== "calendar" && filtered.length===0 && (
         <div className="empty">
           <span className="ei">🔧</span>
           <strong>{tasks.length===0?"No tasks yet":"No matching tasks"}</strong>
@@ -3543,20 +3628,9 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         </div>
       ))}
 
-      {/* Calendar view */}
+      {/* Calendar view — full CalendarTab embedded */}
       {view==="calendar" && (
-        <div>
-          <Calendar tasks={tasks} mini={false} onDayClick={handleDayClick} />
-          <div style={{display:"flex",gap:"1rem",marginTop:".65rem",flexWrap:"wrap"}}>
-            {[["#4A89B8","Scheduled"],["#B8861E","In Progress"],["#234A3D","Completed"],["#C16140","Overdue"]].map(([c,l])=>(
-              <div key={l} style={{display:"flex",alignItems:"center",gap:"5px",fontSize:".72rem",color:"#A8A09A"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
-                {l}
-              </div>
-            ))}
-          </div>
-          <p style={{fontSize:".75rem",color:"#A8A09A",marginTop:".5rem"}}>Tap a dot to see that day's tasks</p>
-        </div>
+        <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId}/>
       )}
 
       {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets}/></Modal>}
@@ -5397,6 +5471,484 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
 
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
+// ─── CALENDAR TAB ────────────────────────────────────────────────────────────
+function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId }) {
+  const today = new Date();
+  const [curYear, setCurYear]       = useState(today.getFullYear());
+  const [curMonth, setCurMonth]     = useState(today.getMonth());
+  const [selDate, setSelDate]       = useState(localISO(today));
+  const [view, setView]             = useState("month");
+  const [showAdd, setShowAdd]       = useState(false);
+  const [addData, setAddData]       = useState({});
+  const [saving, setSaving]         = useState(false);
+  const [showGen, setShowGen]       = useState(false);
+  const [genItems, setGenItems]     = useState([]);
+  const [genChecked, setGenChecked] = useState({});
+  const [created, setCreated]       = useState(new Set()); // suggestion ids already created
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+  const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
+
+  // ── event type meta ──────────────────────────────────────────────────────
+  const EV = {
+    task:           { color:"#234A3D", label:"Task" },
+    task_overdue:   { color:"#C16140", label:"Overdue" },
+    task_progress:  { color:"#B8861E", label:"In Progress" },
+    task_done:      { color:"#A8A09A", label:"Completed" },
+    warranty:       { color:"#C16140", label:"Warranty Expires" },
+    warranty_warn:  { color:"#B8861E", label:"Warranty Warning" },
+    insurance:      { color:"#B8861E", label:"Insurance Renewal" },
+    insurance_warn: { color:"#E8A030", label:"Insurance Reminder" },
+    service:        { color:"#7FA088", label:"Service Due" },
+    seasonal:       { color:"#3A7AAF", label:"Seasonal Maintenance" },
+  };
+  const evColor = t => EV[t]?.color || "#A8A09A";
+
+  // ── build event map ──────────────────────────────────────────────────────
+  const eventMap = useMemo(() => {
+    const map = {};
+    const add = (date, ev) => {
+      if (!date) return;
+      const k = date.slice(0,10);
+      if (!map[k]) map[k] = [];
+      if (!map[k].find(e => e.id === ev.id)) map[k].push(ev);
+    };
+
+    // 1. Tasks
+    tasks.filter(t => t.due_date).forEach(t => {
+      const d = daysTo(t.due_date);
+      const type = t.status === "Completed" ? "task_done"
+        : t.status === "In Progress"        ? "task_progress"
+        : (d !== null && d < 0)             ? "task_overdue"
+        : "task";
+      add(t.due_date, { id:"t-"+t.id, type, title:t.title, status:t.status, category:t.category, priority:t.priority, sourceId:t.id });
+    });
+
+    // 2. Warranty expiry + 30-day warning
+    warranties.forEach(w => {
+      if (!w.expiry_date) return;
+      const d = daysTo(w.expiry_date);
+      if (d === null || d < -30) return;
+      add(w.expiry_date, { id:"wex-"+w.id, type:"warranty", title:w.item+" warranty expires", category:w.category, canCreate:true });
+      if (d > 30) add(offsetDate(w.expiry_date,-30), { id:"ww-"+w.id, type:"warranty_warn", title:w.item+" warranty expires in 30 days", category:w.category, canCreate:true });
+    });
+
+    // 3. Insurance renewal + 30-day reminder
+    if (profile?.ins_renewal_date) {
+      const d = daysTo(profile.ins_renewal_date);
+      if (d !== null && d > -30) {
+        add(profile.ins_renewal_date, { id:"ins", type:"insurance", title:"Insurance renewal"+(profile.ins_company?" — "+profile.ins_company:""), canCreate:true });
+        if (d > 30) add(offsetDate(profile.ins_renewal_date,-30), { id:"ins-w", type:"insurance_warn", title:"Insurance renewal coming up in 30 days" });
+      }
+    }
+
+    // 4. Asset service reminders from service logs
+    const lastSvc = {};
+    serviceLogs.forEach(sl => {
+      if (!sl.service_date || !sl.asset_id) return;
+      if (!lastSvc[sl.asset_id] || sl.service_date > lastSvc[sl.asset_id]) lastSvc[sl.asset_id] = sl.service_date;
+    });
+    const SVC_MONTHS = { HVAC:6, Plumbing:12, Electrical:24, Appliance:12, Roofing:24, Safety:12, Structure:36, Landscaping:12, Other:12 };
+    warranties.forEach(w => {
+      const last = lastSvc[w.id];
+      if (!last) return;
+      const months = SVC_MONTHS[w.category] || 12;
+      const next = new Date(last+"T00:00:00");
+      next.setMonth(next.getMonth()+months);
+      const nextStr = localISO(next);
+      const d = daysTo(nextStr);
+      if (d !== null && d >= -7 && d <= 400) {
+        add(nextStr, { id:"svc-"+w.id, type:"service", title:w.item+" — service due", category:w.category, canCreate:true });
+      }
+    });
+
+    // 5. Seasonal suggestions (current + next year)
+    const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
+    const cp = getClimateProfile(zone);
+    const SEASON_MO = { spring:2, summer:5, fall:8, winter:11 };
+    [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
+      Object.entries(SEASON_MO).forEach(([season, mo]) => {
+        (cp[season]||[]).forEach((title, i) => {
+          const d = new Date(yr, mo, 1+i*2);
+          add(localISO(d), { id:`ss-${yr}-${season}-${i}`, type:"seasonal", title, canCreate:true, seasonal:season });
+        });
+      });
+    });
+
+    return map;
+  }, [tasks, warranties, profile, serviceLogs]);
+
+  // ── upcoming events (next 60 days) ───────────────────────────────────────
+  const upcomingList = useMemo(() => {
+    const out = [];
+    for (let i = 0; i <= 60; i++) {
+      const d = new Date(today); d.setDate(d.getDate()+i);
+      const key = localISO(d);
+      const evs = (eventMap[key]||[]).filter(e => e.type !== "task_done");
+      if (evs.length) out.push({ date:key, evs });
+    }
+    return out;
+  }, [eventMap]);
+
+  // ── next 5 upcoming for alert strip ─────────────────────────────────────
+  const alertItems = useMemo(() => {
+    const flat = [];
+    upcomingList.forEach(({ date, evs }) => evs.forEach(e => flat.push({ ...e, date })));
+    return flat.filter(e => !["task_done","seasonal"].includes(e.type)).slice(0,6);
+  }, [upcomingList]);
+
+  // ── calendar grid cells ──────────────────────────────────────────────────
+  const firstDay    = new Date(curYear, curMonth, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  const daysInPrev  = new Date(curYear, curMonth, 0).getDate();
+  const cells = [];
+  for (let i = firstDay-1; i >= 0; i--) cells.push({ day:daysInPrev-i, other:true });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mm = String(curMonth+1).padStart(2,"0"), dd = String(d).padStart(2,"0");
+    cells.push({ day:d, date:`${curYear}-${mm}-${dd}` });
+  }
+  while (cells.length < 42) cells.push({ day:cells.length-firstDay-daysInMonth+1, other:true });
+
+  const todayStr = localISO(today);
+  const prevMonth = () => curMonth===0 ? (setCurMonth(11),setCurYear(y=>y-1)) : setCurMonth(m=>m-1);
+  const nextMonth = () => curMonth===11 ? (setCurMonth(0), setCurYear(y=>y+1)) : setCurMonth(m=>m+1);
+
+  // ── create event as task ─────────────────────────────────────────────────
+  const guessCategory = title => {
+    const t = title.toLowerCase();
+    if (/hvac|ac unit|furnace|heat|cool|filter/.test(t)) return "HVAC";
+    if (/pipe|plumb|drain|water heater|faucet/.test(t)) return "Plumbing";
+    if (/roof/.test(t)) return "Roofing";
+    if (/gutter|lawn|deck|irrigation|landscape|garden/.test(t)) return "Landscaping";
+    if (/smoke|detector|co detector|safety|fire/.test(t)) return "Safety";
+    if (/electrical|outlet|panel/.test(t)) return "Electrical";
+    return "Other";
+  };
+
+  const createFromSuggestion = async (ev, date) => {
+    if (created.has(ev.id)) return;
+    setSaving(true);
+    const payload = { title:ev.title, due_date:date, status:"Scheduled", priority:"Medium", category:ev.category || guessCategory(ev.title), notes:"", user_id:userId };
+    const { data, error } = await supabase.from("tasks").insert([payload]).select();
+    if (!error && data) { setTasks(p=>[data[0],...p]); setCreated(s=>new Set(s).add(ev.id)); toast("Task added ✓"); }
+    setSaving(false);
+  };
+
+  // ── add task from day ────────────────────────────────────────────────────
+  const openAdd = () => { setAddData({ due_date:selDate, priority:"Medium", status:"Scheduled" }); setShowAdd(true); };
+  const saveAdd = async () => {
+    if (!addData.title?.trim()) return;
+    setSaving(true);
+    const payload = { title:addData.title.trim(), due_date:addData.due_date||selDate, status:"Scheduled", priority:addData.priority||"Medium", category:addData.category||"Other", notes:"", user_id:userId };
+    const { data, error } = await supabase.from("tasks").insert([payload]).select();
+    if (!error && data) { setTasks(p=>[data[0],...p]); toast("Task created ✓"); setShowAdd(false); setAddData({}); }
+    setSaving(false);
+  };
+
+  // ── generate schedule ────────────────────────────────────────────────────
+  const openGenerate = () => {
+    const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
+    const cp = getClimateProfile(zone);
+    const SEASON_MO = { spring:2, summer:5, fall:8, winter:11 };
+    const items = [];
+    [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
+      Object.entries(SEASON_MO).forEach(([season, mo]) => {
+        const seasonStart = new Date(yr, mo, 1);
+        if (seasonStart < new Date(today.getFullYear(), today.getMonth(), 1)) return;
+        (cp[season]||[]).forEach((title, i) => {
+          items.push({ id:`gen-${yr}-${season}-${i}`, title, date:localISO(new Date(yr,mo,1+i*2)), category:guessCategory(title), season:season.charAt(0).toUpperCase()+season.slice(1)+" "+yr });
+        });
+      });
+    });
+    const checked = {};
+    items.forEach(it => { checked[it.id] = true; });
+    setGenItems(items); setGenChecked(checked); setShowGen(true);
+  };
+
+  const saveSchedule = async () => {
+    const selected = genItems.filter(it => genChecked[it.id]);
+    if (!selected.length) return;
+    setSaving(true);
+    const rows = selected.map(it => ({ title:it.title, due_date:it.date, status:"Scheduled", priority:"Medium", category:it.category, notes:"", user_id:userId }));
+    const { data, error } = await supabase.from("tasks").insert(rows).select();
+    if (!error && data) { setTasks(p=>[...data,...p]); toast(`${data.length} tasks scheduled ✓`); setShowGen(false); }
+    setSaving(false);
+  };
+
+  // ── selected day events ──────────────────────────────────────────────────
+  const selEvents = eventMap[selDate] || [];
+  const selTasks  = selEvents.filter(e => e.type.startsWith("task"));
+  const selOther  = selEvents.filter(e => !e.type.startsWith("task") && !e.type.startsWith("seasonal"));
+  const selSuggest = selEvents.filter(e => e.type === "seasonal" || (e.canCreate && !e.type.startsWith("task")));
+
+  const fmtSelDate = () => {
+    const d = new Date(selDate+"T00:00:00");
+    return d.toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"});
+  };
+
+  // ── group upcoming by month label ────────────────────────────────────────
+  const upcomingGrouped = useMemo(() => {
+    const groups = [];
+    let lastLabel = "";
+    upcomingList.forEach(({ date, evs }) => {
+      const label = new Date(date+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});
+      if (label !== lastLabel) { groups.push({ label, rows:[] }); lastLabel = label; }
+      evs.filter(e => e.type !== "task_done").forEach(e => groups[groups.length-1].rows.push({ date, ev:e }));
+    });
+    return groups.filter(g => g.rows.length > 0);
+  }, [upcomingList]);
+
+  // ── render ───────────────────────────────────────────────────────────────
+  return (
+    <div className="ct-wrap">
+
+      {/* Header */}
+      <div className="ct-head">
+        <div className="ct-vtoggle">
+          <button className={`ct-vbtn ${view==="month"?"on":""}`} onClick={()=>setView("month")}>Month</button>
+          <button className={`ct-vbtn ${view==="upcoming"?"on":""}`} onClick={()=>setView("upcoming")}>Upcoming</button>
+        </div>
+        <button className="ct-gen-btn" onClick={openGenerate}>⚡ Generate schedule</button>
+      </div>
+
+      {/* Alert strip */}
+      {alertItems.length > 0 && (
+        <div className="ct-alerts">
+          {alertItems.map(ev => (
+            <div key={ev.id} className="ct-alert" onClick={()=>{setSelDate(ev.date);setView("month");const d=new Date(ev.date+"T00:00:00");setCurMonth(d.getMonth());setCurYear(d.getFullYear());}}>
+              <div className="ct-alert-dot" style={{background:evColor(ev.type)}}/>
+              <div className="ct-alert-body">
+                <div className="ct-alert-title">{ev.title}</div>
+                <div className="ct-alert-when">{daysTo(ev.date)===0?"Today":daysTo(ev.date)===1?"Tomorrow":`In ${daysTo(ev.date)} days`}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Month view */}
+      {view === "month" && (
+        <div className="ct-body">
+          {/* Calendar grid */}
+          <div className="ct-cal">
+            <div className="ct-cal-hdr">
+              <span className="ct-month-lbl">{MONTHS[curMonth]} {curYear}</span>
+              <div className="ct-navs">
+                <button className="ct-nav-btn" onClick={prevMonth}>‹</button>
+                <button className="ct-nav-btn ct-today-btn" onClick={()=>{setCurMonth(today.getMonth());setCurYear(today.getFullYear());setSelDate(todayStr);}}>Today</button>
+                <button className="ct-nav-btn" onClick={nextMonth}>›</button>
+              </div>
+            </div>
+            <div className="ct-cg">
+              {DAYS.map(d => <div key={d} className="ct-dow">{d}</div>)}
+              {cells.map((cell,i) => {
+                const evs = cell.date ? (eventMap[cell.date]||[]) : [];
+                const visible = evs.slice(0,3);
+                const more = evs.length - 3;
+                return (
+                  <div key={i}
+                    className={`ct-day ${cell.other?"ct-other":""} ${cell.date===todayStr?"ct-today":""} ${cell.date===selDate?"ct-sel":""}`}
+                    onClick={()=>{ if(!cell.other && cell.date) setSelDate(cell.date); }}
+                  >
+                    <div className="ct-dn">{cell.day}</div>
+                    {evs.length > 0 && (
+                      <div className="ct-dots">
+                        {visible.map((e,j)=><div key={j} className="ct-dot" style={{background:evColor(e.type)}} title={e.title}/>)}
+                        {more > 0 && <div className="ct-dotx">+{more}</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Day panel */}
+          <div className="ct-panel">
+            <div className="ct-ph">
+              <span className="ct-pdate">{fmtSelDate()}</span>
+              <button className="ct-add-btn" onClick={openAdd}>+ Add task</button>
+            </div>
+            <div className="ct-pb">
+              {selEvents.length === 0 ? (
+                <div className="ct-p-empty">
+                  Nothing scheduled{selDate === todayStr ? " for today" : " on this day"}.<br/>
+                  <span style={{fontSize:".78rem"}}>Tap + Add task to create one.</span>
+                </div>
+              ) : (
+                <>
+                  {/* Real events */}
+                  {[...selTasks, ...selOther.filter(e=>!e.canCreate || e.type.startsWith("warranty") || e.type.startsWith("insurance") || e.type==="service")].map(ev => (
+                    <div key={ev.id} className="ct-pe">
+                      <div className="ct-pe-bar" style={{background:evColor(ev.type)}}/>
+                      <div className="ct-pe-info">
+                        <div className="ct-pe-title">{ev.title}</div>
+                        <div className="ct-pe-meta">
+                          <span>{EV[ev.type]?.label || ev.type}</span>
+                          {ev.category && <span>· {ev.category}</span>}
+                          {ev.status && <span>· {ev.status}</span>}
+                        </div>
+                      </div>
+                      {ev.canCreate && !ev.type.startsWith("task") && (
+                        <button className={`ct-pe-create ${created.has(ev.id)?"done":""}`} onClick={()=>createFromSuggestion(ev,selDate)} disabled={created.has(ev.id)||saving}>
+                          {created.has(ev.id) ? "Added ✓" : "→ Task"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {/* Seasonal suggestions for this day */}
+                  {selSuggest.filter(e=>e.type==="seasonal").length > 0 && (
+                    <>
+                      <div className="ct-suggest-hdr">Suggested maintenance</div>
+                      {selSuggest.filter(e=>e.type==="seasonal").map(ev => (
+                        <div key={ev.id} className="ct-pe">
+                          <div className="ct-pe-bar" style={{background:evColor(ev.type)}}/>
+                          <div className="ct-pe-info">
+                            <div className="ct-pe-title">{ev.title}</div>
+                            <div className="ct-pe-meta"><span>Seasonal suggestion</span></div>
+                          </div>
+                          <button className={`ct-pe-create ${created.has(ev.id)?"done":""}`} onClick={()=>createFromSuggestion(ev,selDate)} disabled={created.has(ev.id)||saving}>
+                            {created.has(ev.id) ? "Added ✓" : "+ Task"}
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming view */}
+      {view === "upcoming" && (
+        <div className="ct-upcoming">
+          {upcomingGrouped.length === 0 ? (
+            <div className="ct-p-empty" style={{background:"var(--white)",borderRadius:"var(--r)",border:"1px solid var(--stone)"}}>
+              No upcoming events in the next 60 days.
+            </div>
+          ) : upcomingGrouped.map(g => (
+            <div key={g.label}>
+              <div className="ct-up-group-lbl">{g.label}</div>
+              {g.rows.map(({date,ev},i) => (
+                <div key={ev.id+i} className="ct-up-row">
+                  <div className="ct-up-bar" style={{background:evColor(ev.type)}}/>
+                  <div className="ct-up-info">
+                    <div className="ct-up-title">{ev.title}</div>
+                    <div className="ct-up-type">{EV[ev.type]?.label}</div>
+                  </div>
+                  <div className="ct-up-date">
+                    {new Date(date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add task modal */}
+      {showAdd && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
+          <div className="modal">
+            <div className="modal-handle"/>
+            <div className="modal-hdr">
+              <span className="modal-title">Add Task — {fmtSelDate()}</span>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowAdd(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="fg">
+                <div className="field s2">
+                  <label>Task Title *</label>
+                  <input autoFocus value={addData.title||""} onChange={e=>setAddData(d=>({...d,title:e.target.value}))} placeholder="e.g. Service HVAC filter"/>
+                </div>
+                <div className="field">
+                  <label>Category</label>
+                  <select value={addData.category||""} onChange={e=>setAddData(d=>({...d,category:e.target.value}))}>
+                    <option value="">Select…</option>
+                    {["HVAC","Plumbing","Electrical","Appliances","Roofing","Landscaping","Structural","Safety","Other"].map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Priority</label>
+                  <select value={addData.priority||"Medium"} onChange={e=>setAddData(d=>({...d,priority:e.target.value}))}>
+                    {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Due Date</label>
+                  <input type="date" value={addData.due_date||selDate} onChange={e=>setAddData(d=>({...d,due_date:e.target.value}))}/>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={()=>setShowAdd(false)}>Cancel</button>
+              <button className="btn btn-rust" onClick={saveAdd} disabled={!addData.title?.trim()||saving}>
+                {saving ? "Saving…" : "Create Task"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate schedule modal */}
+      {showGen && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowGen(false)}>
+          <div className="modal">
+            <div className="modal-handle"/>
+            <div className="modal-hdr">
+              <span className="modal-title">⚡ Generate Maintenance Schedule</span>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowGen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="ct-gen-intro">
+                Based on your home's climate zone, here's a full maintenance schedule. Select the tasks you'd like to add — they'll appear in your Tasks tab with the right due dates.
+              </p>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
+                <span style={{fontSize:".78rem",color:"#9E9690"}}>{Object.values(genChecked).filter(Boolean).length} of {genItems.length} selected</span>
+                <div style={{display:"flex",gap:".5rem"}}>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setGenChecked(Object.fromEntries(genItems.map(i=>[i.id,true])))}>All</button>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setGenChecked(Object.fromEntries(genItems.map(i=>[i.id,false])))}>None</button>
+                </div>
+              </div>
+              <div className="ct-gen-list">
+                {(() => {
+                  let lastSeason = "";
+                  return genItems.map(it => {
+                    const showSeason = it.season !== lastSeason;
+                    if (showSeason) lastSeason = it.season;
+                    return (
+                      <div key={it.id}>
+                        {showSeason && <div className="ct-gen-season">{it.season}</div>}
+                        <div className="ct-gen-item" onClick={()=>setGenChecked(c=>({...c,[it.id]:!c[it.id]}))}>
+                          <input type="checkbox" checked={!!genChecked[it.id]} readOnly/>
+                          <div className="ct-gen-info">
+                            <div className="ct-gen-title">{it.title}</div>
+                            <div className="ct-gen-sub">{new Date(it.date+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})} · {it.category}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={()=>setShowGen(false)}>Cancel</button>
+              <button className="btn btn-rust" onClick={saveSchedule} disabled={!Object.values(genChecked).some(Boolean)||saving}>
+                {saving ? "Creating…" : `Create ${Object.values(genChecked).filter(Boolean).length} Tasks`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   // URL-based routing for legal pages
   if (typeof window !== "undefined") {
@@ -5549,7 +6101,7 @@ export default function App() {
   const TABS = [
     {id:"dashboard", label:"Home",       icon:"🏠"},
     {id:"tasks",     label:"Tasks",      icon:"✓",  badge:overdue},
-    {id:"warranties",label:"Assets",    icon:"🔧", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
+    {id:"warranties",label:"Assets",     icon:"🔧", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
     {id:"expenses",  label:"Expenses",   icon:"💲"},
     {id:"profile",   label:"My Home",    icon:"🏡"},
   ];
