@@ -1778,7 +1778,11 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
           <div className="foot-copy">
             <span>&copy; 2026 Steadwell. Built for homeowners.</span>
-            <span>Made for the years in between.</span>
+            <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
+              <a href="/terms" style={{color:"rgba(244,237,223,.45)",textDecoration:"none",fontSize:".8rem"}}>Terms of Service</a>
+              <a href="/privacy" style={{color:"rgba(244,237,223,.45)",textDecoration:"none",fontSize:".8rem"}}>Privacy Policy</a>
+              <a href="/ada" style={{color:"rgba(244,237,223,.45)",textDecoration:"none",fontSize:".8rem"}}>Accessibility</a>
+            </div>
           </div>
         </div>
       </footer>
@@ -5955,6 +5959,7 @@ export default function App() {
     const path = window.location.pathname;
     if (path === "/terms" || path === "/terms.html") return <TermsPage />;
     if (path === "/privacy" || path === "/privacy.html") return <PrivacyPage />;
+    if (path === "/ada" || path === "/accessibility") return <ADAPage />;
   }
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -6184,7 +6189,10 @@ function TermsPage() {
       <a href="#terms-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <header style={S.hdr} role="banner">
         <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
-        <a href="/privacy" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Privacy Policy</a>
+        <div style={{display:"flex",gap:"1.5rem",alignItems:"center"}}>
+          <a href="/privacy" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Privacy Policy</a>
+          <a href="/ada" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Accessibility</a>
+        </div>
       </header>
       <main id="terms-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
@@ -6198,7 +6206,13 @@ function TermsPage() {
           <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell &middot; St. Petersburg, Florida</p>
         </div>
       </main>
-      <footer role="contentinfo" style={S.ft}><span>&copy; 2026 Steadwell.</span><a href="/privacy" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Privacy Policy</a></footer>
+      <footer role="contentinfo" style={S.ft}>
+        <span>&copy; 2026 Steadwell.</span>
+        <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
+          <a href="/privacy" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Privacy Policy</a>
+          <a href="/ada" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Accessibility</a>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -6224,7 +6238,10 @@ function PrivacyPage() {
       <a href="#privacy-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <header style={S.hdr} role="banner">
         <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
-        <a href="/terms" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Terms of Service</a>
+        <div style={{display:"flex",gap:"1.5rem",alignItems:"center"}}>
+          <a href="/terms" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Terms of Service</a>
+          <a href="/ada" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Accessibility</a>
+        </div>
       </header>
       <main id="privacy-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
@@ -6237,9 +6254,128 @@ function PrivacyPage() {
           <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact <a href="mailto:privacy@steadwell.app" style={{color:"#F4EDDF"}}>privacy@steadwell.app</a> &mdash; we respond within 45 days.</p>
         </div>
       </main>
-      <footer role="contentinfo" style={S.ft}><span>&copy; 2026 Steadwell.</span><a href="/terms" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Terms of Service</a></footer>
+      <footer role="contentinfo" style={S.ft}>
+        <span>&copy; 2026 Steadwell.</span>
+        <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
+          <a href="/terms" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Terms of Service</a>
+          <a href="/ada" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Accessibility</a>
+        </div>
+      </footer>
     </div>
   );
 }
 
 
+// ─── ADA ACCESSIBILITY STATEMENT ─────────────────────────────────────────────
+function ADAPage() {
+  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
+  const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
+  return (
+    <div style={S.page}>
+      <a href="#ada-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <header style={S.hdr} role="banner">
+        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
+        <div style={{display:"flex",gap:"1.5rem",alignItems:"center"}}>
+          <a href="/terms" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Terms of Service</a>
+          <a href="/privacy" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Privacy Policy</a>
+        </div>
+      </header>
+      <main id="ada-main" tabIndex={-1} style={S.main}>
+        <div style={S.eyebrow}>Legal</div>
+        <h1 style={S.title}>Accessibility Statement</h1>
+        <p style={S.meta}>Effective date: June 1, 2026 &nbsp;&middot;&nbsp; Last reviewed: June 1, 2026</p>
+        <div style={S.notice}><strong style={{color:"#234A3D"}}>Our commitment:</strong> Steadwell is committed to making our home management platform accessible to all users, including those with disabilities, in compliance with the Americans with Disabilities Act (ADA) and Web Content Accessibility Guidelines (WCAG) 2.1 Level AA.</div>
+
+        <h2 style={S.h2}>1. Conformance Status</h2>
+        <p style={S.p}>Steadwell aims to conform to <strong>WCAG 2.1 Level AA</strong>. We are actively working to identify and remediate any barriers that prevent users with disabilities from accessing our platform. Our current implementation includes:</p>
+        <ul style={S.ul}>
+          <li style={S.li}>Semantic HTML5 elements with appropriate landmark roles (header, main, nav, footer)</li>
+          <li style={S.li}>ARIA labels and roles on all interactive controls, navigation, and dynamic content regions</li>
+          <li style={S.li}>Skip-to-content links on all pages so keyboard users can bypass repeated navigation</li>
+          <li style={S.li}>Logical heading hierarchy (H1 through H3) maintained throughout the application</li>
+          <li style={S.li}>Visible focus indicators on all interactive elements for keyboard-only navigation</li>
+          <li style={S.li}>Color contrast ratios meeting or exceeding 4.5:1 for normal text and 3:1 for large text</li>
+          <li style={S.li}>Text alternatives for all meaningful images and icon-only controls</li>
+          <li style={S.li}>Form inputs associated with descriptive labels and error messages</li>
+          <li style={S.li}>No content that flashes more than three times per second</li>
+          <li style={S.li}>prefers-reduced-motion media query honored — animations disabled for users who opt out</li>
+          <li style={S.li}>Responsive layout supporting 400% browser zoom without horizontal scrolling</li>
+        </ul>
+
+        <h2 style={S.h2}>2. Technical Specifications</h2>
+        <p style={S.p}>Steadwell relies on the following technologies for accessibility compliance:</p>
+        <ul style={S.ul}>
+          <li style={S.li}>HTML5 with semantic structure and landmark elements</li>
+          <li style={S.li}>CSS3 including custom properties, media queries, and focus-visible</li>
+          <li style={S.li}>WAI-ARIA 1.2 roles, states, and properties</li>
+          <li style={S.li}>JavaScript (React 19) with managed focus for dynamic content updates</li>
+        </ul>
+
+        <h2 style={S.h2}>3. Compatible Browsers and Assistive Technologies</h2>
+        <p style={S.p}>Steadwell is designed and tested for compatibility with the following:</p>
+        <ul style={S.ul}>
+          <li style={S.li}><strong>Screen readers:</strong> NVDA with Firefox (Windows), JAWS with Chrome (Windows), VoiceOver with Safari (macOS and iOS), TalkBack with Chrome (Android)</li>
+          <li style={S.li}><strong>Browsers:</strong> Google Chrome (current), Mozilla Firefox (current), Apple Safari (current), Microsoft Edge (current)</li>
+          <li style={S.li}><strong>Keyboard navigation:</strong> Full keyboard access using Tab, Shift+Tab, Enter, Space, and arrow keys throughout all features</li>
+          <li style={S.li}><strong>Display adaptations:</strong> Windows High Contrast mode, browser zoom up to 400%, OS-level text scaling</li>
+        </ul>
+
+        <h2 style={S.h2}>4. Known Limitations</h2>
+        <p style={S.p}>While we strive for full WCAG 2.1 AA conformance, the following areas are under active improvement:</p>
+        <ul style={S.ul}>
+          <li style={S.li}>Some data visualizations in the Expenses tab may lack fully descriptive text alternatives. Summary data tables are being added as accessible equivalents.</li>
+          <li style={S.li}>The address autocomplete field relies on Geoapify, a third-party service. Keyboard access is functional but may have minor screen reader announcement delays.</li>
+          <li style={S.li}>User-uploaded PDF documents in the Document Vault are not screened for internal accessibility. We recommend uploading tagged, accessible PDFs.</li>
+          <li style={S.li}>The interactive Calendar view is optimized for mouse and touch. All calendar functions remain fully accessible via the List view, which is keyboard and screen-reader friendly.</li>
+        </ul>
+
+        <h2 style={S.h2}>5. Assessment Approach</h2>
+        <p style={S.p}>Steadwell assesses platform accessibility through the following ongoing methods:</p>
+        <ul style={S.ul}>
+          <li style={S.li}>Automated testing using axe DevTools and Google Lighthouse during development</li>
+          <li style={S.li}>Manual keyboard-only navigation testing for all features before release</li>
+          <li style={S.li}>Screen reader testing with VoiceOver on Safari/iOS and NVDA on Firefox/Windows</li>
+          <li style={S.li}>Review and remediation of all user-submitted accessibility feedback</li>
+        </ul>
+
+        <h2 style={S.h2}>6. How to Report an Accessibility Barrier</h2>
+        <p style={S.p}>We welcome feedback on accessibility barriers. If you encounter content or features that are inaccessible to you, please contact us:</p>
+        <ul style={S.ul}>
+          <li style={S.li}><strong>Email:</strong> <a href="mailto:accessibility@steadwell.app" style={{color:"#234A3D"}}>accessibility@steadwell.app</a></li>
+          <li style={S.li}><strong>Subject line:</strong> "Accessibility Feedback"</li>
+          <li style={S.li}><strong>Response time:</strong> We aim to respond within 5 business days</li>
+        </ul>
+        <p style={S.p}>Please describe the page you were on, the barrier you encountered, your browser and assistive technology (if applicable), and how we can reach you for follow-up.</p>
+
+        <h2 style={S.h2}>7. ADA Enforcement and Formal Complaints</h2>
+        <p style={S.p}>If you are not satisfied with our response, you have the right to file a formal complaint with the U.S. Department of Justice, which enforces Title III of the ADA for places of public accommodation including websites:</p>
+        <ul style={S.ul}>
+          <li style={S.li}><strong>Online:</strong> <a href="https://www.ada.gov/filing-a-complaint/" target="_blank" rel="noopener noreferrer" style={{color:"#234A3D"}}>ada.gov/filing-a-complaint</a></li>
+          <li style={S.li}><strong>Phone (voice):</strong> 1-800-514-0301</li>
+          <li style={S.li}><strong>Phone (TTY):</strong> 1-800-514-0383</li>
+          <li style={S.li}><strong>Mail:</strong> U.S. Department of Justice, Civil Rights Division, Disability Rights Section, 950 Pennsylvania Avenue NW, Washington, DC 20530</li>
+        </ul>
+
+        <h2 style={S.h2}>8. Additional Resources</h2>
+        <ul style={S.ul}>
+          <li style={S.li}><a href="https://www.ada.gov" target="_blank" rel="noopener noreferrer" style={{color:"#234A3D"}}>ADA.gov</a> — Official ADA guidance from the U.S. Department of Justice</li>
+          <li style={S.li}><a href="https://www.w3.org/WAI/WCAG21/quickref/" target="_blank" rel="noopener noreferrer" style={{color:"#234A3D"}}>WCAG 2.1 Quick Reference</a> — W3C Web Accessibility Initiative</li>
+          <li style={S.li}><a href="https://webaim.org" target="_blank" rel="noopener noreferrer" style={{color:"#234A3D"}}>WebAIM.org</a> — Web accessibility resources and evaluation tools</li>
+        </ul>
+
+        <div style={S.cta}>
+          <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Accessibility Feedback</h2>
+          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Found a barrier? Email <a href="mailto:accessibility@steadwell.app" style={{color:"#F4EDDF"}}>accessibility@steadwell.app</a> and we will respond within 5 business days.</p>
+          <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell &middot; St. Petersburg, Florida &middot; Targeting WCAG 2.1 Level AA</p>
+        </div>
+      </main>
+      <footer role="contentinfo" style={S.ft}>
+        <span>&copy; 2026 Steadwell.</span>
+        <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
+          <a href="/terms" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Terms of Service</a>
+          <a href="/privacy" style={{color:"rgba(244,237,223,.65)",textDecoration:"none"}}>Privacy Policy</a>
+        </div>
+      </footer>
+    </div>
+  );
+}
