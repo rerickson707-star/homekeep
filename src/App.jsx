@@ -202,7 +202,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .hdr-logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .hdr-logo .ico{width:32px;height:32px;background:var(--rust);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .hdr-logo .name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#fff;letter-spacing:-.3px}
-.search-wrap{flex:1;max-width:380px;position:relative}
+.search-wrap{flex:1;max-width:520px;position:relative}
 .search-wrap input{width:100%;padding:.42rem .85rem .42rem 2.1rem;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;font-size:.82rem;color:#fff;outline:none;transition:all .2s;font-family:'Hanken Grotesk',sans-serif}
 .search-wrap input::placeholder{color:rgba(255,255,255,.35)}
 .search-wrap input:focus{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
@@ -215,9 +215,9 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 
 /* user menu */
 .user-menu{position:relative;flex-shrink:0}
-.user-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;padding:.3rem .85rem .3rem .4rem;cursor:pointer;transition:all .18s;color:#fff;font-family:'Hanken Grotesk',sans-serif;font-size:.78rem;font-weight:500}
+.user-btn{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;padding:.3rem .55rem .3rem .3rem;cursor:pointer;transition:all .18s;color:#fff;font-family:'Hanken Grotesk',sans-serif;font-size:.78rem;font-weight:500}
 .user-btn:hover{background:rgba(255,255,255,.17)}
-.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--rust);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:var(--rust);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0}
 .user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);border:1px solid var(--stone);overflow:hidden;min-width:190px;z-index:300}
 .user-dd-item{padding:.7rem 1rem;font-size:.83rem;cursor:pointer;display:flex;align-items:center;gap:.6rem;color:var(--dark);border-bottom:1px solid var(--stone);transition:background .12s}
 .user-dd-item:last-child{border-bottom:none}
@@ -243,6 +243,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 /* ══ MAIN ══ */
 .main{flex:1;padding:1.25rem 1rem;max-width:var(--max);margin:0 auto;width:100%}
 @media(min-width:769px){.main{padding:1.75rem 1.5rem}}
+@media(max-width:480px){.hdr-logo .name{display:none}}
 
 /* ══ TOAST ══ */
 .toast-wrap{position:fixed;bottom:calc(var(--bottom-nav) + .75rem);right:.75rem;z-index:999;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
@@ -2178,7 +2179,6 @@ function UserMenu({ user, onSignOut }) {
     <div className="user-menu" ref={ref} role="navigation" aria-label="User menu">
       <div className="user-btn" onClick={()=>setOpen(o=>!o)}>
         <span className="user-avatar">{initials(user.email)}</span>
-        <span>{user.email.split("@")[0]}</span>
         <span style={{opacity:.5,fontSize:".7rem"}}>▾</span>
       </div>
       {open && (
