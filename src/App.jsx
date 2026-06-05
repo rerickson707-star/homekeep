@@ -954,12 +954,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lp-root .pv-row .tr{font-size:.72rem;color:var(--ink-soft);font-weight:600}
 
 /* ---------- STATS BAND ---------- */
-.lp-root .stats{background:var(--linen);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.lp-root .stats-in{display:grid;grid-template-columns:repeat(4,1fr);padding:44px 0}
+.lp-root .stats{display:block;background:var(--linen);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.lp-root .stats-in{display:grid;grid-template-columns:repeat(4,1fr);padding:44px 0;align-items:start}
 .lp-root .stat-cell{text-align:center;padding:0 18px;border-right:1px solid var(--line)}
 .lp-root .stat-cell:last-child{border-right:none}
-.lp-root .stat-n{font-family:var(--display);font-weight:600;font-size:clamp(2rem,3.5vw,2.8rem);color:var(--pine);line-height:1;letter-spacing:-.02em}
-.lp-root .stat-n .suf{color:var(--terracotta)}
+.lp-root .stat-n{font-family:var(--display);font-weight:600;font-size:clamp(2rem,3.5vw,2.8rem);color:var(--pine);line-height:1;letter-spacing:-.02em;white-space:nowrap}
+.lp-root .stat-n .suf{color:var(--terracotta);font-size:.52em;letter-spacing:-.01em;vertical-align:.1em}
 .lp-root .stat-l{font-size:.82rem;color:var(--ink-soft);margin-top:.5rem;font-weight:500}
 
 /* ---------- MARQUEE ---------- */
@@ -1310,6 +1310,29 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ct-gen-title{font-size:.82rem;font-weight:500;color:var(--dark);line-height:1.3}
 .ct-gen-sub{font-size:.7rem;color:#9E9690;margin-top:1px}
 
+/* ══ DASHBOARD WEEK TILE + QUICK ACTIONS ══ */
+.week-tile{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:.85rem .9rem .75rem;margin-bottom:.75rem}
+.week-tile-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.week-tile-title{font-family:'Fraunces',serif;font-size:.95rem;font-weight:500;color:var(--dark)}
+.week-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:.65rem}
+.wd{display:flex;flex-direction:column;align-items:center;gap:4px;padding:.5rem .1rem .4rem;border-radius:10px;transition:background .12s;cursor:default}
+.wd.has-ev{cursor:pointer}
+.wd.has-ev:hover:not(.wd-today){background:var(--cream2)}
+.wd-today{background:var(--pine)}
+.wd-today .wd-label{color:rgba(244,237,223,.7)}
+.wd-today .wd-num{color:#fff;font-weight:700}
+.wd-label{font-size:.58rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#A8A09A;line-height:1}
+.wd-num{font-size:.86rem;font-weight:600;color:var(--dark);line-height:1}
+.wd-today .wd-dots .wd-dot{background:rgba(255,255,255,.75) !important}
+.wd-dots{display:flex;gap:2px;min-height:8px;align-items:center;justify-content:center}
+.wd-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.week-summary{font-size:.74rem;color:#A8A09A;display:flex;gap:.4rem;flex-wrap:wrap;padding-top:.55rem;border-top:1px solid var(--stone)}
+.quick-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-bottom:.85rem}
+.qa-btn{display:flex;flex-direction:column;align-items:center;gap:.45rem;padding:.8rem .5rem;background:var(--white);border:1px solid var(--stone);border-radius:var(--r);cursor:pointer;transition:all .18s;font-family:'Hanken Grotesk',sans-serif;color:var(--dark)}
+.qa-btn:hover{background:var(--cream2);border-color:rgba(193,97,64,.35);transform:translateY(-2px);box-shadow:0 6px 18px -8px rgba(0,0,0,.14)}
+.qa-icon{font-size:1.35rem;line-height:1}
+.qa-btn span:last-child{font-size:.7rem;font-weight:600;letter-spacing:.01em;text-align:center;line-height:1.3}
+
 /* ══ SAFE RESPONSIVE FIXES ══ */
 
 /* iOS Safari: inputs <16px font-size cause the viewport to zoom on focus */
@@ -1364,6 +1387,79 @@ const fmtD = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); retur
 const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:00")-new Date())/86400000); };
 // Local-timezone YYYY-MM-DD (avoids UTC off-by-one from toISOString in evening hours)
 const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
+
+// Shared event map — used by both Dashboard Week Ahead and CalendarTab
+// so both tabs always show identical data from the same sources.
+function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
+  const map = {};
+  const add = (date, ev) => {
+    if (!date) return;
+    const k = date.slice(0,10);
+    if (!map[k]) map[k] = [];
+    if (!map[k].find(e => e.id === ev.id)) map[k].push(ev);
+  };
+  const today = new Date();
+
+  // 1. Tasks
+  tasks.filter(t => t.due_date).forEach(t => {
+    const d = daysTo(t.due_date);
+    const type = t.status==="Completed" ? "task_done"
+      : t.status==="In Progress"       ? "task_progress"
+      : (d!==null && d<0)              ? "task_overdue"
+      : "task";
+    add(t.due_date, { id:"t-"+t.id, type, title:t.title, status:t.status, category:t.category, priority:t.priority, sourceId:t.id });
+  });
+
+  // 2. Warranty expiry + 30-day warning
+  warranties.forEach(w => {
+    if (!w.expiry_date) return;
+    const d = daysTo(w.expiry_date);
+    if (d===null || d<-30) return;
+    add(w.expiry_date, { id:"wex-"+w.id, type:"warranty", title:w.item+" warranty expires", category:w.category, canCreate:true });
+    if (d>30) add(offsetDate(w.expiry_date,-30), { id:"ww-"+w.id, type:"warranty_warn", title:w.item+" warranty expires in 30 days", category:w.category, canCreate:true });
+  });
+
+  // 3. Insurance renewal + 30-day reminder
+  if (profile?.ins_renewal_date) {
+    const d = daysTo(profile.ins_renewal_date);
+    if (d!==null && d>-30) {
+      add(profile.ins_renewal_date, { id:"ins", type:"insurance", title:"Insurance renewal"+(profile.ins_company?" — "+profile.ins_company:""), canCreate:true });
+      if (d>30) add(offsetDate(profile.ins_renewal_date,-30), { id:"ins-w", type:"insurance_warn", title:"Insurance renewal coming up in 30 days" });
+    }
+  }
+
+  // 4. Asset service reminders (last service log + category interval)
+  const lastSvc = {};
+  serviceLogs.forEach(sl => {
+    if (!sl.service_date || !sl.asset_id) return;
+    if (!lastSvc[sl.asset_id] || sl.service_date>lastSvc[sl.asset_id]) lastSvc[sl.asset_id] = sl.service_date;
+  });
+  const SVC_MONTHS = { HVAC:6, Plumbing:12, Electrical:24, Appliance:12, Roofing:24, Safety:12, Structure:36, Landscaping:12, Other:12 };
+  warranties.forEach(w => {
+    const last = lastSvc[w.id];
+    if (!last) return;
+    const next = new Date(last+"T00:00:00");
+    next.setMonth(next.getMonth()+(SVC_MONTHS[w.category]||12));
+    const nextStr = localISO(next);
+    const d = daysTo(nextStr);
+    if (d!==null && d>=-7 && d<=400) add(nextStr, { id:"svc-"+w.id, type:"service", title:w.item+" — service due", category:w.category, canCreate:true });
+  });
+
+  // 5. Seasonal suggestions (current + next year)
+  const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
+  const cp = getClimateProfile(zone);
+  const SEASON_MO = { spring:2, summer:5, fall:8, winter:11 };
+  [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
+    Object.entries(SEASON_MO).forEach(([season, mo]) => {
+      (cp[season]||[]).forEach((title, i) => {
+        add(localISO(new Date(yr, mo, 1+i*2)), { id:`ss-${yr}-${season}-${i}`, type:"seasonal", title, canCreate:true, seasonal:season });
+      });
+    });
+  });
+
+  return map;
+}
 const wPct = (p,e) => { const start=new Date(p+"T00:00:00"),end=new Date(e+"T00:00:00"),now=new Date(); return Math.min(100,Math.max(0,Math.round(((now-start)/(end-start))*100))); };
 const initials = email => email ? email.substring(0,2).toUpperCase() : "?";
 
@@ -3271,24 +3367,63 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         </div>
       </div>
 
-      {/* Mini calendar */}
-      {tasks.length > 0 && (
-        <div style={{marginBottom:"1rem"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".6rem"}}>
-            <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500}}>📅 Task Calendar</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => onNavigate("tasks")}>Full view →</button>
+      {/* ── Week Ahead tile ── */}
+      {(() => {
+        const now = new Date();
+        const evMap = buildHomeEvents(tasks, warranties, profile, serviceLogs);
+        const EV_COLOR = { task:"#234A3D", task_progress:"#B8861E", task_overdue:"#C16140", task_done:"#A8A09A", warranty:"#C16140", warranty_warn:"#B8861E", insurance:"#B8861E", insurance_warn:"#E8A030", service:"#7FA088", seasonal:"#3A7AAF" };
+        const days = Array.from({length:7}, (_,i) => {
+          const d = new Date(now); d.setDate(d.getDate()+i);
+          const dateStr = localISO(d);
+          const allEvs = (evMap[dateStr]||[]).filter(e => e.type !== "task_done");
+          return { d, dateStr, allEvs, isToday:i===0 };
+        });
+        const weekEvCount = days.reduce((s,d)=>s+d.allEvs.length,0);
+        const overdueCount = tasks.filter(t=>t.status==="Overdue").length;
+        return (
+          <div className="week-tile">
+            <div className="week-tile-hdr">
+              <span className="week-tile-title">Week ahead</span>
+              <button className="btn btn-ghost btn-sm" onClick={()=>onNavigate("tasks")}>Calendar →</button>
+            </div>
+            <div className="week-days">
+              {days.map(({d, dateStr, allEvs, isToday},i) => (
+                <div key={i} className={`wd${isToday?" wd-today":""}${allEvs.length>0?" has-ev":""}`}
+                  onClick={()=>allEvs.length>0 && onNavigate("tasks")}
+                >
+                  <div className="wd-label">{["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()]}</div>
+                  <div className="wd-num">{d.getDate()}</div>
+                  <div className="wd-dots">
+                    {allEvs.slice(0,3).map((e,j)=><div key={j} className="wd-dot" style={{background:EV_COLOR[e.type]||"#A8A09A"}}/>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="week-summary">
+              {weekEvCount > 0
+                ? <span>{weekEvCount} event{weekEvCount>1?"s":""} this week</span>
+                : <span style={{color:"var(--sage-deep)"}}>✓ Clear week ahead</span>
+              }
+              {overdueCount > 0 && <span style={{color:"var(--rust)",fontWeight:600}}>· {overdueCount} overdue</span>}
+              {weekEvCount > 0 && <span style={{color:"#C2B8AE"}}>· tap a dot to view</span>}
+            </div>
           </div>
-          <Calendar tasks={tasks} mini={true} onDayClick={handleDayClick} />
-          <div style={{display:"flex",gap:"1rem",marginTop:".5rem",flexWrap:"wrap"}}>
-            {[["#4A89B8","Scheduled"],["#B8861E","In Progress"],["#234A3D","Completed"],["#C16140","Overdue"]].map(([c,l])=>(
-              <div key={l} style={{display:"flex",alignItems:"center",gap:"4px",fontSize:".65rem",color:"#A8A09A"}}>
-                <div style={{width:7,height:7,borderRadius:"50%",background:c,flexShrink:0}}/>
-                {l}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* ── Quick Actions ── */}
+      <div className="quick-acts">
+        {[
+          {icon:"✓", label:"Add Task",     tab:"tasks"},
+          {icon:"💲", label:"Log Expense",  tab:"expenses"},
+          {icon:"🔧", label:"Add Asset",    tab:"warranties"},
+        ].map(({icon,label,tab})=>(
+          <button key={tab} className="qa-btn" onClick={()=>onNavigate(tab)}>
+            <span className="qa-icon">{icon}</span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Panels */}
       <div className="dash-grid">
@@ -5493,8 +5628,6 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
-  const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
-
   // ── event type meta ──────────────────────────────────────────────────────
   const EV = {
     task:           { color:"#234A3D", label:"Task" },
@@ -5510,79 +5643,8 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   };
   const evColor = t => EV[t]?.color || "#A8A09A";
 
-  // ── build event map ──────────────────────────────────────────────────────
-  const eventMap = useMemo(() => {
-    const map = {};
-    const add = (date, ev) => {
-      if (!date) return;
-      const k = date.slice(0,10);
-      if (!map[k]) map[k] = [];
-      if (!map[k].find(e => e.id === ev.id)) map[k].push(ev);
-    };
-
-    // 1. Tasks
-    tasks.filter(t => t.due_date).forEach(t => {
-      const d = daysTo(t.due_date);
-      const type = t.status === "Completed" ? "task_done"
-        : t.status === "In Progress"        ? "task_progress"
-        : (d !== null && d < 0)             ? "task_overdue"
-        : "task";
-      add(t.due_date, { id:"t-"+t.id, type, title:t.title, status:t.status, category:t.category, priority:t.priority, sourceId:t.id });
-    });
-
-    // 2. Warranty expiry + 30-day warning
-    warranties.forEach(w => {
-      if (!w.expiry_date) return;
-      const d = daysTo(w.expiry_date);
-      if (d === null || d < -30) return;
-      add(w.expiry_date, { id:"wex-"+w.id, type:"warranty", title:w.item+" warranty expires", category:w.category, canCreate:true });
-      if (d > 30) add(offsetDate(w.expiry_date,-30), { id:"ww-"+w.id, type:"warranty_warn", title:w.item+" warranty expires in 30 days", category:w.category, canCreate:true });
-    });
-
-    // 3. Insurance renewal + 30-day reminder
-    if (profile?.ins_renewal_date) {
-      const d = daysTo(profile.ins_renewal_date);
-      if (d !== null && d > -30) {
-        add(profile.ins_renewal_date, { id:"ins", type:"insurance", title:"Insurance renewal"+(profile.ins_company?" — "+profile.ins_company:""), canCreate:true });
-        if (d > 30) add(offsetDate(profile.ins_renewal_date,-30), { id:"ins-w", type:"insurance_warn", title:"Insurance renewal coming up in 30 days" });
-      }
-    }
-
-    // 4. Asset service reminders from service logs
-    const lastSvc = {};
-    serviceLogs.forEach(sl => {
-      if (!sl.service_date || !sl.asset_id) return;
-      if (!lastSvc[sl.asset_id] || sl.service_date > lastSvc[sl.asset_id]) lastSvc[sl.asset_id] = sl.service_date;
-    });
-    const SVC_MONTHS = { HVAC:6, Plumbing:12, Electrical:24, Appliance:12, Roofing:24, Safety:12, Structure:36, Landscaping:12, Other:12 };
-    warranties.forEach(w => {
-      const last = lastSvc[w.id];
-      if (!last) return;
-      const months = SVC_MONTHS[w.category] || 12;
-      const next = new Date(last+"T00:00:00");
-      next.setMonth(next.getMonth()+months);
-      const nextStr = localISO(next);
-      const d = daysTo(nextStr);
-      if (d !== null && d >= -7 && d <= 400) {
-        add(nextStr, { id:"svc-"+w.id, type:"service", title:w.item+" — service due", category:w.category, canCreate:true });
-      }
-    });
-
-    // 5. Seasonal suggestions (current + next year)
-    const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
-    const cp = getClimateProfile(zone);
-    const SEASON_MO = { spring:2, summer:5, fall:8, winter:11 };
-    [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
-      Object.entries(SEASON_MO).forEach(([season, mo]) => {
-        (cp[season]||[]).forEach((title, i) => {
-          const d = new Date(yr, mo, 1+i*2);
-          add(localISO(d), { id:`ss-${yr}-${season}-${i}`, type:"seasonal", title, canCreate:true, seasonal:season });
-        });
-      });
-    });
-
-    return map;
-  }, [tasks, warranties, profile, serviceLogs]);
+  // ── shared event map — same data source as Dashboard Week Ahead ──────────
+  const eventMap = useMemo(() => buildHomeEvents(tasks, warranties, profile, serviceLogs), [tasks, warranties, profile, serviceLogs]);
 
   // ── upcoming events (next 60 days) ───────────────────────────────────────
   const upcomingList = useMemo(() => {
