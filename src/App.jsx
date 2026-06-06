@@ -385,7 +385,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pf-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.8px;color:#A8A09A;font-weight:600;margin-bottom:3px}
 .pf-val{font-size:.9rem;font-weight:600;color:var(--dark)}
 .home-photo-wrap{position:relative;margin-bottom:1.1rem}
-.home-photo-wrap img{width:100%;height:220px;object-fit:cover;object-position:center bottom;border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow)}
+.home-photo-wrap img{width:100%;height:220px;object-fit:cover;object-position:center center;border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow)}
 @media(min-width:769px){.home-photo-wrap img{height:300px}}
 .home-photo-badge{position:absolute;bottom:.6rem;right:.6rem;background:rgba(38,33,28,.72);color:#fff;font-size:.63rem;padding:3px 8px;border-radius:10px;backdrop-filter:blur(4px)}
 .data-panel{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:1rem 1.1rem;box-shadow:var(--shadow);margin-bottom:.85rem}
@@ -667,7 +667,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* ══ MY HOME REDESIGN ══ */
 .home-hero{border-radius:var(--r);overflow:hidden;margin-bottom:1rem;position:relative}
-.home-hero-photo{width:100%;height:240px;object-fit:cover;object-position:center bottom;display:block}
+.home-hero-photo{width:100%;height:240px;object-fit:cover;object-position:center center;display:block}
+.photo-pos-bar{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:var(--cream2);border-radius:0 0 var(--r) var(--r);border:1px solid var(--stone);border-top:none;margin-bottom:.75rem}
+.photo-pos-label{font-size:.72rem;color:#9E9690;font-weight:600;white-space:nowrap;flex-shrink:0}
+.photo-pos-bar input[type=range]{flex:1;accent-color:var(--rust);height:3px;cursor:pointer}
+.photo-pos-toggle{font-size:.72rem;font-weight:600;color:var(--rust);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap;font-family:'Hanken Grotesk',sans-serif;flex-shrink:0}
 .home-hero-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(38,33,28,.85) 0%,transparent 100%);padding:1.2rem 1.2rem .9rem}
 .home-hero-name{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:#fff;line-height:1.2}
 .home-hero-address{font-size:.78rem;color:rgba(255,255,255,.65);margin-top:3px}
@@ -5238,6 +5242,16 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
   const [insData, setInsData] = useState({});
   const [docLightbox, setDocLightbox] = useState(null);
 
+  // Photo vertical position (0=top, 100=bottom) — saved to localStorage per user
+  const [photoPos, setPhotoPos] = useState(() => {
+    try { return parseInt(localStorage.getItem(`sw_pp_${userId}`) || "40"); } catch { return 40; }
+  });
+  const [showPosSlider, setShowPosSlider] = useState(false);
+  const handlePhotoPos = (val) => {
+    setPhotoPos(val);
+    try { localStorage.setItem(`sw_pp_${userId}`, String(val)); } catch {}
+  };
+
   const openEdit = () => { setEditData({...profile}); setModal(true); };
   const openIns  = () => { setInsData({...profile}); setInsModal(true); };
 
@@ -5381,17 +5395,25 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
 
       {/* ── Hero photo / name ── */}
       {(profile?.user_photo_url || profile?.photo_url) ? (
-        <div className="home-hero" style={{marginBottom:"1rem"}}>
-          <img
-            className="home-hero-photo"
-            src={profile.user_photo_url || profile.photo_url}
-            alt="Your home"
-            onError={e=>{ if(e.target.src!==profile.photo_url) e.target.src=profile.photo_url; else e.target.style.display="none"; }}
-          />
-          <div className="home-hero-overlay">
-            <div className="home-hero-name">{profile.name || "My Home"}</div>
-            {profile.address && <div className="home-hero-address">📍 {profile.address}</div>}
-            {homeAge && <div style={{fontSize:".7rem",color:"rgba(255,255,255,.5)",marginTop:"3px"}}>Built {profile.year} · {homeAge} years old</div>}
+        <div style={{marginBottom:"1rem"}}>
+          <div className="home-hero">
+            <img
+              className="home-hero-photo"
+              src={profile.user_photo_url || profile.photo_url}
+              alt="Your home"
+              style={{objectPosition:`center ${photoPos}%`}}
+              onError={e=>{ if(e.target.src!==profile.photo_url) e.target.src=profile.photo_url; else e.target.style.display="none"; }}
+            />
+            <div className="home-hero-overlay">
+              <div className="home-hero-name">{profile.name || "My Home"}</div>
+              {profile.address && <div className="home-hero-address">📍 {profile.address}</div>}
+              {homeAge && <div style={{fontSize:".7rem",color:"rgba(255,255,255,.5)",marginTop:"3px"}}>Built {profile.year} · {homeAge} years old</div>}
+            </div>
+          </div>
+          <div className="photo-pos-bar">
+            <span className="photo-pos-label">🖼 Photo position</span>
+            <input type="range" min={0} max={100} value={photoPos} onChange={e=>handlePhotoPos(Number(e.target.value))}/>
+            <span style={{fontSize:".7rem",color:"#9E9690",minWidth:"30px",textAlign:"right"}}>{photoPos}%</span>
           </div>
         </div>
       ) : (
