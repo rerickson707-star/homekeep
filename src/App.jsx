@@ -4522,11 +4522,13 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
   const thisYrTotalWithService = thisYrTotal + utilThisYr;
   const trend = lastYrTotal > 0 ? ((thisYrTotalWithService - lastYrTotal) / lastYrTotal * 100).toFixed(0) : null;
 
-  // Monthly chart data — current year, all expense items including service logs
+  // Monthly chart data — current year, ALL sources: expenses + service logs + utility bills
   const curMonth = new Date().getMonth();
   const monthlyData = Array.from({length:12},(_,i)=>{
     const m = String(i+1).padStart(2,"0");
-    const total = allExpenseItems.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
+    const expTotal  = allExpenseItems.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
+    const billTotal = bills.filter(b=>b.bill_date?.startsWith(`${yr}-${m}`)).reduce((s,b)=>s+Number(b.amount||0),0);
+    const total = expTotal + billTotal;
     return {month:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i], total, isCur: i===curMonth};
   });
   const maxMonth = Math.max(...monthlyData.map(m=>m.total), 1);
@@ -4606,30 +4608,60 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
               )}
             </div>
           </div>
-          {thisYear.length > 0 && (
-            <div className="month-chart">
-              <div className="month-chart-title">{yr} monthly spending</div>
-              <div className="month-bars" style={{height:90}}>
-                {monthlyData.map((m,i)=>(
-                  <div key={i} className="month-bar-wrap">
-                    <div className="month-bar-amt">{m.total>0?`$${m.total>=1000?Math.round(m.total/1000)+"k":Math.round(m.total)}`:""}</div>
-                    <div className="month-bar-fill" style={{
-                      height:`${Math.max((m.total/maxMonth)*100,m.total>0?6:0)}%`,
-                      background: m.isCur
-                        ? "var(--rust)"
-                        : m.total>0 ? CHART_COLORS[i%CHART_COLORS.length] : "var(--stone)",
-                      opacity: m.isCur ? 1 : 0.85,
-                    }}/>
-                    <div className="month-bar-label" style={{
-                      color: m.isCur ? "var(--rust)" : "#A8A09A",
-                      fontWeight: m.isCur ? 700 : 500,
-                      fontSize: ".52rem",
-                    }}>{m.month}</div>
-                  </div>
-                ))}
+          {thisYear.length > 0 && (() => {
+            const CHART_H = 160, PAD_TOP = 28, PAD_BOT = 30, LABEL_W = 48, PAD_R = 8;
+            const SVG_W = 700, SVG_H = PAD_TOP + CHART_H + PAD_BOT;
+            const barAreaW = SVG_W - LABEL_W - PAD_R;
+            const slotW = barAreaW / 12;
+            const barW = Math.max(slotW * 0.62, 16);
+            // Round max up to a nice number
+            const mag = Math.pow(10, Math.floor(Math.log10(maxMonth)));
+            const niceMax = Math.ceil(maxMonth / (mag/2)) * (mag/2) || 1;
+            const fmtY = v => v === 0 ? "$0" : v >= 1000 ? `$${(v/1000)%1===0?(v/1000):(v/1000).toFixed(1)}k` : `$${v}`;
+            const gridPcts = [0, 0.25, 0.5, 0.75, 1];
+            const font = "'Hanken Grotesk', Arial, sans-serif";
+            return (
+              <div className="month-chart">
+                <div className="month-chart-title">{yr} monthly spending — all sources</div>
+                <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{width:"100%",height:"auto",display:"block"}}>
+                  {/* Y-axis gridlines */}
+                  {gridPcts.map(pct => {
+                    const gy = PAD_TOP + CHART_H * (1 - pct);
+                    return (
+                      <g key={pct}>
+                        <line x1={LABEL_W} y1={gy} x2={SVG_W-PAD_R} y2={gy}
+                          stroke={pct===0?"#C2B8AE":"#EDE8E1"} strokeWidth={pct===0?1.5:1}/>
+                        <text x={LABEL_W-6} y={gy+4} textAnchor="end"
+                          fontSize="10" fill="#A8A09A" fontFamily={font}>{fmtY(Math.round(niceMax*pct))}</text>
+                      </g>
+                    );
+                  })}
+                  {/* Bars */}
+                  {monthlyData.map((m, i) => {
+                    const barH = Math.max((m.total/niceMax)*CHART_H, m.total>0?4:0);
+                    const bx = LABEL_W + i*slotW + (slotW-barW)/2;
+                    const by = PAD_TOP + CHART_H - barH;
+                    const amtLabel = m.total>=1000 ? `$${(m.total/1000)%1===0?(m.total/1000):(m.total/1000).toFixed(1)}k` : m.total>0 ? `$${Math.round(m.total)}` : "";
+                    const color = m.isCur ? "#C16140" : "#234A3D";
+                    return (
+                      <g key={i}>
+                        <rect x={bx} y={by} width={barW} height={Math.max(barH,0)} rx="3"
+                          fill={m.total>0?color:"#E8E2D9"}/>
+                        {m.total>0 && (
+                          <text x={bx+barW/2} y={by-5} textAnchor="middle"
+                            fontSize="9.5" fill={color} fontWeight="700" fontFamily={font}>{amtLabel}</text>
+                        )}
+                        <text x={bx+barW/2} y={PAD_TOP+CHART_H+18} textAnchor="middle"
+                          fontSize="9.5" fill={m.isCur?color:"#A8A09A"} fontWeight={m.isCur?"700":"500"} fontFamily={font}>
+                          {m.month}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Category insight cards */}
           {catData.length > 0 && (
