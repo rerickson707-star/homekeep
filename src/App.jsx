@@ -1901,6 +1901,8 @@ function OnboardingWizard({ session, onComplete }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound
   const [propertyData, setPropertyData] = useState(null);
+  const [suggesting, setSuggesting] = useState(false); // spinner while fetching suggestions
+  const [selectedAddress, setSelectedAddress] = useState(""); // only set via dropdown pick
   const debounceRef = useRef(null);
   const suggestRef = useRef(null);
   const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
@@ -1917,14 +1919,16 @@ function OnboardingWizard({ session, onComplete }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Geoapify autocomplete
+  // Geoapify autocomplete — faster debounce, lower min chars, loading indicator
   const handleAddressInput = (val) => {
     setAddress(val);
     setShowSuggestions(true);
     setLookupState("idle");
     setPropertyData(null);
+    setSelectedAddress("");
     clearTimeout(debounceRef.current);
-    if (val.length < 4) { setSuggestions([]); return; }
+    if (val.length < 3) { setSuggestions([]); setSuggesting(false); return; }
+    setSuggesting(true);
     debounceRef.current = setTimeout(async () => {
       try {
         const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(val)}&filter=countrycode:us&type=street&limit=5&apiKey=${GEO_KEY}`;
@@ -1938,16 +1942,18 @@ function OnboardingWizard({ session, onComplete }) {
           zip:   f.properties.postcode || "",
         })));
       } catch { setSuggestions([]); }
-    }, 350);
+      finally { setSuggesting(false); }
+    }, 200);
   };
 
-  // Auto-trigger lookup when user picks a suggestion
+  // Only trigger lookup when user picks a verified suggestion — prevents partial-address mismatches
   const selectSuggestion = async (s) => {
     const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
     setAddress(addr);
+    setSelectedAddress(addr);
     setSuggestions([]);
     setShowSuggestions(false);
-    // Auto-lookup immediately — no button needed
+    setSuggesting(false);
     setLookupState("loading");
     try {
       const result = await lookupProperty(addr);
@@ -1956,8 +1962,15 @@ function OnboardingWizard({ session, onComplete }) {
     } catch { setLookupState("notfound"); }
   };
 
+  const resetAddress = () => {
+    setAddress(""); setSelectedAddress(""); setSuggestions([]);
+    setLookupState("idle"); setPropertyData(null); setSuggesting(false);
+  };
+
+  // Fallback for manual entry (keep but don't expose prominently)
   const handleLookup = async () => {
     if (!address.trim()) return;
+    setSelectedAddress(address.trim());
     setLookupState("loading");
     setSuggestions([]);
     setShowSuggestions(false);
@@ -2027,41 +2040,63 @@ function OnboardingWizard({ session, onComplete }) {
         <div className="wizard-body">
           <span className="wizard-icon">📍</span>
           <div className="wizard-title">What's your home address?</div>
-          <div className="wizard-sub">Start typing below and <strong>select your address from the list</strong> — we'll automatically pull your home's details from public records.</div>
+          <div className="wizard-sub">Start typing and <strong>select your address from the list</strong> — we'll look it up automatically.</div>
 
-          <div className="wizard-autocomplete" ref={suggestRef}>
-            <div className="wizard-field">
-              <label>Home Address</label>
-              <input
-                autoFocus
-                value={address}
-                onChange={e => handleAddressInput(e.target.value)}
-                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                placeholder="e.g. 123 Maple Street, Tampa, FL"
-                autoComplete="off"
-                onKeyDown={e => {
-                  if (e.key === "Enter" && suggestions.length === 0 && address.trim()) handleLookup();
-                  if (e.key === "Escape") setShowSuggestions(false);
-                }}
-              />
-            </div>
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="wizard-suggestions">
-                {suggestions.map((s,i) => (
-                  <div key={i} className="wizard-suggestion" onMouseDown={() => selectSuggestion(s)}>
-                    <span>📍</span>
-                    <div>
-                      <div style={{fontWeight:500}}>{s.line1}</div>
-                      <div style={{fontSize:".72rem",color:"#A8A09A"}}>{[s.city,s.state,s.zip].filter(Boolean).join(", ")}</div>
-                    </div>
-                  </div>
-                ))}
+          {/* Hide input once address confirmed, show reset instead */}
+          {lookupState === "idle" || lookupState === "loading" ? (
+            <div className="wizard-autocomplete" ref={suggestRef}>
+              <div className="wizard-field" style={{position:"relative"}}>
+                <label>Home Address</label>
+                <input
+                  autoFocus
+                  value={address}
+                  onChange={e => handleAddressInput(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  placeholder="e.g. 123 Maple Street, Tampa, FL"
+                  autoComplete="off"
+                  onKeyDown={e => { if(e.key === "Escape") setShowSuggestions(false); }}
+                  style={{paddingRight: suggesting ? "2.2rem" : undefined}}
+                />
+                {suggesting && (
+                  <span style={{position:"absolute",right:"10px",top:"calc(50% + 10px)",transform:"translateY(-50%)"}}>
+                    <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
+                  </span>
+                )}
               </div>
-            )}
-          </div>
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="wizard-suggestions">
+                  {suggestions.map((s,i) => (
+                    <div key={i} className="wizard-suggestion" onMouseDown={() => selectSuggestion(s)}>
+                      <span>📍</span>
+                      <div>
+                        <div style={{fontWeight:500}}>{s.line1}</div>
+                        <div style={{fontSize:".72rem",color:"#A8A09A"}}>{[s.city,s.state,s.zip].filter(Boolean).join(", ")}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showSuggestions && !suggesting && suggestions.length === 0 && address.length >= 5 && (
+                <div style={{fontSize:".8rem",color:"#A8A09A",padding:".5rem .75rem",background:"var(--cream)",borderRadius:"8px",marginTop:".35rem"}}>
+                  No suggestions yet — keep typing your full address.
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Show selected address + reset option once lookup completes */
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"10px",border:"1px solid var(--stone)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".5rem",minWidth:0}}>
+                <span style={{fontSize:"1rem",flexShrink:0}}>📍</span>
+                <span style={{fontSize:".84rem",fontWeight:500,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selectedAddress || address}</span>
+              </div>
+              <button onClick={resetAddress} style={{flexShrink:0,marginLeft:".75rem",fontSize:".75rem",color:"var(--rust)",background:"none",border:"none",cursor:"pointer",fontWeight:600,padding:0}}>
+                Change
+              </button>
+            </div>
+          )}
 
           {lookupState === "loading" && (
-            <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".75rem",background:"var(--cream)",borderRadius:"10px",fontSize:".85rem",color:"#5A534B"}}>
+            <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".75rem",background:"var(--cream)",borderRadius:"10px",fontSize:".85rem",color:"#5A534B",marginTop:".5rem"}}>
               <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
               Looking up your home details…
             </div>
@@ -2069,7 +2104,10 @@ function OnboardingWizard({ session, onComplete }) {
 
           {lookupState === "found" && propertyData && (
             <div className="wizard-found">
-              ✓ Home found! We pulled your property details.
+              <div style={{fontWeight:600,marginBottom:".4rem"}}>✓ Home found</div>
+              <div style={{fontSize:".78rem",color:"#5A534B",marginBottom:".6rem",fontStyle:"italic"}}>
+                {propertyData.address || selectedAddress}
+              </div>
               <div className="wizard-chips">
                 {[
                   propertyData.type,
@@ -2081,23 +2119,23 @@ function OnboardingWizard({ session, onComplete }) {
                   <span key={i} className="wizard-chip">{v}</span>
                 ))}
               </div>
+              <div style={{marginTop:".6rem",fontSize:".75rem",color:"#A8A09A"}}>
+                Not the right property? <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".75rem",fontWeight:600,padding:0}}>Search again</button>
+              </div>
             </div>
           )}
 
           {lookupState === "notfound" && (
             <div className="wizard-notfound">
-              No property data found — that's okay. This sometimes happens with newer addresses. Your address is saved and you can fill in details manually in the My Home tab.
+              No property data found for this address — that's okay. You can fill in your home details manually in the My Home tab after setup.
+              <div style={{marginTop:".5rem"}}>
+                <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".78rem",fontWeight:600,padding:0}}>← Try a different address</button>
+              </div>
             </div>
-          )}
-
-          {lookupState === "idle" && address.trim().length > 6 && suggestions.length === 0 && (
-            <button className="wizard-lookup-btn" onClick={handleLookup}>
-              Search for "{address.trim().slice(0,40)}{address.length > 40 ? "…" : ""}" →
-            </button>
           )}
         </div>
         <div className="wizard-footer">
-          <button className="wizard-back" onClick={() => setStep(1)}>← Back</button>
+          <button className="wizard-back" onClick={() => { resetAddress(); setStep(1); }}>← Back</button>
           <button
             className="wizard-next"
             disabled={!address.trim() || lookupState === "loading"}
