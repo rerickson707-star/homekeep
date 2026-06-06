@@ -3663,7 +3663,6 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
   const seasonIcon = {spring:"🌸",summer:"☀️",fall:"🍂",winter:"❄️"}[season];
   const seasonalSuggestions = climate[season] || [];
 
-  const [view, setView] = useState("calendar");
   const [statusF, setStatusF] = useState("All");
   const [catF, setCatF] = useState("All");
   const [sort, setSort] = useState("due_date");
@@ -3672,13 +3671,6 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
   const [editId, setEditId] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [showSeasonal, setShowSeasonal] = useState(true);
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [selectedDayTasks, setSelectedDayTasks] = useState([]);
-
-  const handleDayClick = (date, dayTasks) => {
-    setSelectedDay(date);
-    setSelectedDayTasks(dayTasks);
-  };
 
   const openNew = (cat) => {
     setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||""});
@@ -3778,16 +3770,6 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
     return 0;
   });
 
-  // Group by category for category view
-  const grouped = CATEGORIES.reduce((acc, cat) => {
-    const items = filtered.filter(t => t.category===cat);
-    if(items.length > 0) acc[cat] = items;
-    return acc;
-  }, {});
-  if(filtered.some(t => !t.category || t.category==="")) {
-    grouped["Uncategorized"] = filtered.filter(t => !t.category||t.category==="");
-  }
-
   const TaskCard = ({ t }) => {
     const sc = STATUS_STYLE[t.status]||STATUS_STYLE.Scheduled;
     const d = daysTo(t.due_date);
@@ -3804,7 +3786,11 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
           >
             {isDone && "✓"}
           </div>
-          <div className="task-card-body">
+          <div
+            className="task-card-body"
+            onClick={() => openEdit(t)}
+            style={{cursor:"pointer", flex:1, minWidth:0}}
+          >
             <div className={`task-card-title ${isDone?"done":""}`}>{t.title}</div>
             <div className="task-card-meta">
               {t.due_date && (
@@ -3863,24 +3849,20 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
 
   return (
     <div>
+      {/* Header */}
       <div className="sh">
         <span className="sh-title">Tasks</span>
-        <div className="sh-right">
-          <div className="view-toggle">
-            <button className={`view-btn ${view==="list"?"active":""}`} onClick={()=>setView("list")}>List</button>
-            <button className={`view-btn ${view==="category"?"active":""}`} onClick={()=>setView("category")}>By Room</button>
-            <button className={`view-btn ${view==="calendar"?"active":""}`} onClick={()=>setView("calendar")}>Calendar</button>
-          </div>
-          <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
-        </div>
+        <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
       </div>
 
-      {/* Filters — hidden in calendar mode */}
-      {view !== "calendar" && (
-      <div className="toolbar">
-        {["All",...STATUS_OPTIONS].map(s=>(
-          <button key={s} className={`chip ${statusF===s?"on":""}`} onClick={()=>setStatusF(s)}>{s}</button>
-        ))}
+      {/* Calendar — always on top */}
+      <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} onEditTask={openEdit}/>
+
+      {/* ── Task List ── */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"1.25rem 0 .6rem",flexWrap:"wrap",gap:".5rem"}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"var(--dark)"}}>
+          All Tasks {filtered.length > 0 && <span style={{fontSize:".75rem",color:"#A8A09A",fontWeight:400,fontFamily:"'Hanken Grotesk',sans-serif"}}>· {filtered.length}</span>}
+        </span>
         <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)}>
           <option value="due_date">Due Date</option>
           <option value="priority">Priority</option>
@@ -3888,15 +3870,23 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
           <option value="cost">Cost</option>
         </select>
       </div>
-      )}
-      {view==="list" && (
-        <div className="toolbar">
-          {["All",...CATEGORIES].map(c=>(
-            <button key={c} className={`chip ${catF===c?"on":""}`} onClick={()=>setCatF(c)}>{CAT_ICONS[c]||""} {c}</button>
-          ))}
-        </div>
-      )}      {/* Seasonal suggestions */}
-      {view !== "calendar" && showSeasonal && (
+
+      {/* Status filters */}
+      <div className="toolbar" style={{marginBottom:".4rem"}}>
+        {["All",...STATUS_OPTIONS].map(s=>(
+          <button key={s} className={`chip ${statusF===s?"on":""}`} onClick={()=>setStatusF(s)}>{s}</button>
+        ))}
+      </div>
+
+      {/* Category filters */}
+      <div className="toolbar">
+        {["All",...CATEGORIES].map(c=>(
+          <button key={c} className={`chip ${catF===c?"on":""}`} onClick={()=>setCatF(c)}>{CAT_ICONS[c]||""} {c}</button>
+        ))}
+      </div>
+
+      {/* Seasonal suggestions */}
+      {showSeasonal && (
         <div className="seasonal-section" style={{background:climate.color, borderColor:climate.border}}>
           <div className="seasonal-section-title">
             {seasonIcon} {seasonLabel} checklist — {climate.label}
@@ -3913,7 +3903,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
       )}
 
       {/* Empty state */}
-      {view !== "calendar" && filtered.length===0 && (
+      {filtered.length===0 && (
         <div className="empty">
           <span className="ei">🔧</span>
           <strong>{tasks.length===0?"No tasks yet":"No matching tasks"}</strong>
@@ -3922,37 +3912,11 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         </div>
       )}
 
-      {/* List view */}
-      {view==="list" && filtered.map(t => <TaskCard key={t.id} t={t} />)}
-
-      {/* Category view */}
-      {view==="category" && Object.entries(grouped).map(([cat, items]) => (
-        <div key={cat} className="cat-group">
-          <div className="cat-group-header">
-            <div className="cat-group-icon" style={{background:"var(--cream2)"}}>{CAT_ICONS[cat]||"🔧"}</div>
-            <span className="cat-group-name">{cat}</span>
-            <span className="cat-group-count">{items.length}</span>
-            <button className="btn btn-ghost btn-sm" style={{marginLeft:"auto"}} onClick={()=>openNew(cat)}>＋ Add</button>
-          </div>
-          {items.map(t => <TaskCard key={t.id} t={t} />)}
-        </div>
-      ))}
-
-      {/* Calendar view — full CalendarTab embedded */}
-      {view==="calendar" && (
-        <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId}/>
-      )}
+      {/* Task list */}
+      {filtered.map(t => <TaskCard key={t.id} t={t} />)}
 
       {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets}/></Modal>}
       {confirm && <Confirm message="This task will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-      {selectedDay && (
-        <DayDetail
-          date={selectedDay}
-          tasks={selectedDayTasks}
-          onClose={() => setSelectedDay(null)}
-          onEdit={(t) => { setSelectedDay(null); openEdit(t); }}
-        />
-      )}
     </div>
   );
 }
@@ -5796,7 +5760,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 // ─── CALENDAR TAB ────────────────────────────────────────────────────────────
-function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId }) {
+function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId, onEditTask }) {
   const today = new Date();
   const [curYear, setCurYear]       = useState(today.getFullYear());
   const [curMonth, setCurMonth]     = useState(today.getMonth());
@@ -6031,8 +5995,15 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
               ) : (
                 <>
                   {/* Real events */}
-                  {[...selTasks, ...selOther.filter(e=>!e.canCreate || e.type.startsWith("warranty") || e.type.startsWith("insurance") || e.type==="service")].map(ev => (
-                    <div key={ev.id} className="ct-pe">
+                  {[...selTasks, ...selOther.filter(e=>!e.canCreate || e.type.startsWith("warranty") || e.type.startsWith("insurance") || e.type==="service")].map(ev => {
+                    const isTask = ev.type.startsWith("task");
+                    const fullTask = isTask ? tasks.find(t => t.id === ev.sourceId) : null;
+                    const canEdit = isTask && fullTask && onEditTask;
+                    return (
+                    <div key={ev.id} className="ct-pe"
+                      onClick={canEdit ? () => onEditTask(fullTask) : undefined}
+                      style={canEdit ? {cursor:"pointer"} : undefined}
+                    >
                       <div className="ct-pe-bar" style={{background:evColor(ev.type)}}/>
                       <div className="ct-pe-info">
                         <div className="ct-pe-title">{ev.title}</div>
@@ -6040,15 +6011,20 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                           <span>{EV[ev.type]?.label || ev.type}</span>
                           {ev.category && <span>· {ev.category}</span>}
                           {ev.status && <span>· {ev.status}</span>}
+                          {ev.type !== "task_done" && fullTask?.recurring && <span>· 🔁 {fullTask.recurring}</span>}
                         </div>
                       </div>
-                      {ev.canCreate && !ev.type.startsWith("task") && (
-                        <button className={`ct-pe-create ${created.has(ev.id)?"done":""}`} onClick={()=>createFromSuggestion(ev,selDate)} disabled={created.has(ev.id)||saving}>
+                      {canEdit && (
+                        <span style={{fontSize:".7rem",color:"#A8A09A",flexShrink:0}}>Edit ›</span>
+                      )}
+                      {ev.canCreate && !isTask && (
+                        <button className={`ct-pe-create ${created.has(ev.id)?"done":""}`} onClick={e=>{e.stopPropagation();createFromSuggestion(ev,selDate);}} disabled={created.has(ev.id)||saving}>
                           {created.has(ev.id) ? "Added ✓" : "→ Task"}
                         </button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                   {/* Seasonal suggestions for this day */}
                   {selSuggest.filter(e=>e.type==="seasonal").length > 0 && (
                     <>
