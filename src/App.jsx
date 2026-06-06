@@ -5252,7 +5252,7 @@ function DocItem({ doc, assets, onEdit, onDelete, onView, fileIcon, getExpirySta
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, toast, userId, onNavigate }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -5381,8 +5381,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
   const insRenewalDays = profile?.ins_renewal_date ? daysTo(profile.ins_renewal_date) : null;
   const insRenewalStatus = insRenewalDays === null ? null : insRenewalDays < 0 ? "expired" : insRenewalDays <= 30 ? "urgent" : insRenewalDays <= 90 ? "soon" : "ok";
 
-  // Stats
-  const totalCost = expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  // Stats — match Tasks tab: expenses + service log costs
+  const serviceLogTotal = serviceLogs.reduce((s,l)=>s+Number(l.cost||0),0);
+  const totalCost = expenses.reduce((s,e)=>s+Number(e.amount||0),0) + serviceLogTotal;
   const activeW   = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
 
   const schoolRatingColor = r => !r ? "#C2B8AE" : r>=8 ? "#1A7A44" : r>=6 ? "#E0A84A" : "#B91C1C";
@@ -6303,7 +6304,7 @@ export default function App() {
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} toast={toast} userId={uid} onNavigate={setTab}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab}/>}
             </>
           )}
         </main>
