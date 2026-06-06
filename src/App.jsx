@@ -1394,6 +1394,41 @@ const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:0
 const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
 
+// Recurring task engine — computes next due date from current due date + recurrence rule
+function getNextRecurringDate(dueDateStr, recurring) {
+  if (!dueDateStr || !recurring) return null;
+  const r = (recurring || "").toLowerCase().trim();
+  const d = new Date(dueDateStr + "T00:00:00");
+  if      (r === "daily"  || r.includes("every day"))                                    d.setDate(d.getDate() + 1);
+  else if (r === "weekly" || (r.includes("week") && !r.includes("2") && !r.includes("bi"))) d.setDate(d.getDate() + 7);
+  else if (r === "biweekly" || r.includes("2 week") || r.includes("every other week"))   d.setDate(d.getDate() + 14);
+  else if (r === "monthly"|| (r.includes("month") && !r.includes("3") && !r.includes("6") && !r.includes("quart"))) d.setMonth(d.getMonth() + 1);
+  else if (r === "quarterly" || r.includes("quart") || (r.includes("3") && r.includes("month"))) d.setMonth(d.getMonth() + 3);
+  else if (r === "every 6 months" || (r.includes("6") && r.includes("month")) || r.includes("biannual") || r.includes("semi-annual")) d.setMonth(d.getMonth() + 6);
+  else if (r === "annually" || r.includes("annual") || r.includes("year"))               d.setFullYear(d.getFullYear() + 1);
+  else return null; // unrecognised
+  return localISO(d);
+}
+
+// Smart recurrence suggestion from task title + category
+function suggestRecurrence(title, category) {
+  const t = ((title||"") + " " + (category||"")).toLowerCase();
+  if (/hvac.*(filter|clean|replace)|air filter|filter.*(change|replace)/.test(t)) return "monthly";
+  if (/hvac.*service|ac.*service|furnace.*service|furnace.*check|ac.*tune/.test(t))  return "every 6 months";
+  if (/gutter/.test(t))                  return "every 6 months";
+  if (/dryer.*vent|vent.*clean/.test(t)) return "annually";
+  if (/smoke.*detector|co.*detector|carbon.*monoxide|fire.*alarm/.test(t)) return "annually";
+  if (/water.*heater.*flush|flush.*water/.test(t)) return "annually";
+  if (/pest.*control|pest.*inspect/.test(t))       return "quarterly";
+  if (/roof.*inspect|inspect.*roof/.test(t))       return "annually";
+  if (/lawn|mow|grass/.test(t))                    return "weekly";
+  if (/pool.*clean|clean.*pool/.test(t))           return "weekly";
+  if (/exterior.*paint|paint.*exterior/.test(t))   return "annually";
+  if (/chimney|fireplace/.test(t))                 return "annually";
+  if (/septic/.test(t))                            return "annually";
+  return "";
+}
+
 // Shared event map — used by both Dashboard Week Ahead and CalendarTab
 // so both tabs always show identical data from the same sources.
 function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
@@ -2446,16 +2481,44 @@ function UserMenu({ user, onSignOut }) {
 // ─── FORMS ───────────────────────────────────────────────────────────────────
 function TaskForm({ data, onChange, assets=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
+
+  // Smart suggestion — when title changes, auto-suggest a recurrence if none set
+  const handleTitle = (val) => {
+    const suggestion = suggestRecurrence(val, data.category);
+    onChange({...data, title:val, recurring: data.recurring || suggestion});
+  };
+
+  const RECUR_OPTIONS = [
+    {value:"",             label:"Does not repeat"},
+    {value:"daily",        label:"Daily"},
+    {value:"weekly",       label:"Weekly"},
+    {value:"biweekly",     label:"Every 2 weeks"},
+    {value:"monthly",      label:"Monthly"},
+    {value:"quarterly",    label:"Every 3 months"},
+    {value:"every 6 months", label:"Every 6 months"},
+    {value:"annually",     label:"Annually"},
+  ];
+
   return (
     <div className="fg">
-      <div className="field s2"><label>Task Title *</label><input value={data.title||""} onChange={e=>f("title",e.target.value)} placeholder="e.g. Replace HVAC Filter" /></div>
+      <div className="field s2"><label>Task Title *</label><input value={data.title||""} onChange={e=>handleTitle(e.target.value)} placeholder="e.g. Replace HVAC Filter" /></div>
       <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
       <div className="field"><label>Priority</label><select value={data.priority||""} onChange={e=>f("priority",e.target.value)}><option value="">Select…</option>{PRIORITY.map(p=><option key={p}>{p}</option>)}</select></div>
       <div className="field"><label>Status</label><select value={data.status||""} onChange={e=>f("status",e.target.value)}><option value="">Select…</option>{STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Due Date</label><input type="date" value={data.due_date||""} onChange={e=>f("due_date",e.target.value)} /></div>
+      <div className="field">
+        <label>🔁 Repeat</label>
+        <select value={data.recurring||""} onChange={e=>f("recurring",e.target.value)}>
+          {RECUR_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {data.recurring && data.recurring !== "" && data.due_date && (
+          <div style={{fontSize:".72rem",color:"var(--rust)",marginTop:"4px",fontWeight:500}}>
+            ↻ Next: {new Date(getNextRecurringDate(data.due_date, data.recurring)+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+          </div>
+        )}
+      </div>
       <div className="field"><label>Est. Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
       <div className="field"><label>Vendor / Contractor</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} placeholder="DIY or company name" /></div>
-      <div className="field"><label>Recurring Schedule</label><input value={data.recurring||""} onChange={e=>f("recurring",e.target.value)} placeholder="e.g. Every 3 months" /></div>
       {assets.length > 0 && (
         <div className="field s2">
           <label>Linked Asset (optional)</label>
@@ -3653,9 +3716,36 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
     const {error} = await supabase.from("tasks").update({status:s}).eq("id",t.id).eq("user_id",userId);
     if(!error) {
       setTasks(tasks.map(x=>x.id===t.id?{...x,status:s}:x));
-      toast(`Marked as ${s} ✓`);
+
+      // Auto-create next occurrence when a recurring task is completed
+      if (s === "Completed" && t.recurring && t.recurring !== "") {
+        const nextDate = getNextRecurringDate(t.due_date || localISO(), t.recurring);
+        if (nextDate) {
+          const nextPayload = {
+            title:     t.title,
+            category:  t.category  || null,
+            priority:  t.priority  || "Medium",
+            status:    "Scheduled",
+            due_date:  nextDate,
+            notes:     t.notes     || null,
+            recurring: t.recurring,
+            asset_id:  t.asset_id  || null,
+            vendor:    t.vendor    || null,
+            cost:      t.cost      || null,
+            user_id:   userId,
+          };
+          const { data: created } = await supabase.from("tasks").insert([nextPayload]).select();
+          if (created) {
+            setTasks(prev => [...prev, created[0]]);
+            const nextFmt = new Date(nextDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
+            toast(`✓ Done! Next scheduled for ${nextFmt}`);
+          }
+        }
+      } else {
+        toast(`Marked as ${s} ✓`);
+      }
+
       // Auto-log service entry when task linked to an asset is completed
-      // Skip if this task was auto-created from a service log (notes starts with [Service] or [Auto-created)
       const isServiceTask = t.notes?.startsWith("[Service]") || t.notes?.startsWith("[Auto-created from service");
       if(s === "Completed" && t.asset_id && !isServiceTask) {
         await supabase.from("asset_service_log").insert([{
@@ -3666,12 +3756,9 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
           cost:         t.cost ? Number(t.cost) : null,
           notes:        `Auto-logged from task completion${t.vendor ? ` · ${t.vendor}` : ""}`,
         }]);
-        // Update last_serviced on the asset
         await supabase.from("warranties").update({last_serviced: localISO()}).eq("id",t.asset_id).eq("user_id",userId);
-        // Reload shared service logs so Assets tab updates immediately
         const {data: sl} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false});
         if(sl) setServiceLogs(sl);
-        toast("Service auto-logged to asset ✓");
       }
     }
   };
