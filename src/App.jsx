@@ -2865,7 +2865,7 @@ function PhotoUpload({ userId, currentUrl, onUploaded }) {
 }
 
 
-function ProfileForm({ data, onChange, userId }) {
+function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const [lookupAddr, setLookupAddr] = useState(data.address || "");
   const [lookupState, setLookupState] = useState("idle");
@@ -3062,6 +3062,23 @@ function ProfileForm({ data, onChange, userId }) {
         currentUrl={data.user_photo_url || ""}
         onUploaded={url => onChange({...data, user_photo_url: url})}
       />
+
+      {/* ── Photo Position ── only shown when a photo exists */}
+      {(data.user_photo_url || data.photo_url) && onPhotoPos && (
+        <div style={{marginBottom:"1rem"}}>
+          <label style={{display:"block",fontSize:".78rem",fontWeight:600,color:"#5A534B",marginBottom:".4rem"}}>Photo position</label>
+          <div style={{display:"flex",alignItems:"center",gap:".75rem",background:"var(--cream2)",borderRadius:"10px",padding:".6rem .85rem",border:"1px solid var(--stone)"}}>
+            <span style={{fontSize:".72rem",color:"#9E9690",flexShrink:0}}>Top</span>
+            <input
+              type="range" min={0} max={100} value={photoPos}
+              onChange={e => onPhotoPos(Number(e.target.value))}
+              style={{flex:1, accentColor:"var(--rust)", cursor:"pointer"}}
+            />
+            <span style={{fontSize:".72rem",color:"#9E9690",flexShrink:0}}>Bottom</span>
+          </div>
+          <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".3rem"}}>Drag to choose which part of your photo shows.</div>
+        </div>
+      )}
 
       {/* ── Manual Fields ── */}
       <div className="fg">
@@ -5381,7 +5398,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
           <p style={{fontSize:".84rem",color:"#A8A09A",margin:".5rem 0 1.2rem",lineHeight:1.6}}>Add your address to auto-fill your home's details — year built, tax history, school ratings, and more</p>
           <button className="btn btn-primary" onClick={openEdit}>Get Started →</button>
         </div>
-        {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId}/></Modal>}
+        {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
       </div>
     );
   }
@@ -5409,11 +5426,6 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
               {profile.address && <div className="home-hero-address">📍 {profile.address}</div>}
               {homeAge && <div style={{fontSize:".7rem",color:"rgba(255,255,255,.5)",marginTop:"3px"}}>Built {profile.year} · {homeAge} years old</div>}
             </div>
-          </div>
-          <div className="photo-pos-bar">
-            <span className="photo-pos-label">🖼 Photo position</span>
-            <input type="range" min={0} max={100} value={photoPos} onChange={e=>handlePhotoPos(Number(e.target.value))}/>
-            <span style={{fontSize:".7rem",color:"#9E9690",minWidth:"30px",textAlign:"right"}}>{photoPos}%</span>
           </div>
         </div>
       ) : (
@@ -5687,7 +5699,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, toast, user
       />
       {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
 
-      {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId}/></Modal>}
+      {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
       {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData}/></Modal>}
     </div>
   );
