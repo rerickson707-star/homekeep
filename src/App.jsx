@@ -1892,6 +1892,9 @@ function OnboardingWizard({ session, onComplete }) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
+  // Step 1 — Name
+  const [name, setName] = useState("");
+
   // Step 2 — Address
   const [address, setAddress] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -1938,11 +1941,19 @@ function OnboardingWizard({ session, onComplete }) {
     }, 350);
   };
 
-  const selectSuggestion = (s) => {
+  // Auto-trigger lookup when user picks a suggestion
+  const selectSuggestion = async (s) => {
     const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
     setAddress(addr);
     setSuggestions([]);
     setShowSuggestions(false);
+    // Auto-lookup immediately — no button needed
+    setLookupState("loading");
+    try {
+      const result = await lookupProperty(addr);
+      if (result) { setPropertyData(result); setLookupState("found"); }
+      else setLookupState("notfound");
+    } catch { setLookupState("notfound"); }
   };
 
   const handleLookup = async () => {
@@ -1952,15 +1963,9 @@ function OnboardingWizard({ session, onComplete }) {
     setShowSuggestions(false);
     try {
       const result = await lookupProperty(address.trim());
-      if (result) {
-        setPropertyData(result);
-        setLookupState("found");
-      } else {
-        setLookupState("notfound");
-      }
-    } catch {
-      setLookupState("notfound");
-    }
+      if (result) { setPropertyData(result); setLookupState("found"); }
+      else setLookupState("notfound");
+    } catch { setLookupState("notfound"); }
   };
 
   // Progress dots
@@ -1972,7 +1977,7 @@ function OnboardingWizard({ session, onComplete }) {
     </div>
   );
 
-  // Step 1 — Welcome
+  // Step 1 — Welcome + name
   if (step === 1) return (
     <div className="wizard-wrap">
       <div className="wizard-card">
@@ -1980,8 +1985,18 @@ function OnboardingWizard({ session, onComplete }) {
         <div className="wizard-body">
           <span className="wizard-icon">🏠</span>
           <div className="wizard-title">Welcome to Steadwell</div>
-          <div className="wizard-sub">Your home's command center. We'll get you set up in about 2 minutes — starting with your home address.</div>
-          <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginTop:".5rem"}}>
+          <div className="wizard-sub">Your home's command center. Let's get you set up in about 2 minutes.</div>
+          <div className="wizard-field">
+            <label>What should we call you?</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="First name"
+              onKeyDown={e => e.key === "Enter" && name.trim() && setStep(2)}
+            />
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginTop:".25rem"}}>
             {[
               {icon:"🔍", text:"Auto-fill your home's details from public records"},
               {icon:"✓",  text:"Track maintenance tasks with climate-aware tips"},
@@ -1996,7 +2011,9 @@ function OnboardingWizard({ session, onComplete }) {
           </div>
         </div>
         <div className="wizard-footer" style={{justifyContent:"flex-end"}}>
-          <button className="wizard-next" onClick={() => setStep(2)}>Get started →</button>
+          <button className="wizard-next" disabled={!name.trim()} onClick={() => setStep(2)}>
+            {name.trim() ? `Let's go, ${name.split(" ")[0]} →` : "Get started →"}
+          </button>
         </div>
       </div>
     </div>
@@ -2010,18 +2027,22 @@ function OnboardingWizard({ session, onComplete }) {
         <div className="wizard-body">
           <span className="wizard-icon">📍</span>
           <div className="wizard-title">What's your home address?</div>
-          <div className="wizard-sub">We'll use this to auto-fill your home's details — year built, square footage, tax history, and more.</div>
+          <div className="wizard-sub">Start typing below and <strong>select your address from the list</strong> — we'll automatically pull your home's details from public records.</div>
 
           <div className="wizard-autocomplete" ref={suggestRef}>
             <div className="wizard-field">
               <label>Home Address</label>
               <input
+                autoFocus
                 value={address}
                 onChange={e => handleAddressInput(e.target.value)}
                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                placeholder="Start typing your address…"
+                placeholder="e.g. 123 Maple Street, Tampa, FL"
                 autoComplete="off"
-                onKeyDown={e => { if(e.key==="Enter") { setShowSuggestions(false); handleLookup(); } if(e.key==="Escape") setShowSuggestions(false); }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && suggestions.length === 0 && address.trim()) handleLookup();
+                  if (e.key === "Escape") setShowSuggestions(false);
+                }}
               />
             </div>
             {showSuggestions && suggestions.length > 0 && (
@@ -2039,16 +2060,12 @@ function OnboardingWizard({ session, onComplete }) {
             )}
           </div>
 
-          <button
-            className="wizard-lookup-btn"
-            onClick={handleLookup}
-            disabled={!address.trim() || lookupState === "loading"}
-          >
-            {lookupState === "loading"
-              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Looking up your home…</>
-              : "Look up my home →"
-            }
-          </button>
+          {lookupState === "loading" && (
+            <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".75rem",background:"var(--cream)",borderRadius:"10px",fontSize:".85rem",color:"#5A534B"}}>
+              <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
+              Looking up your home details…
+            </div>
+          )}
 
           {lookupState === "found" && propertyData && (
             <div className="wizard-found">
@@ -2069,8 +2086,14 @@ function OnboardingWizard({ session, onComplete }) {
 
           {lookupState === "notfound" && (
             <div className="wizard-notfound">
-              No property data found — that's okay. This sometimes happens with older homes. Your address is saved and you can fill in details manually in the My Home tab.
+              No property data found — that's okay. This sometimes happens with newer addresses. Your address is saved and you can fill in details manually in the My Home tab.
             </div>
+          )}
+
+          {lookupState === "idle" && address.trim().length > 6 && suggestions.length === 0 && (
+            <button className="wizard-lookup-btn" onClick={handleLookup}>
+              Search for "{address.trim().slice(0,40)}{address.length > 40 ? "…" : ""}" →
+            </button>
           )}
         </div>
         <div className="wizard-footer">
@@ -2144,6 +2167,7 @@ function OnboardingWizard({ session, onComplete }) {
         // Save profile
         const profilePayload = {
           user_id: uid,
+          name: name.trim() || "",
           address: propertyData?.address || address,
           type: propertyData?.type || "",
           year: propertyData?.year || "",
