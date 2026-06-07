@@ -2577,12 +2577,9 @@ function FeedbackModal({ user, userId, currentTab, onClose }) {
       }]);
 
       // 2. Send notification email via Edge Function
-      await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/feedback-notification", {
+      fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/feedback-notification", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email:   user.email,
           type,
@@ -2590,7 +2587,7 @@ function FeedbackModal({ user, userId, currentTab, onClose }) {
           message: message.trim(),
           page:    currentTab,
         }),
-      }).catch(err => console.warn("Feedback email failed:", err));
+      }).then(r => r.json()).then(d => console.log("Feedback email:", d)).catch(err => console.warn("Feedback email failed:", err));
 
       setDone(true);
       setTimeout(onClose, 2500);
