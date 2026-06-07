@@ -1353,7 +1353,52 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .user-dd-item.danger:hover{background:#FFF0EE}
 .user-dd-divider{height:1px;background:var(--stone);margin:.25rem 0}
 
-/* ══ HOME SETUP WIZARD ══ */
+/* ══ PLAN SYSTEM ══ */
+.plan-badge{display:inline-flex;align-items:center;gap:4px;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.04em}
+.plan-badge.free{background:var(--cream2);color:#7A7370;border:1px solid var(--stone)}
+.plan-badge.plus{background:#EEF4FF;color:#3B5FBF;border:1px solid #C5D5F7}
+.plan-badge.pro{background:#FBF0E6;color:#A0511A;border:1px solid #F5D5B0}
+
+/* upgrade prompt */
+.upgrade-prompt{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r);padding:.9rem 1.1rem;display:flex;align-items:center;gap:.85rem;margin:.75rem 0}
+.upgrade-prompt-icon{font-size:1.4rem;flex-shrink:0}
+.upgrade-prompt-text{flex:1;min-width:0}
+.upgrade-prompt-title{font-size:.85rem;font-weight:600;color:var(--dark);margin-bottom:2px}
+.upgrade-prompt-sub{font-size:.75rem;color:#7A7370;line-height:1.4}
+.upgrade-prompt-btn{flex-shrink:0;padding:.4rem .9rem;border-radius:20px;border:none;background:var(--pine);color:#fff;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;white-space:nowrap;transition:opacity .15s}
+.upgrade-prompt-btn:hover{opacity:.85}
+
+/* health score widget */
+.health-wrap{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1rem 1.1rem;margin-bottom:.75rem}
+.health-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.health-title{font-family:'Fraunces',serif;font-size:.9rem;font-weight:500;color:var(--dark)}
+.health-score-row{display:flex;align-items:center;gap:1.25rem}
+.health-score-circle{position:relative;width:76px;height:76px;flex-shrink:0}
+.health-score-svg{width:76px;height:76px;transform:rotate(-90deg)}
+.health-score-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.health-score-val{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:600;color:var(--dark)}
+.health-score-label{font-size:.48rem;color:#A8A09A;text-transform:uppercase;letter-spacing:.04em;max-width:60px;text-align:center}
+.health-factors{flex:1;min-width:0;display:flex;flex-direction:column;gap:.45rem}
+.health-factor{display:grid;grid-template-columns:64px 1fr 24px;align-items:center;gap:.5rem;font-size:.72rem}
+.health-factor-bar{height:5px;border-radius:3px;background:var(--stone);overflow:hidden}
+.health-factor-fill{height:100%;border-radius:3px}
+.health-factor-label{color:#7A7370;font-size:.7rem;white-space:nowrap}
+.health-factor-val{color:var(--dark);font-weight:600;font-size:.7rem;text-align:right}
+
+/* cost forecast widget */
+.forecast-wrap{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1rem 1.1rem;margin-bottom:.75rem}
+.forecast-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem}
+.forecast-title{font-family:'Fraunces',serif;font-size:.9rem;font-weight:500;color:var(--dark)}
+.forecast-chart{display:flex;align-items:flex-end;gap:.35rem;height:90px}
+.forecast-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0}
+.forecast-bar{width:100%;border-radius:4px 4px 0 0;min-height:3px;flex-shrink:0}
+.forecast-bar-label{font-size:.58rem;color:#A8A09A;text-align:center;white-space:nowrap;margin-top:.25rem}
+.forecast-bar-val{font-size:.62rem;color:var(--dark);font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;margin-bottom:.2rem}
+.forecast-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem}
+.forecast-total{font-size:.74rem;color:#7A7370}
+.forecast-total strong{color:var(--dark)}
+
+/* ══ PLAN SYSTEM ══ */
 .setup-banner{background:var(--white);border:1.5px dashed var(--rust-light);border-radius:var(--r);padding:1.1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap}
 .setup-banner-text strong{font-size:.92rem;color:var(--dark);display:block;margin-bottom:2px}
 .setup-banner-text p{font-size:.78rem;color:#7A7370;margin:0}
@@ -2665,8 +2710,10 @@ function FeedbackModal({ user, userId, currentTab, onClose }) {
 }
 
 // ─── FORMS ───────────────────────────────────────────────────────────────────
-function TaskForm({ data, onChange, assets=[] }) {
+function TaskForm({ data, onChange, assets=[], planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
+  const canRecur = planData?.recurring === "full";
+  const basicIntervals = ["","monthly","annually"];
 
   // Smart suggestion — when title changes, auto-suggest a recurrence if none set
   const handleTitle = (val) => {
@@ -2693,10 +2740,23 @@ function TaskForm({ data, onChange, assets=[] }) {
       <div className="field"><label>Status</label><select value={data.status||""} onChange={e=>f("status",e.target.value)}><option value="">Select…</option>{STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Due Date</label><input type="date" value={data.due_date||""} onChange={e=>f("due_date",e.target.value)} /></div>
       <div className="field">
-        <label>🔁 Repeat</label>
-        <select value={data.recurring||""} onChange={e=>f("recurring",e.target.value)}>
-          {RECUR_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+        <label>🔁 Repeat {!canRecur && <span style={{fontSize:".65rem",color:"#3B5FBF",background:"#EEF4FF",padding:"1px 6px",borderRadius:"8px",marginLeft:"4px"}}>Plus</span>}</label>
+        <select value={data.recurring||""} onChange={e=>f("recurring",e.target.value)}
+          disabled={!canRecur && data.recurring && !basicIntervals.includes(data.recurring)}>
+          {canRecur
+            ? RECUR_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)
+            : [
+                {value:"",label:"Does not repeat"},
+                {value:"monthly",label:"Monthly"},
+                {value:"annually",label:"Annually"},
+              ].map(o=><option key={o.value} value={o.value}>{o.label}</option>)
+          }
         </select>
+        {!canRecur && (
+          <div style={{fontSize:".72rem",color:"#3B5FBF",marginTop:"3px",cursor:"pointer"}} onClick={onUpgrade}>
+            Weekly, biweekly, quarterly & more intervals — upgrade to Plus →
+          </div>
+        )}
         {data.recurring && data.recurring !== "" && data.due_date && (
           <div style={{fontSize:".72rem",color:"var(--rust)",marginTop:"4px",fontWeight:500}}>
             ↻ Next: {new Date(getNextRecurringDate(data.due_date, data.recurring)+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
@@ -3568,7 +3628,7 @@ function DayDetail({ date, tasks, onClose, onEdit }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[] }) {
+function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade }) {
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -3625,6 +3685,14 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         <div className="greeting-name">{profile?.name || username}</div>
         {profile?.address && <div className="greeting-sub">📍 {profile.address}</div>}
       </div>
+
+      {/* Health score + cost forecast */}
+      {planData && (
+        <div style={{marginBottom:".85rem"}}>
+          <HealthScoreWidget tasks={tasks} warranties={warranties} profile={profile} planData={planData} onUpgrade={onUpgrade}/>
+          <CostForecastWidget warranties={warranties} planData={planData} onUpgrade={onUpgrade}/>
+        </div>
+      )}
 
       {/* Overdue alert */}
       {overdue > 0 && (
@@ -7276,6 +7344,7 @@ export default function App() {
   const [screen, setScreen] = useState("landing"); // landing | login | signup
   const [tab, setTab] = useState("dashboard");
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -7283,6 +7352,9 @@ export default function App() {
   const [serviceLogs, setServiceLogs] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const { toasts, show: toast } = useToast();
+
+  // Plan derived from profile — re-computes whenever profile loads
+  const planData = usePlan(profile);
 
   // ── Listen for auth state changes
   useEffect(() => {
@@ -7451,11 +7523,11 @@ export default function App() {
             </div>
           ) : (
             <>
-              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs}/>}
-              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks}/>}
-              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab}/>}
+              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
+              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
+              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
             </>
           )}
         </main>
@@ -7479,6 +7551,63 @@ export default function App() {
             currentTab={tab}
             onClose={()=>setShowFeedback(false)}
           />
+        )}
+        {showUpgrade && (
+          <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",backdropFilter:"blur(6px)"}}
+            onClick={e=>e.target===e.currentTarget&&setShowUpgrade(false)}>
+            <div style={{background:"var(--linen)",borderRadius:"20px",width:"100%",maxWidth:"520px",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
+              {/* Header */}
+              <div style={{background:"var(--pine)",borderRadius:"20px 20px 0 0",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
+                <button onClick={()=>setShowUpgrade(false)} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".25rem"}}>Upgrade Steadwell</div>
+                <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>Unlock automation, intelligence, and the full platform for your home.</div>
+              </div>
+              {/* Tiers */}
+              <div style={{padding:"1.1rem 1.25rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
+                {[
+                  {
+                    plan:"Plus", price:"$4.99", period:"/month", color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7",
+                    pitch:"Automation and intelligence for the serious homeowner.",
+                    features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","Daily task & warranty reminders","AI receipt scan","25 documents","Full Home Setup Wizard"],
+                  },
+                  {
+                    plan:"Pro", price:"$9.99", period:"/month", color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0",
+                    pitch:"Multiple properties, shared access, and the complete platform.",
+                    features:["Everything in Plus","Up to 3 properties","Unlimited documents","Shared home access — invite spouse/partner","Pre-sale home report included","Contractor verified badge","Priority support"],
+                  },
+                ].map(t => (
+                  <div key={t.plan} style={{background:t.bg,border:`1.5px solid ${t.border}`,borderRadius:"14px",overflow:"hidden"}}>
+                    <div style={{padding:".85rem 1rem",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+                      <div>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:t.color}}>{t.plan}</div>
+                        <div style={{fontSize:".75rem",color:"rgba(0,0,0,.45)",marginTop:"1px"}}>{t.pitch}</div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0,marginLeft:".75rem"}}>
+                        <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:600,color:t.color}}>{t.price}</span>
+                        <span style={{fontSize:".72rem",color:"rgba(0,0,0,.4)"}}>{t.period}</span>
+                      </div>
+                    </div>
+                    <div style={{padding:"0 1rem .75rem",display:"flex",flexDirection:"column",gap:".3rem"}}>
+                      {t.features.map(f => (
+                        <div key={f} style={{display:"flex",gap:".5rem",fontSize:".78rem",color:"#3A3530",alignItems:"flex-start"}}>
+                          <span style={{color:t.color,flexShrink:0,marginTop:"1px"}}>✓</span>{f}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{padding:"0 1rem .9rem"}}>
+                      <button style={{width:"100%",padding:".7rem",background:t.color,border:"none",borderRadius:"10px",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:700,cursor:"pointer"}}
+                        onClick={()=>{alert(`Stripe coming soon — ${t.plan} at ${t.price}/mo`);setShowUpgrade(false);}}>
+                        Get {t.plan} →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
+                  Cancel anytime · No long-term commitment · Secure payments via Stripe
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>
@@ -7699,7 +7828,282 @@ function ADAPage() {
   );
 }
 
-// ─── HOME SETUP WIZARD ────────────────────────────────────────────────────────
+// ─── PLAN SYSTEM ─────────────────────────────────────────────────────────────
+// Plan values: "free" | "plus" | "pro"
+// Stored in profiles.plan — defaults to "free"
+
+const PLANS = {
+  free: {
+    label: "Free", color: "free",
+    maxDocs: 5, maxProperties: 1,
+    recurring: "basic",       // daily/weekly/monthly/annually only
+    reminders: "basic",       // 3-day task, 30-day warranty
+    setupWizard: "hvac",      // first section only
+    healthScore: false,
+    costForecast: false,
+    aiScan: false,
+    sharedAccess: false,
+    exportPrice: 9.99,
+    presalePrice: 19.99,
+  },
+  plus: {
+    label: "Plus", color: "plus",
+    maxDocs: 25, maxProperties: 1,
+    recurring: "full",
+    reminders: "full",
+    setupWizard: "full",
+    healthScore: true,
+    costForecast: true,
+    aiScan: true,
+    sharedAccess: false,
+    exportPrice: 0,
+    presalePrice: 9.99,
+  },
+  pro: {
+    label: "Pro", color: "pro",
+    maxDocs: Infinity, maxProperties: 3,
+    recurring: "full",
+    reminders: "full",
+    setupWizard: "full",
+    healthScore: true,
+    costForecast: true,
+    aiScan: true,
+    sharedAccess: true,
+    exportPrice: 0,
+    presalePrice: 0,
+  },
+};
+
+function usePlan(profile) {
+  const plan = profile?.plan || "free";
+  return { plan, ...PLANS[plan] || PLANS.free };
+}
+
+// ─── HEALTH SCORE ENGINE ──────────────────────────────────────────────────────
+// Pure function — returns { score, grade, factors }
+function computeHealthScore(tasks, warranties, profile) {
+  const now = new Date();
+  const today = localISO(now);
+
+  // Factor 1: Task health (0-100) — penalise overdue/incomplete
+  const totalTasks = tasks.length;
+  const overdue    = tasks.filter(t => t.status !== "Completed" && t.due_date && t.due_date < today).length;
+  const completed  = tasks.filter(t => t.status === "Completed").length;
+  const taskScore  = totalTasks === 0 ? 70
+    : Math.max(0, 100 - (overdue / totalTasks) * 60 - ((totalTasks - completed) / totalTasks) * 20);
+
+  // Factor 2: Asset health (0-100) — penalise old assets
+  const AGE_MAP = { "0-5":2, "6-10":8, "11-15":13, "16+":20 };
+  const assets = warranties || [];
+  const assetScore = assets.length === 0 ? 70 : (() => {
+    const scores = assets.map(a => {
+      const notes = a.notes || "";
+      const ageMatch = notes.match(/Age: (\d+-\d+|\d+\+) years/);
+      if (!ageMatch) return 80;
+      const age = AGE_MAP[ageMatch[1]] || 5;
+      return age <= 5 ? 100 : age <= 10 ? 85 : age <= 15 ? 60 : 30;
+    });
+    return scores.reduce((s,v) => s+v, 0) / scores.length;
+  })();
+
+  // Factor 3: Warranty coverage (0-100) — reward tracked warranties
+  const expiring = assets.filter(a => a.expiry_date && a.expiry_date < localISO(new Date(now.getTime() + 30*86400000))).length;
+  const warrantyScore = assets.length === 0 ? 60
+    : Math.max(0, 100 - (expiring / assets.length) * 40);
+
+  // Factor 4: Documentation (0-100) — reward complete profile
+  const profileFields = ["address","type","year","sqft","bedrooms","bathrooms","ins_company","ins_renewal_date"].filter(f => profile?.[f]);
+  const docScore = Math.round((profileFields.length / 8) * 100);
+
+  // Weighted total
+  const score = Math.round(
+    taskScore    * 0.40 +
+    assetScore   * 0.30 +
+    warrantyScore* 0.15 +
+    docScore     * 0.15
+  );
+
+  const grade = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 60 ? "Fair" : "Needs attention";
+  const color = score >= 90 ? "#2A9D6A" : score >= 75 ? "#234A3D" : score >= 60 ? "#B8861E" : "#C16140";
+
+  return {
+    score,
+    grade,
+    color,
+    factors: [
+      { label: "Tasks",         val: Math.round(taskScore),     color: taskScore >= 75 ? "#2A9D6A" : "#C16140" },
+      { label: "Assets",        val: Math.round(assetScore),    color: assetScore >= 75 ? "#2A9D6A" : "#B8861E" },
+      { label: "Warranties",    val: Math.round(warrantyScore), color: warrantyScore >= 75 ? "#2A9D6A" : "#C16140" },
+      { label: "Profile",       val: Math.round(docScore),      color: docScore >= 75 ? "#2A9D6A" : "#B8861E" },
+    ],
+  };
+}
+
+// ─── COST FORECAST ENGINE ─────────────────────────────────────────────────────
+// Returns 5-year projected spend based on asset ages and typical replacement costs
+const REPLACEMENT_COSTS = {
+  "HVAC":       { life:18, cost:10000, label:"HVAC system"        },
+  "Plumbing":   { life:12, cost:1200,  label:"Water heater"       },
+  "Roofing":    { life:25, cost:16000, label:"Roof replacement"   },
+  "Electrical": { life:30, cost:3500,  label:"Electrical panel"   },
+  "Structural": { life:40, cost:8000,  label:"Foundation/structure"},
+  "Appliances": { life:12, cost:900,   label:"Appliance"          },
+  "Other":      { life:15, cost:2000,  label:"System"             },
+};
+const AGE_TO_YEARS = { "0-5":3, "6-10":8, "11-15":13, "16+":20 };
+
+function computeCostForecast(warranties, years=5) {
+  const thisYear = new Date().getFullYear();
+  const yearBuckets = Array.from({length:years}, (_,i) => ({ year: thisYear+i, items:[], total:0 }));
+
+  (warranties||[]).forEach(asset => {
+    const cat = asset.category || "Other";
+    const template = REPLACEMENT_COSTS[cat] || REPLACEMENT_COSTS.Other;
+    const notes = asset.notes || "";
+    const ageMatch = notes.match(/Age: (\d+-\d+|\d+\+) years/);
+    const currentAge = ageMatch ? (AGE_TO_YEARS[ageMatch[1]] || 5) : 5;
+    const remainingLife = Math.max(0, template.life - currentAge);
+
+    if (remainingLife < years) {
+      const replaceInYear = thisYear + Math.max(0, Math.ceil(remainingLife));
+      const bucket = yearBuckets.find(b => b.year === replaceInYear);
+      if (bucket) {
+        bucket.items.push({ name: asset.item || template.label, cost: template.cost, category: cat });
+        bucket.total += template.cost;
+      }
+    }
+
+    // Annual maintenance ~1% of replacement cost
+    const annualMaint = template.cost * 0.01;
+    yearBuckets.forEach(b => { b.total += annualMaint; });
+  });
+
+  const fiveYearTotal = yearBuckets.reduce((s,b) => s+b.total, 0);
+  return { yearBuckets, fiveYearTotal };
+}
+
+// ─── UPGRADE PROMPT ───────────────────────────────────────────────────────────
+function UpgradePrompt({ icon="✨", title, sub, target="plus", onUpgrade }) {
+  return (
+    <div className="upgrade-prompt">
+      <span className="upgrade-prompt-icon">{icon}</span>
+      <div className="upgrade-prompt-text">
+        <div className="upgrade-prompt-title">{title}</div>
+        <div className="upgrade-prompt-sub">{sub}</div>
+      </div>
+      <button className="upgrade-prompt-btn" onClick={onUpgrade}>
+        {target === "pro" ? "Upgrade to Pro" : "Upgrade to Plus"} →
+      </button>
+    </div>
+  );
+}
+
+// ─── HEALTH SCORE WIDGET ──────────────────────────────────────────────────────
+function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade }) {
+  const { score, grade, color, factors } = computeHealthScore(tasks, warranties, profile);
+  const locked = !planData.healthScore;
+  const r = 28, C = 2 * Math.PI * r;
+  const dash = (score / 100) * C;
+
+  return (
+    <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem"}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>🏠 Home Health</span>
+        {!locked && <span className={`plan-badge ${planData.color}`}>{planData.label}</span>}
+      </div>
+      <div style={{display:"flex",gap:"1rem",alignItems:"center"}}>
+        {/* Gauge — score number only, grade sits below */}
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,flexShrink:0}}>
+          <div style={{position:"relative",width:72,height:72}}>
+            <svg width="72" height="72" viewBox="0 0 72 72" style={{transform:"rotate(-90deg)",display:"block"}}>
+              <circle cx="36" cy="36" r={r} fill="none" stroke="#E8E2D9" strokeWidth="8"/>
+              <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="8"
+                strokeDasharray={`${dash} ${C}`} strokeLinecap="round"/>
+            </svg>
+            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:700,color:"var(--dark)",lineHeight:1}}>{score}</span>
+            </div>
+          </div>
+          <span style={{fontSize:".65rem",color:color,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{grade}</span>
+        </div>
+        {/* Factors */}
+        <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:".42rem"}}>
+          {factors.map(f => (
+            <div key={f.label} style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+              <span style={{fontSize:".68rem",color:"#7A7370",flexShrink:0,width:58}}>{f.label}</span>
+              <div style={{flex:1,minWidth:0,height:5,borderRadius:3,background:"#E8E2D9",overflow:"hidden"}}>
+                {!locked && <div style={{width:`${f.val}%`,height:"100%",borderRadius:3,background:f.color}}/>}
+              </div>
+              <span style={{fontSize:".68rem",fontWeight:600,color:locked?"#C8C0B8":"var(--dark)",width:22,textAlign:"right",flexShrink:0}}>
+                {locked ? "—" : f.val}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {locked && (
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:".6rem"}}>
+          <button onClick={onUpgrade} style={{fontSize:".72rem",color:"#3B5FBF",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:600}}>
+            See what to improve → Plus
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── COST FORECAST WIDGET ─────────────────────────────────────────────────────
+function CostForecastWidget({ warranties, planData, onUpgrade }) {
+  const { yearBuckets, fiveYearTotal } = computeCostForecast(warranties, 5);
+  const locked = !planData.costForecast;
+  const fmt = (n) => n >= 1000 ? `$${(n/1000)%1===0?(n/1000):(n/1000).toFixed(1)}k` : `$${Math.round(n)}`;
+  const maxTotal = Math.max(...yearBuckets.map(b => b.total), 1);
+  const VW=500,VH=130,PT=22,PB=22,PL=4,PR=4;
+  const chartH=VH-PT-PB, slotW=(VW-PL-PR)/5, barW=slotW*0.58;
+  const font="'Hanken Grotesk',Arial,sans-serif";
+  return (
+    <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".6rem"}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>📈 Cost Forecast</span>
+        {!locked && <span className={`plan-badge ${planData.color}`}>{planData.label}</span>}
+      </div>
+      <svg viewBox={`0 0 ${VW} ${VH}`} style={{width:"100%",height:"auto",display:"block"}}>
+        {yearBuckets.map((b,i)=>{
+          const isLocked=locked&&i>0;
+          const barH=Math.max(Math.round((b.total/maxTotal)*chartH),3);
+          const bx=PL+i*slotW+(slotW-barW)/2;
+          const by=PT+chartH-barH;
+          const cx=PL+i*slotW+slotW/2;
+          const barColor=isLocked?"#E0DAD2":b.items.length>0?"#C16140":"#A7BFA8";
+          return (
+            <g key={i}>
+              <rect x={bx} y={by} width={barW} height={barH} rx="3" fill={barColor}/>
+              <text x={cx} y={PT-5} textAnchor="middle" fontSize="10.5" fontWeight="600"
+                fill={isLocked?"#C8C0B8":"#5A534B"} fontFamily={font}>{isLocked?"—":fmt(b.total)}</text>
+              <text x={cx} y={VH-3} textAnchor="middle" fontSize="10"
+                fill={i===0?"#5A534B":"#A8A09A"} fontFamily={font}>{b.year}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:".15rem"}}>
+        {locked ? (
+          <>
+            <span style={{fontSize:".74rem",color:"#7A7370"}}>This year: <strong style={{color:"var(--dark)"}}>{fmt(yearBuckets[0]?.total||0)}</strong></span>
+            <button onClick={onUpgrade} style={{fontSize:".72rem",color:"#3B5FBF",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:600,whiteSpace:"nowrap"}}>Full forecast → Plus</button>
+          </>
+        ) : (
+          <>
+            <span style={{fontSize:".74rem",color:"#7A7370"}}>5-year projected: <strong style={{color:"var(--dark)"}}>{fmt(fiveYearTotal)}</strong></span>
+            {yearBuckets.some(b=>b.items.length>0)&&<span style={{fontSize:".72rem",color:"#C16140",fontWeight:600}}>{yearBuckets.filter(b=>b.items.length>0).length} replacement(s) due</span>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, onComplete }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Review"];
   const [step, setStep]     = useState(0);
