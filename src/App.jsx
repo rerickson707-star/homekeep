@@ -2410,8 +2410,14 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
-    if (error) setError(error.message);
-    else setSuccess("Account created! Check your email to confirm, then log in.");
+    if (error) { setError(error.message); return; }
+    // Fire welcome email — async, don't block signup UX
+    fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name: email.split("@")[0] }),
+    }).catch(() => {}); // silent fail — email is best-effort
+    setSuccess("Account created! Check your email to confirm, then log in.");
   };
 
   const handleReset = async () => {
