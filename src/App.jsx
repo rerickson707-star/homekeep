@@ -5808,6 +5808,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             setProfile={setProfile}
             toast={toast}
             userId={userId}
+            planData={planData}
             onComplete={()=>setShowSetup(false)}
           />
         </div>
@@ -8150,7 +8151,7 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
 }
 
 
-function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, onComplete }) {
+function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Review"];
   const [step, setStep]     = useState(0);
   const [saving, setSaving] = useState(false);
@@ -8239,11 +8240,14 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
         }));
       if (taskRows.length) await supabase.from("tasks").insert(taskRows);
 
-      // 3. Save selected projects
-      const projRows = generated.projects
-        .filter((_,i) => projectChecks[i])
-        .map(({ ...p }) => ({ ...p, user_id: userId }));
-      if (projRows.length) await supabase.from("projects").insert(projRows);
+      // 3. Save selected projects — Plus/Pro only
+      const canCreateProjects = planData?.plan === "plus" || planData?.plan === "pro";
+      if (canCreateProjects) {
+        const projRows = generated.projects
+          .filter((_,i) => projectChecks[i])
+          .map(({ ...p }) => ({ ...p, user_id: userId }));
+        if (projRows.length) await supabase.from("projects").insert(projRows);
+      }
 
       // Mark setup complete — write to DB (persists across devices) + localStorage (fast read)
       if (profile?.id) {
@@ -8259,8 +8263,9 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
 
       const aCount = Object.values(assetChecks).filter(Boolean).length;
       const tCount = Object.values(taskChecks).filter(Boolean).length;
-      const pCount = Object.values(projectChecks).filter(Boolean).length;
-      toast(`✓ Home profile set up — ${aCount} assets, ${tCount} tasks, ${pCount} projects created`);
+      const pCount = canCreateProjects ? Object.values(projectChecks).filter(Boolean).length : 0;
+      const msg = `✓ Home profile set up — ${aCount} assets, ${tCount} tasks${pCount ? `, ${pCount} projects` : ""} created`;
+      toast(msg);
       onComplete();
     } catch (err) {
       toast("Error saving — " + err.message, "error");
@@ -8611,15 +8616,34 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
           <div className="hsw-review-list">
             {generated.projects.length === 0 ? (
               <div style={{color:"#9E9690",fontSize:".83rem",padding:".5rem"}}>No projects suggested — your systems are all in good shape.</div>
-            ) : generated.projects.map((p, i) => (
-              <div key={i} className="hsw-item" onClick={()=>setProjectChecks(c=>({...c,[i]:!c[i]}))}>
-                <input type="checkbox" checked={!!projectChecks[i]} readOnly/>
-                <div className="hsw-item-info">
-                  <div className="hsw-item-title">{p.name}</div>
-                  <div className="hsw-item-sub">{p.notes} · Budget: ${p.budget?.toLocaleString()}</div>
-                </div>
-              </div>
-            ))}
+            ) : (
+              <>
+                {(planData?.plan === "free") && (
+                  <div style={{background:"#EEF4FF",border:"1px solid #C5D5F7",borderRadius:"10px",padding:".7rem .85rem",marginBottom:".5rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem"}}>
+                    <div style={{fontSize:".78rem",color:"#3B5FBF",lineHeight:1.4}}>
+                      <strong>Projects are a Plus feature.</strong> Upgrade to automatically create these budget plans.
+                    </div>
+                  </div>
+                )}
+                {generated.projects.map((p, i) => {
+                  const isLocked = planData?.plan === "free";
+                  return (
+                    <div key={i}
+                      className="hsw-item"
+                      onClick={()=>!isLocked && setProjectChecks(c=>({...c,[i]:!c[i]}))}
+                      style={{opacity: isLocked ? 0.5 : 1, cursor: isLocked ? "default" : "pointer"}}
+                    >
+                      <input type="checkbox" checked={isLocked ? false : !!projectChecks[i]} readOnly disabled={isLocked}/>
+                      <div className="hsw-item-info">
+                        <div className="hsw-item-title">{p.name}</div>
+                        <div className="hsw-item-sub">{p.notes} · Budget: ${p.budget?.toLocaleString()}</div>
+                      </div>
+                      {isLocked && <span style={{fontSize:".65rem",color:"#3B5FBF",fontWeight:700,flexShrink:0}}>Plus</span>}
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 
