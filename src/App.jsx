@@ -1338,6 +1338,57 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .qa-icon{font-size:1.35rem;line-height:1}
 .qa-btn span:last-child{font-size:.7rem;font-weight:600;letter-spacing:.01em;text-align:center;line-height:1.3}
 
+/* ══ HOME SETUP WIZARD ══ */
+.setup-banner{background:var(--white);border:1.5px dashed var(--rust-light);border-radius:var(--r);padding:1.1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap}
+.setup-banner-text strong{font-size:.92rem;color:var(--dark);display:block;margin-bottom:2px}
+.setup-banner-text p{font-size:.78rem;color:#7A7370;margin:0}
+.setup-done{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--sage-deep);font-weight:600;margin-bottom:1rem}
+
+/* wizard pages */
+.hsw-wrap{padding:.25rem 0}
+.hsw-progress{display:flex;gap:4px;margin-bottom:1.25rem}
+.hsw-prog-seg{flex:1;height:4px;border-radius:2px;background:var(--stone);transition:background .3s}
+.hsw-prog-seg.done{background:var(--pine)}
+.hsw-prog-seg.active{background:var(--rust)}
+.hsw-section-title{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:var(--dark);margin-bottom:.25rem}
+.hsw-section-sub{font-size:.82rem;color:#7A7370;margin-bottom:1.25rem;line-height:1.5}
+.hsw-q{margin-bottom:1rem}
+.hsw-q-label{font-size:.83rem;font-weight:600;color:var(--dark);margin-bottom:.5rem}
+.hsw-q-sub{font-size:.74rem;color:#9E9690;margin-bottom:.45rem}
+.yn-row{display:flex;gap:.5rem;flex-wrap:wrap}
+.yn{padding:.45rem 1.25rem;border-radius:20px;border:1.5px solid var(--stone);background:none;cursor:pointer;font-size:.82rem;font-weight:600;font-family:'Hanken Grotesk',sans-serif;color:#7A7370;transition:all .15s;white-space:nowrap}
+.yn:hover{border-color:var(--pine);color:var(--pine)}
+.yn.sel-yes{background:var(--pine);color:#fff;border-color:var(--pine)}
+.yn.sel-no{background:#5A534B;color:#fff;border-color:#5A534B}
+.yn.sel-opt{background:var(--pine);color:#fff;border-color:var(--pine)}
+.hsw-sub-q{margin-top:.65rem;padding:.75rem;background:var(--cream2);border-radius:10px;border:1px solid var(--stone);display:flex;flex-direction:column;gap:.65rem}
+.hsw-free{width:100%;padding:.5rem .75rem;border:1.5px solid var(--stone);border-radius:10px;font-size:.82rem;font-family:'Hanken Grotesk',sans-serif;color:var(--dark);background:var(--white);resize:none;outline:none}
+.hsw-free:focus{border-color:var(--pine)}
+.hsw-nav{display:flex;justify-content:space-between;align-items:center;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--stone)}
+
+/* review screen */
+.hsw-review-tabs{display:flex;background:var(--cream2);border-radius:8px;padding:2px;gap:2px;margin-bottom:1rem}
+.hsw-rtab{flex:1;padding:.35rem .5rem;border-radius:6px;border:none;background:none;font-size:.77rem;font-weight:600;font-family:'Hanken Grotesk',sans-serif;color:#9E9690;cursor:pointer;transition:all .15s}
+.hsw-rtab.on{background:var(--white);color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.hsw-review-list{display:flex;flex-direction:column;gap:.4rem;max-height:46vh;overflow-y:auto;padding-right:.25rem}
+.hsw-item{display:flex;align-items:flex-start;gap:.65rem;padding:.6rem .75rem;background:var(--cream2);border-radius:9px;border:1px solid var(--stone);cursor:pointer;transition:background .1s}
+.hsw-item:hover{background:rgba(193,97,64,.05)}
+.hsw-item input[type=checkbox]{accent-color:var(--rust);width:15px;height:15px;flex-shrink:0;margin-top:2px;cursor:pointer}
+.hsw-item-info{flex:1;min-width:0}
+.hsw-item-title{font-size:.83rem;font-weight:500;color:var(--dark);line-height:1.3}
+.hsw-item-sub{font-size:.7rem;color:#9E9690;margin-top:2px}
+.hsw-dup-badge{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:8px;background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;flex-shrink:0;white-space:nowrap}
+.hsw-dup-block{background:#FFFBF0;border:1px solid #F0E0A0;border-radius:10px;padding:.6rem .75rem;margin-top:.35rem;font-size:.75rem;color:#7A6030}
+.hsw-dup-choices{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+.hsw-dup-btn{padding:.28rem .65rem;border-radius:10px;border:1.5px solid var(--stone);background:none;font-size:.72rem;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:all .15s}
+.hsw-dup-btn.active{background:var(--pine);color:#fff;border-color:var(--pine)}
+.hsw-util-chips{display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem 0}
+.hsw-util-chip{padding:.3rem .75rem;border-radius:20px;background:var(--cream2);border:1px solid var(--stone);font-size:.76rem;font-weight:600;color:#5A534B}
+.hsw-summary-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem}
+.hsw-summary-stat{background:var(--cream2);border-radius:10px;padding:.55rem .85rem;text-align:center;flex:1;min-width:60px}
+.hsw-summary-num{font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;color:var(--pine)}
+.hsw-summary-label{font-size:.65rem;color:#9E9690;margin-top:1px}
+
 /* ══ SAFE RESPONSIVE FIXES ══ */
 
 /* iOS Safari: inputs <16px font-size cause the viewport to zoom on focus */
@@ -5341,6 +5392,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const [editData, setEditData] = useState({});
   const [insData, setInsData] = useState({});
   const [docLightbox, setDocLightbox] = useState(null);
+  const [showSetup, setShowSetup] = useState(false);
+
+  // Home setup completion — tracked in localStorage
+  const setupDone = (() => { try { return !!localStorage.getItem(`sw_setup_${userId}`); } catch { return false; } })();
 
   // Photo vertical position (0=top, 100=bottom) — saved to localStorage per user
   const [photoPos, setPhotoPos] = useState(() => {
@@ -5494,7 +5549,28 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         <button className="btn btn-ghost" onClick={openEdit}>✏️ Edit</button>
       </div>
 
-      {/* ── Hero photo / name ── */}
+      {/* ── Home Setup Banner ── */}
+      {showSetup ? (
+        <div className="wizard-card" style={{marginBottom:"1rem"}}>
+          <HomeSetupWizard
+            existingAssets={warranties}
+            profile={profile}
+            toast={toast}
+            userId={userId}
+            onComplete={()=>setShowSetup(false)}
+          />
+        </div>
+      ) : setupDone ? (
+        <div className="setup-done">✓ Home profile set up · <button className="btn btn-ghost btn-sm" onClick={()=>setShowSetup(true)}>Update</button></div>
+      ) : (
+        <div className="setup-banner">
+          <div className="setup-banner-text">
+            <strong>Set up your home profile</strong>
+            <p>Tell us about your systems and we'll build a custom maintenance schedule, populate your assets, and suggest projects — all in one step.</p>
+          </div>
+          <button className="btn btn-primary" onClick={()=>setShowSetup(true)}>Get started →</button>
+        </div>
+      )}
       {(profile?.user_photo_url || profile?.photo_url) ? (
         <div style={{marginBottom:"1rem"}}>
           <div className="home-hero">
@@ -5791,6 +5867,848 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
+// ─── HOME PROFILE GENERATION ENGINE ──────────────────────────────────────────
+//
+// generateHomeProfile(answers) → { assets, tasks, utilities, projects }
+//
+// Pure function — no Supabase, no React, no side effects.
+// The wizard UI calls this and shows a review screen before any DB writes.
+//
+// Answers shape:
+// {
+//   hvac:      { hasCentralAC, acType, acAge, hasFurnace, furnaceFuel, furnaceAge, hasHumidifier, notes }
+//   water:     { source, hasPressureTank, hasWaterHeater, heaterType, heaterAge, hasSoftener, notes }
+//   structure: { roofType, roofAge, exteriorType, foundationType, hasChimney, notes }
+//   extras:    { hasPool, poolType, poolChemistry, hasIrrigation, hasSolar, hasSeptic, hasGenerator, notes }
+//   custom:    string  (free-form, stored as a note for manual follow-up)
+// }
+//
+// Output:
+//   assets   → ready to insert into warranties table (minus user_id)
+//   tasks    → ready to insert into tasks table (minus user_id, asset_id resolved after insert)
+//   utilities → string[] of suggested utility types to start tracking
+//   projects → ready to insert into projects table (minus user_id)
+//
+// Internal fields stripped before DB insert:
+//   asset._key     → unique string used to link tasks to their parent asset
+//   task._assetKey → matches asset._key; resolved to real asset_id after insert
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+function generateHomeProfile(answers) {
+  const now     = new Date();
+  const yr      = now.getFullYear();
+  const assets  = [];
+  const tasks   = [];
+  const projects= [];
+  const utilSet = new Set(["Electric"]); // Electric is universal
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  // Estimated install year from age bracket
+  const installYr = (age) => {
+    if (!age) return null;
+    const mid = { "0-5":2, "6-10":8, "11-15":13, "16+":20 };
+    return yr - (mid[age] || 0);
+  };
+
+  // Due date string N days from today
+  const dueIn = (days) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + days);
+    return localISO(d);
+  };
+
+  // Age urgency helpers
+  const isOld  = (age) => age === "16+";
+  const isAging= (age) => age === "11-15";
+  const isMid  = (age) => age === "6-10";
+
+  // Priority based on age
+  const agePriority = (age) => isOld(age) ? "Urgent" : isAging(age) ? "High" : "Medium";
+
+  // Add an asset (ready for warranties table insert)
+  const addAsset = (key, item, category, opts = {}) => {
+    assets.push({ _key: key, item, category, condition: "Good", ...opts });
+  };
+
+  // Add a task (ready for tasks table insert)
+  const addTask = (assetKey, title, recurring, opts = {}) => {
+    tasks.push({
+      _assetKey: assetKey,
+      title,
+      recurring: recurring || "",
+      status:    "Scheduled",
+      priority:  "Medium",
+      due_date:  dueIn(30),
+      category:  opts.category || null,
+      notes:     opts.notes    || "",
+      ...opts,
+    });
+  };
+
+  // Add a suggested project (ready for projects table insert)
+  const addProject = (name, description, budget, notes = "") => {
+    projects.push({
+      name,
+      description,
+      budget,
+      status:     "Planning",
+      start_date: localISO(now),
+      notes,
+    });
+  };
+
+  const { hvac, water, structure, extras, custom } = answers;
+
+  // ── HVAC ─────────────────────────────────────────────────────────────────────
+
+  if (hvac?.hasCentralAC) {
+    const isHeatPump = hvac.acType === "heat_pump" || hvac.acType === "both";
+    const label      = isHeatPump ? "Heat Pump" : "Central AC Unit";
+    const year       = installYr(hvac.acAge);
+
+    addAsset("hvac_ac", label, "HVAC", {
+      notes: [
+        hvac.acType ? `Type: ${hvac.acType.replace(/_/g," ")}` : null,
+        hvac.acAge  ? `Age: ${hvac.acAge} years` : null,
+        year        ? `Est. installed: ${year}` : null,
+      ].filter(Boolean).join(" · "),
+    });
+
+    // Filter — monthly regardless of type
+    addTask("hvac_ac", "Replace HVAC filter", "monthly", {
+      priority: "High",
+      due_date: dueIn(14),
+      category: "HVAC",
+      notes: "Replace 1-inch filters monthly, 4-inch media filters every 3-6 months",
+    });
+
+    // Seasonal tune-up
+    addTask("hvac_ac", isHeatPump ? "Heat pump seasonal service" : "AC tune-up (spring)", "every 6 months", {
+      priority: "Medium",
+      due_date: dueIn(45),
+      category: "HVAC",
+      notes: "Refrigerant check, coil cleaning, electrical inspection, thermostat calibration",
+    });
+
+    // Age-based tasks and projects
+    if (isAging(hvac.acAge)) {
+      addTask("hvac_ac", `${label} efficiency inspection`, "annually", {
+        priority: "High",
+        due_date: dueIn(30),
+        category: "HVAC",
+        notes: "System entering later life — check for refrigerant leaks, failing capacitors, compressor wear",
+      });
+      addProject(
+        `${label} Replacement Planning`,
+        `Your ${label.toLowerCase()} is 11-15 years old. Central AC units typically last 15-20 years. Get a professional assessment and start budgeting for replacement within 3-7 years.`,
+        isHeatPump ? 6000 : 9000,
+        "Recommended timeline: 3-7 years"
+      );
+    }
+
+    if (isOld(hvac.acAge)) {
+      addTask("hvac_ac", `${label} replacement assessment`, "", {
+        priority: "Urgent",
+        due_date: dueIn(7),
+        category: "HVAC",
+        notes: "System is past typical lifespan — evaluate replacement immediately to avoid failure during peak season",
+      });
+      addProject(
+        `${label} Replacement — Priority`,
+        `Your ${label.toLowerCase()} is 16+ years old, past its expected lifespan. Schedule a replacement assessment immediately.`,
+        isHeatPump ? 7000 : 11000,
+        "Recommended timeline: 0-2 years"
+      );
+    }
+  }
+
+  if (hvac?.hasFurnace) {
+    const fuelMap = { gas:"Gas", oil:"Oil", electric:"Electric", propane:"Propane" };
+    const fuel    = fuelMap[hvac.furnaceFuel] || "";
+    const label   = `${fuel} Furnace`.trim();
+    const year    = installYr(hvac.furnaceAge);
+
+    addAsset("hvac_furnace", label, "HVAC", {
+      notes: [
+        fuel        ? `Fuel: ${fuel}` : null,
+        hvac.furnaceAge ? `Age: ${hvac.furnaceAge} years` : null,
+        year        ? `Est. installed: ${year}` : null,
+      ].filter(Boolean).join(" · "),
+    });
+
+    addTask("hvac_furnace", "Annual furnace tune-up and inspection", "annually", {
+      priority: "High",
+      due_date: dueIn(60),
+      category: "HVAC",
+      notes: "Clean burners, check heat exchanger for cracks, inspect flue, test safety controls",
+    });
+
+    addTask("hvac_furnace", "Test carbon monoxide detectors", "annually", {
+      _assetKey: null,
+      priority: "High",
+      due_date: dueIn(30),
+      category: "Safety",
+      notes: "Essential for all gas and oil heating — replace CO detectors every 7 years",
+    });
+
+    // Fuel-specific
+    if (hvac.furnaceFuel === "gas") {
+      utilSet.add("Natural Gas");
+      addTask("hvac_furnace", "Check gas connections and smell for leaks", "annually", {
+        priority: "High",
+        due_date: dueIn(45),
+        category: "HVAC",
+        notes: "Inspect all accessible gas lines — call utility immediately if any odor detected",
+      });
+    }
+    if (hvac.furnaceFuel === "oil") {
+      utilSet.add("Heating Oil");
+      addTask("hvac_furnace", "Oil furnace annual service and cleaning", "annually", {
+        priority: "High",
+        due_date: dueIn(45),
+        category: "HVAC",
+        notes: "Replace oil filter, nozzle, and strainer — clean combustion chamber",
+      });
+      addTask("hvac_furnace", "Monitor oil tank level", "monthly", {
+        priority: "Medium",
+        due_date: dueIn(14),
+        category: "HVAC",
+      });
+    }
+    if (hvac.furnaceFuel === "propane") {
+      utilSet.add("Propane");
+      addTask("hvac_furnace", "Check propane tank level", "monthly", {
+        priority: "Medium",
+        due_date: dueIn(14),
+        category: "HVAC",
+        notes: "Schedule refill before tank drops below 20% — never let it run empty",
+      });
+    }
+
+    if (isAging(hvac.furnaceAge)) {
+      addProject(
+        `${label} Replacement Planning`,
+        `Your ${label.toLowerCase()} is 11-15 years old. Gas furnaces typically last 15-20 years. Get a professional assessment and start budgeting.`,
+        fuel === "Gas" ? 3500 : 4500,
+        "Recommended timeline: 3-7 years"
+      );
+    }
+    if (isOld(hvac.furnaceAge)) {
+      addTask("hvac_furnace", `${label} replacement assessment — urgent`, "", {
+        priority: "Urgent",
+        due_date: dueIn(7),
+        category: "HVAC",
+        notes: "System is 16+ years old — inspect heat exchanger for cracks (CO risk) and plan replacement",
+      });
+      addProject(
+        `${label} Replacement — Priority`,
+        `Your ${label.toLowerCase()} is 16+ years old. Cracked heat exchangers in aging furnaces can leak carbon monoxide. Replace soon.`,
+        fuel === "Gas" ? 4000 : 5500,
+        "Recommended timeline: 0-2 years"
+      );
+    }
+  }
+
+  if (hvac?.hasHumidifier) {
+    addAsset("humidifier", "Whole-House Humidifier", "HVAC", {
+      notes: "Whole-house humidifier — attached to HVAC system",
+    });
+    addTask("humidifier", "Replace humidifier water panel / evaporator pad", "annually", {
+      priority: "Medium",
+      due_date: dueIn(60),
+      category: "HVAC",
+      notes: "Replace at start of heating season. Check for scale buildup and mineral deposits.",
+    });
+    addTask("humidifier", "Clean humidifier reservoir and water distribution tray", "annually", {
+      priority: "Low",
+      due_date: dueIn(90),
+      category: "HVAC",
+    });
+  }
+
+  if (hvac?.notes?.trim()) {
+    assets.push({
+      _key:      "hvac_custom",
+      item:      hvac.notes.trim(),
+      category:  "HVAC",
+      condition: "Good",
+      notes:     "Added from home setup — review and add maintenance tasks manually",
+    });
+  }
+
+  // ── WATER ────────────────────────────────────────────────────────────────────
+
+  if (water?.source === "city" || water?.source === "both") {
+    utilSet.add("Water");
+  }
+
+  if (water?.source === "well" || water?.source === "both") {
+    addAsset("well", "Well & Pump System", "Plumbing", {
+      notes: [
+        "Water source: private well",
+        water.hasPressureTank ? "Has pressure tank" : null,
+      ].filter(Boolean).join(" · "),
+    });
+
+    addTask("well", "Annual well water quality test", "annually", {
+      priority: "High",
+      due_date: dueIn(30),
+      category: "Plumbing",
+      notes: "Test for bacteria (coliform), nitrates, pH, hardness, and any local contaminants of concern",
+    });
+
+    addTask("well", "Well pump and system inspection", "annually", {
+      priority: "Medium",
+      due_date: dueIn(60),
+      category: "Plumbing",
+      notes: "Check pump pressure, flow rate, electrical connections, and wellhead seal",
+    });
+
+    if (water.hasPressureTank) {
+      addTask("well", "Pressure tank inspection", "every 6 months", {
+        priority: "Medium",
+        due_date: dueIn(45),
+        category: "Plumbing",
+        notes: "Check air charge pressure, listen for waterlogged tank (short cycling pump is a sign), inspect bladder",
+      });
+    }
+  }
+
+  if (water?.hasWaterHeater) {
+    const isTankless = water.heaterType === "tankless";
+    const label      = isTankless ? "Tankless Water Heater" : "Water Heater (Tank)";
+    const year       = installYr(water.heaterAge);
+
+    addAsset("water_heater", label, "Plumbing", {
+      notes: [
+        `Type: ${isTankless ? "Tankless/on-demand" : "Storage tank"}`,
+        water.heaterAge ? `Age: ${water.heaterAge} years` : null,
+        year ? `Est. installed: ${year}` : null,
+      ].filter(Boolean).join(" · "),
+    });
+
+    if (isTankless) {
+      addTask("water_heater", "Descale and flush tankless water heater", "annually", {
+        priority: "High",
+        due_date: dueIn(45),
+        category: "Plumbing",
+        notes: "Mineral buildup reduces efficiency — use white vinegar or descaling solution through heat exchanger",
+      });
+      addTask("water_heater", "Inspect tankless water heater inlet filter screens", "every 6 months", {
+        priority: "Low",
+        due_date: dueIn(30),
+        category: "Plumbing",
+        notes: "Remove and clean inlet screens to maintain flow rate",
+      });
+
+      if (isOld(water.heaterAge)) {
+        addProject(
+          "Tankless Water Heater Replacement Planning",
+          "Your tankless water heater is 16+ years old. Tankless units typically last 20+ years but should be inspected annually at this age.",
+          2800,
+          "Recommended timeline: 2-5 years"
+        );
+      }
+    } else {
+      addTask("water_heater", "Flush water heater tank", "annually", {
+        priority: "Medium",
+        due_date: dueIn(30),
+        category: "Plumbing",
+        notes: "Flush sediment from bottom of tank annually to maintain efficiency and extend lifespan",
+      });
+      addTask("water_heater", "Inspect water heater anode rod", "annually", {
+        priority: "Medium",
+        due_date: dueIn(60),
+        category: "Plumbing",
+        notes: "Replace if more than 50% depleted. Sacrificial anode rod prevents tank corrosion.",
+      });
+      addTask("water_heater", "Test pressure relief valve (T&P valve)", "annually", {
+        priority: "High",
+        due_date: dueIn(45),
+        category: "Plumbing",
+        notes: "Lift lever briefly to verify it opens and closes — replace if it drips after testing",
+      });
+
+      if (isAging(water.heaterAge)) {
+        addTask("water_heater", "Water heater inspection — mid-life assessment", "", {
+          priority: "High",
+          due_date: dueIn(14),
+          category: "Plumbing",
+          notes: "Tank is 11-15 years old (typical lifespan is 8-12 years). Inspect for rust, corrosion, and leaks. Plan replacement.",
+        });
+        addProject(
+          "Water Heater Replacement",
+          "Your tank water heater is 11-15 years old — past the typical 8-12 year lifespan. Replace proactively to avoid a failed water heater causing water damage.",
+          1300,
+          "Recommended timeline: 0-2 years"
+        );
+      }
+
+      if (isOld(water.heaterAge)) {
+        addTask("water_heater", "Replace water heater — past expected lifespan", "", {
+          priority: "Urgent",
+          due_date: dueIn(7),
+          category: "Plumbing",
+          notes: "Water heater is 16+ years old. A failed tank can cause significant water damage. Replace immediately.",
+        });
+        addProject(
+          "Water Heater Replacement — Urgent",
+          "Your tank water heater is 16+ years old and well past its expected lifespan. A failing water heater can cause flooding and water damage. Replace now.",
+          1500,
+          "Recommended timeline: Immediate"
+        );
+      }
+    }
+  }
+
+  if (water?.hasSoftener) {
+    addAsset("softener", "Water Softener", "Plumbing", {
+      notes: "Whole-house water softening system",
+    });
+    addTask("softener", "Refill water softener salt", "monthly", {
+      priority: "Low",
+      due_date: dueIn(14),
+      category: "Plumbing",
+      notes: "Keep brine tank at least half full. Use pellet salt for cleaner operation.",
+    });
+    addTask("softener", "Clean water softener brine tank", "annually", {
+      priority: "Low",
+      due_date: dueIn(90),
+      category: "Plumbing",
+      notes: "Flush brine tank and remove salt bridges or mushing annually",
+    });
+    addTask("softener", "Check water softener regeneration schedule", "every 6 months", {
+      priority: "Low",
+      due_date: dueIn(60),
+      category: "Plumbing",
+      notes: "Adjust regeneration frequency based on water usage and hardness level",
+    });
+  }
+
+  if (water?.notes?.trim()) {
+    assets.push({
+      _key:      "water_custom",
+      item:      water.notes.trim(),
+      category:  "Plumbing",
+      condition: "Good",
+      notes:     "Added from home setup — review and add maintenance tasks manually",
+    });
+  }
+
+  // ── STRUCTURE ────────────────────────────────────────────────────────────────
+
+  // Roof
+  const roofLabels = {
+    shingle: "Roof (Asphalt Shingle)",
+    metal:   "Roof (Metal)",
+    tile:    "Roof (Tile/Clay)",
+    flat:    "Roof (Flat/Built-Up)",
+    unknown: "Roof",
+  };
+
+  const roofLabel = roofLabels[structure?.roofType] || "Roof";
+  const roofYear  = installYr(structure?.roofAge);
+
+  addAsset("roof", roofLabel, "Roofing", {
+    notes: [
+      structure?.roofType && structure.roofType !== "unknown" ? `Type: ${structure.roofType.replace(/_/g," ")}` : null,
+      structure?.roofAge  ? `Age: ${structure.roofAge} years` : null,
+      roofYear            ? `Est. installed: ${roofYear}` : null,
+    ].filter(Boolean).join(" · "),
+  });
+
+  addTask("roof", "Annual roof inspection", "annually", {
+    priority: "Medium",
+    due_date: dueIn(60),
+    category: "Roofing",
+    notes: "Check for missing, cracked, or curling shingles; damaged flashing; moss or algae growth; and deteriorating caulk around penetrations",
+  });
+
+  addTask("roof", "Gutter cleaning and inspection", "every 6 months", {
+    priority: "Medium",
+    due_date: dueIn(45),
+    category: "Roofing",
+    notes: "Clear debris, check for sags or separations, flush downspouts, verify water flows away from foundation",
+  });
+
+  if (structure?.roofType === "flat") {
+    addTask("roof", "Clear flat roof drains and scuppers", "quarterly", {
+      priority: "High",
+      due_date: dueIn(14),
+      category: "Roofing",
+      notes: "Blocked drains cause ponding water which rapidly degrades flat roof membranes",
+    });
+    addTask("roof", "Inspect flat roof membrane for blistering or seam failure", "every 6 months", {
+      priority: "High",
+      due_date: dueIn(45),
+      category: "Roofing",
+      notes: "Check seams, flashings, and penetrations — patch any bubbles or open seams immediately",
+    });
+  }
+
+  if (structure?.roofType === "shingle" && isAging(structure?.roofAge)) {
+    addProject(
+      "Roof Assessment & Replacement Planning",
+      "Your asphalt shingle roof is 11-15 years old. Shingle roofs typically last 20-30 years. Get a professional inspection now and start budgeting for replacement within 5-10 years.",
+      14000,
+      "Recommended timeline: 5-10 years"
+    );
+  }
+  if (structure?.roofType === "shingle" && isOld(structure?.roofAge)) {
+    addProject(
+      "Roof Replacement",
+      "Your asphalt shingle roof is 16+ years old. Get a professional inspection immediately to assess remaining lifespan and begin replacement planning.",
+      17000,
+      "Recommended timeline: 0-5 years"
+    );
+  }
+  if (structure?.roofType === "metal" && isOld(structure?.roofAge)) {
+    addProject(
+      "Metal Roof Restoration & Inspection",
+      "Your metal roof is 16+ years old. While metal roofs can last 40-70 years, fasteners and sealants degrade. Have it professionally inspected and recoated if needed.",
+      3000,
+      "Recommended timeline: 0-3 years"
+    );
+  }
+
+  // Exterior
+  const extLabels = {
+    brick:        "Brick Exterior",
+    vinyl_siding: "Vinyl Siding",
+    stucco:       "Stucco Exterior",
+    wood:         "Wood Siding",
+    mixed:        "Mixed Exterior",
+  };
+  const extLabel = extLabels[structure?.exteriorType] || "Exterior";
+
+  addAsset("exterior", extLabel, "Structural", {
+    notes: structure?.exteriorType
+      ? `Material: ${structure.exteriorType.replace(/_/g," ")}`
+      : "Exterior cladding",
+  });
+
+  const extTaskMap = {
+    wood: {
+      title: "Inspect and re-caulk wood siding — check for rot and peeling paint",
+      notes: "Scrape and repaint any peeling areas. Seal all gaps around windows and trim. Wood typically needs repainting every 5-7 years.",
+    },
+    vinyl_siding: {
+      title: "Clean and inspect vinyl siding",
+      notes: "Power wash from top down. Check for warping, cracks, or loose panels — particularly after storms.",
+    },
+    stucco: {
+      title: "Inspect stucco for cracks and water intrusion",
+      notes: "Even hairline cracks allow moisture infiltration. Seal any cracks with elastomeric caulk before water season.",
+    },
+    brick: {
+      title: "Inspect brick and repoint mortar joints",
+      notes: "Look for spalling, efflorescence (white staining), and mortar crumbling. Tuckpoint deteriorated joints to prevent water damage.",
+    },
+    mixed: {
+      title: "Annual exterior inspection — all materials",
+      notes: "Inspect each material type separately. Pay special attention to transitions where different materials meet.",
+    },
+  };
+
+  const extTask = extTaskMap[structure?.exteriorType] || { title: "Annual exterior inspection", notes: "" };
+  addTask("exterior", extTask.title, "annually", {
+    priority: "Low",
+    due_date: dueIn(90),
+    category: "Structural",
+    notes: extTask.notes,
+  });
+
+  // Foundation
+  if (structure?.foundationType === "crawlspace") {
+    addAsset("crawlspace", "Crawl Space", "Structural", {
+      notes: "Foundation type: crawl space",
+    });
+    addTask("crawlspace", "Inspect crawl space for moisture, mold, and pest activity", "annually", {
+      priority: "High",
+      due_date: dueIn(45),
+      category: "Structural",
+      notes: "Check vapor barrier condition, look for standing water, wood rot, mold, and signs of pest or rodent entry",
+    });
+    addTask("crawlspace", "Check and clean crawl space vents", "every 6 months", {
+      priority: "Low",
+      due_date: dueIn(30),
+      category: "Structural",
+      notes: "Open vents in summer, close in winter (unless conditioned crawl space — then keep sealed year-round)",
+    });
+  }
+
+  if (structure?.foundationType === "basement") {
+    addAsset("basement", "Basement", "Structural", {
+      notes: "Foundation type: basement",
+    });
+    addTask("basement", "Check basement walls and floor for moisture and seepage", "every 6 months", {
+      priority: "High",
+      due_date: dueIn(30),
+      category: "Structural",
+      notes: "Look for efflorescence, staining, or damp spots — address water intrusion before it causes mold or structural damage",
+    });
+    addTask("basement", "Test sump pump operation", "annually", {
+      priority: "High",
+      due_date: dueIn(30),
+      category: "Structural",
+      notes: "Pour water into pit to verify pump activates. Check float switch, discharge line, and backup battery (if present).",
+    });
+  }
+
+  // Chimney
+  if (structure?.hasChimney) {
+    addAsset("chimney", "Chimney & Fireplace", "Safety", {
+      notes: "Wood-burning or gas fireplace with chimney",
+    });
+    addTask("chimney", "Annual chimney sweep and Level 1 inspection", "annually", {
+      priority: "High",
+      due_date: dueIn(60),
+      category: "Safety",
+      notes: "Required annually for wood-burning fireplaces. Removes creosote buildup — a leading cause of chimney fires.",
+    });
+    addTask("chimney", "Check and lubricate fireplace damper", "annually", {
+      priority: "Medium",
+      due_date: dueIn(60),
+      category: "Safety",
+      notes: "Verify damper opens, closes, and seals fully. A stuck-open damper wastes significant heat.",
+    });
+    addTask("chimney", "Inspect chimney cap and crown", "annually", {
+      priority: "Medium",
+      due_date: dueIn(90),
+      category: "Structural",
+      notes: "Chimney cap prevents rain and animals from entering. Cracked crown allows water into masonry.",
+    });
+  }
+
+  if (structure?.notes?.trim()) {
+    assets.push({
+      _key:      "structure_custom",
+      item:      structure.notes.trim(),
+      category:  "Structural",
+      condition: "Good",
+      notes:     "Added from home setup — review and add maintenance tasks manually",
+    });
+  }
+
+  // ── EXTRAS ───────────────────────────────────────────────────────────────────
+
+  if (extras?.hasPool) {
+    const isSalt   = extras.poolChemistry === "saltwater";
+    const hasPool  = extras.poolType !== "hot_tub";
+    const hasTub   = extras.poolType === "hot_tub" || extras.poolType === "both";
+
+    utilSet.add("Pool Chemicals");
+    utilSet.add("Water"); // pools evaporate and need refilling
+
+    if (hasPool) {
+      const poolLabel = `Swimming Pool (${isSalt ? "Saltwater" : "Chlorine"})`;
+      addAsset("pool", poolLabel, "Other", {
+        notes: `Pool type: ${isSalt ? "saltwater" : "chlorine"} · ${extras.poolType === "both" ? "with hot tub" : "pool only"}`,
+      });
+
+      addTask("pool", "Test and balance pool chemistry", "weekly", {
+        priority: "High",
+        due_date: dueIn(7),
+        category: "Other",
+        notes: "Test pH (7.2-7.8), chlorine (1-3 ppm), alkalinity (80-120 ppm), and calcium hardness",
+      });
+
+      addTask("pool", "Clean pool filter", "quarterly", {
+        priority: "Medium",
+        due_date: dueIn(30),
+        category: "Other",
+        notes: "Backwash sand/DE filters or rinse cartridge filters when pressure rises 8-10 PSI above clean baseline",
+      });
+
+      addTask("pool", "Annual pool equipment inspection", "annually", {
+        priority: "Medium",
+        due_date: dueIn(60),
+        category: "Other",
+        notes: "Inspect pump, motor, heater, filter, valves, and lights. Check pool deck and coping for cracks.",
+      });
+
+      if (isSalt) {
+        addTask("pool", "Inspect and clean salt cell", "quarterly", {
+          priority: "High",
+          due_date: dueIn(30),
+          category: "Other",
+          notes: "Check for calcium buildup on cell plates. Clean with diluted muriatic acid if needed. Check salt level (2700-3400 ppm).",
+        });
+      } else {
+        addTask("pool", "Shock pool", "monthly", {
+          priority: "Medium",
+          due_date: dueIn(30),
+          category: "Other",
+          notes: "Superchlorinate to break down chloramines. Shock after heavy use, rain, or algae appearance.",
+        });
+      }
+    }
+
+    if (hasTub) {
+      addAsset("hot_tub", "Hot Tub / Spa", "Other", {
+        notes: `Hot tub · ${isSalt ? "saltwater" : "chlorine"} system`,
+      });
+      addTask("hot_tub", "Test hot tub water chemistry", "weekly", {
+        priority: "High",
+        due_date: dueIn(7),
+        category: "Other",
+        notes: "Test pH, sanitizer levels, and alkalinity. Hot tubs need more frequent testing than pools due to smaller volume and higher temps.",
+      });
+      addTask("hot_tub", "Drain, clean, and refill hot tub", "quarterly", {
+        priority: "High",
+        due_date: dueIn(90),
+        category: "Other",
+        notes: "Full drain and refill every 3 months. Clean shell, filters, and jets. Calculate refill date: (gallons ÷ daily bathers ÷ 3)",
+      });
+      addTask("hot_tub", "Clean hot tub filter cartridges", "monthly", {
+        priority: "Medium",
+        due_date: dueIn(14),
+        category: "Other",
+        notes: "Rinse with garden hose monthly. Deep clean with filter cleaner quarterly. Replace filters annually.",
+      });
+      addTask("hot_tub", "Annual hot tub equipment service", "annually", {
+        priority: "Medium",
+        due_date: dueIn(60),
+        category: "Other",
+        notes: "Inspect jets, blower, heater, pump, and cover. Check for air leaks in plumbing.",
+      });
+    }
+  }
+
+  if (extras?.hasIrrigation) {
+    addAsset("irrigation", "Irrigation / Sprinkler System", "Landscaping", {
+      notes: "In-ground irrigation or sprinkler system",
+    });
+    addTask("irrigation", "Irrigation system spring startup and zone check", "annually", {
+      priority: "Medium",
+      due_date: dueIn(30),
+      category: "Landscaping",
+      notes: "Inspect all heads for damage and proper coverage. Adjust timer for season. Check backflow preventer.",
+    });
+    addTask("irrigation", "Irrigation system winterization (blowout)", "annually", {
+      priority: "High",
+      due_date: dueIn(180),
+      category: "Landscaping",
+      notes: "Blow out all lines with compressed air before first hard freeze. Failing to winterize will burst lines.",
+    });
+    addTask("irrigation", "Check irrigation heads and adjust spray patterns", "every 6 months", {
+      priority: "Low",
+      due_date: dueIn(30),
+      category: "Landscaping",
+      notes: "Look for clogged or tilted heads, over-spray onto structures, and dry or flooded zones",
+    });
+    utilSet.add("Water");
+  }
+
+  if (extras?.hasSolar) {
+    addAsset("solar", "Solar Panel System", "Electrical", {
+      notes: "Rooftop solar photovoltaic (PV) system",
+    });
+    addTask("solar", "Solar panel cleaning and visual inspection", "every 6 months", {
+      priority: "Low",
+      due_date: dueIn(90),
+      category: "Electrical",
+      notes: "Rinse panels with water to remove dust, pollen, and bird droppings. Check for cracked cells or damaged wiring.",
+    });
+    addTask("solar", "Solar inverter check and output review", "annually", {
+      priority: "Medium",
+      due_date: dueIn(60),
+      category: "Electrical",
+      notes: "Compare current output to first-year baseline. A significant drop indicates panel degradation, shading, or inverter issues.",
+    });
+    addTask("solar", "Review solar monitoring data for anomalies", "monthly", {
+      priority: "Low",
+      due_date: dueIn(30),
+      category: "Electrical",
+      notes: "Check your inverter's app or monitoring portal for any underperforming strings or error codes",
+    });
+  }
+
+  if (extras?.hasSeptic) {
+    addAsset("septic", "Septic System", "Plumbing", {
+      notes: "On-site septic tank and drain field",
+    });
+    addTask("septic", "Annual septic system inspection", "annually", {
+      priority: "High",
+      due_date: dueIn(45),
+      category: "Plumbing",
+      notes: "Have a licensed inspector check tank levels, baffles, and drain field. Results determine pumping frequency.",
+    });
+    addTask("septic", "Protect drain field — avoid heavy traffic and planting", "annually", {
+      priority: "Low",
+      due_date: dueIn(90),
+      category: "Plumbing",
+      notes: "Never park vehicles on drain field. Plant only grass over leach lines — tree roots can destroy the system.",
+    });
+    addProject(
+      "Septic Tank Pumping",
+      "Septic tanks need pumping every 3-5 years depending on household size. Schedule based on your annual inspector's recommendation.",
+      600,
+      "Recommended timeline: every 3-5 years"
+    );
+  }
+
+  if (extras?.hasGenerator) {
+    addAsset("generator", "Backup Generator", "Electrical", {
+      notes: "Standby or portable backup power generator",
+    });
+    addTask("generator", "Monthly generator test run", "monthly", {
+      priority: "Medium",
+      due_date: dueIn(14),
+      category: "Electrical",
+      notes: "Run under load for 20-30 minutes monthly. Stationary oil breaks down — running keeps the engine conditioned.",
+    });
+    addTask("generator", "Annual generator service", "annually", {
+      priority: "Medium",
+      due_date: dueIn(60),
+      category: "Electrical",
+      notes: "Change oil, replace spark plugs and air filter, test battery (for electric start), add fuel stabilizer if storing",
+    });
+    addTask("generator", "Check generator fuel supply and rotate stored fuel", "every 6 months", {
+      priority: "Medium",
+      due_date: dueIn(30),
+      category: "Electrical",
+      notes: "Gasoline degrades in 30-90 days without stabilizer. Use fresh fuel or treat stored fuel with stabilizer.",
+    });
+  }
+
+  if (extras?.notes?.trim()) {
+    assets.push({
+      _key:      "extras_custom",
+      item:      extras.notes.trim(),
+      category:  "Other",
+      condition: "Good",
+      notes:     "Added from home setup — review and add maintenance tasks manually",
+    });
+  }
+
+  // ── Custom free-form entries ───────────────────────────────────────────────
+  if (custom?.trim()) {
+    assets.push({
+      _key:      "custom_freeform",
+      item:      custom.trim(),
+      category:  "Other",
+      condition: "Good",
+      notes:     "Added from home setup questionnaire — add specific maintenance tasks manually",
+    });
+  }
+
+  // ── Deduplicate and return ────────────────────────────────────────────────
+  // Remove any task pointing to an asset that doesn't exist
+  const validKeys = new Set(assets.map(a => a._key).concat([null]));
+  const validTasks = tasks.filter(t => validKeys.has(t._assetKey));
+
+  return {
+    assets,
+    tasks:     validTasks,
+    utilities: [...utilSet].sort(),
+    projects,
+  };
+}
+
+
 // ─── CALENDAR TAB ────────────────────────────────────────────────────────────
 function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId, onEditTask }) {
   const today = new Date();
@@ -6633,4 +7551,497 @@ function ADAPage() {
       </footer>
     </div>
   );
+}
+
+// ─── HOME SETUP WIZARD ────────────────────────────────────────────────────────
+function HomeSetupWizard({ existingAssets=[], profile, toast, userId, onComplete }) {
+  const STEPS = ["HVAC","Water","Structure","Extras","Review"];
+  const [step, setStep]     = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [reviewTab, setReviewTab] = useState("assets");
+
+  // Answers state
+  const [A, setA] = useState({
+    hvac: { hasCentralAC:null, acType:null, acAge:null, hasFurnace:null, furnaceFuel:null, furnaceAge:null, hasHumidifier:null, notes:"" },
+    water:{ source:null, hasPressureTank:null, hasWaterHeater:null, heaterType:null, heaterAge:null, hasSoftener:null, notes:"" },
+    structure:{ roofType:null, roofAge:null, exteriorType:null, foundationType:null, hasChimney:null, notes:"" },
+    extras:{ hasPool:null, poolType:null, poolChemistry:null, hasIrrigation:null, hasSolar:null, hasSeptic:null, hasGenerator:null, notes:"" },
+    custom:"",
+  });
+
+  const set = (section, key, val) => setA(a => ({...a, [section]:{...a[section],[key]:val}}));
+
+  // Generated output (computed on step 4 — review)
+  const [generated, setGenerated] = useState(null);
+  // Checked state for review items
+  const [assetChecks, setAssetChecks]     = useState({});
+  const [taskChecks, setTaskChecks]       = useState({});
+  const [projectChecks, setProjectChecks] = useState({});
+  // Duplicate resolution: "add_new" | "update" | "skip" per asset key
+  const [dupResolutions, setDupResolutions] = useState({});
+
+  // Compute duplicates against existing assets
+  const findDup = (asset) => {
+    if (!existingAssets.length) return null;
+    const words = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g,"").split(" ").filter(w=>w.length>3);
+    const aWords = words(asset.item);
+    return existingAssets.find(ea =>
+      ea.category === asset.category &&
+      aWords.some(w => words(ea.item).includes(w))
+    ) || null;
+  };
+
+  // Navigate to review — generate output
+  const goReview = () => {
+    const result = generateHomeProfile(A);
+    setGenerated(result);
+    // Init all checked true
+    const ac={}, tc={}, pc={};
+    result.assets.forEach((_,i)   => ac[i] = true);
+    result.tasks.forEach((_,i)    => tc[i] = true);
+    result.projects.forEach((_,i) => pc[i] = true);
+    setAssetChecks(ac); setTaskChecks(tc); setProjectChecks(pc);
+    // Init dup resolutions to "add_new" (user can change)
+    const dr={};
+    result.assets.forEach((a,i) => { if(findDup(a)) dr[i] = "add_new"; });
+    setDupResolutions(dr);
+    setStep(4);
+  };
+
+  // Batch save to Supabase
+  const save = async () => {
+    if (!generated) return;
+    setSaving(true);
+    try {
+      const keyToId = {}; // _key → real DB asset id
+
+      // 1. Save selected assets
+      for (let i = 0; i < generated.assets.length; i++) {
+        if (!assetChecks[i]) continue;
+        const { _key, ...assetData } = generated.assets[i];
+        const dup = findDup(generated.assets[i]);
+        const res = dupResolutions[i] || "add_new";
+
+        if (dup && res === "skip") continue;
+        if (dup && res === "update") {
+          const notes = [dup.notes, assetData.notes].filter(Boolean).join(" · ");
+          await supabase.from("warranties").update({...assetData, notes}).eq("id",dup.id).eq("user_id",userId);
+          keyToId[_key] = dup.id;
+        } else {
+          const { data } = await supabase.from("warranties").insert([{...assetData, user_id:userId}]).select("id");
+          if (data?.[0]) keyToId[_key] = data[0].id;
+        }
+      }
+
+      // 2. Save selected tasks (resolve asset_id from keyToId)
+      const taskRows = generated.tasks
+        .filter((_,i) => taskChecks[i])
+        .map(({ _assetKey, ...t }) => ({
+          ...t,
+          asset_id: _assetKey ? (keyToId[_assetKey] || null) : null,
+          user_id: userId,
+        }));
+      if (taskRows.length) await supabase.from("tasks").insert(taskRows);
+
+      // 3. Save selected projects
+      const projRows = generated.projects
+        .filter((_,i) => projectChecks[i])
+        .map(({ ...p }) => ({ ...p, user_id: userId }));
+      if (projRows.length) await supabase.from("projects").insert(projRows);
+
+      // Mark setup complete in localStorage
+      try { localStorage.setItem(`sw_setup_${userId}`, "1"); } catch {}
+
+      const aCount = Object.values(assetChecks).filter(Boolean).length;
+      const tCount = Object.values(taskChecks).filter(Boolean).length;
+      const pCount = Object.values(projectChecks).filter(Boolean).length;
+      toast(`✓ Home profile set up — ${aCount} assets, ${tCount} tasks, ${pCount} projects created`);
+      onComplete();
+    } catch (err) {
+      toast("Error saving — " + err.message, "error");
+    }
+    setSaving(false);
+  };
+
+  // ── Shared sub-components ────────────────────────────────────────────────────
+  const YN = ({ section, field, val, label="Yes", noLabel="No" }) => (
+    <div className="yn-row">
+      <button className={`yn ${val===true?"sel-yes":""}`}  onClick={()=>set(section,field,true)}>✓ {label}</button>
+      <button className={`yn ${val===false?"sel-no":""}`}  onClick={()=>set(section,field,false)}>✕ {noLabel}</button>
+    </div>
+  );
+
+  const Opts = ({ section, field, val, options }) => (
+    <div className="yn-row">
+      {options.map(([v,l]) => (
+        <button key={v} className={`yn ${val===v?"sel-opt":""}`} onClick={()=>set(section,field,v)}>{l}</button>
+      ))}
+    </div>
+  );
+
+  const AgeOpts = ({ section, field, val }) => (
+    <Opts section={section} field={field} val={val} options={[["0-5","0–5 yrs"],["6-10","6–10 yrs"],["11-15","11–15 yrs"],["16+","16+ yrs"]]}/>
+  );
+
+  const Progress = () => (
+    <div className="hsw-progress">
+      {STEPS.map((s,i) => <div key={s} className={`hsw-prog-seg ${i<step?"done":i===step?"active":""}`}/>)}
+    </div>
+  );
+
+  // ── STEP 0 — HVAC ────────────────────────────────────────────────────────────
+  if (step === 0) return (
+    <div className="hsw-wrap">
+      <Progress/>
+      <div className="hsw-section-title">🌡️ Heating & Cooling</div>
+      <div className="hsw-section-sub">Tell us about your home's climate systems. We'll build a maintenance schedule around what you actually have.</div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Do you have central air conditioning or a heat pump?</div>
+        <YN section="hvac" field="hasCentralAC" val={A.hvac.hasCentralAC}/>
+        {A.hvac.hasCentralAC && (
+          <div className="hsw-sub-q">
+            <div>
+              <div className="hsw-q-label">What type?</div>
+              <Opts section="hvac" field="acType" val={A.hvac.acType} options={[["central_ac","Central AC"],["heat_pump","Heat pump"],["both","Both"]]}/>
+            </div>
+            <div>
+              <div className="hsw-q-label">How old is the system?</div>
+              <AgeOpts section="hvac" field="acAge" val={A.hvac.acAge}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Do you have a furnace or boiler?</div>
+        <YN section="hvac" field="hasFurnace" val={A.hvac.hasFurnace}/>
+        {A.hvac.hasFurnace && (
+          <div className="hsw-sub-q">
+            <div>
+              <div className="hsw-q-label">Fuel type?</div>
+              <Opts section="hvac" field="furnaceFuel" val={A.hvac.furnaceFuel} options={[["gas","Gas"],["oil","Oil"],["electric","Electric"],["propane","Propane"]]}/>
+            </div>
+            <div>
+              <div className="hsw-q-label">How old is the furnace?</div>
+              <AgeOpts section="hvac" field="furnaceAge" val={A.hvac.furnaceAge}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Whole-house humidifier or dehumidifier?</div>
+        <YN section="hvac" field="hasHumidifier" val={A.hvac.hasHumidifier}/>
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <div className="hsw-q-sub">e.g. mini-split, radiant floor heating, window units</div>
+        <textarea className="hsw-free" rows={2} value={A.hvac.notes} onChange={e=>set("hvac","notes",e.target.value)} placeholder="Describe any other heating or cooling systems…"/>
+      </div>
+
+      <div className="hsw-nav">
+        <button className="btn btn-ghost" onClick={onComplete}>Skip setup</button>
+        <button className="btn btn-primary" onClick={()=>setStep(1)}>Next: Water →</button>
+      </div>
+    </div>
+  );
+
+  // ── STEP 1 — WATER ───────────────────────────────────────────────────────────
+  if (step === 1) return (
+    <div className="hsw-wrap">
+      <Progress/>
+      <div className="hsw-section-title">💧 Water Systems</div>
+      <div className="hsw-section-sub">Your water source and heater type determine very different maintenance needs.</div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">What is your water source?</div>
+        <Opts section="water" field="source" val={A.water.source} options={[["city","City water"],["well","Private well"],["both","Both"]]}/>
+        {(A.water.source==="well"||A.water.source==="both") && (
+          <div className="hsw-sub-q">
+            <div>
+              <div className="hsw-q-label">Do you have a pressure tank?</div>
+              <div className="yn-row">
+                <button className={`yn ${A.water.hasPressureTank===true?"sel-yes":""}`}  onClick={()=>set("water","hasPressureTank",true)}>✓ Yes</button>
+                <button className={`yn ${A.water.hasPressureTank===false?"sel-no":""}`}  onClick={()=>set("water","hasPressureTank",false)}>✕ No</button>
+                <button className={`yn ${A.water.hasPressureTank===null&&A.water.source?"sel-opt":""}`} onClick={()=>set("water","hasPressureTank",null)}>Not sure</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Do you have a water heater?</div>
+        <YN section="water" field="hasWaterHeater" val={A.water.hasWaterHeater}/>
+        {A.water.hasWaterHeater && (
+          <div className="hsw-sub-q">
+            <div>
+              <div className="hsw-q-label">Tank or tankless?</div>
+              <Opts section="water" field="heaterType" val={A.water.heaterType} options={[["tank","Storage tank"],["tankless","Tankless / on-demand"]]}/>
+            </div>
+            <div>
+              <div className="hsw-q-label">How old is the water heater?</div>
+              <AgeOpts section="water" field="heaterAge" val={A.water.heaterAge}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Do you have a water softener or whole-house filtration?</div>
+        <YN section="water" field="hasSoftener" val={A.water.hasSoftener}/>
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="hsw-free" rows={2} value={A.water.notes} onChange={e=>set("water","notes",e.target.value)} placeholder="e.g. whole-house filtration, UV purifier, rainwater collection…"/>
+      </div>
+
+      <div className="hsw-nav">
+        <button className="btn btn-ghost" onClick={()=>setStep(0)}>← Back</button>
+        <button className="btn btn-primary" onClick={()=>setStep(2)}>Next: Structure →</button>
+      </div>
+    </div>
+  );
+
+  // ── STEP 2 — STRUCTURE ───────────────────────────────────────────────────────
+  if (step === 2) return (
+    <div className="hsw-wrap">
+      <Progress/>
+      <div className="hsw-section-title">🏠 Structure & Exterior</div>
+      <div className="hsw-section-sub">Roof type and age, foundation, and exterior material all drive different maintenance schedules.</div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">What type of roof do you have?</div>
+        <Opts section="structure" field="roofType" val={A.structure.roofType} options={[["shingle","Asphalt shingle"],["metal","Metal"],["tile","Tile / clay"],["flat","Flat"],["unknown","Not sure"]]}/>
+        {A.structure.roofType && A.structure.roofType !== "unknown" && (
+          <div className="hsw-sub-q">
+            <div className="hsw-q-label">How old is the roof?</div>
+            <AgeOpts section="structure" field="roofAge" val={A.structure.roofAge}/>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">What is your exterior made of?</div>
+        <Opts section="structure" field="exteriorType" val={A.structure.exteriorType} options={[["brick","Brick"],["vinyl_siding","Vinyl siding"],["stucco","Stucco"],["wood","Wood"],["mixed","Mixed"]]}/>
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">What type of foundation do you have?</div>
+        <Opts section="structure" field="foundationType" val={A.structure.foundationType} options={[["slab","Slab"],["crawlspace","Crawl space"],["basement","Basement"],["unknown","Not sure"]]}/>
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Do you have a chimney or fireplace?</div>
+        <YN section="structure" field="hasChimney" val={A.structure.hasChimney}/>
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="hsw-free" rows={2} value={A.structure.notes} onChange={e=>set("structure","notes",e.target.value)} placeholder="e.g. detached garage, deck, fence, retaining wall…"/>
+      </div>
+
+      <div className="hsw-nav">
+        <button className="btn btn-ghost" onClick={()=>setStep(1)}>← Back</button>
+        <button className="btn btn-primary" onClick={()=>setStep(3)}>Next: Extras →</button>
+      </div>
+    </div>
+  );
+
+  // ── STEP 3 — EXTRAS ──────────────────────────────────────────────────────────
+  if (step === 3) return (
+    <div className="hsw-wrap">
+      <Progress/>
+      <div className="hsw-section-title">⚡ Additional Systems</div>
+      <div className="hsw-section-sub">Pool, solar, generator — each comes with its own maintenance track.</div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Do you have a pool or hot tub?</div>
+        <YN section="extras" field="hasPool" val={A.extras.hasPool}/>
+        {A.extras.hasPool && (
+          <div className="hsw-sub-q">
+            <div>
+              <div className="hsw-q-label">Which do you have?</div>
+              <Opts section="extras" field="poolType" val={A.extras.poolType} options={[["pool","Pool only"],["hot_tub","Hot tub only"],["both","Both"]]}/>
+            </div>
+            {(A.extras.poolType==="pool"||A.extras.poolType==="both") && (
+              <div>
+                <div className="hsw-q-label">Pool chemistry type?</div>
+                <Opts section="extras" field="poolChemistry" val={A.extras.poolChemistry} options={[["chlorine","Chlorine"],["saltwater","Saltwater"]]}/>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {[
+        ["hasIrrigation","🌿","Do you have an irrigation or sprinkler system?"],
+        ["hasSolar","☀️","Do you have solar panels?"],
+        ["hasSeptic","🔄","Do you have a septic system?"],
+        ["hasGenerator","⚡","Do you have a backup generator?"],
+      ].map(([field, icon, label]) => (
+        <div key={field} className="hsw-q">
+          <div className="hsw-q-label">{icon} {label}</div>
+          <YN section="extras" field={field} val={A.extras[field]}/>
+        </div>
+      ))}
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Anything else we should know? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="hsw-free" rows={2} value={A.extras.notes} onChange={e=>set("extras","notes",e.target.value)} placeholder="e.g. EV charger, whole-house battery, second kitchen, ADU…"/>
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Any other systems or assets to add? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="hsw-free" rows={2} value={A.custom} onChange={e=>setA(a=>({...a,custom:e.target.value}))} placeholder="Freeform — anything not covered above…"/>
+      </div>
+
+      <div className="hsw-nav">
+        <button className="btn btn-ghost" onClick={()=>setStep(2)}>← Back</button>
+        <button className="btn btn-primary" onClick={goReview}>Review →</button>
+      </div>
+    </div>
+  );
+
+  // ── STEP 4 — REVIEW ──────────────────────────────────────────────────────────
+  if (step === 4 && generated) {
+    const selA = generated.assets.filter((_,i)  => assetChecks[i]);
+    const selT = generated.tasks.filter((_,i)   => taskChecks[i]);
+    const selP = generated.projects.filter((_,i) => projectChecks[i]);
+
+    return (
+      <div className="hsw-wrap">
+        <Progress/>
+        <div className="hsw-section-title">✓ Review your home profile</div>
+        <div className="hsw-section-sub">Here's what we'll create. Uncheck anything you don't want. You can always add or edit later.</div>
+
+        {/* Summary row */}
+        <div className="hsw-summary-row">
+          {[
+            [selA.length, "assets"],
+            [selT.length, "tasks"],
+            [selP.length, "projects"],
+          ].map(([n,l]) => (
+            <div key={l} className="hsw-summary-stat">
+              <div className="hsw-summary-num">{n}</div>
+              <div className="hsw-summary-label">{l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tab toggle */}
+        <div className="hsw-review-tabs">
+          {[["assets","Assets"],["tasks","Tasks"],["projects","Projects"],["utilities","Utilities"]].map(([k,l]) => (
+            <button key={k} className={`hsw-rtab ${reviewTab===k?"on":""}`} onClick={()=>setReviewTab(k)}>{l}</button>
+          ))}
+        </div>
+
+        {/* Assets tab */}
+        {reviewTab === "assets" && (
+          <div className="hsw-review-list">
+            {generated.assets.length === 0 ? (
+              <div style={{color:"#9E9690",fontSize:".83rem",padding:".5rem"}}>No assets generated — answer more questions to add assets.</div>
+            ) : generated.assets.map((a, i) => {
+              const dup = findDup(a);
+              const res = dupResolutions[i] || "add_new";
+              return (
+                <div key={i}>
+                  <div className="hsw-item" onClick={()=>setAssetChecks(c=>({...c,[i]:!c[i]}))}>
+                    <input type="checkbox" checked={!!assetChecks[i]} readOnly/>
+                    <div className="hsw-item-info">
+                      <div className="hsw-item-title">{a.item}</div>
+                      <div className="hsw-item-sub">{a.category}{a.notes ? ` · ${a.notes}` : ""}</div>
+                    </div>
+                    {dup && <span className="hsw-dup-badge">⚠ Similar exists</span>}
+                  </div>
+                  {dup && assetChecks[i] && (
+                    <div className="hsw-dup-block">
+                      <div>Existing: <strong>{dup.item}</strong> · {dup.category}</div>
+                      <div style={{marginTop:"2px",color:"#9E9690"}}>You may have two of this system — choose how to handle:</div>
+                      <div className="hsw-dup-choices">
+                        {[["add_new","Add as new"],["update","Update existing"],["skip","Skip"]].map(([v,l]) => (
+                          <button key={v} className={`hsw-dup-btn ${res===v?"active":""}`}
+                            onClick={e=>{e.stopPropagation();setDupResolutions(d=>({...d,[i]:v}));}}>
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Tasks tab */}
+        {reviewTab === "tasks" && (
+          <div className="hsw-review-list">
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:".4rem"}}>
+              <span style={{fontSize:".72rem",color:"#9E9690"}}>{selT.length} of {generated.tasks.length} selected</span>
+              <div style={{display:"flex",gap:".4rem"}}>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setTaskChecks(Object.fromEntries(generated.tasks.map((_,i)=>[i,true])))}>All</button>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setTaskChecks(Object.fromEntries(generated.tasks.map((_,i)=>[i,false])))}>None</button>
+              </div>
+            </div>
+            {generated.tasks.map((t, i) => (
+              <div key={i} className="hsw-item" onClick={()=>setTaskChecks(c=>({...c,[i]:!c[i]}))}>
+                <input type="checkbox" checked={!!taskChecks[i]} readOnly/>
+                <div className="hsw-item-info">
+                  <div className="hsw-item-title">{t.title}</div>
+                  <div className="hsw-item-sub">
+                    {t.priority} · {t.recurring ? `🔁 ${t.recurring}` : "one-time"} · due {new Date(t.due_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Projects tab */}
+        {reviewTab === "projects" && (
+          <div className="hsw-review-list">
+            {generated.projects.length === 0 ? (
+              <div style={{color:"#9E9690",fontSize:".83rem",padding:".5rem"}}>No projects suggested — your systems are all in good shape.</div>
+            ) : generated.projects.map((p, i) => (
+              <div key={i} className="hsw-item" onClick={()=>setProjectChecks(c=>({...c,[i]:!c[i]}))}>
+                <input type="checkbox" checked={!!projectChecks[i]} readOnly/>
+                <div className="hsw-item-info">
+                  <div className="hsw-item-title">{p.name}</div>
+                  <div className="hsw-item-sub">{p.notes} · Budget: ${p.budget?.toLocaleString()}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Utilities tab */}
+        {reviewTab === "utilities" && (
+          <div>
+            <div style={{fontSize:".82rem",color:"#5A534B",marginBottom:".6rem",lineHeight:1.5}}>
+              Based on your answers, you'll want to track these utility expenses in the <strong>Finances → Utilities</strong> tab:
+            </div>
+            <div className="hsw-util-chips">
+              {generated.utilities.map(u => <span key={u} className="hsw-util-chip">⚡ {u}</span>)}
+            </div>
+            <div style={{fontSize:".75rem",color:"#9E9690",marginTop:".75rem"}}>
+              Utilities are not created automatically — head to Finances → Utilities after setup to start logging your bills.
+            </div>
+          </div>
+        )}
+
+        <div className="hsw-nav">
+          <button className="btn btn-ghost" onClick={()=>setStep(3)}>← Back</button>
+          <button className="btn btn-rust" onClick={save} disabled={saving||(!selA.length&&!selT.length&&!selP.length)}>
+            {saving ? "Setting up…" : `Set up my home (${selA.length+selT.length+selP.length} items) →`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
