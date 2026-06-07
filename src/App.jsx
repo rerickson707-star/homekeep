@@ -1044,23 +1044,26 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* ---------- PRICING ---------- */
 .lp-root .pricing{background:var(--linen-2);border-top:1px solid var(--line)}
-.lp-root .price-wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:840px;margin:0 auto}
-.lp-root .pcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:36px 34px;display:flex;flex-direction:column}
-.lp-root .pcard.pro{background:var(--pine);color:var(--linen);border-color:transparent;box-shadow:0 36px 80px -36px rgba(23,48,38,.6)}
+.lp-root .price-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1060px;margin:0 auto}
+.lp-root .pcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:32px 26px;display:flex;flex-direction:column}
+.lp-root .pcard.plus{background:var(--pine);color:var(--linen);border-color:transparent;box-shadow:0 36px 80px -36px rgba(23,48,38,.6)}
+.lp-root .pcard.prem{background:var(--card);border:1.5px solid var(--terracotta);border-radius:24px;padding:32px 26px;display:flex;flex-direction:column}
 .lp-root .pbadge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--terracotta);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.35rem .9rem;border-radius:30px;box-shadow:0 10px 22px -10px rgba(193,97,64,.7)}
 .lp-root .plan{font-size:.82rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
-.lp-root .pcard.pro .plan{color:var(--sage)}
+.lp-root .pcard.plus .plan{color:var(--sage)}
+.lp-root .pcard.prem .plan{color:var(--terracotta)}
 .lp-root .price{font-family:var(--display);font-weight:600;font-size:3rem;color:var(--pine);line-height:1;margin:.6rem 0 .2rem;letter-spacing:-.02em}
-.lp-root .pcard.pro .price{color:#fff}
+.lp-root .pcard.plus .price{color:#fff}
 .lp-root .price span{font-family:var(--body);font-size:1rem;font-weight:500;color:var(--ink-soft)}
-.lp-root .pcard.pro .price span{color:rgba(244,237,223,.6)}
+.lp-root .pcard.plus .price span{color:rgba(244,237,223,.6)}
 .lp-root .pdesc{font-size:.92rem;color:var(--ink-soft);margin:.6rem 0 1.5rem;line-height:1.5}
-.lp-root .pcard.pro .pdesc{color:rgba(244,237,223,.72)}
+.lp-root .pcard.plus .pdesc{color:rgba(244,237,223,.72)}
 .lp-root .plist{list-style:none;padding:0;margin:0 0 1.8rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
 .lp-root .plist li{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--ink)}
-.lp-root .pcard.pro .plist li{color:rgba(244,237,223,.9)}
+.lp-root .pcard.plus .plist li{color:rgba(244,237,223,.9)}
 .lp-root .plist .ck{width:18px;height:18px;border-radius:50%;background:rgba(167,191,168,.35);color:var(--pine);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;flex-shrink:0;margin-top:2px}
-.lp-root .pcard.pro .plist .ck{background:var(--terracotta);color:#fff}
+.lp-root .pcard.plus .plist .ck{background:var(--terracotta);color:#fff}
+.lp-root .pcard.prem .plist .ck{background:rgba(193,97,64,.18);color:var(--terracotta)}
 .lp-root .pbtn{width:100%}
 
 /* ---------- FINAL CTA ---------- */
@@ -1109,7 +1112,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .lp-root .feat{padding:26px 24px}
   .lp-root .feat.spot{padding:28px 24px}
   .lp-root .feat.spot h3{font-size:1.5rem}
-  .lp-root .price-wrap{grid-template-columns:1fr;max-width:420px}
+  .lp-root .price-wrap{grid-template-columns:1fr;max-width:460px}
   .lp-root .foot-in{flex-direction:column;align-items:flex-start;gap:18px}
   .lp-root .foot-copy{justify-content:flex-start;flex-direction:column;gap:4px}
   .lp-root .hero-btns{gap:10px}
@@ -1975,25 +1978,68 @@ function LandingPage({ onSignIn, onSignUp }) {
             <p className="sub">Use Steadwell free for as long as you like. Unlock more when your home needs more.</p>
           </div>
           <div className="price-wrap">
+
+            {/* FREE */}
             <div className="pcard rv">
               <div className="plan">Free</div>
               <div className="price">$0<span> / month</span></div>
-              <p className="pdesc">Everything you need to start keeping your home well.</p>
+              <p className="pdesc">Everything you need to get started and stay organized.</p>
               <ul className="plist">
-                {["1 property", "Unlimited tasks & warranties", "Expense tracking", "Property auto-fill", "Tax & sale history", "Photo & document upload"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {[
+                  "Unlimited tasks + basic recurring",
+                  "Unlimited assets & expenses",
+                  "5 documents",
+                  "1 property",
+                  "Property auto-fill",
+                  "Contractor rolodex",
+                  "Weekly digest email",
+                  "Basic reminders",
+                ].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
-            <div className="pcard pro rv" style={{ transitionDelay: ".08s" }}>
+
+            {/* PLUS */}
+            <div className="pcard plus rv" style={{transitionDelay:".06s"}}>
               <span className="pbadge">Most popular</span>
-              <div className="plan">Pro</div>
+              <div className="plan">Plus</div>
               <div className="price">$4.99<span> / month</span></div>
-              <p className="pdesc">For homeowners who want the full picture.</p>
+              <p className="pdesc">Automation and intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free", "Up to 3 properties", "Email & smart reminders", "AI receipt & document scan", "Full sale-history timeline", "Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {[
+                  "Everything in Free",
+                  "Full recurring task engine",
+                  "Home health score",
+                  "5-year cost forecasting",
+                  "Daily reminders & warranty alerts",
+                  "25 documents",
+                  "AI receipt scan",
+                  "Full Home Setup Wizard",
+                ].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="btn btn-terra pbtn" onClick={onSignUp}>Join the beta</button>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus</button>
             </div>
+
+            {/* PRO */}
+            <div className="pcard prem rv" style={{transitionDelay:".12s"}}>
+              <div className="plan">Pro</div>
+              <div className="price">$9.99<span> / month</span></div>
+              <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
+              <ul className="plist">
+                {[
+                  "Everything in Plus",
+                  "Up to 3 properties",
+                  "Unlimited documents",
+                  "Shared home access",
+                  "Pre-sale home report included",
+                  "Contractor verified badge",
+                  "Regional price benchmarking",
+                  "Priority support",
+                ].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+              </ul>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro</button>
+            </div>
+
           </div>
         </div>
       </section>
