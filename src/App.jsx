@@ -5400,8 +5400,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const [docLightbox, setDocLightbox] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
 
-  // Home setup completion — tracked in localStorage
-  const setupDone = (() => { try { return !!localStorage.getItem(`sw_setup_${userId}`); } catch { return false; } })();
+  // Home setup completion — DB is source of truth, localStorage is fallback
+  const setupDone = profile?.home_setup_complete ||
+    (() => { try { return !!localStorage.getItem(`sw_setup_${userId}`); } catch { return false; } })();
 
   // Photo vertical position (0=top, 100=bottom) — saved to localStorage per user
   const [photoPos, setPhotoPos] = useState(() => {
@@ -5561,6 +5562,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           <HomeSetupWizard
             existingAssets={warranties}
             profile={profile}
+            setProfile={setProfile}
             toast={toast}
             userId={userId}
             onComplete={()=>setShowSetup(false)}
@@ -7560,7 +7562,7 @@ function ADAPage() {
 }
 
 // ─── HOME SETUP WIZARD ────────────────────────────────────────────────────────
-function HomeSetupWizard({ existingAssets=[], profile, toast, userId, onComplete }) {
+function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, onComplete }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Review"];
   const [step, setStep]     = useState(0);
   const [saving, setSaving] = useState(false);
@@ -7655,8 +7657,17 @@ function HomeSetupWizard({ existingAssets=[], profile, toast, userId, onComplete
         .map(({ ...p }) => ({ ...p, user_id: userId }));
       if (projRows.length) await supabase.from("projects").insert(projRows);
 
-      // Mark setup complete in localStorage
+      // Mark setup complete — write to DB (persists across devices) + localStorage (fast read)
+      if (profile?.id) {
+        await supabase.from("profiles")
+          .update({ home_setup_complete: true })
+          .eq("id", profile.id)
+          .eq("user_id", userId);
+      }
       try { localStorage.setItem(`sw_setup_${userId}`, "1"); } catch {}
+
+      // Update parent profile state so banner hides immediately without a reload
+      if (setProfile) setProfile(prev => ({ ...prev, home_setup_complete: true }));
 
       const aCount = Object.values(assetChecks).filter(Boolean).length;
       const tCount = Object.values(taskChecks).filter(Boolean).length;
