@@ -2845,7 +2845,7 @@ const ASSET_ICONS = {
   Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
 };
 
-function AssetForm({ data, onChange, userId }) {
+function AssetForm({ data, onChange, userId, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   // Auto-set lifespan when category changes
   const handleCategory = (cat) => {
@@ -2889,6 +2889,8 @@ function AssetForm({ data, onChange, userId }) {
         currentUrl={data.asset_photo_url||""}
         onUploaded={url=>f("asset_photo_url",url)}
         label="Asset Photo"
+        planData={planData}
+        onUpgrade={onUpgrade}
       />
       </div>
     </div>
@@ -2998,19 +3000,31 @@ function Lightbox({ src, onClose }) {
 }
 
 // ─── EXPENSE FILE UPLOAD ──────────────────────────────────────────────────────
-function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="Receipt / Photo" }) {
+function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="Receipt / Photo", planData, onUpgrade }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+
+  const maxMB = planData?.maxFileMB ?? 50;
 
   const handleFile = async (file) => {
     if (!file) return;
     const isImage = file.type.startsWith("image/");
     const isPdf = file.type === "application/pdf";
     if (!isImage && !isPdf) { setError("Please select an image or PDF."); return; }
-    if (file.size > 20 * 1024 * 1024) { setError("File must be under 20MB."); return; }
+    if (file.size > maxMB * 1024 * 1024) { setError(`File must be under ${maxMB}MB on your plan.`); return; }
     setError("");
-    setUploading(true);
 
+    // Check total file count before uploading
+    if (!currentUrl) { // only check when adding new, not replacing
+      const limit = await checkFileLimit(userId, planData);
+      if (!limit.ok) {
+        if (onUpgrade) onUpgrade();
+        else setError(`File limit reached (${limit.max} files on ${planData?.label||"Free"}). Upgrade to add more.`);
+        return;
+      }
+    }
+
+    setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${userId}/expense-${expenseId || Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage
@@ -3058,7 +3072,7 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
   );
 }
 
-function ExpenseForm({ data, onChange, projects=[], userId }) {
+function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
@@ -3090,6 +3104,8 @@ function ExpenseForm({ data, onChange, projects=[], userId }) {
           expenseId={data.id}
           currentUrl={data.file_url||""}
           onUploaded={url=>f("file_url",url)}
+          planData={planData}
+          onUpgrade={onUpgrade}
         />
       </div>
     </div>
@@ -4222,7 +4238,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs, tasks, setTasks }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -4558,7 +4574,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
         );
       })}
 
-      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId}/></Modal>}
+      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
@@ -4636,7 +4652,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
+function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planData, onUpgrade }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -5324,7 +5340,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[] }) {
         </div>
       )}
 
-      {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId}/></Modal>}
+      {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {confirm && <Confirm message="This expense will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId}/></Modal>}
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
@@ -5349,16 +5365,29 @@ const DOC_CATEGORIES = [
   { id:"other",      label:"Other",                  icon:"📁", color:"var(--cream2)", desc:"Any other home documents" },
 ];
 
-function DocumentForm({ data, onChange, userId, assets=[], projects=[] }) {
+function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [dragging, setDragging] = useState(false);
 
+  const maxMB = planData?.maxFileMB ?? 50;
+
   const handleFile = async (file) => {
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) { setUploadError("File must be under 50MB"); return; }
+    if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
     setUploadError("");
+
+    // Check shared file limit before upload (only for new files, not replacements)
+    if (!data.file_url) {
+      const limit = await checkFileLimit(userId, planData);
+      if (!limit.ok) {
+        if (onUpgrade) onUpgrade();
+        else setUploadError(`File limit reached (${limit.max} files on ${planData?.label||"Free"}). Upgrade to add more.`);
+        return;
+      }
+    }
+
     setUploading(true);
     const ext = file.name.split(".").pop();
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g,"_");
@@ -5430,7 +5459,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[] }) {
   );
 }
 
-function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox }) {
+function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -5440,6 +5469,14 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox })
   const [expanded, setExpanded] = useState({});
   const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
+
+  const maxDocs = planData?.maxDocs ?? Infinity;
+  const atLimit = documents.length >= maxDocs;
+
+  const openNew = (category="") => {
+    if (atLimit && onUpgrade) { onUpgrade(); return; }
+    setEditData({category}); setEditId(null); setModal(true);
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -5453,7 +5490,6 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox })
     });
   }, [userId]);
 
-  const openNew = (category="") => { setEditData({category}); setEditId(null); setModal(true); };
   const openEdit = d => { setEditData({...d}); setEditId(d.id); setModal(true); };
 
   const save = async () => {
@@ -5509,11 +5545,38 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox })
     <div className="home-section">
       <div className="home-section-header">
         <span className="home-section-title">📂 Document Vault</span>
-        <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
-          {totalDocs > 0 && <span style={{fontSize:".72rem",color:"#A8A09A"}}>{totalDocs} doc{totalDocs!==1?"s":""}</span>}
-          <button className="btn btn-primary btn-sm" onClick={()=>openNew()}>＋ Add</button>
+        <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+          {maxDocs !== Infinity ? (
+            <span style={{
+              fontSize:".72rem",fontWeight:600,
+              color: atLimit ? "#C16140" : documents.length >= maxDocs * 0.8 ? "#B8861E" : "#A8A09A"
+            }}>
+              {documents.length} / {maxDocs}
+            </span>
+          ) : (
+            totalDocs > 0 && <span style={{fontSize:".72rem",color:"#A8A09A"}}>{totalDocs} doc{totalDocs!==1?"s":""}</span>
+          )}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={()=>openNew()}
+            style={atLimit ? {background:"#A8A09A",borderColor:"#A8A09A"} : {}}
+          >
+            {atLimit ? "🔒 Upgrade" : "＋ Add"}
+          </button>
         </div>
       </div>
+
+      {/* At-limit banner */}
+      {atLimit && maxDocs !== Infinity && (
+        <div style={{margin:".5rem 1.1rem .25rem",padding:".6rem .85rem",background:"#FBF0E6",border:"1px solid #F5D5B0",borderRadius:"10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem"}}>
+          <span style={{fontSize:".78rem",color:"#A0511A",lineHeight:1.4}}>
+            You've reached the {maxDocs}-document limit on Free.
+          </span>
+          <button onClick={onUpgrade} style={{fontSize:".72rem",fontWeight:700,color:"#A0511A",background:"none",border:"1px solid #F5D5B0",borderRadius:"8px",padding:"3px 10px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+            Upgrade → Plus
+          </button>
+        </div>
+      )}
 
       <div style={{padding:".75rem 1.1rem",borderBottom:"1px solid var(--stone)"}}>
         {/* Search */}
@@ -5590,7 +5653,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox })
 
       {modal && (
         <Modal title={editId?"Edit Document":"Add Document"} onClose={()=>setModal(false)} onSave={save}>
-          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects}/>
+          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects} planData={planData} onUpgrade={onUpgrade}/>
         </Modal>
       )}
       {confirm && <Confirm message="This document and its file will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
@@ -5635,7 +5698,7 @@ function DocItem({ doc, assets, onEdit, onDelete, onView, fileIcon, getExpirySta
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -6108,6 +6171,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         warranties={warranties}
         lightbox={docLightbox}
         setLightbox={setDocLightbox}
+        planData={planData}
+        onUpgrade={onUpgrade}
       />
       {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
 
@@ -7882,10 +7947,10 @@ function ADAPage() {
 const PLANS = {
   free: {
     label: "Free", color: "free",
-    maxDocs: 5, maxProperties: 1,
-    recurring: "basic",       // daily/weekly/monthly/annually only
-    reminders: "basic",       // 3-day task, 30-day warranty
-    setupWizard: "hvac",      // first section only
+    maxDocs: 5, maxFiles: 5, maxFileMB: 10, maxProperties: 1,
+    recurring: "basic",
+    reminders: "basic",
+    setupWizard: "hvac",
     healthScore: false,
     costForecast: false,
     aiScan: false,
@@ -7895,7 +7960,7 @@ const PLANS = {
   },
   plus: {
     label: "Plus", color: "plus",
-    maxDocs: 25, maxProperties: 1,
+    maxDocs: 25, maxFiles: 25, maxFileMB: 25, maxProperties: 1,
     recurring: "full",
     reminders: "full",
     setupWizard: "full",
@@ -7908,7 +7973,7 @@ const PLANS = {
   },
   pro: {
     label: "Pro", color: "pro",
-    maxDocs: Infinity, maxProperties: 3,
+    maxDocs: Infinity, maxFiles: Infinity, maxFileMB: 50, maxProperties: 3,
     recurring: "full",
     reminders: "full",
     setupWizard: "full",
@@ -7924,6 +7989,21 @@ const PLANS = {
 function usePlan(profile) {
   const plan = profile?.plan || "free";
   return { plan, ...PLANS[plan] || PLANS.free };
+}
+
+// Counts ALL uploaded files across vault, asset photos, and expense receipts
+// Home profile photo is exempt (decorative, one slot)
+async function checkFileLimit(userId, planData) {
+  if (!planData || planData.maxFiles === Infinity) return { ok: true, count: 0, max: Infinity };
+  try {
+    const [docs, assets, expenses] = await Promise.all([
+      supabase.from("home_documents").select("id", { count:"exact", head:true }).eq("user_id", userId).not("file_url","is",null).neq("file_url",""),
+      supabase.from("warranties").select("id", { count:"exact", head:true }).eq("user_id", userId).not("asset_photo_url","is",null).neq("asset_photo_url",""),
+      supabase.from("expenses").select("id", { count:"exact", head:true }).eq("user_id", userId).not("file_url","is",null).neq("file_url",""),
+    ]);
+    const count = (docs.count||0) + (assets.count||0) + (expenses.count||0);
+    return { ok: count < planData.maxFiles, count, max: planData.maxFiles };
+  } catch { return { ok: true, count: 0, max: planData.maxFiles }; } // fail open — don't block on error
 }
 
 // ─── HEALTH SCORE ENGINE ──────────────────────────────────────────────────────
