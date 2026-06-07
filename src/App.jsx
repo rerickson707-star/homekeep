@@ -1338,6 +1338,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .qa-icon{font-size:1.35rem;line-height:1}
 .qa-btn span:last-child{font-size:.7rem;font-weight:600;letter-spacing:.01em;text-align:center;line-height:1.3}
 
+/* ══ FEEDBACK ══ */
+.feedback-type-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.85rem}
+.feedback-type-btn{padding:.35rem .85rem;border-radius:20px;border:1.5px solid var(--stone);background:none;font-size:.78rem;font-weight:600;font-family:'Hanken Grotesk',sans-serif;color:#7A7370;cursor:pointer;transition:all .15s}
+.feedback-type-btn:hover{border-color:var(--pine);color:var(--pine)}
+.feedback-type-btn.sel{background:var(--pine);color:#fff;border-color:var(--pine)}
+.feedback-success{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem;text-align:center;gap:.75rem}
+.feedback-success-icon{font-size:2.5rem}
+.feedback-success-title{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:var(--dark)}
+.feedback-success-sub{font-size:.83rem;color:#7A7370;line-height:1.5}
+.user-dd-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;font-size:.82rem;font-weight:500;color:var(--dark);cursor:pointer;transition:background .12s;border:none;background:none;width:100%;font-family:'Hanken Grotesk',sans-serif;text-align:left}
+.user-dd-item:hover{background:var(--cream2)}
+.user-dd-item.danger{color:#C0392B}
+.user-dd-item.danger:hover{background:#FFF0EE}
+.user-dd-divider{height:1px;background:var(--stone);margin:.25rem 0}
+
 /* ══ HOME SETUP WIZARD ══ */
 .setup-banner{background:var(--white);border:1.5px dashed var(--rust-light);border-radius:var(--r);padding:1.1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap}
 .setup-banner-text strong{font-size:.92rem;color:var(--dark);display:block;margin-bottom:2px}
@@ -2507,14 +2522,13 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
-function UserMenu({ user, onSignOut }) {
+function UserMenu({ user, onSignOut, onFeedback }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
   useEffect(() => {
-    const handler = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, []);
 
   return (
@@ -2526,11 +2540,126 @@ function UserMenu({ user, onSignOut }) {
       {open && (
         <div className="user-dropdown">
           <div className="user-dd-email">{user.email}</div>
-          <div className="user-dd-item danger" onClick={()=>{setOpen(false);onSignOut();}}>
+          <button className="user-dd-item" onClick={()=>{setOpen(false);onFeedback();}}>
+            <span>💬</span> Send Feedback
+          </button>
+          <div className="user-dd-divider"/>
+          <button className="user-dd-item danger" onClick={()=>{setOpen(false);onSignOut();}}>
             <span>🚪</span> Sign Out
-          </div>
+          </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── FEEDBACK MODAL ───────────────────────────────────────────────────────────
+function FeedbackModal({ user, userId, currentTab, onClose }) {
+  const TYPES = ["Bug", "Suggestion", "Question", "Other"];
+  const [type, setType]       = useState("Suggestion");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [saving, setSaving]   = useState(false);
+  const [done, setDone]       = useState(false);
+
+  const submit = async () => {
+    if (!message.trim()) return;
+    setSaving(true);
+    try {
+      // 1. Save to Supabase feedback table
+      await supabase.from("feedback").insert([{
+        user_id:  userId,
+        email:    user.email,
+        type,
+        subject:  subject.trim() || null,
+        message:  message.trim(),
+        page:     currentTab,
+      }]);
+
+      // 2. Send notification email via Edge Function
+      fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/feedback-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email:   user.email,
+          type,
+          subject: subject.trim() || `${type} from ${user.email}`,
+          message: message.trim(),
+          page:    currentTab,
+        }),
+      }).catch(() => {}); // silent fail — DB save is primary
+
+      setDone(true);
+      setTimeout(onClose, 2500);
+    } catch (e) {
+      console.error(e);
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:480}}>
+        <div className="modal-header">
+          <span className="modal-title">💬 Send Feedback</span>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {done ? (
+            <div className="feedback-success">
+              <span className="feedback-success-icon">🙌</span>
+              <div className="feedback-success-title">Thanks, {user.email.split("@")[0]}!</div>
+              <div className="feedback-success-sub">We read every message and usually respond within 24 hours.</div>
+            </div>
+          ) : (
+            <>
+              <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:".75rem"}}>
+                From: <strong>{user.email}</strong> · Page: <strong>{currentTab}</strong>
+              </div>
+
+              <div style={{marginBottom:".75rem"}}>
+                <label style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)",display:"block",marginBottom:".4rem"}}>What kind of feedback?</label>
+                <div className="feedback-type-row">
+                  {TYPES.map(t => (
+                    <button key={t} className={`feedback-type-btn ${type===t?"sel":""}`} onClick={()=>setType(t)}>{t}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field" style={{marginBottom:".65rem"}}>
+                <label>Subject <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></label>
+                <input
+                  value={subject}
+                  onChange={e=>setSubject(e.target.value)}
+                  placeholder={type==="Bug"?"e.g. Calendar not loading":type==="Suggestion"?"e.g. Add dark mode":"What's on your mind?"}
+                />
+              </div>
+
+              <div className="field">
+                <label>Message *</label>
+                <textarea
+                  value={message}
+                  onChange={e=>setMessage(e.target.value)}
+                  placeholder={type==="Bug"
+                    ? "Describe what happened, what you expected, and steps to reproduce…"
+                    : "Tell us what you're thinking…"}
+                  rows={5}
+                  style={{resize:"vertical"}}
+                  autoFocus
+                />
+              </div>
+            </>
+          )}
+        </div>
+        {!done && (
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={submit} disabled={saving||!message.trim()}>
+              {saving ? "Sending…" : "Send feedback →"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -7146,6 +7275,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
   const [tab, setTab] = useState("dashboard");
+  const [showFeedback, setShowFeedback] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -7309,7 +7439,7 @@ export default function App() {
             <span className="name">Steadwell</span>
           </div>
           <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
-          <UserMenu user={session.user} onSignOut={handleSignOut} />
+          <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)}/>
         </header>
 
         {/* ── Main Content ── */}
@@ -7342,6 +7472,14 @@ export default function App() {
         </nav>
 
         <Toasts toasts={toasts}/>
+        {showFeedback && (
+          <FeedbackModal
+            user={session.user}
+            userId={uid}
+            currentTab={tab}
+            onClose={()=>setShowFeedback(false)}
+          />
+        )}
       </div>
     </>
   );
