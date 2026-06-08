@@ -2855,8 +2855,11 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade }) {
     <div>
       <AIScanButton
         onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan Receipt or Warranty Card with AI"
+        label="Scan Receipt or Warranty Card"
         description="Auto-fill asset name, model, purchase date, cost & warranty expiry"
+        scanType="warranty"
+        planData={planData}
+        onUpgrade={onUpgrade}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -2897,14 +2900,17 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade }) {
   );
 }
 
-function ServiceLogForm({ data, onChange }) {
+function ServiceLogForm({ data, onChange, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
       <AIScanButton
         onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan Contractor Invoice with AI"
+        label="Scan Contractor Invoice"
         description="Auto-fill service description, date & cost from an invoice"
+        scanType="invoice"
+        planData={planData}
+        onUpgrade={onUpgrade}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -2959,27 +2965,74 @@ function ProUpgradeModal({ onClose }) {
 }
 
 // ─── AI SCAN BUTTON ───────────────────────────────────────────────────────────
-function AIScanButton({ onScanComplete, label="Scan Receipt with AI", description="Auto-fill amount, vendor, date & category from a photo" }) {
-  const [showProModal, setShowProModal] = useState(false);
+const AI_SCAN_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/ai-document-scan";
+
+function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade }) {
+  const [scanning, setScanning]   = useState(false);
+  const [error, setError]         = useState("");
+  const [success, setSuccess]     = useState(false);
+  const fileRef = useRef(null);
+  const canScan = planData?.aiScan;
+
+  const handleClick = () => {
+    if (!canScan) { if (onUpgrade) onUpgrade(); return; }
+    setError(""); setSuccess(false);
+    fileRef.current?.click();
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ""; // reset so same file can be re-selected
+
+    const isPdf  = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) { setError("Please select an image or PDF."); return; }
+    if (file.size > 20 * 1024 * 1024) { setError("File must be under 20MB."); return; }
+
+    setScanning(true); setError("");
+
+    try {
+      // Read as base64
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload  = () => res(reader.result.split(",")[1]);
+        reader.onerror = () => rej(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+
+      const resp = await fetch(AI_SCAN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileBase64: base64, mimeType: file.type, scanType }),
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || "Scan failed");
+
+      onScanComplete(data.fields);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err.message || "Scan failed — please try again");
+    }
+    setScanning(false);
+  };
 
   return (
-    <>
-      <div style={{marginBottom:".85rem"}}>
-        <button
-          type="button"
-          className="scan-btn scan-btn-bg"
-          onClick={() => setShowProModal(true)}
-        >
-          <span style={{fontSize:"1rem"}}>✨</span>
-          {label}
-          <span className="scan-btn-badge">Pro</span>
-        </button>
-        <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginTop:".35rem"}}>
-          {description}
-        </div>
-      </div>
-      {showProModal && <ProUpgradeModal onClose={() => setShowProModal(false)} />}
-    </>
+    <div style={{marginBottom:".85rem"}}>
+      <input ref={fileRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleFile}/>
+      <button type="button" className="scan-btn scan-btn-bg" onClick={handleClick} disabled={scanning}>
+        <span style={{fontSize:"1rem"}}>{scanning ? "⏳" : success ? "✓" : "✨"}</span>
+        {scanning ? "Scanning…" : success ? "Fields filled!" : label}
+        {!canScan && <span className="scan-btn-badge">Plus</span>}
+      </button>
+      {description && !error && !success && (
+        <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginTop:".35rem"}}>{description}</div>
+      )}
+      {error   && <div style={{fontSize:".72rem",color:"var(--rust)",textAlign:"center",marginTop:".35rem"}}>⚠ {error}</div>}
+      {success && <div style={{fontSize:".72rem",color:"#2A9D6A",textAlign:"center",marginTop:".35rem"}}>✓ Form filled from scan — review and save</div>}
+    </div>
   );
 }
 
@@ -3081,6 +3134,9 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade 
         onScanComplete={fields => onChange({...data,...fields})}
         label="Scan Receipt with AI"
         description="Auto-fill amount, vendor, date & category from a photo"
+        scanType="receipt"
+        planData={planData}
+        onUpgrade={onUpgrade}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -3472,14 +3528,17 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
   );
 }
 
-function InsuranceForm({ data, onChange }) {
+function InsuranceForm({ data, onChange, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
       <AIScanButton
         onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan Policy Document with AI"
+        label="Scan Policy Document"
         description="Auto-fill company, policy number, premium, coverage & renewal date"
+        scanType="insurance"
+        planData={planData}
+        onUpgrade={onUpgrade}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -4576,7 +4635,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
 
       {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData}/></Modal>}
+      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
@@ -5405,10 +5464,21 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
       <div className="field s2">
         <label>Document File</label>
         {data.file_url ? (
-          <div style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",background:"var(--sage-light)",border:"1px solid #B8D9CC",borderRadius:"var(--r-sm)"}}>
-            <span style={{fontSize:"1.2rem"}}>{data.file_type?.includes("pdf")?"📄":"🖼️"}</span>
-            <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"var(--sage)"}}>File attached ✓</span>
-            <button className="btn btn-ghost btn-sm" onClick={()=>onChange({...data,file_url:"",file_type:""})}>Remove</button>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",background:"var(--sage-light)",border:"1px solid #B8D9CC",borderRadius:"var(--r-sm)",marginBottom:".5rem"}}>
+              <span style={{fontSize:"1.2rem"}}>{data.file_type?.includes("pdf")?"📄":"🖼️"}</span>
+              <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"var(--sage)"}}>File attached ✓</span>
+              <button className="btn btn-ghost btn-sm" onClick={()=>onChange({...data,file_url:"",file_type:""})}>Remove</button>
+            </div>
+            {/* AI extract button — appears after file is attached */}
+            <AIScanButton
+              onScanComplete={fields => onChange({...data,...fields})}
+              label="Extract info with AI"
+              description="Auto-fill document name, category & description"
+              scanType="document"
+              planData={planData}
+              onUpgrade={onUpgrade}
+            />
           </div>
         ) : (
           <div
@@ -6177,7 +6247,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
 
       {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
-      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData}/></Modal>}
+      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
     </div>
   );
 }
