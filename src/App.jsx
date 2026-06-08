@@ -453,15 +453,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .seasonal-tip{font-size:.78rem;line-height:1.5;opacity:.8}
 
 /* ══ HOME HEALTH SCORE ══ */
-.health-card{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1.1rem 1.2rem;box-shadow:var(--shadow);margin-bottom:1rem;display:flex;align-items:center;gap:1.1rem}
-.health-ring{position:relative;flex-shrink:0}
-.health-ring svg{transform:rotate(-90deg)}
-.health-score{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column}
 .health-score-num{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;line-height:1}
 .health-score-label{font-size:.52rem;text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-top:1px}
-.health-desc{flex:1}
 .health-title{font-family:'Fraunces',serif;font-size:1rem;font-weight:500;margin-bottom:.25rem}
-.health-sub{font-size:.78rem;color:#A8A09A;line-height:1.5}
 
 /* ══ TASK VIEW TOGGLE ══ */
 .view-toggle{display:flex;background:var(--cream2);border-radius:10px;padding:3px;gap:2px;flex-shrink:0}
@@ -3788,21 +3782,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     setSelectedDayTasks(dayTasks);
   };
 
-  // ── Home Health Score
-  const healthScore = (() => {
-    if(tasks.length === 0 && warranties.length === 0) return null;
-    let score = 100;
-    if(tasks.length > 0) score -= Math.min(40, overdue * 10);
-    if(expiringW.length > 0) score -= Math.min(20, expiringW.length * 7);
-    const completionRate = tasks.length > 0 ? completed / tasks.length : 1;
-    score = Math.round(score * (.6 + completionRate * .4));
-    return Math.max(10, Math.min(100, score));
-  })();
-  const healthColor = healthScore >= 80 ? "#234A3D" : healthScore >= 55 ? "#B8861E" : "#C16140";
-  const healthLabel = healthScore >= 80 ? "Great shape" : healthScore >= 55 ? "Needs attention" : "Action required";
-  const circumference = 2 * Math.PI * 30;
-  const dashOffset = circumference - (healthScore / 100) * circumference;
-
   // ── Seasonal tip — climate aware
   const month = new Date().getMonth();
   const season = month >= 2 && month <= 4 ? "spring" : month >= 5 && month <= 7 ? "summer" : month >= 8 && month <= 10 ? "fall" : "winter";
@@ -3860,42 +3839,17 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         );
       })()}
 
-      {/* Health score + stats */}
-      <div style={{display:"flex",flexDirection:"column",gap:".75rem",marginBottom:".85rem"}}>
-        {healthScore !== null && (
-          <div className="health-card" style={{marginBottom:0}}>
-            <div className="health-ring">
-              <svg width="72" height="72" viewBox="0 0 72 72">
-                <circle cx="36" cy="36" r="30" fill="none" stroke="var(--stone)" strokeWidth="6"/>
-                <circle cx="36" cy="36" r="30" fill="none" stroke={healthColor} strokeWidth="6"
-                  strokeDasharray={circumference} strokeDashoffset={dashOffset}
-                  strokeLinecap="round" style={{transition:"stroke-dashoffset .8s ease"}}/>
-              </svg>
-              <div className="health-score">
-                <span className="health-score-num" style={{color:healthColor}}>{healthScore}</span>
-                <span className="health-score-label" style={{color:healthColor}}>/ 100</span>
-              </div>
-            </div>
-            <div className="health-desc">
-              <div className="health-title">Home Health</div>
-              <div className="health-sub" style={{color:healthColor,fontWeight:600,fontSize:".8rem"}}>{healthLabel}</div>
-              <div className="health-sub" style={{marginTop:"2px"}}>
-                {overdue > 0 ? `${overdue} overdue task${overdue>1?"s":""}` : completed > 0 ? `${completed} task${completed>1?"s":""} completed` : "Add tasks to track your home"}
-              </div>
-            </div>
-          </div>
-        )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem"}}>
-          <div className="stat c-gold" onClick={() => onNavigate("expenses")} style={{marginBottom:0}}>
-            <div className="stat-label">{yr} Spend</div>
-            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(yrSpend)}</div>
-            <div className="stat-sub">{fmt$(totalSpend)} lifetime</div>
-          </div>
-          <div className="stat c-sage" onClick={() => onNavigate("warranties")} style={{marginBottom:0}}>
-            <div className="stat-label">Assets</div>
-            <div className="stat-val">{activeW}</div>
-            <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} warranty expiring` : "tracked"}</div>
-          </div>
+      {/* Stat tiles */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
+        <div className="stat c-gold" onClick={() => onNavigate("expenses")} style={{marginBottom:0}}>
+          <div className="stat-label">{yr} Spend</div>
+          <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(yrSpend)}</div>
+          <div className="stat-sub">{fmt$(totalSpend)} lifetime</div>
+        </div>
+        <div className="stat c-sage" onClick={() => onNavigate("warranties")} style={{marginBottom:0}}>
+          <div className="stat-label">Assets</div>
+          <div className="stat-val">{activeW}</div>
+          <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} warranty expiring` : "tracked"}</div>
         </div>
       </div>
 
@@ -8221,6 +8175,19 @@ function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade }) 
   const r = 28, C = 2 * Math.PI * r;
   const dash = (score / 100) * C;
 
+  // Contextual summary — what's the most actionable insight right now
+  const overdue   = tasks.filter(t => t.status === "Overdue").length;
+  const noData    = tasks.length === 0 && warranties.length === 0;
+  const summary   = noData
+    ? "Add tasks and assets to get your score"
+    : overdue > 0
+      ? `${overdue} overdue task${overdue > 1 ? "s" : ""} pulling your score down`
+      : score >= 90
+        ? "Your home is in excellent shape 🎉"
+        : score >= 75
+          ? "Looking good — a few things to keep up with"
+          : "Some maintenance items need attention";
+
   return (
     <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem"}}>
@@ -8228,7 +8195,7 @@ function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade }) 
         {!locked && <span className={`plan-badge ${planData.color}`}>{planData.label}</span>}
       </div>
       <div style={{display:"flex",gap:"1rem",alignItems:"center"}}>
-        {/* Gauge — score number only, grade sits below */}
+        {/* Gauge */}
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,flexShrink:0}}>
           <div style={{position:"relative",width:72,height:72}}>
             <svg width="72" height="72" viewBox="0 0 72 72" style={{transform:"rotate(-90deg)",display:"block"}}>
@@ -8246,7 +8213,7 @@ function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade }) 
         <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:".42rem"}}>
           {factors.map(f => (
             <div key={f.label} style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-              <span style={{fontSize:".68rem",color:"#7A7370",flexShrink:0,width:58}}>{f.label}</span>
+              <span style={{fontSize:".68rem",color:"#7A7370",flexShrink:0,width:62}}>{f.label}</span>
               <div style={{flex:1,minWidth:0,height:5,borderRadius:3,background:"#E8E2D9",overflow:"hidden"}}>
                 {!locked && <div style={{width:`${f.val}%`,height:"100%",borderRadius:3,background:f.color}}/>}
               </div>
@@ -8257,13 +8224,15 @@ function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade }) 
           ))}
         </div>
       </div>
-      {locked && (
-        <div style={{display:"flex",justifyContent:"flex-end",marginTop:".6rem"}}>
-          <button onClick={onUpgrade} style={{fontSize:".72rem",color:"#3B5FBF",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:600}}>
-            See what to improve → Plus
+      {/* Summary line — always visible, gives context to the score */}
+      <div style={{marginTop:".65rem",paddingTop:".6rem",borderTop:"1px solid var(--stone)",fontSize:".75rem",color:"#7A7370",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem"}}>
+        <span>{summary}</span>
+        {locked && (
+          <button onClick={onUpgrade} style={{fontSize:".7rem",color:"#3B5FBF",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>
+            See breakdown → Plus
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
