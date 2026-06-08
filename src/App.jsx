@@ -3796,6 +3796,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     tip:    (dashClimate[season] || []).slice(0, 3).join(" · "),
   };
 
+  // Detect new user — hasn't run setup wizard yet
+  const isNewUser = !profile?.home_setup_complete;
+
   return (
     <div>
       {/* Greeting */}
@@ -3805,7 +3808,39 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         {profile?.address && <div className="greeting-sub">📍 {profile.address}</div>}
       </div>
 
-      {/* Health score + cost forecast */}
+      {/* ── NEW USER WELCOME ── show when wizard hasn't been run */}
+      {isNewUser && (
+        <div style={{background:"var(--pine)",borderRadius:"var(--r)",padding:"1.35rem 1.25rem",marginBottom:".85rem",position:"relative",overflow:"hidden"}}>
+          {/* decorative circle */}
+          <div style={{position:"absolute",right:-30,top:-30,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
+          <div style={{position:"absolute",right:20,bottom:-40,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
+          <div style={{fontSize:"1.75rem",marginBottom:".5rem"}}>🏡</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:"#F4EDDF",marginBottom:".35rem"}}>
+            Welcome to Steadwell
+          </div>
+          <div style={{fontSize:".8rem",color:"rgba(244,237,223,.7)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>
+            Set up your home in 3 minutes. We'll generate a personalized maintenance plan based on your home's systems and age.
+          </div>
+          <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
+            <button
+              className="btn"
+              style={{background:"#C16140",color:"#fff",border:"none",fontWeight:700,fontSize:".85rem",padding:".55rem 1.1rem"}}
+              onClick={() => onNavigate("profile")}
+            >
+              Set up my home →
+            </button>
+            <button
+              className="btn"
+              style={{background:"rgba(255,255,255,.12)",color:"rgba(244,237,223,.85)",border:"1px solid rgba(255,255,255,.18)",fontSize:".82rem"}}
+              onClick={() => onNavigate("tasks")}
+            >
+              Add a task manually
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Health score + cost forecast — always show but context-aware */}
       {planData && (
         <div style={{marginBottom:".85rem"}}>
           <HealthScoreWidget tasks={tasks} warranties={warranties} profile={profile} planData={planData} onUpgrade={onUpgrade}/>
@@ -3839,19 +3874,21 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         );
       })()}
 
-      {/* Stat tiles */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
-        <div className="stat c-gold" onClick={() => onNavigate("expenses")} style={{marginBottom:0}}>
-          <div className="stat-label">{yr} Spend</div>
-          <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(yrSpend)}</div>
-          <div className="stat-sub">{fmt$(totalSpend)} lifetime</div>
+      {/* Stat tiles — only show when user has data */}
+      {!isNewUser && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
+          <div className="stat c-gold" onClick={() => onNavigate("expenses")} style={{marginBottom:0}}>
+            <div className="stat-label">{yr} Spend</div>
+            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(yrSpend)}</div>
+            <div className="stat-sub">{fmt$(totalSpend)} lifetime</div>
+          </div>
+          <div className="stat c-sage" onClick={() => onNavigate("warranties")} style={{marginBottom:0}}>
+            <div className="stat-label">Assets</div>
+            <div className="stat-val">{activeW}</div>
+            <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} warranty expiring` : "tracked"}</div>
+          </div>
         </div>
-        <div className="stat c-sage" onClick={() => onNavigate("warranties")} style={{marginBottom:0}}>
-          <div className="stat-label">Assets</div>
-          <div className="stat-val">{activeW}</div>
-          <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} warranty expiring` : "tracked"}</div>
-        </div>
-      </div>
+      )}
 
       {/* Seasonal banner */}
       <div className="seasonal-banner" style={{background:tip.color,border:`1px solid ${tip.border}`}}>
@@ -3926,10 +3963,20 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           <div className="panel-title" style={{cursor:"pointer"}} onClick={() => onNavigate("tasks")}>📋 Coming up <span style={{fontSize:".7rem",color:"#A8A09A",fontWeight:400,fontFamily:"'Hanken Grotesk',sans-serif"}}>· tap to view all →</span></div>
           {upcoming.length===0 ? (
             <div className="empty" style={{padding:"1.5rem .5rem"}}>
-              <span className="ei">✅</span>
-              <strong>All clear!</strong>
-              <p>No tasks due in the next 30 days</p>
-              <button className="btn btn-primary btn-sm" onClick={() => onNavigate("tasks")}>Add a task</button>
+              <span className="ei">{isNewUser ? "🏡" : "✅"}</span>
+              {isNewUser ? (
+                <>
+                  <strong>No tasks yet</strong>
+                  <p>Run the Home Setup Wizard to get a personalized maintenance schedule in minutes</p>
+                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate("profile")}>Set up my home →</button>
+                </>
+              ) : (
+                <>
+                  <strong>All clear!</strong>
+                  <p>No tasks due in the next 30 days</p>
+                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate("tasks")}>Add a task</button>
+                </>
+              )}
             </div>
           ) : upcoming.slice(0,5).map(t => {
             const d = daysTo(t.due_date);
@@ -3958,9 +4005,19 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           <div className="panel-title">🏠 Asset warranty alerts</div>
           {expiringW.length===0 ? (
             <div className="empty" style={{padding:"1.5rem .5rem"}}>
-              <span className="ei">🛡️</span>
-              <strong>All covered</strong>
-              <p>No warranties expiring in 90 days</p>
+              <span className="ei">{isNewUser ? "📦" : "🛡️"}</span>
+              {isNewUser ? (
+                <>
+                  <strong>No assets tracked</strong>
+                  <p>Add your appliances and systems to track warranties and get expiry alerts</p>
+                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate("warranties")}>Add an asset</button>
+                </>
+              ) : (
+                <>
+                  <strong>All covered</strong>
+                  <p>No warranties expiring in 90 days</p>
+                </>
+              )}
             </div>
           ) : expiringW.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).slice(0,5).map(w => {
             const d = daysTo(w.expiry_date);
@@ -3978,16 +4035,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           })}
         </div>
       </div>
-
-      {/* Set up home CTA */}
-      {!profile?.name && (
-        <div style={{textAlign:"center",padding:"2.5rem 1.5rem",background:"var(--white)",borderRadius:"var(--r)",border:"2px dashed var(--stone)"}}>
-          <div style={{fontSize:"2.5rem",marginBottom:".75rem"}}>🏡</div>
-          <strong style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem"}}>Set up your home profile</strong>
-          <p style={{fontSize:".84rem",color:"#A8A09A",margin:".4rem 0 1.1rem",lineHeight:1.55}}>Add your address to auto-fill your home's details, tax history, and more</p>
-          <button className="btn btn-primary" onClick={() => onNavigate("profile")}>Set up my home →</button>
-        </div>
-      )}
 
       {/* Day detail modal */}
       {selectedDay && (
