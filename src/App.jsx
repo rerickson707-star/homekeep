@@ -813,11 +813,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .doc-expiry-expired{background:var(--red-light);color:var(--red)}
 
 /* ══ AI SCAN ══ */
-.scan-btn{width:100%;padding:.8rem;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .18s;position:relative;overflow:hidden}
-.scan-btn-bg{background:linear-gradient(135deg,#2A2622 0%,#4A3828 50%,#2A2622 100%);background-size:200% 100%;animation:shimmer 3s infinite;color:#fff}
+.scan-btn{width:100%;border-radius:var(--r);border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:all .18s;position:relative;overflow:hidden;text-align:left;display:block}
+.scan-btn-bg{background:linear-gradient(135deg,#1E3D31 0%,#2D5A42 40%,#3D2E1E 100%);background-size:200% 100%;animation:shimmer 4s infinite}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.scan-btn-inner{display:flex;align-items:center;gap:.85rem;padding:.9rem 1.1rem}
+.scan-btn-icon{width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.scan-btn-text{flex:1;min-width:0}
+.scan-btn-title{font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:.5rem;margin-bottom:2px}
+.scan-btn-desc{font-size:.72rem;color:rgba(255,255,255,.6);line-height:1.4}
+.scan-btn-arrow{font-size:.85rem;color:rgba(255,255,255,.4);flex-shrink:0}
 .scan-btn-badge{background:var(--rust);color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;flex-shrink:0}
-.scan-divider{display:flex;align-items:center;gap:.6rem;margin:.6rem 0;color:#A8A09A;font-size:.75rem}
+.scan-divider{display:flex;align-items:center;gap:.6rem;margin:.75rem 0;color:#A8A09A;font-size:.75rem}
 .scan-divider::before,.scan-divider::after{content:'';flex:1;height:1px;background:var(--stone)}
 .pro-modal-wrap{position:fixed;inset:0;background:rgba(38,33,28,.65);z-index:500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
 @media(min-width:640px){.pro-modal-wrap{align-items:center}}
@@ -3019,19 +3025,32 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     setScanning(false);
   };
 
+  const SCAN_ICONS = { receipt:"📸", warranty:"🔖", invoice:"📋", insurance:"🛡️", document:"📄" };
+  const icon = SCAN_ICONS[scanType] || "✨";
+
   return (
-    <div style={{marginBottom:".85rem"}}>
+    <div style={{marginBottom:"1rem"}}>
       <input ref={fileRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleFile}/>
       <button type="button" className="scan-btn scan-btn-bg" onClick={handleClick} disabled={scanning}>
-        <span style={{fontSize:"1rem"}}>{scanning ? "⏳" : success ? "✓" : "✨"}</span>
-        {scanning ? "Scanning…" : success ? "Fields filled!" : label}
-        {!canScan && <span className="scan-btn-badge">Plus</span>}
+        <div className="scan-btn-inner">
+          <div className="scan-btn-icon">
+            {scanning ? "⏳" : success ? "✓" : icon}
+          </div>
+          <div className="scan-btn-text">
+            <div className="scan-btn-title">
+              {scanning ? "Scanning…" : success ? "Fields filled!" : label}
+              {!canScan && <span className="scan-btn-badge">Plus</span>}
+            </div>
+            <div className="scan-btn-desc">
+              {error   ? `⚠ ${error}` :
+               success ? "Review the filled fields and save when ready" :
+               scanning ? "Reading your document with AI…" :
+               (description || "Tap to select a photo or PDF")}
+            </div>
+          </div>
+          {!scanning && !success && <span className="scan-btn-arrow">→</span>}
+        </div>
       </button>
-      {description && !error && !success && (
-        <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginTop:".35rem"}}>{description}</div>
-      )}
-      {error   && <div style={{fontSize:".72rem",color:"var(--rust)",textAlign:"center",marginTop:".35rem"}}>⚠ {error}</div>}
-      {success && <div style={{fontSize:".72rem",color:"#2A9D6A",textAlign:"center",marginTop:".35rem"}}>✓ Form filled from scan — review and save</div>}
     </div>
   );
 }
