@@ -2769,8 +2769,57 @@ function FeedbackModal({ user, userId, currentTab, onClose }) {
   );
 }
 
+// ─── CONTRACTOR PICKER ───────────────────────────────────────────────────────
+// Smart vendor field — autocompletes from saved contractors
+function ContractorPicker({ value, onChange, contractors=[], label="Contractor", placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const hasSaved = contractors.length > 0;
+
+  useEffect(() => {
+    const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const filtered = contractors.filter(c =>
+    !value || c.name.toLowerCase().includes(value.toLowerCase()) ||
+    c.company?.toLowerCase().includes(value.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} style={{position:"relative"}}>
+      <input
+        value={value||""}
+        onChange={e=>{ onChange(e.target.value); setOpen(true); }}
+        onFocus={()=>hasSaved&&setOpen(true)}
+        placeholder={hasSaved?"Search saved contractors or type new…":placeholder||"Contractor or company name"}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,right:0,background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",boxShadow:"var(--shadow-lg)",zIndex:100,maxHeight:220,overflowY:"auto"}}>
+          {filtered.map((c,i)=>(
+            <div key={c.id} onClick={()=>{ onChange(c.name); setOpen(false); }}
+              style={{padding:".55rem .85rem",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid var(--stone)":"none",display:"flex",alignItems:"center",gap:".65rem"}}
+              onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
+              onMouseLeave={e=>e.currentTarget.style.background=""}>
+              <div style={{width:30,height:30,borderRadius:8,background:"var(--pine)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:".85rem",fontWeight:700,color:"#F4EDDF"}}>{(c.name||"?")[0].toUpperCase()}</span>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{c.name}</div>
+                <div style={{fontSize:".7rem",color:"#7A7370"}}>{[c.trade,c.company].filter(Boolean).join(" · ")}</div>
+              </div>
+              {c.rating&&<div style={{fontSize:".65rem",color:"var(--pine)",flexShrink:0}}>{"●".repeat(c.rating)}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── FORMS ───────────────────────────────────────────────────────────────────
-function TaskForm({ data, onChange, assets=[], planData, onUpgrade }) {
+function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const canRecur = planData?.recurring === "full";
   const basicIntervals = ["","monthly","annually"];
@@ -2824,7 +2873,9 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade }) {
         )}
       </div>
       <div className="field"><label>Est. Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
-      <div className="field"><label>Vendor / Contractor</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} placeholder="DIY or company name" /></div>
+      <div className="field"><label>Contractor</label>
+        <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="DIY or company name"/>
+      </div>
       {assets.length > 0 && (
         <div className="field s2">
           <label>Linked Asset (optional)</label>
@@ -2859,7 +2910,7 @@ const ASSET_ICONS = {
   Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
 };
 
-function AssetForm({ data, onChange, userId, planData, onUpgrade }) {
+function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   // Auto-set lifespan when category changes
   const handleCategory = (cat) => {
@@ -2890,7 +2941,9 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade }) {
         </select>
       </div>
       <div className="field"><label>Model / Serial #</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} /></div>
-      <div className="field"><label>Vendor / Store</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} /></div>
+      <div className="field"><label>Vendor / Store</label>
+        <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Where purchased or installed by"/>
+      </div>
       <div className="field"><label>Purchase Date</label><input type="date" value={data.purchase_date||""} onChange={e=>f("purchase_date",e.target.value)} /></div>
       <div className="field"><label>Install Date</label><input type="date" value={data.install_date||""} onChange={e=>f("install_date",e.target.value)} /></div>
       <div className="field"><label>Purchase Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} /></div>
@@ -2914,7 +2967,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade }) {
   );
 }
 
-function ServiceLogForm({ data, onChange, planData, onUpgrade }) {
+function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
@@ -3152,7 +3205,7 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
   );
 }
 
-function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade }) {
+function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
@@ -3171,7 +3224,9 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade 
         <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
         <div className="field"><label>Amount ($)</label><input type="number" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
         <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
-        <div className="field s2"><label>Vendor / Contractor</label><input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} /></div>
+        <div className="field s2"><label>Contractor</label>
+          <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Who did the work"/>
+        </div>
         {projects.length > 0 && (
           <div className="field s2">
             <label>Link to Project (optional)</label>
@@ -3203,7 +3258,7 @@ const PROJECT_STATUS_STYLE = {
   "On Hold":     {bg:"var(--cream2)",      text:"#7A7370",      border:"var(--stone)"},
 };
 
-function ProjectForm({ data, onChange, userId }) {
+function ProjectForm({ data, onChange, userId, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div className="fg">
@@ -3213,7 +3268,10 @@ function ProjectForm({ data, onChange, userId }) {
       <div className="field"><label>Start Date</label><input type="date" value={data.start_date||""} onChange={e=>f("start_date",e.target.value)} /></div>
       <div className="field"><label>End Date</label><input type="date" value={data.end_date||""} onChange={e=>f("end_date",e.target.value)} /></div>
       <div className="field s2"><label>Description</label><textarea value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="What work is being done…" /></div>
-      <div className="field s2"><label>Contractor / Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Contractors, permits, decisions…" /></div>
+      <div className="field s2"><label>Contractor</label>
+        <ContractorPicker value={data.contractor_name||""} onChange={v=>f("contractor_name",v)} contractors={contractors} placeholder="General contractor or company"/>
+      </div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Contractors, permits, decisions…" /></div>
       <ExpenseFileUpload
         userId={userId}
         expenseId={data.id ? `project-${data.id}` : undefined}
@@ -4063,7 +4121,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
-function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade }) {
+function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[] }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone);
   const month = new Date().getMonth();
@@ -4393,14 +4451,14 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
         </div>
       )}
 
-      {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
       {confirm && <Confirm message="This task will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
     </div>
   );
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[] }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -4867,7 +4925,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planData, onUpgrade }) {
+function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planData, onUpgrade, contractors=[] }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -5580,9 +5638,9 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
         </div>
       )}
 
-      {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
       {confirm && <Confirm message="This expense will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-      {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId}/></Modal>}
+      {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId} contractors={contractors}/></Modal>}
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
       {utilModal && <Modal title={utilEditId?"Edit Utility":"Add Utility"} onClose={()=>setUtilModal(false)} onSave={saveUtil}><UtilityForm data={utilEditData} onChange={setUtilEditData}/></Modal>}
       {utilConfirm && <Confirm message="This utility and all its bill history will be permanently deleted." onConfirm={confirmDelUtil} onCancel={()=>setUtilConfirm(null)}/>}
@@ -6021,8 +6079,253 @@ function DocItem({ doc, assets, onEdit, onDelete, onView, fileTypeBadge, getExpi
     </div>
   );
 }
+// ─── CONTRACTOR ROLODEX ───────────────────────────────────────────────────────
+const TRADES = ["HVAC","Plumbing","Electrical","Roofing","Landscaping","Painting",
+  "Flooring","General Contractor","Pest Control","Pool & Spa","Appliance Repair",
+  "Cleaning","Windows & Doors","Foundation","Security","Other"];
+
+function ContractorForm({ data, onChange }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  return (
+    <div className="fg">
+      <div className="field s2"><label>Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. John Smith"/></div>
+      <div className="field s2"><label>Company</label><input value={data.company||""} onChange={e=>f("company",e.target.value)} placeholder="e.g. Smith HVAC Services"/></div>
+      <div className="field s2">
+        <label>Trade / Specialty</label>
+        <select value={data.trade||""} onChange={e=>f("trade",e.target.value)}>
+          <option value="">Select…</option>
+          {TRADES.map(t=><option key={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="field"><label>Phone</label><input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000"/></div>
+      <div className="field"><label>Email</label><input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com"/></div>
+      <div className="field s2"><label>Website</label><input type="url" value={data.website||""} onChange={e=>f("website",e.target.value)} placeholder="https://…"/></div>
+      <div className="field s2">
+        <label>Rating</label>
+        <div style={{display:"flex",gap:".4rem",marginTop:".25rem"}}>
+          {[1,2,3,4,5].map(n=>(
+            <button key={n} type="button" onClick={()=>f("rating",data.rating===n?null:n)} style={{
+              width:36,height:36,borderRadius:"50%",border:"1.5px solid",cursor:"pointer",
+              fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,
+              background:data.rating>=n?"var(--pine)":"var(--white)",
+              color:data.rating>=n?"#fff":"#C2B8AE",
+              borderColor:data.rating>=n?"var(--pine)":"var(--stone)"
+            }}>{n}</button>
+          ))}
+        </div>
+      </div>
+      <div className="field s2">
+        <label>Would hire again?</label>
+        <div style={{display:"flex",gap:".4rem",marginTop:".25rem"}}>
+          {[{v:true,l:"Yes"},{v:false,l:"No"}].map(({v,l})=>(
+            <button key={l} type="button" onClick={()=>f("would_hire_again",data.would_hire_again===v?null:v)} style={{
+              padding:".35rem .9rem",borderRadius:"20px",border:"1.5px solid",cursor:"pointer",
+              fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",fontWeight:600,
+              background:data.would_hire_again===v?(v?"var(--pine)":"var(--red)"):"var(--white)",
+              color:data.would_hire_again===v?"#fff":"#5A534B",
+              borderColor:data.would_hire_again===v?(v?"var(--pine)":"var(--red)"):"var(--stone)"
+            }}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="field s2"><label>Notes</label><textarea rows={3} value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="What they did, how they work, tips for next time…"/></div>
+    </div>
+  );
+}
+
+function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, toast, onBack }) {
+  const [modal, setModal]         = useState(false);
+  const [editData, setEditData]   = useState({});
+  const [editId, setEditId]       = useState(null);
+  const [confirm, setConfirm]     = useState(null);
+  const [selected, setSelected]   = useState(null); // contractor id for detail view
+  const [tradeF, setTradeF]       = useState("All");
+  const [search, setSearch]       = useState("");
+
+  const openNew  = ()    => { setEditData({}); setEditId(null); setModal(true); };
+  const openEdit = (c)   => { setEditData({...c}); setEditId(c.id); setModal(true); setSelected(null); };
+
+  const save = async () => {
+    if (!editData.name?.trim()) { toast("Name is required","error"); return; }
+    const payload = {...editData, user_id:userId};
+    if (editId) {
+      const {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
+      if (!error) { setContractors(contractors.map(c=>c.id===editId?{...payload,id:editId}:c)); toast("Contractor updated ✓"); }
+    } else {
+      const {data,error} = await supabase.from("contractors").insert([payload]).select();
+      if (!error&&data) { setContractors([...contractors,data[0]]); toast("Contractor added ✓"); }
+    }
+    setModal(false);
+  };
+
+  const confirmDel = async () => {
+    await supabase.from("contractors").delete().eq("id",confirm).eq("user_id",userId);
+    setContractors(contractors.filter(c=>c.id!==confirm));
+    setConfirm(null); setSelected(null);
+    toast("Contractor removed","error");
+  };
+
+  const trades = ["All",...TRADES.filter(t=>contractors.some(c=>c.trade===t))];
+  const filtered = contractors.filter(c=>{
+    const tradeMatch = tradeF==="All" || c.trade===tradeF;
+    const searchMatch = !search || [c.name,c.company,c.trade].some(v=>v?.toLowerCase().includes(search.toLowerCase()));
+    return tradeMatch && searchMatch;
+  });
+
+  // Detail view
+  if (selected) {
+    const c = contractors.find(x=>x.id===selected);
+    if (!c) { setSelected(null); return null; }
+    const jobs = serviceLogs.filter(s=>s.notes?.includes(c.name)||s.description?.includes(c.name)||
+      (c.company&&s.notes?.includes(c.company))||
+      contractors.find(x=>x.id===selected)?.name===s.vendor
+    );
+    const totalSpent = jobs.reduce((s,j)=>s+Number(j.cost||0),0);
+    return (
+      <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--linen)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setSelected(null)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
+          <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+          <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(c)} style={{fontSize:".78rem"}}>Edit</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(c.id)} style={{fontSize:".78rem",color:"var(--red)"}}>Delete</button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"1rem",WebkitOverflowScrolling:"touch"}}>
+          {/* Contact card */}
+          <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:".75rem",marginBottom:".85rem"}}>
+              <div style={{width:48,height:48,borderRadius:12,background:"var(--pine)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:"#F4EDDF"}}>{(c.name||"?")[0].toUpperCase()}</span>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{c.name}</div>
+                {c.company&&<div style={{fontSize:".8rem",color:"#7A7370",marginTop:2}}>{c.company}</div>}
+                {c.trade&&<div style={{fontSize:".75rem",fontWeight:600,color:"var(--pine)",marginTop:3}}>{c.trade}</div>}
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                {c.rating&&<div style={{fontSize:".78rem",color:"var(--pine)",fontWeight:700}}>{"●".repeat(c.rating)+"○".repeat(5-c.rating)}</div>}
+                {c.would_hire_again===true&&<div style={{fontSize:".68rem",color:"#2A9D6A",fontWeight:600,marginTop:2}}>Would hire again</div>}
+                {c.would_hire_again===false&&<div style={{fontSize:".68rem",color:"var(--red)",fontWeight:600,marginTop:2}}>Would not rehire</div>}
+              </div>
+            </div>
+            {/* Contact actions */}
+            <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+              {c.phone&&<a href={`tel:${c.phone}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {c.phone}</a>}
+              {c.email&&<a href={`mailto:${c.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Email</a>}
+              {c.website&&<a href={c.website} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Website</a>}
+            </div>
+            {c.notes&&<div style={{marginTop:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"8px",fontSize:".8rem",color:"#5A534B",lineHeight:1.55}}>{c.notes}</div>}
+          </div>
+          {/* Job history */}
+          <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem",borderBottom:jobs.length>0?"1px solid var(--stone)":"none"}}>
+              <div>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>Job History</span>
+                {jobs.length>0&&<span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{jobs.length} jobs · ${totalSpent.toLocaleString()} total</span>}
+              </div>
+            </div>
+            {jobs.length===0?(
+              <div style={{padding:"1.5rem",textAlign:"center",fontSize:".82rem",color:"#A8A09A",lineHeight:1.6}}>
+                No service logs linked yet.<br/>
+                <span style={{fontSize:".75rem"}}>Log a service on an asset and set vendor to "{c.name}" to track jobs here.</span>
+              </div>
+            ):jobs.map((j,i)=>(
+              <div key={j.id} style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".8rem 1rem",borderBottom:i<jobs.length-1?"1px solid var(--stone)":"none"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{j.description}</div>
+                  <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2}}>{j.service_date?new Date(j.service_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):""}</div>
+                </div>
+                <div style={{fontSize:".85rem",fontWeight:600,color:j.cost>0?"var(--dark)":"#C8C0B8",flexShrink:0}}>{j.cost>0?`$${Number(j.cost).toLocaleString()}`:"—"}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {confirm&&<Confirm message={`Remove ${c.name} from your rolodex?`} onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+        {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData}/></Modal>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--linen)"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+        <button className="btn btn-ghost btn-sm" onClick={onBack} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,textAlign:"center"}}>Contractors</span>
+        <button className="btn btn-primary btn-sm" onClick={openNew}>+ Add</button>
+      </div>
+
+      <div style={{flex:1,overflowY:"auto",padding:".75rem 1rem",WebkitOverflowScrolling:"touch"}}>
+        {/* Search */}
+        {contractors.length>2&&(
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contractors…"
+            style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"#fff",outline:"none",marginBottom:".65rem",boxSizing:"border-box"}}
+            onFocus={e=>e.target.style.borderColor="var(--pine)"} onBlur={e=>e.target.style.borderColor="var(--stone)"}
+          />
+        )}
+
+        {/* Trade filter */}
+        {trades.length>1&&(
+          <div className="toolbar" style={{marginBottom:".75rem"}}>
+            {trades.map(t=>(
+              <button key={t} className={`chip ${tradeF===t?"on":""}`} onClick={()=>setTradeF(t)}>{t}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {contractors.length===0&&(
+          <div className="empty" style={{padding:"3rem 1rem"}}>
+            <span className="ei" style={{fontSize:"2rem",opacity:.3}}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <strong>No contractors yet</strong>
+            <p style={{maxWidth:280,margin:"0 auto"}}>Save the people who work on your home — plumbers, electricians, HVAC techs. Build your trusted list over time.</p>
+            <button className="btn btn-primary" onClick={openNew}>Add your first contractor</button>
+          </div>
+        )}
+
+        {/* Contractor list */}
+        {filtered.map(c=>{
+          const jobs = serviceLogs.filter(s=>s.vendor===c.name);
+          return (
+            <div key={c.id} onClick={()=>setSelected(c.id)} style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:".9rem 1rem",marginBottom:".5rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".85rem",transition:"background .12s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
+              onMouseLeave={e=>e.currentTarget.style.background="var(--white)"}>
+              <div style={{width:42,height:42,borderRadius:10,background:"var(--pine)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,color:"#F4EDDF"}}>{(c.name||"?")[0].toUpperCase()}</span>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:".88rem",color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                <div style={{fontSize:".73rem",color:"#7A7370",marginTop:2,display:"flex",gap:".4rem",alignItems:"center",flexWrap:"wrap"}}>
+                  {c.trade&&<span style={{fontWeight:600,color:"var(--pine)"}}>{c.trade}</span>}
+                  {c.company&&<span>{c.company}</span>}
+                  {jobs.length>0&&<span>{jobs.length} job{jobs.length!==1?"s":""}</span>}
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                {c.rating&&<div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:700}}>{"●".repeat(c.rating)+"○".repeat(5-c.rating)}</div>}
+                {c.would_hire_again===true&&<div style={{fontSize:".65rem",color:"#2A9D6A",fontWeight:600,marginTop:2}}>Recommended</div>}
+                {c.would_hire_again===false&&<div style={{fontSize:".65rem",color:"var(--red)",fontWeight:600,marginTop:2}}>Not recommended</div>}
+              </div>
+              <span style={{color:"#C2B8AE",fontSize:".9rem"}}>›</span>
+            </div>
+          );
+        })}
+
+        {filtered.length===0&&contractors.length>0&&(
+          <div style={{textAlign:"center",padding:"2rem",fontSize:".84rem",color:"#A8A09A"}}>No contractors match your filter</div>
+        )}
+      </div>
+
+      {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData}/></Modal>}
+      {confirm&&<Confirm message="Remove this contractor from your rolodex?" onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+    </div>
+  );
+}
+
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[] }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -6504,6 +6807,30 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             </span>
           ))}
         </div>
+      </div>
+
+      {/* ── Contractors Tile ── */}
+      <div className="docs-tile" onClick={onShowContractors}>
+        <div className="docs-tile-header">
+          <div>
+            <div className="docs-tile-title">Contractors</div>
+            <div className="docs-tile-count">
+              {contractors.length > 0
+                ? `${contractors.length} saved · ${TRADES.filter(t=>contractors.some(c=>c.trade===t)).slice(0,3).join(", ")}`
+                : "Save your trusted plumbers, electricians, and more"}
+            </div>
+          </div>
+          <span style={{color:"#A8A09A",fontSize:".85rem"}}>›</span>
+        </div>
+        {contractors.length > 0 && (
+          <div className="docs-tile-cats">
+            {contractors.slice(0,4).map(c=>(
+              <span key={c.id} className="docs-tile-cat" style={{color:"var(--pine)",background:"rgba(35,74,61,.08)",borderColor:"rgba(35,74,61,.2)"}}>
+                {c.name.split(" ")[0]}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
@@ -7788,6 +8115,8 @@ export default function App() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
+  const [showContractors, setShowContractors] = useState(false);
+  const [contractors, setContractors] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -7821,18 +8150,20 @@ export default function App() {
     const uid = session.user.id;
     async function loadData() {
       setDataLoading(true);
-      const [t, w, e, p, sl] = await Promise.all([
+      const [t, w, e, p, sl, c] = await Promise.all([
         supabase.from("tasks").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("warranties").select("*").eq("user_id", uid).order("expiry_date", { ascending: true }),
         supabase.from("expenses").select("*").eq("user_id", uid).order("date", { ascending: false }),
         supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
         supabase.from("asset_service_log").select("*").eq("user_id", uid).order("service_date", { ascending: false }),
+        supabase.from("contractors").select("*").eq("user_id", uid).order("name", { ascending: true }),
       ]);
       if(t.data) setTasks(t.data);
       if(w.data) setWarranties(w.data);
       if(e.data) setExpenses(e.data);
       if(p.data && p.data.length > 0) setProfile(p.data[0]);
       if(sl.data) setServiceLogs(sl.data);
+      if(c.data) setContractors(c.data);
       setDataLoading(false);
     }
     loadData();
@@ -7958,27 +8289,30 @@ export default function App() {
         </header>
 
         {/* ── Main Content ── */}
-        <main className="main" id="main-content" tabIndex={-1} style={showDocs ? {padding:0,background:"var(--linen)"} : {}}>
+        <main className="main" id="main-content" tabIndex={-1} style={(showDocs||showContractors) ? {padding:0,background:"var(--linen)"} : {}}>
           {showDocs ? (
-            /* Documents Center — full page, solid background */
+            /* Documents Center */
             <div style={{display:"flex",flexDirection:"column",height:"100%",background:"var(--linen)"}}>
               <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".9rem 1.1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
                 <button className="btn btn-ghost btn-sm" onClick={()=>setShowDocs(false)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
                 <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,textAlign:"center"}}>Documents</span>
-                <div style={{width:60}}/>{/* spacer to center title */}
+                <div style={{width:60}}/>
               </div>
               <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <DocumentVault
-                  userId={uid}
-                  warranties={warranties}
-                  lightbox={docLightbox}
-                  setLightbox={setDocLightbox}
-                  planData={planData}
-                  onUpgrade={()=>setShowUpgrade(true)}
-                />
+                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>
               </div>
               {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
             </div>
+          ) : showContractors ? (
+            /* Contractor Rolodex */
+            <ContractorRolodex
+              userId={uid}
+              contractors={contractors}
+              setContractors={setContractors}
+              serviceLogs={serviceLogs}
+              toast={toast}
+              onBack={()=>setShowContractors(false)}
+            />
           ) : dataLoading ? (
             <div className="loading">
               <div className="spinner"/>
@@ -7987,16 +8321,16 @@ export default function App() {
           ) : (
             <>
               {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
-              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
-              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)}/>}
+              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors}/>}
             </>
           )}
         </main>
 
         {/* ── Navigation — hidden when Documents is open ── */}
-        <nav className="bottom-nav" style={showDocs ? {display:"none"} : {}}>
+        <nav className="bottom-nav" style={(showDocs||showContractors) ? {display:"none"} : {}}>
           {TABS.map(t=>(
             <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
