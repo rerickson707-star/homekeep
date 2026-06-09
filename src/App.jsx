@@ -192,9 +192,9 @@ const CSS = `
   --max:1100px;
 }
 
-html{scroll-behavior:smooth}
-body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
-.app{min-height:100vh;display:flex;flex-direction:column;padding-bottom:var(--bottom-nav)}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow-x:hidden}
+.app{min-height:100vh;display:flex;flex-direction:column;padding-bottom:var(--bottom-nav);overflow-x:hidden}
 /* app always pads for bottom-nav */
 
 /* ══ HEADER ══ */
@@ -241,7 +241,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 @media(min-width:769px){.bnav-icon{font-size:1.25rem}}
 
 /* ══ MAIN ══ */
-.main{flex:1;padding:1.25rem 1rem;max-width:var(--max);margin:0 auto;width:100%}
+.main{flex:1;padding:1.25rem 1rem;max-width:var(--max);margin:0 auto;width:100%;box-sizing:border-box;overflow-x:hidden}
 @media(min-width:769px){.main{padding:1.75rem 1.5rem}}
 @media(max-width:480px){.hdr-logo .name{display:none}}
 
