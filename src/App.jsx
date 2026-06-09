@@ -5459,59 +5459,138 @@ const DOC_CATEGORIES = [
 
 function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading]   = useState(false);
+  const [scanning, setScanning]     = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [dragging, setDragging] = useState(false);
+  const [dragging, setDragging]     = useState(false);
+  const scanRef = useRef(null);
 
-  const maxMB = planData?.maxFileMB ?? 50;
+  const maxMB   = planData?.maxFileMB ?? 50;
+  const canScan = planData?.aiScan;
 
+  // ── Unified: upload file + AI scan in parallel ──────────────────────────────
+  const handleScanAndUpload = async (file) => {
+    if (!file) return;
+    if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
+    setUploadError(""); setScanning(true); setScanSuccess(false);
+
+    // Check file limit first
+    if (!data.file_url) {
+      const limit = await checkFileLimit(userId, planData);
+      if (!limit.ok) { setScanning(false); onUpgrade?.(); return; }
+    }
+
+    try {
+      const ext      = file.name.split(".").pop();
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g,"_");
+      const path     = `${userId}/documents/${Date.now()}-${safeName}`;
+
+      // Run upload and AI scan in parallel
+      const [uploadResult, scanResult] = await Promise.allSettled([
+        supabase.storage.from("expense-files").upload(path, file, { upsert:false, contentType:file.type }),
+        (async () => {
+          const base64 = await new Promise((res,rej) => {
+            const r = new FileReader();
+            r.onload  = () => res(r.result.split(",")[1]);
+            r.onerror = () => rej(new Error("Read failed"));
+            r.readAsDataURL(file);
+          });
+          const resp = await fetch(AI_SCAN_URL, {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ fileBase64:base64, mimeType:file.type, scanType:"document" }),
+          });
+          return resp.json();
+        })(),
+      ]);
+
+      // Must have a successful upload
+      if (uploadResult.status === "rejected" || uploadResult.value?.error) {
+        setUploadError("Upload failed — please try again");
+        setScanning(false); return;
+      }
+      const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
+
+      // Merge AI fields if scan succeeded
+      const ai = scanResult.status === "fulfilled" && scanResult.value?.ok ? (scanResult.value.fields || {}) : {};
+      if (scanResult.status === "fulfilled" && scanResult.value?.ok) setScanSuccess(true);
+
+      onChange({
+        ...data,
+        file_url:     urlData.publicUrl,
+        file_type:    file.type,
+        name:         ai.name         || data.name         || file.name.replace(/\.[^/.]+$/,""),
+        category:     ai.category     || data.category     || "",
+        description:  ai.description  || data.description  || "",
+        expiry_date:  ai.expiry_date  || data.expiry_date  || "",
+      });
+    } catch(err) {
+      setUploadError("Something went wrong — please try again");
+    }
+    setScanning(false);
+  };
+
+  // ── Upload only (no AI scan) ─────────────────────────────────────────────────
   const handleFile = async (file) => {
     if (!file) return;
     if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
     setUploadError("");
-
-    // Check shared file limit before upload (only for new files, not replacements)
     if (!data.file_url) {
       const limit = await checkFileLimit(userId, planData);
-      if (!limit.ok) {
-        if (onUpgrade) onUpgrade();
-        else setUploadError(`File limit reached (${limit.max} files on ${planData?.label||"Free"}). Upgrade to add more.`);
-        return;
-      }
+      if (!limit.ok) { onUpgrade?.(); return; }
     }
-
     setUploading(true);
     const ext = file.name.split(".").pop();
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g,"_");
     const path = `${userId}/documents/${Date.now()}-${safeName}`;
-    const { error } = await supabase.storage.from("expense-files").upload(path, file, { upsert: false, contentType: file.type });
+    const { error } = await supabase.storage.from("expense-files").upload(path, file, { upsert:false, contentType:file.type });
     if (error) { setUploadError("Upload failed — " + error.message); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
-    onChange({...data, file_url: urlData.publicUrl, file_type: file.type, name: data.name || file.name.replace(/\.[^/.]+$/,"")});
+    onChange({...data, file_url:urlData.publicUrl, file_type:file.type, name:data.name||file.name.replace(/\.[^/.]+$/,"")});
     setUploading(false);
   };
 
   return (
-    <div className="fg">
-      {/* File upload */}
-      <div className="field s2">
-        <label>Document File</label>
-        {data.file_url ? (
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",background:"var(--sage-light)",border:"1px solid #B8D9CC",borderRadius:"var(--r-sm)",marginBottom:".5rem"}}>
-              <span style={{fontSize:"1.2rem"}}>{data.file_type?.includes("pdf")?"📄":"🖼️"}</span>
-              <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"var(--sage)"}}>File attached ✓</span>
-              <button className="btn btn-ghost btn-sm" onClick={()=>onChange({...data,file_url:"",file_type:""})}>Remove</button>
+    <div>
+      {/* ── AI Scan + Upload — primary action ── */}
+      {!data.file_url && (
+        <>
+          <input ref={scanRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx"
+            style={{display:"none"}} onChange={e=>handleScanAndUpload(e.target.files[0])}/>
+          <button type="button" className="scan-btn scan-btn-bg"
+            onClick={()=>{ if(!canScan){onUpgrade?.();return;} scanRef.current?.click(); }}
+            disabled={scanning}>
+            <div className="scan-btn-inner">
+              <div className="scan-btn-icon">{scanning?"⏳":"✨"}</div>
+              <div className="scan-btn-text">
+                <div className="scan-btn-title">
+                  {scanning ? "Scanning…" : "Scan document with AI"}
+                  {!canScan && <span className="scan-btn-badge">Plus</span>}
+                </div>
+                <div className="scan-btn-desc">
+                  {scanning
+                    ? "Uploading and reading your document…"
+                    : "Select a file — AI fills name, category & description automatically"}
+                </div>
+              </div>
+              {!scanning && <span className="scan-btn-arrow">→</span>}
             </div>
-            {/* AI extract button — appears after file is attached */}
-            <AIScanButton
-              onScanComplete={fields => onChange({...data,...fields})}
-              label="Extract info with AI"
-              description="Auto-fill document name, category & description"
-              scanType="document"
-              planData={planData}
-              onUpgrade={onUpgrade}
-            />
+          </button>
+          {uploadError && <div style={{fontSize:".74rem",color:"var(--red)",margin:".35rem 0"}}>⚠ {uploadError}</div>}
+          <div className="scan-divider">or upload without AI</div>
+        </>
+      )}
+
+      {/* ── File attached confirmation ── */}
+      <div className="field s2">
+        <label>File</label>
+        {data.file_url ? (
+          <div style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",background:"var(--sage-light)",border:"1px solid #B8D9CC",borderRadius:"var(--r-sm)"}}>
+            <span style={{fontSize:"1rem",opacity:.7}}>{data.file_type?.includes("pdf")?"PDF":"IMG"}</span>
+            <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"#2A7A5A"}}>
+              {scanSuccess ? "File scanned and attached ✓" : "File attached ✓"}
+            </span>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{onChange({...data,file_url:"",file_type:""});setScanSuccess(false);}}>Remove</button>
           </div>
         ) : (
           <div
@@ -5520,16 +5599,16 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
             onDragLeave={()=>setDragging(false)}
             onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0]);}}
           >
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" onChange={e=>handleFile(e.target.files[0])} />
-            <div className="doc-upload-icon">📎</div>
-            <div className="doc-upload-text"><strong>Click to upload</strong> or drag & drop<br/>PDF, JPG, PNG, HEIC, DOC — up to 50MB</div>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" onChange={e=>handleFile(e.target.files[0])}/>
+            <div className="doc-upload-icon">↑</div>
+            <div className="doc-upload-text"><strong>Click to upload</strong> or drag & drop<br/>PDF, JPG, PNG, HEIC, DOC — up to {maxMB}MB</div>
           </div>
         )}
         {uploading && <div style={{fontSize:".75rem",color:"var(--rust)",marginTop:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}><span className="spinner" style={{width:12,height:12,borderWidth:2}}/>Uploading…</div>}
-        {uploadError && <div style={{fontSize:".75rem",color:"var(--red)",marginTop:".3rem"}}>⚠️ {uploadError}</div>}
       </div>
 
-      <div className="field s2"><label>Document Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Home Inspection Report 2024" /></div>
+      {/* ── Form fields ── */}
+      <div className="field s2"><label>Document Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Home Inspection Report 2024"/></div>
       <div className="field s2">
         <label>Category</label>
         <select value={data.category||""} onChange={e=>f("category",e.target.value)}>
@@ -5537,8 +5616,8 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
           {DOC_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
       </div>
-      <div className="field s2"><label>Description</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="Brief description of this document" /></div>
-      <div className="field"><label>Expiry / Review Date</label><input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
+      <div className="field s2"><label>Description</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="Brief description of this document"/></div>
+      <div className="field"><label>Expiry / Review Date</label><input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)}/></div>
       {assets.length > 0 && (
         <div className="field">
           <label>Linked Asset (optional)</label>
@@ -5557,11 +5636,10 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
           </select>
         </div>
       )}
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any notes about this document…" /></div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any notes about this document…"/></div>
     </div>
   );
 }
-
 function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
