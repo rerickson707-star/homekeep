@@ -776,15 +776,28 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* ══ DOCUMENT VAULT ══ */
 .doc-vault{margin-bottom:1rem}
-.doc-category{margin-bottom:1rem;background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);overflow:hidden}
-.doc-category-header{display:flex;align-items:center;gap:.75rem;padding:.85rem 1.1rem;cursor:pointer;transition:background .12s;user-select:none}
+.doc-category{margin-bottom:.6rem;background:var(--white);border-radius:var(--r);border:1px solid var(--stone);overflow:hidden}
+.doc-category-header{display:flex;align-items:center;gap:.75rem;padding:.8rem 1rem;cursor:pointer;transition:background .12s;user-select:none}
 .doc-category-header:hover{background:var(--cream)}
-.doc-category-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-.doc-category-name{font-family:'Fraunces',serif;font-size:.95rem;font-weight:500;color:var(--dark);flex:1}
-.doc-category-count{font-size:.7rem;color:#A8A09A;background:var(--cream2);padding:2px 8px;border-radius:10px;font-weight:600}
-.doc-category-arrow{font-size:.75rem;color:#A8A09A;transition:transform .2s}
+.doc-category-stripe{width:4px;height:36px;border-radius:2px;flex-shrink:0}
+.doc-category-name{font-size:.88rem;font-weight:600;color:var(--dark);flex:1}
+.doc-category-desc{font-size:.7rem;color:#A8A09A;margin-top:1px}
+.doc-category-count{font-size:.68rem;color:#7A7370;background:var(--cream2);padding:2px 8px;border-radius:10px;font-weight:600;flex-shrink:0}
+.doc-category-arrow{font-size:.75rem;color:#A8A09A;transition:transform .2s;flex-shrink:0}
 .doc-category-arrow.open{transform:rotate(90deg)}
 .doc-list{border-top:1px solid var(--stone)}
+.doc-type-chip{font-size:.6rem;font-weight:700;letter-spacing:.04em;padding:1px 6px;border-radius:4px;text-transform:uppercase;flex-shrink:0}
+.docs-tile{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1rem 1.1rem;cursor:pointer;transition:background .12s;margin-bottom:1rem}
+.docs-tile:hover{background:var(--cream)}
+.docs-tile-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.docs-tile-title{font-family:'Fraunces',serif;font-size:.95rem;font-weight:500;color:var(--dark)}
+.docs-tile-count{font-size:.75rem;color:#7A7370}
+.docs-tile-cats{display:flex;gap:.35rem;flex-wrap:wrap}
+.docs-tile-cat{font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:8px;border:1px solid transparent}
+.docs-overlay{position:fixed;inset:0;z-index:300;background:var(--linen);display:flex;flex-direction:column;overflow:hidden}
+.docs-overlay-header{display:flex;align-items:center;gap:.75rem;padding:.9rem 1.1rem;background:var(--white);border-bottom:1px solid var(--stone);flex-shrink:0}
+.docs-overlay-title{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:500;color:var(--dark);flex:1}
+.docs-overlay-body{flex:1;overflow-y:auto;padding:.75rem 1rem}
 .doc-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.1rem;border-bottom:1px solid var(--stone);transition:background .12s}
 .doc-item:last-child{border-bottom:none}
 .doc-item:hover{background:var(--cream)}
@@ -5434,14 +5447,14 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
 
 // ─── DOCUMENT VAULT ───────────────────────────────────────────────────────────
 const DOC_CATEGORIES = [
-  { id:"legal",      label:"Legal & Ownership",     icon:"📜", color:"#F3EFFC", desc:"Deed, title, survey, closing docs, easements" },
-  { id:"mortgage",   label:"Mortgage & Finance",     icon:"🏦", color:"#EBF5FF", desc:"Loan docs, statements, refinance, HELOC" },
-  { id:"inspection", label:"Inspection Reports",     icon:"🔍", color:"#FBF0E8", desc:"Home, pest, radon, mold, septic, pool" },
-  { id:"insurance",  label:"Insurance Policies",     icon:"🛡️", color:"#EAF2EE", desc:"Homeowners, flood, umbrella, full policy docs" },
-  { id:"permits",    label:"Permits & Work",         icon:"🔨", color:"#FFF8E6", desc:"Building permits, certificates of occupancy" },
-  { id:"tax",        label:"Property Tax",           icon:"🧾", color:"#FBF3E8", desc:"Tax bills, assessments, payment records" },
-  { id:"contracts",  label:"Contracts & Agreements", icon:"📝", color:"#F3EFFC", desc:"HOA docs, service contracts, home warranty plan" },
-  { id:"other",      label:"Other",                  icon:"📁", color:"var(--cream2)", desc:"Any other home documents" },
+  { id:"legal",      label:"Legal & Ownership",     border:"#5B68A8", bg:"#EEF0F8", desc:"Deed, title, survey, closing docs, easements" },
+  { id:"mortgage",   label:"Mortgage & Finance",     border:"#4B7BC4", bg:"#E8F0FB", desc:"Loan docs, statements, refinance, HELOC" },
+  { id:"inspection", label:"Inspection Reports",     border:"#C07A3A", bg:"#FBF3EC", desc:"Home, pest, radon, mold, septic, pool" },
+  { id:"insurance",  label:"Insurance Policies",     border:"#3E8A5A", bg:"#EAF2EE", desc:"Homeowners, flood, umbrella, full policy docs" },
+  { id:"permits",    label:"Permits & Work",         border:"#B8961A", bg:"#FFF8E6", desc:"Building permits, certificates of occupancy" },
+  { id:"tax",        label:"Property Tax",           border:"#A8482A", bg:"#F8EEEA", desc:"Tax bills, assessments, payment records" },
+  { id:"contracts",  label:"Contracts & Agreements", border:"#7A5AB8", bg:"#F0EEF8", desc:"HOA docs, service contracts, home warranty plan" },
+  { id:"other",      label:"Other",                  border:"#8A8076", bg:"#F4F2EF", desc:"Any other home documents" },
 ];
 
 function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade }) {
@@ -5621,62 +5634,58 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
     return "ok";
   };
 
-  const fileIcon = (type) => {
-    if (!type) return "📄";
-    if (type.includes("pdf")) return "📄";
-    if (type.includes("image")) return "🖼️";
-    if (type.includes("word") || type.includes("document")) return "📝";
-    return "📎";
+  const fileTypeBadge = (type) => {
+    if (!type) return { label:"FILE", color:"#7A7370", bg:"#F0EDE8" };
+    if (type.includes("pdf"))  return { label:"PDF",  color:"#A0511A", bg:"#FBF0E6" };
+    if (type.includes("image"))return { label:"IMG",  color:"#2A7A5A", bg:"#E8F3EE" };
+    if (type.includes("word") || type.includes("document")) return { label:"DOC", color:"#3B5FBF", bg:"#EEF4FF" };
+    return { label:"FILE", color:"#7A7370", bg:"#F0EDE8" };
   };
 
   if (loading) return <div className="loading" style={{padding:"2rem"}}><div className="spinner"/></div>;
 
   return (
-    <div className="home-section">
-      <div className="home-section-header">
-        <span className="home-section-title">📂 Document Vault</span>
-        <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
-          {maxDocs !== Infinity ? (
-            <span style={{
-              fontSize:".72rem",fontWeight:600,
-              color: atLimit ? "#C16140" : documents.length >= maxDocs * 0.8 ? "#B8861E" : "#A8A09A"
-            }}>
-              {documents.length} / {maxDocs}
-            </span>
-          ) : (
-            totalDocs > 0 && <span style={{fontSize:".72rem",color:"#A8A09A"}}>{totalDocs} doc{totalDocs!==1?"s":""}</span>
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+        <div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>Documents</div>
+          {maxDocs !== Infinity && (
+            <div style={{fontSize:".7rem",color: atLimit ? "#C16140" : documents.length >= maxDocs * 0.8 ? "#B8861E" : "#A8A09A",marginTop:1}}>
+              {documents.length} of {maxDocs} used{atLimit ? " — upgrade for more" : ""}
+            </div>
           )}
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={()=>openNew()}
-            style={atLimit ? {background:"#A8A09A",borderColor:"#A8A09A"} : {}}
-          >
-            {atLimit ? "🔒 Upgrade" : "＋ Add"}
-          </button>
         </div>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={()=>openNew()}
+          style={atLimit ? {background:"#A8A09A",borderColor:"#A8A09A"} : {}}
+        >
+          {atLimit ? "Upgrade to Add" : "+ Add"}
+        </button>
       </div>
 
       {/* At-limit banner */}
       {atLimit && maxDocs !== Infinity && (
-        <div style={{margin:".5rem 1.1rem .25rem",padding:".6rem .85rem",background:"#FBF0E6",border:"1px solid #F5D5B0",borderRadius:"10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem"}}>
-          <span style={{fontSize:".78rem",color:"#A0511A",lineHeight:1.4}}>
+        <div style={{padding:".6rem 1rem",background:"#FBF0E6",borderBottom:"1px solid #F5D5B0",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexShrink:0}}>
+          <span style={{fontSize:".78rem",color:"#A0511A"}}>
             You've reached the {maxDocs}-document limit on Free.
           </span>
           <button onClick={onUpgrade} style={{fontSize:".72rem",fontWeight:700,color:"#A0511A",background:"none",border:"1px solid #F5D5B0",borderRadius:"8px",padding:"3px 10px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Hanken Grotesk',sans-serif"}}>
-            Upgrade → Plus
+            Upgrade to Plus
           </button>
         </div>
       )}
 
-      <div style={{padding:".75rem 1.1rem",borderBottom:"1px solid var(--stone)"}}>
+      <div style={{flex:1,overflowY:"auto",padding:".75rem 1rem"}}>
         {/* Search */}
-        {totalDocs > 3 && (
+        {documents.length > 3 && (
           <input
             value={search}
             onChange={e=>setSearch(e.target.value)}
-            placeholder="🔍 Search documents…"
-            style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"var(--cream)",outline:"none",marginBottom:".75rem"}}
-            onFocus={e=>e.target.style.borderColor="var(--rust)"}
+            placeholder="Search documents…"
+            style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"#fff",outline:"none",marginBottom:".75rem",boxSizing:"border-box"}}
+            onFocus={e=>e.target.style.borderColor="var(--pine)"}
             onBlur={e=>e.target.style.borderColor="var(--stone)"}
           />
         )}
@@ -5685,61 +5694,62 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
         {searchFiltered && (
           <div>
             {searchFiltered.length === 0 ? (
-              <div style={{textAlign:"center",padding:"1rem",color:"#A8A09A",fontSize:".84rem"}}>No documents match "{search}"</div>
+              <div style={{textAlign:"center",padding:"1.5rem",color:"#A8A09A",fontSize:".84rem"}}>No documents match "{search}"</div>
             ) : searchFiltered.map(d => (
-              <DocItem key={d.id} doc={d} assets={assets} onEdit={openEdit} onDelete={setConfirm} onView={setLightbox} fileIcon={fileIcon} getExpiryStatus={getExpiryStatus} />
+              <DocItem key={d.id} doc={d} assets={assets} onEdit={openEdit} onDelete={setConfirm} onView={setLightbox} fileTypeBadge={fileTypeBadge} getExpiryStatus={getExpiryStatus} />
             ))}
           </div>
         )}
-      </div>
 
-      {/* Category folders */}
-      {!searchFiltered && (
-        <div style={{padding:".75rem 1.1rem"}}>
-          {documents.length === 0 ? (
-            <div className="empty" style={{padding:"2rem .5rem"}}>
-              <span className="ei">📂</span>
-              <strong>No documents yet</strong>
-              <p>Store your deed, mortgage, inspection report, insurance policy, and any other important home documents — all in one secure place</p>
-              <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add your first document</button>
+        {/* Category folders */}
+        {!searchFiltered && (
+          documents.length === 0 ? (
+            <div style={{textAlign:"center",padding:"3rem 1rem"}}>
+              <div style={{fontSize:"2rem",marginBottom:".75rem",opacity:.3}}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+              </div>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",marginBottom:".4rem"}}>No documents yet</div>
+              <p style={{fontSize:".82rem",color:"#A8A09A",lineHeight:1.6,margin:"0 auto .85rem",maxWidth:280}}>Store your deed, mortgage, inspection reports, insurance policies, and any other important home documents — all in one place.</p>
+              <button className="btn btn-primary" onClick={()=>openNew()}>Add your first document</button>
             </div>
           ) : (
             DOC_CATEGORIES.map(cat => {
               const catDocs = documents.filter(d=>d.category===cat.id);
               const isOpen = expanded[cat.id];
-              const expiringCount = catDocs.filter(d=>getExpiryStatus(d.expiry_date)==="soon"||getExpiryStatus(d.expiry_date)==="expired").length;
+              const expiringCount = catDocs.filter(d=>["soon","expired"].includes(getExpiryStatus(d.expiry_date))).length;
               return (
                 <div key={cat.id} className="doc-category">
                   <div className="doc-category-header" onClick={()=>toggleExpanded(cat.id)}>
-                    <div className="doc-category-icon" style={{background:cat.color}}>{cat.icon}</div>
-                    <div style={{flex:1}}>
+                    <div className="doc-category-stripe" style={{background:cat.border}}/>
+                    <div style={{flex:1,minWidth:0}}>
                       <div className="doc-category-name">{cat.label}</div>
-                      <div style={{fontSize:".7rem",color:"#A8A09A"}}>{cat.desc}</div>
+                      <div className="doc-category-desc">{cat.desc}</div>
                     </div>
                     <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
-                      {expiringCount > 0 && <span style={{fontSize:".65rem",fontWeight:700,color:"var(--red)",background:"var(--red-light)",padding:"1px 6px",borderRadius:"8px"}}>⚠️ {expiringCount}</span>}
+                      {expiringCount > 0 && <span style={{fontSize:".65rem",fontWeight:700,color:"#C16140",background:"#FBF0E6",padding:"1px 6px",borderRadius:"8px"}}>! {expiringCount}</span>}
                       {catDocs.length > 0 && <span className="doc-category-count">{catDocs.length}</span>}
-                      <button className="btn btn-ghost btn-sm" style={{padding:"2px 6px",fontSize:".7rem"}} onClick={e=>{e.stopPropagation();openNew(cat.id);}}>＋</button>
+                      <button className="btn btn-ghost btn-sm" style={{padding:"2px 8px",fontSize:".7rem"}} onClick={e=>{e.stopPropagation();openNew(cat.id);}}>+ Add</button>
                       <span className={`doc-category-arrow ${isOpen?"open":""}`}>›</span>
                     </div>
                   </div>
                   {isOpen && (
                     <div className="doc-list">
                       {catDocs.length === 0 ? (
-                        <div style={{padding:".8rem 1.1rem",fontSize:".82rem",color:"#A8A09A",textAlign:"center"}}>
-                          No documents yet — <button className="btn btn-ghost btn-sm" onClick={()=>openNew(cat.id)}>Add one</button>
+                        <div style={{padding:".85rem 1rem",fontSize:".82rem",color:"#A8A09A",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                          <span>No documents in this category</span>
+                          <button className="btn btn-ghost btn-sm" onClick={()=>openNew(cat.id)}>+ Add</button>
                         </div>
                       ) : catDocs.map(d => (
-                        <DocItem key={d.id} doc={d} assets={assets} onEdit={openEdit} onDelete={setConfirm} onView={setLightbox} fileIcon={fileIcon} getExpiryStatus={getExpiryStatus} />
+                        <DocItem key={d.id} doc={d} assets={assets} onEdit={openEdit} onDelete={setConfirm} onView={setLightbox} fileTypeBadge={fileTypeBadge} getExpiryStatus={getExpiryStatus} />
                       ))}
                     </div>
                   )}
                 </div>
               );
             })
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
 
       {modal && (
         <Modal title={editId?"Edit Document":"Add Document"} onClose={()=>setModal(false)} onSave={save}>
@@ -5751,49 +5761,46 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   );
 }
 
-function DocItem({ doc, assets, onEdit, onDelete, onView, fileIcon, getExpiryStatus }) {
+function DocItem({ doc, assets, onEdit, onDelete, onView, fileTypeBadge, getExpiryStatus }) {
   const expiryStatus = getExpiryStatus(doc.expiry_date);
   const linkedAsset = doc.asset_id ? assets.find(a=>a.id===doc.asset_id) : null;
   const isImage = doc.file_url && doc.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
+  const badge = fileTypeBadge(doc.file_type);
 
   return (
     <div className="doc-item">
-      <div className="doc-item-icon">{fileIcon(doc.file_type)}</div>
+      {/* File type chip */}
+      <span className="doc-type-chip" style={{color:badge.color,background:badge.bg}}>{badge.label}</span>
       <div className="doc-item-body">
-        <div className="doc-item-name">{doc.name}</div>
+        <div className="doc-item-name">{doc.name || "Untitled"}</div>
         <div className="doc-item-meta">
-          {doc.description && <span>{doc.description}</span>}
-          {linkedAsset && <span style={{color:"var(--rust)"}}>🔧 {linkedAsset.item}</span>}
-          {expiryStatus && (
-            <span className={`doc-expiry-badge ${
-              expiryStatus==="expired"?"doc-expiry-expired":
-              expiryStatus==="soon"?"doc-expiry-soon":"doc-expiry-ok"
-            }`}>
-              {expiryStatus==="expired"?"Expired":expiryStatus==="soon"?`Expires ${fmtD(doc.expiry_date)}`:`Valid to ${fmtD(doc.expiry_date)}`}
+          {linkedAsset && <span>{linkedAsset.item}</span>}
+          {doc.expiry_date && (
+            <span style={{color: expiryStatus==="expired"?"#C16140":expiryStatus==="soon"?"#B8861E":"inherit", fontWeight: expiryStatus!=="ok"?600:400}}>
+              {expiryStatus==="expired" ? "Expired " : "Expires "}{fmtD(doc.expiry_date)}
             </span>
           )}
+          {doc.description && <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{doc.description}</span>}
         </div>
       </div>
       <div className="doc-item-actions">
         {doc.file_url && (
-          <button className="btn btn-ghost btn-sm" onClick={()=> isImage ? onView(doc.file_url) : window.open(doc.file_url,"_blank")} title="View">
-            {isImage ? "👁️" : "↗️"}
+          <button className="btn btn-ghost btn-sm" onClick={()=> isImage ? onView(doc.file_url) : window.open(doc.file_url,"_blank")} style={{fontSize:".72rem"}}>
+            View
           </button>
         )}
-        <button className="btn btn-ghost btn-sm" onClick={()=>onEdit(doc)}>Edit</button>
-        <button className="btn btn-danger btn-sm" onClick={()=>onDelete(doc.id)}>✕</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>onEdit(doc)} style={{fontSize:".72rem"}}>Edit</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>onDelete(doc.id)} style={{fontSize:".72rem",color:"var(--red)"}}>Delete</button>
       </div>
     </div>
   );
 }
-
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [insData, setInsData] = useState({});
-  const [docLightbox, setDocLightbox] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
 
   // Home setup completion — DB is source of truth, localStorage is fallback
@@ -6255,20 +6262,26 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
-      {/* ── Document Vault ── */}
-      <DocumentVault
-        userId={userId}
-        warranties={warranties}
-        lightbox={docLightbox}
-        setLightbox={setDocLightbox}
-        planData={planData}
-        onUpgrade={onUpgrade}
-      />
-      {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
+      {/* ── Documents Tile ── */}
+      <div className="docs-tile" onClick={onShowDocs}>
+        <div className="docs-tile-header">
+          <div>
+            <div className="docs-tile-title">Documents</div>
+            <div className="docs-tile-count">Deeds, insurance, inspection reports & more</div>
+          </div>
+          <span style={{color:"#A8A09A",fontSize:".85rem"}}>›</span>
+        </div>
+        <div className="docs-tile-cats">
+          {DOC_CATEGORIES.slice(0,6).map(cat => (
+            <span key={cat.id} className="docs-tile-cat" style={{color:cat.border,background:cat.bg,borderColor:cat.border+"40"}}>
+              {cat.label.split(" ")[0]}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
-      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
-    </div>
+      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}    </div>
   );
 }
 
@@ -7547,6 +7560,8 @@ export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [showFeedback, setShowFeedback] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
+  const [docLightbox, setDocLightbox] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -7717,8 +7732,28 @@ export default function App() {
         </header>
 
         {/* ── Main Content ── */}
-        <main className="main" id="main-content" tabIndex={-1}>
-          {dataLoading ? (
+        <main className="main" id="main-content" tabIndex={-1} style={showDocs ? {padding:0,background:"var(--linen)"} : {}}>
+          {showDocs ? (
+            /* Documents Center — full page, solid background */
+            <div style={{display:"flex",flexDirection:"column",height:"100%",background:"var(--linen)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".9rem 1.1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setShowDocs(false)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,textAlign:"center"}}>Documents</span>
+                <div style={{width:60}}/>{/* spacer to center title */}
+              </div>
+              <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <DocumentVault
+                  userId={uid}
+                  warranties={warranties}
+                  lightbox={docLightbox}
+                  setLightbox={setDocLightbox}
+                  planData={planData}
+                  onUpgrade={()=>setShowUpgrade(true)}
+                />
+              </div>
+              {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
+            </div>
+          ) : dataLoading ? (
             <div className="loading">
               <div className="spinner"/>
               <span style={{fontSize:".85rem"}}>Loading your home…</span>
@@ -7729,13 +7764,13 @@ export default function App() {
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)}/>}
             </>
           )}
         </main>
 
-        {/* ── Navigation (all screen sizes) ── */}
-        <nav className="bottom-nav">
+        {/* ── Navigation — hidden when Documents is open ── */}
+        <nav className="bottom-nav" style={showDocs ? {display:"none"} : {}}>
           {TABS.map(t=>(
             <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
