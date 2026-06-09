@@ -4062,7 +4062,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
-function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[], serviceLogs, setServiceLogs }) {
+function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone);
   const month = new Date().getMonth();
@@ -4071,14 +4071,15 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
   const seasonIcon = {spring:"🌸",summer:"☀️",fall:"🍂",winter:"❄️"}[season];
   const seasonalSuggestions = climate[season] || [];
 
-  const [statusF, setStatusF] = useState("All");
+  const [statusF, setStatusF] = useState("Active"); // default to Active — what needs doing
   const [catF, setCatF] = useState("All");
   const [sort, setSort] = useState("due_date");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [editId, setEditId] = useState(null);
   const [confirm, setConfirm] = useState(null);
-  const [showSeasonal, setShowSeasonal] = useState(true);
+  const [showSeasonal, setShowSeasonal] = useState(false); // collapsed by default
+  const [showCatFilter, setShowCatFilter] = useState(false);
 
   const openNew = (cat) => {
     setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||""});
@@ -4086,6 +4087,14 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
     setModal(true);
   };
   const openEdit = t => { setEditData({...t}); setEditId(t.id); setModal(true); };
+
+  // Close category dropdown on outside click
+  useEffect(() => {
+    if (!showCatFilter) return;
+    const h = () => setShowCatFilter(false);
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [showCatFilter]);
 
   const save = async () => {
     if(!editData.title?.trim()) return;
@@ -4169,7 +4178,15 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
     setModal(true);
   };
 
-  let filtered = tasks.filter(t => (statusF==="All"||t.status===statusF) && (catF==="All"||t.category===catF));
+  const overdueCount = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
+
+  let filtered = tasks.filter(t => {
+    const statusMatch = statusF === "All" ? true
+      : statusF === "Active" ? t.status !== "Completed"
+      : t.status === "Completed";
+    const catMatch = catF === "All" || t.category === catF;
+    return statusMatch && catMatch;
+  });
   filtered = [...filtered].sort((a,b) => {
     if(sort==="due_date") return new Date(a.due_date||"9999")-new Date(b.due_date||"9999");
     if(sort==="priority") return PRIORITY.indexOf(b.priority)-PRIORITY.indexOf(a.priority);
@@ -4203,40 +4220,37 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
             <div className="task-card-meta">
               {t.due_date && (
                 <span className="task-meta-pill" style={{background:isOverdue?"var(--red-light)":isToday?"var(--rust-light)":"var(--cream2)",color:isOverdue?"var(--red)":isToday?"var(--rust)":"#7A7370"}}>
-                  📅 {d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}
+                  {d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}
                 </span>
               )}
               {t.priority && t.priority!=="Medium" && (
                 <span className="task-meta-pill" style={{background:t.priority==="Urgent"?"var(--red-light)":t.priority==="High"?"#FBF0E8":"var(--sage-light)",color:t.priority==="Urgent"?"var(--red)":t.priority==="High"?"var(--rust)":"var(--sage)"}}>
-                  {t.priority==="Urgent"?"🔴":t.priority==="High"?"🟠":"🟢"} {t.priority}
+                  {t.priority}
                 </span>
               )}
               {t.vendor && (
-                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>👤 {t.vendor}</span>
+                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>
               )}
               {t.cost>0 && (
                 <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>
               )}
               {t.recurring && (
-                <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>🔁 {t.recurring}</span>
-              )}
-              {(t.notes?.startsWith("[Service]") || t.notes?.startsWith("[Auto-created from service")) && (
-                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>🔧 Service record</span>
+                <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>↻ {t.recurring}</span>
               )}
               {t.asset_id && (() => {
                 const linked = assets.find(a => a.id === t.asset_id);
                 return linked ? (
                   <span className="task-meta-pill" style={{background:"var(--rust-light)",color:"var(--rust)"}}>
-                    {ASSET_ICONS[linked.category]||"🔧"} {linked.item}
+                    {linked.item}
                   </span>
                 ) : null;
               })()}
             </div>
-            {t.notes && <div className="task-card-note">{t.notes}</div>}
+            {t.notes && !t.notes.startsWith("[") && <div className="task-card-note">{t.notes}</div>}
           </div>
           <div className="task-card-actions">
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={()=>openEdit(t)} title="Edit">✏️</button>
-            <button className="btn btn-danger btn-sm btn-icon" onClick={()=>setConfirm(t.id)} title="Delete">🗑️</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(t)} style={{fontSize:".72rem"}}>Edit</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(t.id)} style={{fontSize:".72rem",color:"var(--red)"}}>Delete</button>
           </div>
         </div>
         {!isDone && (
@@ -4267,63 +4281,118 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
       <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} onEditTask={openEdit}/>
 
       {/* ── Task List ── */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"1.25rem 0 .6rem",flexWrap:"wrap",gap:".5rem"}}>
-        <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"var(--dark)"}}>
-          All Tasks {filtered.length > 0 && <span style={{fontSize:".75rem",color:"#A8A09A",fontWeight:400,fontFamily:"'Hanken Grotesk',sans-serif"}}>· {filtered.length}</span>}
-        </span>
-        <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)}>
-          <option value="due_date">Due Date</option>
+      <div style={{margin:"1.1rem 0 .6rem",display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
+
+        {/* Status toggle — pill group */}
+        <div style={{display:"flex",background:"var(--cream2)",borderRadius:"22px",padding:"3px",gap:0}}>
+          {["Active","All","Done"].map(s => (
+            <button key={s} onClick={()=>setStatusF(s)} style={{
+              padding:".3rem .85rem",borderRadius:"19px",border:"none",cursor:"pointer",
+              fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:600,
+              background:statusF===s?"var(--white)":"transparent",
+              color:statusF===s?"var(--dark)":"#9E9690",
+              boxShadow:statusF===s?"0 1px 3px rgba(0,0,0,.09)":"none",
+              transition:"all .15s",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"
+            }}>
+              {s}
+              {s==="Active" && overdueCount > 0 && (
+                <span style={{background:"var(--red)",color:"#fff",borderRadius:"10px",fontSize:".58rem",padding:"1px 5px",fontWeight:700}}>
+                  {overdueCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Category filter — dropdown pill */}
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setShowCatFilter(v=>!v)} style={{
+            padding:".32rem .85rem",borderRadius:"22px",border:"1.5px solid",
+            fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:600,cursor:"pointer",
+            borderColor:catF!=="All"?"var(--pine)":"var(--stone)",
+            background:catF!=="All"?"var(--pine)":"var(--white)",
+            color:catF!=="All"?"#fff":"#5A534B",transition:"all .15s",
+            display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"
+          }}>
+            {catF==="All" ? "Category" : catF}
+            {catF!=="All"
+              ? <span onClick={e=>{e.stopPropagation();setCatF("All");}} style={{marginLeft:2,opacity:.7}}>✕</span>
+              : <span style={{opacity:.5,fontSize:".7rem"}}>▾</span>
+            }
+          </button>
+          {showCatFilter && (
+            <div style={{position:"absolute",top:"110%",left:0,background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:".35rem",zIndex:60,minWidth:170,boxShadow:"0 4px 16px rgba(0,0,0,.1)"}}>
+              {["All",...CATEGORIES].map(c => (
+                <button key={c} onClick={()=>{setCatF(c);setShowCatFilter(false);}} style={{
+                  display:"block",width:"100%",textAlign:"left",padding:".42rem .75rem",
+                  borderRadius:"6px",border:"none",fontFamily:"'Hanken Grotesk',sans-serif",
+                  fontSize:".82rem",cursor:"pointer",background:catF===c?"var(--cream2)":"transparent",
+                  color:catF===c?"var(--dark)":"#5A534B",fontWeight:catF===c?600:400
+                }}>
+                  {c==="All" ? "All categories" : c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sort — right aligned */}
+        <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)} style={{marginLeft:"auto"}}>
+          <option value="due_date">Due date</option>
           <option value="priority">Priority</option>
           <option value="title">A–Z</option>
           <option value="cost">Cost</option>
         </select>
       </div>
 
-      {/* Status filters */}
-      <div className="toolbar" style={{marginBottom:".4rem"}}>
-        {["All",...STATUS_OPTIONS].map(s=>(
-          <button key={s} className={`chip ${statusF===s?"on":""}`} onClick={()=>setStatusF(s)}>{s}</button>
-        ))}
-      </div>
-
-      {/* Category filters */}
-      <div className="toolbar">
-        {["All",...CATEGORIES].map(c=>(
-          <button key={c} className={`chip ${catF===c?"on":""}`} onClick={()=>setCatF(c)}>{CAT_ICONS[c]||""} {c}</button>
-        ))}
-      </div>
-
-      {/* Seasonal suggestions */}
-      {showSeasonal && (
-        <div className="seasonal-section" style={{background:climate.color, borderColor:climate.border}}>
-          <div className="seasonal-section-title">
-            {seasonIcon} {seasonLabel} checklist — {climate.label}
-            <button onClick={()=>setShowSeasonal(false)} style={{marginLeft:"auto",background:"none",border:"none",color:"#A8A09A",cursor:"pointer",fontSize:".8rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Dismiss</button>
-          </div>
-          {seasonalSuggestions.slice(0,4).map((title,i) => (
-            <div key={i} className="seasonal-task-row" onClick={()=>addSeasonalTask(title)}>
-              <span style={{fontSize:".9rem"}}>{["🌡️","🔧","⚡","🏚️"][i%4]}</span>
-              <span style={{flex:1,fontSize:".83rem",fontWeight:500}}>{title}</span>
-              <span style={{fontSize:".75rem",color:"var(--rust)",fontWeight:600}}>＋ Add</span>
-            </div>
-          ))}
+      {/* Active filter summary */}
+      {(catF!=="All") && (
+        <div style={{fontSize:".75rem",color:"#7A7370",marginBottom:".5rem"}}>
+          Showing {filtered.length} task{filtered.length!==1?"s":""} in <strong>{catF}</strong>
+          <button onClick={()=>setCatF("All")} style={{marginLeft:".4rem",color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:600,fontFamily:"'Hanken Grotesk',sans-serif"}}>
+            Clear ✕
+          </button>
         </div>
       )}
 
       {/* Empty state */}
       {filtered.length===0 && (
         <div className="empty">
-          <span className="ei">🔧</span>
+          <span className="ei">{tasks.length===0?"🏡":"🔍"}</span>
           <strong>{tasks.length===0?"No tasks yet":"No matching tasks"}</strong>
-          <p>{tasks.length===0?"Add your first maintenance task to start keeping your home in top shape":"Try a different filter"}</p>
-          {tasks.length===0 && <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add your first task</button>}
+          <p>{tasks.length===0?"Run the Home Setup Wizard to get a personalized maintenance schedule, or add your first task manually":"Try a different filter or category"}</p>
+          {tasks.length===0 && <button className="btn btn-primary" onClick={()=>openNew()}>Add a task</button>}
         </div>
       )}
 
       {/* Task list */}
       {filtered.map(t => <TaskCard key={t.id} t={t} />)}
 
-      {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets}/></Modal>}
+      {/* Seasonal suggestions — collapsed at bottom */}
+      {seasonalSuggestions.length > 0 && (
+        <div style={{marginTop:"1.25rem"}}>
+          <button onClick={()=>setShowSeasonal(v=>!v)} style={{display:"flex",alignItems:"center",gap:".4rem",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".75rem",fontWeight:600,color:"#9E9690",padding:".25rem 0",width:"100%"}}>
+            <span>{seasonIcon}</span>
+            <span>{seasonLabel} maintenance suggestions</span>
+            <span style={{marginLeft:"auto",fontSize:".7rem"}}>{showSeasonal?"▲":"▾"}</span>
+          </button>
+          {showSeasonal && (
+            <div style={{marginTop:".5rem",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
+              {seasonalSuggestions.slice(0,4).map((title,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem 1rem",borderBottom:i<3?"1px solid var(--stone)":"none",cursor:"pointer",transition:"background .12s"}}
+                  onClick={()=>addSeasonalTask(title)}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
+                  onMouseLeave={e=>e.currentTarget.style.background=""}>
+                  <span style={{flex:1,fontSize:".83rem",fontWeight:500,color:"var(--dark)"}}>{title}</span>
+                  <span style={{fontSize:".75rem",color:"var(--pine)",fontWeight:600}}>+ Add</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {confirm && <Confirm message="This task will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
     </div>
   );
