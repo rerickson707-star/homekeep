@@ -3495,41 +3495,79 @@ function InsuranceForm({ data, onChange, planData, onUpgrade }) {
 }
 
 // ─── SEARCH BAR ───────────────────────────────────────────────────────────────
-function SearchBar({ tasks, warranties, expenses, onNavigate }) { // role="search" added to container
+function SearchBar({ tasks, warranties, expenses, onNavigate }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    const handler = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = e => { if(ref.current && !ref.current.contains(e.target)) { setOpen(false); setFocused(false); } };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const results = q.trim().length < 2 ? [] : [
-    ...tasks.filter(t => t.title?.toLowerCase().includes(q.toLowerCase()) || t.category?.toLowerCase().includes(q.toLowerCase())).slice(0,3).map(t => ({type:"Task",icon:CAT_ICONS[t.category]||"🔧",label:t.title,sub:t.status,tab:"tasks"})),
-    ...warranties.filter(w => w.item?.toLowerCase().includes(q.toLowerCase())).slice(0,2).map(w => ({type:"Asset",icon:ASSET_ICONS[w.category]||"🔧",label:w.item,sub:w.condition||w.vendor,tab:"warranties"})),
-    ...expenses.filter(e => e.description?.toLowerCase().includes(q.toLowerCase())).slice(0,2).map(e => ({type:"Expense",icon:"💲",label:e.description,sub:fmt$(e.amount),tab:"expenses"})),
-  ];
+  const trimmed = q.trim();
+
+  const taskResults    = trimmed.length < 2 ? [] : tasks.filter(t => t.title?.toLowerCase().includes(trimmed.toLowerCase()) || t.category?.toLowerCase().includes(trimmed.toLowerCase())).slice(0,3).map(t => ({type:"Task",    icon:CAT_ICONS[t.category]||"🔧", label:t.title,       sub:t.status,         tab:"tasks"}));
+  const assetResults   = trimmed.length < 2 ? [] : warranties.filter(w => w.item?.toLowerCase().includes(trimmed.toLowerCase())).slice(0,2).map(w => ({type:"Asset",   icon:ASSET_ICONS[w.category]||"🔧", label:w.item, sub:w.condition||"",  tab:"warranties"}));
+  const expenseResults = trimmed.length < 2 ? [] : expenses.filter(e => e.description?.toLowerCase().includes(trimmed.toLowerCase())).slice(0,2).map(e => ({type:"Expense", icon:"💲",                         label:e.description,  sub:fmt$(e.amount),   tab:"expenses"}));
+
+  const hasResults = taskResults.length > 0 || assetResults.length > 0 || expenseResults.length > 0;
+  const showDropdown = open && (focused || trimmed.length >= 2);
 
   return (
-    <div className="search-wrap" ref={ref}>
+    <div className="search-wrap" ref={ref} role="search">
       <span className="search-icon">🔍</span>
-      <input value={q} onChange={e=>{setQ(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} placeholder="Search…" aria-label="Search tasks, assets and expenses" />
-      {open && results.length > 0 && (
+      <input
+        value={q}
+        onChange={e=>{ setQ(e.target.value); setOpen(true); }}
+        onFocus={()=>{ setOpen(true); setFocused(true); }}
+        placeholder="Search my tasks, assets…"
+        aria-label="Search your home data — tasks, assets and expenses"
+      />
+      {showDropdown && (
         <div className="search-results">
-          {results.map((r,i) => (
-            <div key={i} className="sr-item" onClick={()=>{onNavigate(r.tab);setQ("");setOpen(false);}}>
-              <span>{r.icon}</span>
-              <span style={{flex:1,fontWeight:500}}>{r.label}</span>
-              <span style={{fontSize:".72rem",color:"#9E9690"}}>{r.sub}</span>
-              <span className="sr-type">{r.type}</span>
+          {/* Hint when focused but no query yet */}
+          {trimmed.length < 2 && (
+            <div style={{padding:".6rem .85rem",fontSize:".75rem",color:"#A8A09A",lineHeight:1.5,borderBottom:"1px solid var(--stone)"}}>
+              Searches your saved <strong style={{color:"#7A7370"}}>tasks</strong>, <strong style={{color:"#7A7370"}}>assets</strong>, and <strong style={{color:"#7A7370"}}>expenses</strong> — not the web.
             </div>
-          ))}
+          )}
+
+          {/* Grouped results */}
+          {trimmed.length >= 2 && hasResults && (
+            <>
+              {[
+                {label:"Tasks",    items:taskResults},
+                {label:"Assets",   items:assetResults},
+                {label:"Expenses", items:expenseResults},
+              ].filter(g=>g.items.length>0).map(group=>(
+                <div key={group.label}>
+                  <div style={{padding:".3rem .85rem .15rem",fontSize:".65rem",fontWeight:700,color:"#C2B8AE",textTransform:"uppercase",letterSpacing:".06em",background:"var(--cream)"}}>{group.label}</div>
+                  {group.items.map((r,i)=>(
+                    <div key={i} className="sr-item" onClick={()=>{ onNavigate(r.tab); setQ(""); setOpen(false); setFocused(false); }}>
+                      <span style={{fontSize:"1rem"}}>{r.icon}</span>
+                      <span style={{flex:1,fontWeight:500,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.label}</span>
+                      {r.sub && <span style={{fontSize:".72rem",color:"#9E9690",flexShrink:0}}>{r.sub}</span>}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* No results — explain what was searched */}
+          {trimmed.length >= 2 && !hasResults && (
+            <div style={{padding:".85rem",textAlign:"center"}}>
+              <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",marginBottom:".25rem"}}>Nothing found for "{trimmed}"</div>
+              <div style={{fontSize:".74rem",color:"#A8A09A",lineHeight:1.5}}>
+                This searches your saved tasks, assets, and expenses.<br/>
+                It doesn't search the web or look up addresses.
+              </div>
+            </div>
+          )}
         </div>
-      )}
-      {open && q.trim().length >= 2 && results.length === 0 && (
-        <div className="search-results"><div className="sr-item" style={{color:"#9E9690",justifyContent:"center"}}>No results found</div></div>
       )}
     </div>
   );
