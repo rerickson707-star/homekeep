@@ -4857,21 +4857,24 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
   }, [userId]);
 
   // ── Expense CRUD
+  const EXPENSE_FIELDS = ["description","amount","date","category","vendor","notes","project_id","file_url","file_type"];
+  const pickExpense = (d) => Object.fromEntries(EXPENSE_FIELDS.filter(f => f in d).map(f => [f, d[f] ?? null]));
+
   const openNew = () => { setEditData({date:localISO()}); setEditId(null); setModal(true); };
   const openEdit = e => { setEditData({...e}); setEditId(e.id); setModal(true); };
 
   const save = async () => {
     if(!editData.description?.trim()) return;
-    const payload = {...editData};
+    const payload = pickExpense(editData);
     if(!payload.project_id) payload.project_id = null;
     if(editId) {
       const {error} = await supabase.from("expenses").update(payload).eq("id",editId).eq("user_id",userId);
-      if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId}:e)); toast("Expense updated ✓"); }
-      else toast("Error saving","error");
+      if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId,user_id:userId}:e)); toast("Expense updated ✓"); }
+      else toast("Error saving — "+error.message,"error");
     } else {
       const {data,error} = await supabase.from("expenses").insert([{...payload,user_id:userId}]).select();
-      if(!error&&data) { setExpenses([...expenses,data[0]]); toast("Expense logged ✓"); }
-      else toast("Error adding","error");
+      if(!error&&data?.[0]) { setExpenses([...expenses,data[0]]); toast("Expense logged ✓"); }
+      else toast("Error adding — "+(error?.message||"unknown error"),"error");
     }
     setModal(false);
   };
@@ -4883,19 +4886,23 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
   };
 
   // ── Project CRUD
+  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url"];
+  const pickProject = (d) => Object.fromEntries(PROJECT_FIELDS.filter(f => f in d && d[f] !== undefined).map(f => [f, d[f] ?? null]));
+
   const openNewProject = () => { setProjectEditData({status:"Planning",start_date:localISO()}); setProjectEditId(null); setProjectModal(true); };
   const openEditProject = p => { setProjectEditData({...p}); setProjectEditId(p.id); setProjectModal(true); };
 
   const saveProject = async () => {
-    if(!projectEditData.name?.trim()) return;
+    if(!projectEditData.name?.trim()) { toast("Project name is required","error"); return; }
+    const payload = pickProject(projectEditData);
     if(projectEditId) {
-      const {error} = await supabase.from("projects").update(projectEditData).eq("id",projectEditId).eq("user_id",userId);
-      if(!error) { setProjects(projects.map(p=>p.id===projectEditId?{...projectEditData,id:projectEditId}:p)); toast("Project updated ✓"); }
-      else toast("Error saving","error");
+      const {error} = await supabase.from("projects").update(payload).eq("id",projectEditId).eq("user_id",userId);
+      if(!error) { setProjects(projects.map(p=>p.id===projectEditId?{...payload,id:projectEditId,user_id:userId}:p)); toast("Project updated ✓"); }
+      else { toast("Error saving — "+error.message,"error"); return; }
     } else {
-      const {data,error} = await supabase.from("projects").insert([{...projectEditData,user_id:userId}]).select();
-      if(!error&&data) { setProjects([...projects,data[0]]); toast("Project created ✓"); }
-      else toast("Error creating","error");
+      const {data,error} = await supabase.from("projects").insert([{...payload,user_id:userId}]).select();
+      if(!error&&data?.[0]) { setProjects([...projects,data[0]]); toast("Project created ✓"); }
+      else { toast("Error creating — "+(error?.message||"unknown error"),"error"); return; }
     }
     setProjectModal(false);
   };
