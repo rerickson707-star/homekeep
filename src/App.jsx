@@ -7929,7 +7929,7 @@ export default function App() {
   // ── Main app
   const overdue = tasks.filter(t=>t.status==="Overdue").length;
   const TABS = [
-    {id:"dashboard", label:"Home",       icon:"🏠"},
+    {id:"dashboard", label:"Dashboard",   icon:"🏠"},
     {id:"tasks",     label:"Tasks",      icon:"✓",  badge:overdue},
     {id:"warranties",label:"Assets",     icon:"🔧", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
     {id:"expenses",  label:"Money",     icon:"💲"},
@@ -8550,18 +8550,27 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
   const locked = !planData.costForecast;
   const fmt = (n) => n >= 1000 ? `$${(n/1000)%1===0?(n/1000):(n/1000).toFixed(1)}k` : `$${Math.round(n)}`;
   const maxTotal = Math.max(...yearBuckets.map(b => b.total), 1);
+  const hasReplacements = yearBuckets.some(b => b.items.length > 0);
+  const allSame = yearBuckets.every(b => Math.round(b.total) === Math.round(yearBuckets[0].total));
+  const thisYear = new Date().getFullYear();
   const VW=500,VH=130,PT=22,PB=22,PL=4,PR=4;
   const chartH=VH-PT-PB, slotW=(VW-PL-PR)/5, barW=slotW*0.58;
   const font="'Hanken Grotesk',Arial,sans-serif";
   return (
     <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".6rem"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".25rem"}}>
         <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>📈 Cost Forecast</span>
         {!locked && <span className={`plan-badge ${planData.color}`}>{planData.label}</span>}
+      </div>
+      <div style={{fontSize:".68rem",color:"#A8A09A",marginBottom:".5rem"}}>
+        {allSame && !hasReplacements
+          ? "Annual maintenance only — add asset install dates to project replacements"
+          : "Annual maintenance + projected replacements by asset age"}
       </div>
       <svg viewBox={`0 0 ${VW} ${VH}`} style={{width:"100%",height:"auto",display:"block"}}>
         {yearBuckets.map((b,i)=>{
           const isLocked=locked&&i>0;
+          const isCurrent=b.year===thisYear;
           const barH=Math.max(Math.round((b.total/maxTotal)*chartH),3);
           const bx=PL+i*slotW+(slotW-barW)/2;
           const by=PT+chartH-barH;
@@ -8569,11 +8578,12 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
           const barColor=isLocked?"#E0DAD2":b.items.length>0?"#C16140":"#A7BFA8";
           return (
             <g key={i}>
-              <rect x={bx} y={by} width={barW} height={barH} rx="3" fill={barColor}/>
+              <rect x={bx} y={by} width={barW} height={barH} rx="3" fill={barColor} opacity={isCurrent?1:0.75}/>
               <text x={cx} y={PT-5} textAnchor="middle" fontSize="10.5" fontWeight="600"
                 fill={isLocked?"#C8C0B8":"#5A534B"} fontFamily={font}>{isLocked?"—":fmt(b.total)}</text>
               <text x={cx} y={VH-3} textAnchor="middle" fontSize="10"
-                fill={i===0?"#5A534B":"#A8A09A"} fontFamily={font}>{b.year}</text>
+                fill={isCurrent?"#234A3D":"#A8A09A"} fontFamily={font}
+                fontWeight={isCurrent?"700":"400"}>{b.year}</text>
             </g>
           );
         })}
@@ -8587,7 +8597,9 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
         ) : (
           <>
             <span style={{fontSize:".74rem",color:"#7A7370"}}>5-year projected: <strong style={{color:"var(--dark)"}}>{fmt(fiveYearTotal)}</strong></span>
-            {yearBuckets.some(b=>b.items.length>0)&&<span style={{fontSize:".72rem",color:"#C16140",fontWeight:600}}>{yearBuckets.filter(b=>b.items.length>0).length} replacement(s) due</span>}
+            {hasReplacements
+              ? <span style={{fontSize:".72rem",color:"#C16140",fontWeight:600}}>{yearBuckets.filter(b=>b.items.length>0).length} replacement(s) due</span>
+              : <span style={{fontSize:".72rem",color:"#A8A09A"}}>Add asset ages to see replacements</span>}
           </>
         )}
       </div>
