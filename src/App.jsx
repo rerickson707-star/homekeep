@@ -2099,7 +2099,6 @@ function LandingPage({ onSignIn, onSignUp }) {
 
 // ─── ONBOARDING WIZARD ───────────────────────────────────────────────────────
 function OnboardingWizard({ session, onComplete }) {
-  const TOTAL_STEPS = 4;
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
@@ -2110,33 +2109,23 @@ function OnboardingWizard({ session, onComplete }) {
   const [address, setAddress] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound
+  const [lookupState, setLookupState] = useState("idle");
   const [propertyData, setPropertyData] = useState(null);
-  const [suggesting, setSuggesting] = useState(false); // spinner while fetching suggestions
-  const [selectedAddress, setSelectedAddress] = useState(""); // only set via dropdown pick
+  const [suggesting, setSuggesting] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState("");
   const debounceRef = useRef(null);
   const suggestRef = useRef(null);
   const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
 
-  // Step 3 — First task
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskCategory, setTaskCategory] = useState("Other");
-  const [taskDate, setTaskDate] = useState(localISO(new Date(Date.now() + 7*86400000)));
-
-  // Close suggestions on outside click
   useEffect(() => {
     const handler = e => { if(suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggestions(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Geoapify autocomplete — faster debounce, lower min chars, loading indicator
   const handleAddressInput = (val) => {
-    setAddress(val);
-    setShowSuggestions(true);
-    setLookupState("idle");
-    setPropertyData(null);
-    setSelectedAddress("");
+    setAddress(val); setShowSuggestions(true); setLookupState("idle");
+    setPropertyData(null); setSelectedAddress("");
     clearTimeout(debounceRef.current);
     if (val.length < 3) { setSuggestions([]); setSuggesting(false); return; }
     setSuggesting(true);
@@ -2148,23 +2137,19 @@ function OnboardingWizard({ session, onComplete }) {
         setSuggestions((json.features||[]).map(f => ({
           formatted: f.properties.formatted,
           line1: f.properties.address_line1 || f.properties.street || "",
-          city:  f.properties.city || "",
+          city: f.properties.city || "",
           state: f.properties.state_code || f.properties.state || "",
-          zip:   f.properties.postcode || "",
+          zip: f.properties.postcode || "",
         })));
       } catch { setSuggestions([]); }
       finally { setSuggesting(false); }
     }, 200);
   };
 
-  // Only trigger lookup when user picks a verified suggestion — prevents partial-address mismatches
   const selectSuggestion = async (s) => {
     const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
-    setAddress(addr);
-    setSelectedAddress(addr);
-    setSuggestions([]);
-    setShowSuggestions(false);
-    setSuggesting(false);
+    setAddress(addr); setSelectedAddress(addr);
+    setSuggestions([]); setShowSuggestions(false); setSuggesting(false);
     setLookupState("loading");
     try {
       const result = await lookupProperty(addr);
@@ -2178,72 +2163,81 @@ function OnboardingWizard({ session, onComplete }) {
     setLookupState("idle"); setPropertyData(null); setSuggesting(false);
   };
 
-  // Fallback for manual entry (keep but don't expose prominently)
-  const handleLookup = async () => {
-    if (!address.trim()) return;
-    setSelectedAddress(address.trim());
-    setLookupState("loading");
-    setSuggestions([]);
-    setShowSuggestions(false);
+  // Save profile and proceed
+  const handleFinish = async (skipSetup = false) => {
+    setSaving(true);
+    const uid = session.user.id;
     try {
-      const result = await lookupProperty(address.trim());
-      if (result) { setPropertyData(result); setLookupState("found"); }
-      else setLookupState("notfound");
-    } catch { setLookupState("notfound"); }
+      const profilePayload = {
+        user_id: uid,
+        name: name.trim() || "",
+        address: propertyData?.address || address || "",
+        type: propertyData?.type || "",
+        year: propertyData?.year || "",
+        sqft: propertyData?.sqft || "",
+        bedrooms: propertyData?.bedrooms || "",
+        bathrooms: propertyData?.bathrooms || "",
+        lot_size: propertyData?.lot_size || "",
+        last_sale_price: propertyData?.last_sale_price || "",
+        last_sale_date: propertyData?.last_sale_date || "",
+        zestimate: propertyData?.zestimate || "",
+        rent_zestimate: propertyData?.rent_zestimate || "",
+        hoa_fee: propertyData?.hoa_fee || "",
+        photo_url: propertyData?.photo_url || "",
+        tax_history: propertyData?.tax_history ? JSON.stringify(propertyData.tax_history) : "",
+        price_history: propertyData?.price_history ? JSON.stringify(propertyData.price_history) : "",
+        schools: propertyData?.schools ? JSON.stringify(propertyData.schools) : "",
+        onboarding_complete: true,
+      };
+      const {data: existing} = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
+      if (existing && existing.length > 0) {
+        await supabase.from("profiles").update(profilePayload).eq("user_id", uid);
+      } else {
+        await supabase.from("profiles").insert([profilePayload]);
+      }
+      await onComplete({ launchSetup: !skipSetup });
+    } catch(e) {
+      console.error("Onboarding save error:", e);
+      await onComplete({ launchSetup: false });
+    }
   };
 
-  // Progress dots
   const ProgressDots = () => (
     <div className="wizard-progress">
-      {Array.from({length:TOTAL_STEPS}).map((_,i) => (
-        <div key={i} className={`wizard-step-dot ${i+1 < step ? "done" : i+1 === step ? "active" : "pending"}`}/>
+      {[1,2].map(i => (
+        <div key={i} className={`wizard-step-dot ${i < step ? "done" : i === step ? "active" : "pending"}`}/>
       ))}
     </div>
   );
 
-  // Step 1 — Welcome + name
+  // ── Step 1: Name ─────────────────────────────────────────────────────────────
   if (step === 1) return (
     <div className="wizard-wrap">
       <div className="wizard-card">
         <ProgressDots />
         <div className="wizard-body">
-          <span className="wizard-icon">🏠</span>
+          <span className="wizard-icon">🏡</span>
           <div className="wizard-title">Welcome to Steadwell</div>
-          <div className="wizard-sub">Your home's command center. Let's get you set up in about 2 minutes.</div>
+          <div className="wizard-sub">Your home's command center. Quick setup takes about 2 minutes.</div>
           <div className="wizard-field">
             <label>What should we call you?</label>
             <input
-              autoFocus
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="First name"
+              autoFocus value={name} onChange={e => setName(e.target.value)}
+              placeholder="Your first name"
               onKeyDown={e => e.key === "Enter" && name.trim() && setStep(2)}
             />
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginTop:".25rem"}}>
-            {[
-              {icon:"🔍", text:"Auto-fill your home's details from public records"},
-              {icon:"✓",  text:"Track maintenance tasks with climate-aware tips"},
-              {icon:"💲", text:"Log expenses and track your home investment"},
-              {icon:"🛡️", text:"Store warranties, assets, and insurance info"},
-            ].map((f,i) => (
-              <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".55rem .75rem",background:"var(--cream)",borderRadius:"10px"}}>
-                <span style={{fontSize:"1.1rem"}}>{f.icon}</span>
-                <span style={{fontSize:".84rem",color:"#4A4440"}}>{f.text}</span>
-              </div>
-            ))}
           </div>
         </div>
         <div className="wizard-footer" style={{justifyContent:"flex-end"}}>
           <button className="wizard-next" disabled={!name.trim()} onClick={() => setStep(2)}>
-            {name.trim() ? `Let's go, ${name.split(" ")[0]} →` : "Get started →"}
+            {name.trim() ? `Hi ${name.split(" ")[0]} — continue →` : "Continue →"}
           </button>
         </div>
       </div>
     </div>
   );
 
-  // Step 2 — Address (required)
+  // ── Step 2: Address ───────────────────────────────────────────────────────────
   if (step === 2) return (
     <div className="wizard-wrap">
       <div className="wizard-card">
@@ -2251,19 +2245,19 @@ function OnboardingWizard({ session, onComplete }) {
         <div className="wizard-body">
           <span className="wizard-icon">📍</span>
           <div className="wizard-title">What's your home address?</div>
-          <div className="wizard-sub">Start typing and <strong>select your address from the list</strong> — we'll look it up automatically.</div>
+          <div className="wizard-sub">
+            Start typing and select from the list — we'll look up your home's details automatically.
+          </div>
 
-          {/* Hide input once address confirmed, show reset instead */}
           {lookupState === "idle" || lookupState === "loading" ? (
             <div className="wizard-autocomplete" ref={suggestRef}>
               <div className="wizard-field" style={{position:"relative"}}>
                 <label>Home Address</label>
                 <input
-                  autoFocus
-                  value={address}
+                  autoFocus value={address}
                   onChange={e => handleAddressInput(e.target.value)}
                   onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                  placeholder="e.g. 123 Maple Street, Tampa, FL"
+                  placeholder="123 Maple Street, Tampa, FL"
                   autoComplete="off"
                   onKeyDown={e => { if(e.key === "Escape") setShowSuggestions(false); }}
                   style={{paddingRight: suggesting ? "2.2rem" : undefined}}
@@ -2289,56 +2283,45 @@ function OnboardingWizard({ session, onComplete }) {
               )}
               {showSuggestions && !suggesting && suggestions.length === 0 && address.length >= 5 && (
                 <div style={{fontSize:".8rem",color:"#A8A09A",padding:".5rem .75rem",background:"var(--cream)",borderRadius:"8px",marginTop:".35rem"}}>
-                  No suggestions yet — keep typing your full address.
+                  Keep typing — include your city and state.
                 </div>
               )}
             </div>
           ) : (
-            /* Show selected address + reset option once lookup completes */
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"10px",border:"1px solid var(--stone)"}}>
               <div style={{display:"flex",alignItems:"center",gap:".5rem",minWidth:0}}>
                 <span style={{fontSize:"1rem",flexShrink:0}}>📍</span>
                 <span style={{fontSize:".84rem",fontWeight:500,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selectedAddress || address}</span>
               </div>
-              <button onClick={resetAddress} style={{flexShrink:0,marginLeft:".75rem",fontSize:".75rem",color:"var(--rust)",background:"none",border:"none",cursor:"pointer",fontWeight:600,padding:0}}>
-                Change
-              </button>
+              <button onClick={resetAddress} style={{flexShrink:0,marginLeft:".75rem",fontSize:".75rem",color:"var(--rust)",background:"none",border:"none",cursor:"pointer",fontWeight:600,padding:0}}>Change</button>
             </div>
           )}
 
           {lookupState === "loading" && (
             <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".75rem",background:"var(--cream)",borderRadius:"10px",fontSize:".85rem",color:"#5A534B",marginTop:".5rem"}}>
               <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
-              Looking up your home details…
+              Looking up your home…
             </div>
           )}
 
           {lookupState === "found" && propertyData && (
             <div className="wizard-found">
-              <div style={{fontWeight:600,marginBottom:".4rem"}}>✓ Home found</div>
-              <div style={{fontSize:".78rem",color:"#5A534B",marginBottom:".6rem",fontStyle:"italic"}}>
-                {propertyData.address || selectedAddress}
-              </div>
+              <div style={{fontWeight:600,marginBottom:".4rem",color:"#2A9D6A"}}>✓ Home found</div>
+              <div style={{fontSize:".78rem",color:"#5A534B",marginBottom:".6rem"}}>{propertyData.address || selectedAddress}</div>
               <div className="wizard-chips">
-                {[
-                  propertyData.type,
-                  propertyData.year ? `Built ${propertyData.year}` : null,
-                  propertyData.sqft ? `${Number(propertyData.sqft).toLocaleString()} sqft` : null,
-                  propertyData.bedrooms ? `${propertyData.bedrooms} bed` : null,
-                  propertyData.bathrooms ? `${propertyData.bathrooms} bath` : null,
-                ].filter(Boolean).map((v,i) => (
+                {[propertyData.type, propertyData.year?`Built ${propertyData.year}`:null, propertyData.sqft?`${Number(propertyData.sqft).toLocaleString()} sqft`:null, propertyData.bedrooms?`${propertyData.bedrooms} bed`:null, propertyData.bathrooms?`${propertyData.bathrooms} bath`:null].filter(Boolean).map((v,i)=>(
                   <span key={i} className="wizard-chip">{v}</span>
                 ))}
               </div>
               <div style={{marginTop:".6rem",fontSize:".75rem",color:"#A8A09A"}}>
-                Not the right property? <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".75rem",fontWeight:600,padding:0}}>Search again</button>
+                Not right? <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".75rem",fontWeight:600,padding:0}}>Search again</button>
               </div>
             </div>
           )}
 
           {lookupState === "notfound" && (
             <div className="wizard-notfound">
-              No property data found for this address — that's okay. You can fill in your home details manually in the My Home tab after setup.
+              We couldn't find property data for this address — no problem. You can add your home details manually after setup.
               <div style={{marginTop:".5rem"}}>
                 <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".78rem",fontWeight:600,padding:0}}>← Try a different address</button>
               </div>
@@ -2347,160 +2330,27 @@ function OnboardingWizard({ session, onComplete }) {
         </div>
         <div className="wizard-footer">
           <button className="wizard-back" onClick={() => { resetAddress(); setStep(1); }}>← Back</button>
-          <button
-            className="wizard-next"
-            disabled={!address.trim() || lookupState === "loading"}
-            onClick={() => setStep(3)}
-          >
-            {lookupState === "found" ? "Looks good →" : lookupState === "notfound" ? "Continue anyway →" : "Continue →"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Step 3 — First task (skippable)
-  if (step === 3) return (
-    <div className="wizard-wrap">
-      <div className="wizard-card">
-        <ProgressDots />
-        <div className="wizard-body">
-          <span className="wizard-icon">✓</span>
-          <div className="wizard-title">What's on your home to-do list?</div>
-          <div className="wizard-sub">Add one maintenance task to get started. You can always add more later.</div>
-          <div className="wizard-field">
-            <label>Task</label>
-            <input
-              value={taskTitle}
-              onChange={e => setTaskTitle(e.target.value)}
-              placeholder="e.g. Replace HVAC filter, clean gutters…"
-              autoFocus
-            />
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".7rem"}}>
-            <div className="wizard-field" style={{marginBottom:0}}>
-              <label>Category</label>
-              <select value={taskCategory} onChange={e => setTaskCategory(e.target.value)}>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="wizard-field" style={{marginBottom:0}}>
-              <label>Due Date</label>
-              <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} />
-            </div>
-          </div>
-        </div>
-        <div className="wizard-footer">
-          <button className="wizard-back" onClick={() => setStep(2)}>← Back</button>
-          <div style={{display:"flex",gap:".6rem",alignItems:"center"}}>
-            <button className="wizard-skip" onClick={() => setStep(4)}>Skip</button>
+          <div style={{display:"flex",flexDirection:"column",gap:".4rem",alignItems:"flex-end"}}>
             <button
               className="wizard-next"
-              disabled={!taskTitle.trim()}
-              onClick={() => setStep(4)}
+              disabled={!address.trim() || lookupState === "loading"}
+              onClick={() => handleFinish(false)}
             >
-              Add task →
+              {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Saving…</> :
+               lookupState === "found" ? "Set up my home →" :
+               lookupState === "notfound" ? "Continue anyway →" : "Continue →"}
             </button>
+            {address.trim() && lookupState !== "loading" && !saving && (
+              <button onClick={() => handleFinish(true)} style={{fontSize:".72rem",color:"#A8A09A",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+                Skip setup for now
+              </button>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-
-  // Step 4 — Done
-  if (step === 4) {
-    const handleFinish = async () => {
-      setSaving(true);
-      const uid = session.user.id;
-      try {
-        // Save profile
-        const profilePayload = {
-          user_id: uid,
-          name: name.trim() || "",
-          address: propertyData?.address || address,
-          type: propertyData?.type || "",
-          year: propertyData?.year || "",
-          sqft: propertyData?.sqft || "",
-          bedrooms: propertyData?.bedrooms || "",
-          bathrooms: propertyData?.bathrooms || "",
-          lot_size: propertyData?.lot_size || "",
-          last_sale_price: propertyData?.last_sale_price || "",
-          last_sale_date: propertyData?.last_sale_date || "",
-          zestimate: propertyData?.zestimate || "",
-          rent_zestimate: propertyData?.rent_zestimate || "",
-          hoa_fee: propertyData?.hoa_fee || "",
-          photo_url: propertyData?.photo_url || "",
-          tax_history: propertyData?.tax_history ? JSON.stringify(propertyData.tax_history) : "",
-          price_history: propertyData?.price_history ? JSON.stringify(propertyData.price_history) : "",
-          schools: propertyData?.schools ? JSON.stringify(propertyData.schools) : "",
-          onboarding_complete: true,
-        };
-
-        // Upsert profile
-        const {data: existing} = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
-        if (existing && existing.length > 0) {
-          await supabase.from("profiles").update(profilePayload).eq("user_id", uid);
-        } else {
-          await supabase.from("profiles").insert([profilePayload]);
-        }
-
-        // Save first task — wait for it to complete before calling onComplete
-        if (taskTitle.trim()) {
-          const {error: taskError} = await supabase.from("tasks").insert([{
-            user_id: uid,
-            title: taskTitle.trim(),
-            category: taskCategory,
-            due_date: taskDate,
-            status: "Scheduled",
-            priority: "Medium",
-          }]);
-          if (taskError) console.error("Task insert error:", taskError);
-        }
-
-        // Call onComplete — this reloads profile and tasks from Supabase
-        await onComplete();
-      } catch(e) {
-        console.error("Onboarding save error:", e);
-        setSaving(false);
-        await onComplete(); // still proceed even on error
-      }
-    };
-
-    return (
-      <div className="wizard-wrap">
-        <div className="wizard-card">
-          <ProgressDots />
-          <div className="wizard-body">
-            <span className="wizard-icon">🎉</span>
-            <div className="wizard-title">You're all set!</div>
-            <div className="wizard-sub">Your home is ready to manage. Here's what you can do next.</div>
-            <div className="wizard-done-list">
-              {[
-                {icon:"🏡", title:"Complete your home profile", sub:"Add a nickname, photo, and insurance details in My Home"},
-                {icon:"💲", title:"Log your first expense", sub:"Track what you spend maintaining your home over time"},
-                {icon:"🏠", title:"Add home assets", sub:"Track your HVAC, appliances, roof, and their service history"},
-              ].map((item,i) => (
-                <div key={i} className="wizard-done-item">
-                  <span className="wizard-done-icon">{item.icon}</span>
-                  <div>
-                    <div className="wizard-done-title">{item.title}</div>
-                    <div className="wizard-done-sub">{item.sub}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="wizard-footer" style={{justifyContent:"flex-end"}}>
-            <button className="wizard-next" onClick={handleFinish} disabled={saving}>
-              {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Saving…</> : "Go to my dashboard →"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 }
-
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth, initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode); // login | signup | reset
@@ -2940,7 +2790,9 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           {ASSET_CONDITIONS.map(c=><option key={c}>{c}</option>)}
         </select>
       </div>
-      <div className="field"><label>Model / Serial #</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} /></div>
+      <div className="field"><label>Brand</label><input value={data.brand||""} onChange={e=>f("brand",e.target.value)} placeholder="e.g. Carrier, LG, Rheem"/></div>
+      <div className="field"><label>Model Number</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} placeholder="e.g. 50XC21-048"/></div>
+      <div className="field"><label>Serial Number</label><input value={data.serial_number||""} onChange={e=>f("serial_number",e.target.value)} placeholder="Found on the unit label"/></div>
       <div className="field"><label>Vendor / Store</label>
         <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Where purchased or installed by"/>
       </div>
@@ -4644,7 +4496,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{asset.item}</div>
                 <div style={{fontSize:".75rem",color:"#7A7370",marginTop:2,lineHeight:1.5}}>
-                  {[asset.category, asset.model&&`#${asset.model}`, asset.vendor].filter(Boolean).join(" · ")}
+                  {[asset.category, asset.model&&`Model: ${asset.model}`, asset.serial_number&&`S/N: ${asset.serial_number}`, asset.vendor].filter(Boolean).join(" · ")}
                 </div>
               </div>
               <span style={{padding:"3px 10px",borderRadius:"20px",fontSize:".72rem",fontWeight:700,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{asset.condition||"Good"}</span>
@@ -4829,6 +4681,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
                 <div className="asset-card-meta">
                   <span className="asset-condition" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{a.condition||"Good"}</span>
                   {a.category && <span>{a.category}</span>}
+                  {a.model && <span>Model: {a.model}</span>}
+                  {a.serial_number && <span>S/N: {a.serial_number}</span>}
                   {ageYears !== null && <span>{ageYears}yr old</span>}
                   {assetLogs.length > 0 && <span>Last serviced {fmtD(assetLogs.sort((a,b)=>new Date(b.service_date)-new Date(a.service_date))[0].service_date)}</span>}
                   {warrantySoon && <span style={{color:"#92610A",fontWeight:600}}>Warranty expiring</span>}
@@ -6325,12 +6179,20 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[] }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [insData, setInsData] = useState({});
   const [showSetup, setShowSetup] = useState(false);
+
+  // Auto-open setup wizard when coming directly from onboarding
+  useEffect(() => {
+    if (autoOpenSetup && !showSetup) {
+      setShowSetup(true);
+      onSetupOpened?.();
+    }
+  }, [autoOpenSetup]);
 
   // Home setup completion — DB is source of truth, localStorage is fallback
   const setupDone = profile?.home_setup_complete ||
@@ -7657,6 +7519,101 @@ function generateHomeProfile(answers) {
     });
   }
 
+  // ── Appliances ──────────────────────────────────────────────────────────────
+  const { appliances } = answers;
+
+  if (appliances?.hasFridge) {
+    const year = installYr(appliances.fridgeAge);
+    addAsset("fridge", "Refrigerator", "Appliances", {
+      install_date: year ? `${year}-01-01` : null,
+      lifespan_years: 15,
+      notes: appliances.fridgeAge ? `Age: ${appliances.fridgeAge} years` : null,
+    });
+    addTask("fridge", "Clean refrigerator condenser coils", "every 6 months", {
+      category: "Appliances", priority: "Medium", due_date: dueIn(90),
+      notes: "Pull fridge away from wall, vacuum coils at the back or underneath. Improves efficiency and extends life.",
+    });
+  }
+
+  if (appliances?.hasDishwasher) {
+    const year = installYr(appliances.dwAge);
+    addAsset("dishwasher", "Dishwasher", "Appliances", {
+      install_date: year ? `${year}-01-01` : null,
+      lifespan_years: 12,
+      notes: appliances.dwAge ? `Age: ${appliances.dwAge} years` : null,
+    });
+    addTask("dishwasher", "Clean dishwasher filter and run maintenance cycle", "monthly", {
+      category: "Appliances", priority: "Medium", due_date: dueIn(30),
+      notes: "Remove and rinse the filter, then run a hot cycle with a cup of white vinegar to remove buildup.",
+    });
+  }
+
+  if (appliances?.hasWasher) {
+    const year = installYr(appliances.washerAge);
+    addAsset("washer", "Washing Machine", "Appliances", {
+      install_date: year ? `${year}-01-01` : null,
+      lifespan_years: 12,
+      notes: appliances.washerAge ? `Age: ${appliances.washerAge} years` : null,
+    });
+    addTask("washer", "Clean washing machine drum and dispenser", "monthly", {
+      category: "Appliances", priority: "Medium", due_date: dueIn(30),
+      notes: "Run a hot empty cycle with a washing machine cleaner tablet or white vinegar to remove soap buildup and odors.",
+    });
+    addTask("washer", "Check and clean washing machine hoses", "Annually", {
+      category: "Appliances", priority: "High", due_date: dueIn(180),
+      notes: "Inspect water supply hoses for cracks or bulging. Replace every 5 years regardless — a burst hose is a leading cause of home flooding.",
+    });
+  }
+
+  if (appliances?.hasDryer) {
+    const year = installYr(appliances.dryerAge);
+    const fuelLabel = appliances.dryerFuel ? ` (${appliances.dryerFuel})` : "";
+    addAsset("dryer", `Dryer${fuelLabel}`, "Appliances", {
+      install_date: year ? `${year}-01-01` : null,
+      lifespan_years: 13,
+      notes: [appliances.dryerAge ? `Age: ${appliances.dryerAge} years` : null, appliances.dryerFuel ? `Fuel: ${appliances.dryerFuel}` : null].filter(Boolean).join(" · "),
+    });
+    addTask("dryer", "Clean dryer exhaust duct", "Annually", {
+      category: "Appliances", priority: "Urgent", due_date: dueIn(30),
+      notes: "Clogged dryer vents are a leading cause of house fires. Disconnect duct, vacuum out lint, and check exterior vent for blockages.",
+    });
+  }
+
+  if (appliances?.hasRange) {
+    const year = installYr(appliances.rangeAge);
+    const fuelLabel = appliances.rangeFuel ? ` (${appliances.rangeFuel === "dual" ? "dual fuel" : appliances.rangeFuel})` : "";
+    addAsset("range", `Oven / Range${fuelLabel}`, "Appliances", {
+      install_date: year ? `${year}-01-01` : null,
+      lifespan_years: 18,
+      notes: [appliances.rangeAge ? `Age: ${appliances.rangeAge} years` : null, appliances.rangeFuel ? `Fuel: ${appliances.rangeFuel}` : null].filter(Boolean).join(" · "),
+    });
+    if (appliances.rangeFuel === "gas" || appliances.rangeFuel === "dual") {
+      addTask("range", "Inspect gas range connections and burners", "Annually", {
+        category: "Appliances", priority: "High", due_date: dueIn(90),
+        notes: "Check gas connections for leaks (use soapy water — bubbles indicate a leak). Clean burner ports and igniters.",
+      });
+    }
+  }
+
+  if (appliances?.hasMicrowave) {
+    const year = installYr(appliances.mwAge);
+    addAsset("microwave", "Built-in Microwave", "Appliances", {
+      install_date: year ? `${year}-01-01` : null,
+      lifespan_years: 10,
+      notes: appliances.mwAge ? `Age: ${appliances.mwAge} years` : null,
+    });
+  }
+
+  if (appliances?.notes?.trim()) {
+    assets.push({
+      _key: "appliances_custom",
+      item: appliances.notes.trim(),
+      category: "Appliances",
+      condition: "Good",
+      notes: "Added from home setup — add maintenance tasks manually",
+    });
+  }
+
   // ── Custom free-form entries ───────────────────────────────────────────────
   if (custom?.trim()) {
     assets.push({
@@ -8117,6 +8074,7 @@ export default function App() {
   const [docLightbox, setDocLightbox] = useState(null);
   const [showContractors, setShowContractors] = useState(false);
   const [contractors, setContractors] = useState([]);
+  const [autoOpenSetup, setAutoOpenSetup] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -8220,8 +8178,7 @@ export default function App() {
         <style>{CSS}</style>
         <OnboardingWizard
           session={session}
-          onComplete={async () => {
-            // Reload profile and tasks after wizard saves them
+          onComplete={async ({ launchSetup } = {}) => {
             const uid = session.user.id;
             const [p, t] = await Promise.all([
               supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
@@ -8229,6 +8186,8 @@ export default function App() {
             ]);
             if(p.data && p.data.length > 0) setProfile(p.data[0]);
             if(t.data) setTasks(t.data);
+            // Navigate to My Home and auto-open the setup wizard if requested
+            if (launchSetup) { setTab("profile"); setAutoOpenSetup(true); }
           }}
         />
         <Toasts toasts={toasts} />
@@ -8243,7 +8202,7 @@ export default function App() {
         <style>{CSS}</style>
         <OnboardingWizard
           session={session}
-          onComplete={async () => {
+          onComplete={async ({ launchSetup } = {}) => {
             const uid = session.user.id;
             const [p, t] = await Promise.all([
               supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
@@ -8251,6 +8210,7 @@ export default function App() {
             ]);
             if(p.data && p.data.length > 0) setProfile(p.data[0]);
             if(t.data) setTasks(t.data);
+            if (launchSetup) { setTab("profile"); setAutoOpenSetup(true); }
           }}
         />
         <Toasts toasts={toasts} />
@@ -8324,7 +8284,7 @@ export default function App() {
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)}/>}
             </>
           )}
         </main>
@@ -8944,21 +8904,24 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
 
 
 function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete }) {
-  const STEPS = ["HVAC","Water","Structure","Extras","Review"];
+  const STEPS = ["HVAC","Water","Structure","Extras","Appliances","Review"];
   const [step, setStep]     = useState(0);
   const [saving, setSaving] = useState(false);
   const [reviewTab, setReviewTab] = useState("assets");
+  const [assetDetails, setAssetDetails] = useState({});
 
   // Answers state
   const [A, setA] = useState({
-    hvac: { hasCentralAC:null, acType:null, acAge:null, hasFurnace:null, furnaceFuel:null, furnaceAge:null, hasHumidifier:null, notes:"" },
-    water:{ source:null, hasPressureTank:null, hasWaterHeater:null, heaterType:null, heaterAge:null, hasSoftener:null, notes:"" },
-    structure:{ roofType:null, roofAge:null, exteriorType:null, foundationType:null, hasChimney:null, notes:"" },
-    extras:{ hasPool:null, poolType:null, poolChemistry:null, hasIrrigation:null, hasSolar:null, hasSeptic:null, hasGenerator:null, notes:"" },
+    hvac:      { hasCentralAC:null, acType:null, acAge:null, hasFurnace:null, furnaceFuel:null, furnaceAge:null, hasHumidifier:null, notes:"" },
+    water:     { source:null, hasPressureTank:null, hasWaterHeater:null, heaterType:null, heaterAge:null, hasSoftener:null, notes:"" },
+    structure: { roofType:null, roofAge:null, exteriorType:null, foundationType:null, hasChimney:null, notes:"" },
+    extras:    { hasPool:null, poolType:null, poolChemistry:null, hasIrrigation:null, hasSolar:null, hasSeptic:null, hasGenerator:null, notes:"" },
+    appliances:{ hasFridge:null, fridgeAge:null, hasDishwasher:null, dwAge:null, hasWasher:null, washerAge:null, hasDryer:null, dryerAge:null, dryerFuel:null, hasRange:null, rangeAge:null, rangeFuel:null, hasMicrowave:null, mwAge:null, notes:"" },
     custom:"",
   });
 
   const set = (section, key, val) => setA(a => ({...a, [section]:{...a[section],[key]:val}}));
+  const setDetail = (i, field, val) => setAssetDetails(d => ({...d, [i]:{...(d[i]||{}), [field]:val}}));
 
   // Generated output (computed on step 4 — review)
   const [generated, setGenerated] = useState(null);
@@ -8994,7 +8957,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     const dr={};
     result.assets.forEach((a,i) => { if(findDup(a)) dr[i] = "add_new"; });
     setDupResolutions(dr);
-    setStep(4);
+    setStep(5); // Review is now step 5
   };
 
   // Batch save to Supabase
@@ -9010,14 +8973,24 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
         const { _key, ...assetData } = generated.assets[i];
         const dup = findDup(generated.assets[i]);
         const res = dupResolutions[i] || "add_new";
+        // Merge user-entered details from Review screen
+        const det = assetDetails[i] || {};
+        const enriched = {
+          ...assetData,
+          item:          det.brand ? `${det.brand} ${assetData.item}` : assetData.item,
+          model:         det.model  || assetData.model  || "",
+          serial_number: det.serial || "",
+          vendor:        det.vendor || assetData.vendor || "",
+          install_date:  det.year   ? `${det.year}-01-01` : assetData.install_date,
+        };
 
         if (dup && res === "skip") continue;
         if (dup && res === "update") {
-          const notes = [dup.notes, assetData.notes].filter(Boolean).join(" · ");
-          await supabase.from("warranties").update({...assetData, notes}).eq("id",dup.id).eq("user_id",userId);
+          const notes = [dup.notes, enriched.notes].filter(Boolean).join(" · ");
+          await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id).eq("user_id",userId);
           keyToId[_key] = dup.id;
         } else {
-          const { data } = await supabase.from("warranties").insert([{...assetData, user_id:userId}]).select("id");
+          const { data } = await supabase.from("warranties").insert([{...enriched, user_id:userId}]).select("id");
           if (data?.[0]) keyToId[_key] = data[0].id;
         }
       }
@@ -9086,8 +9059,18 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
   );
 
   const Progress = () => (
-    <div className="hsw-progress">
-      {STEPS.map((s,i) => <div key={s} className={`hsw-prog-seg ${i<step?"done":i===step?"active":""}`}/>)}
+    <div style={{marginBottom:"1.1rem"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
+        <span style={{fontSize:".7rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em"}}>
+          {step < STEPS.length - 1 ? `Step ${step+1} of ${STEPS.length-1}` : "Review"}
+        </span>
+        <button onClick={onComplete} style={{fontSize:".7rem",color:"#C8C0B8",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
+          Finish later ✕
+        </button>
+      </div>
+      <div className="hsw-progress">
+        {STEPS.map((s,i) => <div key={s} className={`hsw-prog-seg ${i<step?"done":i===step?"active":""}`}/>)}
+      </div>
     </div>
   );
 
@@ -9095,8 +9078,8 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
   if (step === 0) return (
     <div className="hsw-wrap">
       <Progress/>
-      <div className="hsw-section-title">🌡️ Heating & Cooling</div>
-      <div className="hsw-section-sub">Tell us about your home's climate systems. We'll build a maintenance schedule around what you actually have.</div>
+      <div className="hsw-section-title">Heating & Cooling</div>
+      <div className="hsw-section-sub">Tell us what climate systems you have. We'll create the right maintenance reminders — like filter changes and annual tune-ups. <strong>Skip anything that doesn't apply.</strong></div>
 
       <div className="hsw-q">
         <div className="hsw-q-label">Do you have central air conditioning or a heat pump?</div>
@@ -9144,8 +9127,8 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       </div>
 
       <div className="hsw-nav">
-        <button className="btn btn-ghost" onClick={onComplete}>Skip setup</button>
-        <button className="btn btn-primary" onClick={()=>setStep(1)}>Next: Water →</button>
+        <div/>
+        <button className="btn btn-primary" onClick={()=>setStep(1)}>Continue →</button>
       </div>
     </div>
   );
@@ -9203,7 +9186,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
 
       <div className="hsw-nav">
         <button className="btn btn-ghost" onClick={()=>setStep(0)}>← Back</button>
-        <button className="btn btn-primary" onClick={()=>setStep(2)}>Next: Structure →</button>
+        <button className="btn btn-primary" onClick={()=>setStep(2)}>Continue →</button>
       </div>
     </div>
   );
@@ -9248,7 +9231,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
 
       <div className="hsw-nav">
         <button className="btn btn-ghost" onClick={()=>setStep(1)}>← Back</button>
-        <button className="btn btn-primary" onClick={()=>setStep(3)}>Next: Extras →</button>
+        <button className="btn btn-primary" onClick={()=>setStep(3)}>Continue →</button>
       </div>
     </div>
   );
@@ -9303,13 +9286,79 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
 
       <div className="hsw-nav">
         <button className="btn btn-ghost" onClick={()=>setStep(2)}>← Back</button>
-        <button className="btn btn-primary" onClick={goReview}>Review →</button>
+        <button className="btn btn-primary" onClick={()=>setStep(4)}>Continue →</button>
       </div>
     </div>
   );
 
-  // ── STEP 4 — REVIEW ──────────────────────────────────────────────────────────
-  if (step === 4 && generated) {
+  // ── STEP 4 — APPLIANCES ─────────────────────────────────────────────────────
+  if (step === 4) return (
+    <div className="hsw-wrap">
+      <Progress/>
+      <div className="hsw-section-title">Appliances</div>
+      <div className="hsw-section-sub">Tell us about your major appliances. We'll track their age and create maintenance reminders. Skip anything you don't have.</div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Refrigerator</div>
+        <YN section="appliances" field="hasFridge" val={A.appliances.hasFridge}/>
+        {A.appliances.hasFridge && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="fridgeAge" val={A.appliances.fridgeAge}/></div></div>}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Dishwasher</div>
+        <YN section="appliances" field="hasDishwasher" val={A.appliances.hasDishwasher}/>
+        {A.appliances.hasDishwasher && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="dwAge" val={A.appliances.dwAge}/></div></div>}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Washing Machine</div>
+        <YN section="appliances" field="hasWasher" val={A.appliances.hasWasher}/>
+        {A.appliances.hasWasher && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="washerAge" val={A.appliances.washerAge}/></div></div>}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Dryer</div>
+        <YN section="appliances" field="hasDryer" val={A.appliances.hasDryer}/>
+        {A.appliances.hasDryer && (
+          <div className="hsw-sub-q">
+            <div><div className="hsw-q-label">Fuel type?</div><Opts section="appliances" field="dryerFuel" val={A.appliances.dryerFuel} options={[["gas","Gas"],["electric","Electric"]]}/></div>
+            <div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="dryerAge" val={A.appliances.dryerAge}/></div>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Oven / Range</div>
+        <YN section="appliances" field="hasRange" val={A.appliances.hasRange}/>
+        {A.appliances.hasRange && (
+          <div className="hsw-sub-q">
+            <div><div className="hsw-q-label">Fuel type?</div><Opts section="appliances" field="rangeFuel" val={A.appliances.rangeFuel} options={[["gas","Gas"],["electric","Electric"],["dual","Dual fuel"]]}/></div>
+            <div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="rangeAge" val={A.appliances.rangeAge}/></div>
+          </div>
+        )}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Built-in Microwave</div>
+        <YN section="appliances" field="hasMicrowave" val={A.appliances.hasMicrowave}/>
+        {A.appliances.hasMicrowave && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="mwAge" val={A.appliances.mwAge}/></div></div>}
+      </div>
+
+      <div className="hsw-q">
+        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <div className="hsw-q-sub">e.g. wine fridge, garbage disposal, second fridge, trash compactor</div>
+        <textarea className="hsw-free" rows={2} value={A.appliances.notes} onChange={e=>set("appliances","notes",e.target.value)} placeholder="Other appliances…"/>
+      </div>
+
+      <div className="hsw-nav">
+        <button className="btn btn-ghost" onClick={()=>setStep(3)}>← Back</button>
+        <button className="btn btn-primary" onClick={goReview}>Review my plan →</button>
+      </div>
+    </div>
+  );
+
+  // ── STEP 5 — REVIEW ──────────────────────────────────────────────────────────
+  if (step === 5 && generated) {
     const selA = generated.assets.filter((_,i)  => assetChecks[i]);
     const selT = generated.tasks.filter((_,i)   => taskChecks[i]);
     const selP = generated.projects.filter((_,i) => projectChecks[i]);
@@ -9317,7 +9366,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     return (
       <div className="hsw-wrap">
         <Progress/>
-        <div className="hsw-section-title">✓ Review your home profile</div>
+        <div className="hsw-section-title">Your maintenance plan is ready</div>
         <div className="hsw-section-sub">Here's what we'll create. Uncheck anything you don't want. You can always add or edit later.</div>
 
         {/* Summary row */}
@@ -9349,16 +9398,45 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
             ) : generated.assets.map((a, i) => {
               const dup = findDup(a);
               const res = dupResolutions[i] || "add_new";
+              const det = assetDetails[i] || {};
               return (
-                <div key={i}>
-                  <div className="hsw-item" onClick={()=>setAssetChecks(c=>({...c,[i]:!c[i]}))}>
+                <div key={i} style={{marginBottom:".5rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",background:"var(--white)"}}>
+                  {/* Main row */}
+                  <div className="hsw-item" style={{borderRadius:0,border:"none"}} onClick={()=>setAssetChecks(c=>({...c,[i]:!c[i]}))}>
                     <input type="checkbox" checked={!!assetChecks[i]} readOnly/>
                     <div className="hsw-item-info">
-                      <div className="hsw-item-title">{a.item}</div>
+                      <div className="hsw-item-title">{det.brand ? `${det.brand} ` : ""}{a.item}</div>
                       <div className="hsw-item-sub">{a.category}{a.notes ? ` · ${a.notes}` : ""}</div>
                     </div>
                     {dup && <span className="hsw-dup-badge">⚠ Similar exists</span>}
                   </div>
+                  {/* Detail fields — always visible when checked */}
+                  {assetChecks[i] && (
+                    <div style={{padding:".6rem .85rem .75rem",borderTop:"1px solid var(--stone)",background:"var(--cream)"}}>
+                      <div style={{fontSize:".7rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".5rem"}}>
+                        Add details — optional, but helps track this asset
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".4rem"}}>
+                        {[
+                          {key:"brand",  ph:"Brand (e.g. Carrier, LG, GE)"},
+                          {key:"model",  ph:"Model number"},
+                          {key:"serial", ph:"Serial number"},
+                          {key:"year",   ph:"Install / purchase year"},
+                          {key:"vendor", ph:"Purchased from / installed by"},
+                        ].map(({key,ph})=>(
+                          <input key={key}
+                            value={det[key]||""}
+                            onChange={e=>setDetail(i,key,e.target.value)}
+                            placeholder={ph}
+                            style={{padding:".4rem .6rem",border:"1.5px solid var(--stone)",borderRadius:"8px",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",color:"var(--dark)",background:"var(--white)",outline:"none",gridColumn: key==="vendor"?"1 / -1":undefined}}
+                            onFocus={e=>e.target.style.borderColor="var(--pine)"}
+                            onBlur={e=>e.target.style.borderColor="var(--stone)"}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Dup handling */}
                   {dup && assetChecks[i] && (
                     <div className="hsw-dup-block">
                       <div>Existing: <strong>{dup.item}</strong> · {dup.category}</div>
