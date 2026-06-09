@@ -5083,24 +5083,57 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
   // Biggest single expense this year
   const biggestThisYear = thisYear.reduce((max,e)=>Number(e.amount||0)>Number(max?.amount||0)?e:max, null);
 
+  // Monthly total for summary line
+  const thisMonthNum = new Date().getMonth() + 1;
+  const thisMonthStr = String(thisMonthNum).padStart(2,"0");
+  const thisMonthTotal = allExpenseItems
+    .filter(e => e.date?.startsWith(`${yr}-${thisMonthStr}`))
+    .reduce((s,e) => s + Number(e.amount||0), 0) +
+    bills.filter(b => b.bill_date?.startsWith(`${yr}-${thisMonthStr}`))
+    .reduce((s,b) => s + Number(b.amount||0), 0);
+
   return (
     <div>
-      {/* View toggle */}
-      <div className="sh">
-        <span className="sh-title">Finances</span>
-        <div className="sh-right">
-          <div className="view-toggle">
-            <button className={`view-btn ${view==="expenses"?"active":""}`} onClick={()=>setView("expenses")}>Expenses</button>
-            <button className={`view-btn ${view==="projects"?"active":""}`} onClick={()=>setView("projects")}>Projects {projects.length>0&&`(${projects.length})`}</button>
-            <button className={`view-btn ${view==="utilities"?"active":""}`} onClick={()=>setView("utilities")}>Utilities {utilities.length>0&&`(${utilities.length})`}</button>
-          </div>
-          {view==="expenses"
-            ? <button className="btn btn-primary" onClick={openNew}>＋ Log Expense</button>
-            : view==="projects"
-            ? <button className="btn btn-primary" onClick={openNewProject}>＋ New Project</button>
-            : <button className="btn btn-primary" onClick={openNewUtil}>＋ Add Utility</button>
-          }
+      {/* Header */}
+      <div className="sh" style={{marginBottom:0}}>
+        <span className="sh-title">Money</span>
+      </div>
+
+      {/* Prominent sub-navigation tabs */}
+      <div style={{display:"flex",borderBottom:"2px solid var(--stone)",marginBottom:".85rem"}}>
+        {[
+          {id:"expenses",  label:"Expenses"},
+          {id:"projects",  label:"Projects",  count:projects.length},
+          {id:"utilities", label:"Utilities", count:utilities.length},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setView(t.id)} style={{
+            flex:1,padding:".7rem .5rem",border:"none",background:"none",
+            fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:600,
+            color:view===t.id?"var(--dark)":"#A8A09A",cursor:"pointer",
+            borderBottom:view===t.id?"2.5px solid var(--pine)":"2.5px solid transparent",
+            marginBottom:"-2px",transition:"color .15s",whiteSpace:"nowrap",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+          }}>
+            {t.label}
+            {t.count>0 && <span style={{fontSize:".65rem",color:view===t.id?"var(--pine)":"#C2B8AE",background:view===t.id?"rgba(35,74,61,.1)":"var(--cream2)",padding:"1px 6px",borderRadius:"10px",fontWeight:700}}>{t.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Context bar: summary + add button */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem",gap:".5rem"}}>
+        <div style={{fontSize:".8rem",color:"#7A7370",minWidth:0}}>
+          {view==="expenses" && thisMonthTotal > 0 && (
+            <>This month: <strong style={{color:"var(--dark)"}}>{fmt$(thisMonthTotal)}</strong>
+            {" · "}{yr}: <strong style={{color:"var(--dark)"}}>{fmt$(thisYrTotalWithService)}</strong></>
+          )}
+          {view==="expenses" && thisMonthTotal === 0 && <span>Track your home spending</span>}
+          {view==="projects" && <span>{projects.length} project{projects.length!==1?"s":""}{projects.length>0?` · ${fmt$(projects.reduce((s,p)=>s+Number(p.budget||0),0))} budgeted`:""}</span>}
+          {view==="utilities" && <span>{utilities.length} utilit{utilities.length!==1?"ies":"y"} tracked</span>}
         </div>
+        <button className="btn btn-primary" style={{flexShrink:0}} onClick={view==="expenses"?openNew:view==="projects"?openNewProject:openNewUtil}>
+          {view==="expenses"?"+ Log expense":view==="projects"?"+ New project":"+ Add utility"}
+        </button>
       </div>
 
       {/* ══ EXPENSES VIEW ══ */}
@@ -5108,7 +5141,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
         <div>
           {/* Investment hero */}
           <div className="invest-hero">
-            <div className="invest-hero-label">Total home investment</div>
+            <div className="invest-hero-label">All-time home spend</div>
             <div className="invest-hero-amount">{fmt$(allTotal)}</div>
             <div className="invest-hero-row">
               <div className="invest-hero-stat">
@@ -5250,49 +5283,41 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
                 const isPdf = e.file_url && e.file_url.match(/\.pdf/i);
                 const isServiceLog = e._isServiceLog;
                 return (
-                  <div key={e.id} className="exp-card" style={{flexDirection:"column",gap:0}}>
-                    <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
-                      <div className="exp-card-icon" style={{background: isServiceLog ? "var(--rust-light)" : CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length]+"22"}}>
-                        {isServiceLog ? "🔧" : CAT_ICONS[e.category]||"🔧"}
-                      </div>
-                      <div className="exp-card-body">
-                        <div className="exp-card-title">{e.description}</div>
-                        <div className="exp-card-meta">
-                          {e.date && <span>{fmtD(e.date)}</span>}
-                          {e.category && <span>{e.category}</span>}
-                          {e.vendor && <span>👤 {e.vendor}</span>}
-                          {proj && <span className="exp-project-tag">🔨 {proj.name}</span>}
-                          {isServiceLog && (
-                            <span style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:".65rem",fontWeight:600,color:"var(--rust)",background:"var(--rust-light)",padding:"1px 7px",borderRadius:10}}>
-                              🔧 Asset service
-                            </span>
-                          )}
-                          {e.file_url && <span style={{color:"var(--rust)",fontSize:".65rem",fontWeight:600}}>📎 receipt</span>}
-                        </div>
-                        {e.notes && !isServiceLog && <div style={{fontSize:".72rem",color:"#7A7370",marginTop:"3px"}}>{e.notes}</div>}
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:0}}>
-                        <div className="exp-card-amount">{fmt$(e.amount)}</div>
-                        {!isServiceLog && (
-                          <div style={{display:"flex",gap:"3px"}}>
-                            <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(e)}>Edit</button>
-                            <button className="btn btn-danger btn-sm" onClick={()=>setConfirm(e.id)}>✕</button>
-                          </div>
-                        )}
-                      </div>
+                  <div key={e.id} className="exp-card">
+                    <div className="exp-card-icon" style={{background: isServiceLog ? "var(--rust-light)" : CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length]+"22",flexShrink:0}}>
+                      {isServiceLog ? "⚙" : CAT_ICONS[e.category]||"·"}
                     </div>
-                    {/* File preview — only for regular expenses */}
-                    {!isServiceLog && e.file_url && (
-                      <div className="exp-card-file">
-                        {isImage ? (
-                          <img src={e.file_url} alt="Receipt" className="exp-file-thumb" onClick={()=>setLightbox(e.file_url)} />
-                        ) : isPdf ? (
-                          <a href={e.file_url} target="_blank" rel="noopener noreferrer" className="exp-file-pdf">
-                            📄 View PDF receipt — tap to open
-                          </a>
-                        ) : null}
+                    <div className="exp-card-body" style={{minWidth:0,flex:1}}>
+                      <div className="exp-card-title" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{e.description}</div>
+                      <div className="exp-card-meta">
+                        {e.date && <span>{fmtD(e.date)}</span>}
+                        {e.category && <span>{e.category}</span>}
+                        {e.vendor && <span>{e.vendor}</span>}
+                        {proj && <span className="exp-project-tag">{proj.name}</span>}
+                        {isServiceLog && <span style={{fontSize:".65rem",fontWeight:600,color:"var(--rust)",background:"var(--rust-light)",padding:"1px 7px",borderRadius:10}}>Asset service</span>}
+                        {e.file_url && <span style={{color:"var(--rust)",fontSize:".65rem",fontWeight:600}}>Receipt</span>}
                       </div>
-                    )}
+                      {e.notes && !isServiceLog && <div style={{fontSize:".72rem",color:"#7A7370",marginTop:"3px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.notes}</div>}
+                      {/* File preview */}
+                      {!isServiceLog && e.file_url && (
+                        <div className="exp-card-file" style={{marginTop:".4rem"}}>
+                          {isImage ? (
+                            <img src={e.file_url} alt="Receipt" className="exp-file-thumb" onClick={()=>setLightbox(e.file_url)} />
+                          ) : isPdf ? (
+                            <a href={e.file_url} target="_blank" rel="noopener noreferrer" className="exp-file-pdf">View PDF receipt</a>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:0,marginLeft:".5rem"}}>
+                      <div className="exp-card-amount">{fmt$(e.amount)}</div>
+                      {!isServiceLog && (
+                        <div style={{display:"flex",gap:"3px"}}>
+                          <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(e)} style={{fontSize:".72rem"}}>Edit</button>
+                          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(e.id)} style={{fontSize:".72rem",color:"var(--red)"}}>Delete</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -7907,7 +7932,7 @@ export default function App() {
     {id:"dashboard", label:"Home",       icon:"🏠"},
     {id:"tasks",     label:"Tasks",      icon:"✓",  badge:overdue},
     {id:"warranties",label:"Assets",     icon:"🔧", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
-    {id:"expenses",  label:"Expenses",   icon:"💲"},
+    {id:"expenses",  label:"Money",     icon:"💲"},
     {id:"profile",   label:"My Home",    icon:"🏡"},
   ];
   const uid = session.user.id;
