@@ -4411,7 +4411,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
   const [serviceEditId, setServiceEditId] = useState(null);
   const [serviceAssetId, setServiceAssetId] = useState(null);
   const [serviceConfirm, setServiceConfirm] = useState(null);
-  const [expandedService, setExpandedService] = useState(null);
+  const [selectedAsset, setSelectedAsset] = useState(null); // null = list, id = detail view
 
   // Asset CRUD
   const openNew = () => { setEditData({condition:"Good"}); setEditId(null); setModal(true); };
@@ -4544,11 +4544,169 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
   const totalReplacement = assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0);
   const needsAttention = assets.filter(a=>a.condition==="Needs Attention"||a.condition==="Failed").length;
 
+  // If an asset is selected, show detail view
+  if (selectedAsset) {
+    const asset = assets.find(a => a.id === selectedAsset);
+    if (!asset) { setSelectedAsset(null); return null; }
+    const assetLogs = serviceLogs.filter(s => s.asset_id === asset.id).sort((a,b)=>new Date(b.service_date)-new Date(a.service_date));
+    const assetTasks = (tasks||[]).filter(t => t.asset_id === asset.id);
+    const sc = CONDITION_STYLE[asset.condition||"Good"]||CONDITION_STYLE.Good;
+    const icon = ASSET_ICONS[asset.category]||"🔧";
+    const installDate = asset.install_date || asset.purchase_date;
+    const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
+    const lifespanYears = Number(asset.lifespan_years || DEFAULT_LIFESPAN[asset.category] || 15);
+    const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
+    const lifespanStatus = lifespanPct === null ? "ok" : lifespanPct >= 100 ? "alert" : lifespanPct >= 75 ? "warn" : "ok";
+    const warrantyDays = asset.expiry_date ? daysTo(asset.expiry_date) : null;
+    const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
+    const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
+    const totalServiceCost = assetLogs.reduce((s,l)=>s+Number(l.cost||0),0);
+
+    return (
+      <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setSelectedAsset(null)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
+          <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
+          <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(asset)} style={{fontSize:".78rem"}}>Edit</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(asset.id)} style={{fontSize:".78rem",color:"var(--red)"}}>Delete</button>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{flex:1,overflowY:"auto",padding:"1rem",background:"var(--linen)"}}>
+
+          {/* Overview card */}
+          <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
+            {asset.asset_photo_url && (
+              <img src={asset.asset_photo_url} alt={asset.item} style={{width:"100%",height:160,objectFit:"cover",borderRadius:"8px",marginBottom:".85rem",cursor:"pointer"}} onClick={()=>setLightbox(asset.asset_photo_url)}/>
+            )}
+            <div style={{display:"flex",alignItems:"flex-start",gap:".6rem",marginBottom:".75rem"}}>
+              <span style={{fontSize:"1.5rem",flexShrink:0}}>{icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{asset.item}</div>
+                <div style={{fontSize:".75rem",color:"#7A7370",marginTop:2,lineHeight:1.5}}>
+                  {[asset.category, asset.model&&`#${asset.model}`, asset.vendor].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <span style={{padding:"3px 10px",borderRadius:"20px",fontSize:".72rem",fontWeight:700,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{asset.condition||"Good"}</span>
+            </div>
+
+            {/* Stats */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".5rem",marginBottom:".75rem"}}>
+              {[
+                {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
+                {label:"Replacement",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
+                {label:"Service total",val:assetLogs.length>0?fmt$(totalServiceCost):"—"},
+              ].map(s=>(
+                <div key={s.label} style={{textAlign:"center",background:"var(--cream)",borderRadius:"8px",padding:".5rem .25rem"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:"var(--dark)"}}>{s.val}</div>
+                  <div style={{fontSize:".63rem",color:"#A8A09A",marginTop:1}}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Lifespan */}
+            {lifespanPct !== null && (
+              <div style={{marginBottom:".6rem"}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#7A7370",marginBottom:".3rem"}}>
+                  <span>{ageYears}yr old · expected ~{lifespanYears}yr lifespan</span>
+                  <span style={{fontWeight:700,color:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"#92610A":"var(--sage)"}}>
+                    {lifespanStatus==="alert"?"Past expected life":lifespanStatus==="warn"?"Aging":"Good shape"}
+                  </span>
+                </div>
+                <div style={{height:6,background:"var(--stone)",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:3,background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)"}}/>
+                </div>
+              </div>
+            )}
+
+            {/* Warranty */}
+            {asset.expiry_date && (
+              <div style={{padding:".5rem .75rem",borderRadius:"8px",fontSize:".78rem",fontWeight:500,background:warrantyExpired?"var(--cream)":warrantySoon?"#FFF8E6":"var(--sage-light)",color:warrantyExpired?"#A8A09A":warrantySoon?"#92610A":"var(--sage)"}}>
+                {warrantyExpired?`Warranty expired ${fmtD(asset.expiry_date)}`:warrantySoon?`Warranty expires in ${warrantyDays} days — ${fmtD(asset.expiry_date)}`:`Warranty active — expires ${fmtD(asset.expiry_date)}`}
+              </div>
+            )}
+
+            {asset.notes && <div style={{marginTop:".65rem",fontSize:".78rem",color:"#7A7370",lineHeight:1.55}}>{asset.notes}</div>}
+          </div>
+
+          {/* Service history */}
+          <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",marginBottom:".75rem",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem",borderBottom:assetLogs.length>0?"1px solid var(--stone)":"none"}}>
+              <div>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>Service History</span>
+                {assetLogs.length>0 && <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{assetLogs.length} entries · {fmt$(totalServiceCost)} total</span>}
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)}>+ Log service</button>
+            </div>
+            {assetLogs.length===0 ? (
+              <div style={{padding:"1.5rem",textAlign:"center",fontSize:".82rem",color:"#A8A09A"}}>
+                No service history yet
+                <br/>
+                <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(asset.id)} style={{marginTop:".5rem"}}>Log first service</button>
+              </div>
+            ) : assetLogs.map((s,i)=>(
+              <div key={s.id} style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".8rem 1rem",borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{s.description}</div>
+                  <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2,display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+                    <span>{fmtD(s.service_date)}</span>
+                    {s.notes&&<span>{s.notes}</span>}
+                  </div>
+                </div>
+                <div style={{flexShrink:0,textAlign:"right"}}>
+                  <div style={{fontSize:".85rem",fontWeight:600,color:s.cost>0?"var(--dark)":"#C8C0B8"}}>{s.cost>0?fmt$(s.cost):"—"}</div>
+                  <div style={{display:"flex",gap:3,marginTop:3,justifyContent:"flex-end"}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)} style={{fontSize:".68rem"}}>Edit</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setServiceConfirm(s.id)} style={{fontSize:".68rem",color:"var(--red)"}}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Related tasks */}
+          {assetTasks.length>0 && (
+            <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
+              <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--stone)"}}>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>Related Tasks</span>
+                <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{assetTasks.length}</span>
+              </div>
+              {assetTasks.map((t,i)=>{
+                const d=daysTo(t.due_date);
+                const isOverdue=t.status!=="Completed"&&d!==null&&d<0;
+                const isDone=t.status==="Completed";
+                return (
+                  <div key={t.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",borderBottom:i<assetTasks.length-1?"1px solid var(--stone)":"none",opacity:isDone?.6:1}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:isOverdue?"var(--red)":isDone?"#C8C0B8":"var(--sage)"}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
+                      {t.due_date&&<div style={{fontSize:".72rem",color:isOverdue?"var(--red)":"#A8A09A",marginTop:1}}>{d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}</div>}
+                    </div>
+                    <span style={{fontSize:".72rem",fontWeight:600,padding:"2px 8px",borderRadius:"10px",flexShrink:0,background:isDone?"var(--cream2)":isOverdue?"var(--red-light)":"var(--sage-light)",color:isDone?"#A8A09A":isOverdue?"var(--red)":"var(--sage)",whiteSpace:"nowrap"}}>{t.status}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Modals */}
+        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+        {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+        {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+        {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
+        {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="sh">
         <span className="sh-title">Assets</span>
-        <button className="btn btn-primary" onClick={openNew}>＋ Add Asset</button>
+        <button className="btn btn-primary" onClick={openNew}>+ Add Asset</button>
       </div>
 
       {/* Summary stats */}
@@ -4561,27 +4719,20 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
           </div>
           <div className="stat c-sage">
             <div className="stat-label">Original Value</div>
-            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(totalValue)}</div>
+            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(assets.reduce((s,a)=>s+Number(a.cost||0),0))}</div>
             <div className="stat-sub">purchase price</div>
           </div>
           <div className="stat c-gold">
-            <div className="stat-label">Replacement Cost</div>
-            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(totalReplacement)}</div>
+            <div className="stat-label">Replacement</div>
+            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0))}</div>
             <div className="stat-sub">today's estimate</div>
           </div>
-          {needsAttention > 0 && (
-            <div className="stat c-red">
-              <div className="stat-label">Needs Attention</div>
-              <div className="stat-val" style={{color:"var(--red)"}}>{needsAttention}</div>
-              <div className="stat-sub">items</div>
-            </div>
-          )}
         </div>
       )}
 
       {/* Filter chips */}
       <div className="toolbar">
-        {FILTER_OPTIONS.map(f=>(
+        {["All","Good","Fair","Needs Attention","Failed","Warranty Active","Warranty Expiring"].map(f=>(
           <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{f}</button>
         ))}
       </div>
@@ -4591,12 +4742,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
         <div className="empty">
           <span className="ei">🏠</span>
           <strong>{assets.length===0?"No assets yet":"No matching assets"}</strong>
-          <p>{assets.length===0?"Track your home's major systems and appliances — HVAC, roof, appliances, electrical. Know their age, condition, and when they need service.":"Try a different filter"}</p>
-          {assets.length===0 && <button className="btn btn-primary" onClick={openNew}>＋ Add your first asset</button>}
+          <p>{assets.length===0?"Track your home's major systems and appliances — HVAC, roof, water heater, electrical. Know their age, condition, and service history.":"Try a different filter"}</p>
+          {assets.length===0 && <button className="btn btn-primary" onClick={openNew}>Add your first asset</button>}
         </div>
       )}
 
-      {/* Asset cards */}
+      {/* Compact asset list — tap to open detail */}
       {list.map(a => {
         const sc = CONDITION_STYLE[a.condition||"Good"]||CONDITION_STYLE.Good;
         const icon = ASSET_ICONS[a.category]||"🔧";
@@ -4605,132 +4756,34 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
         const lifespanYears = Number(a.lifespan_years || DEFAULT_LIFESPAN[a.category] || 15);
         const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
         const lifespanStatus = lifespanPct === null ? "ok" : lifespanPct >= 100 ? "alert" : lifespanPct >= 75 ? "warn" : "ok";
+        const assetLogs = serviceLogs.filter(s => s.asset_id === a.id);
         const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
         const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
         const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
-        const assetLogs = serviceLogs.filter(s => s.asset_id === a.id);
-        const totalServiceCost = assetLogs.reduce((s,l)=>s+Number(l.cost||0),0);
-        const isExpanded = expandedService===a.id;
 
         return (
-          <div key={a.id} className="asset-card">
-            {/* Header */}
+          <div key={a.id} className="asset-card" style={{cursor:"pointer"}} onClick={()=>setSelectedAsset(a.id)}>
             <div className="asset-card-header">
-              <div className="asset-card-icon" style={{background:CONDITION_STYLE[a.condition||"Good"].bg}}>
-                {icon}
-              </div>
+              <div className="asset-card-icon" style={{background:sc.bg}}>{icon}</div>
               <div className="asset-card-body">
                 <div className="asset-card-title">{a.item}</div>
                 <div className="asset-card-meta">
-                  <span className="asset-condition" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>
-                    {a.condition||"Good"}
-                  </span>
+                  <span className="asset-condition" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{a.condition||"Good"}</span>
                   {a.category && <span>{a.category}</span>}
-                  {a.model && <span>#{a.model}</span>}
                   {ageYears !== null && <span>{ageYears}yr old</span>}
-                  {a.vendor && <span>🏪 {a.vendor}</span>}
+                  {assetLogs.length > 0 && <span>Last serviced {fmtD(assetLogs.sort((a,b)=>new Date(b.service_date)-new Date(a.service_date))[0].service_date)}</span>}
+                  {warrantySoon && <span style={{color:"#92610A",fontWeight:600}}>Warranty expiring</span>}
+                  {warrantyExpired && <span style={{color:"var(--red)",fontWeight:600}}>Warranty expired</span>}
                 </div>
-                {a.notes && <div className="card-note">{a.notes}</div>}
               </div>
-              <div className="asset-card-actions">
-                <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(a.id)} title="Log service">🔧</button>
-                <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(a)}>Edit</button>
-                <button className="btn btn-danger btn-sm" onClick={()=>setConfirm(a.id)}>✕</button>
-              </div>
+              <span style={{color:"#C2B8AE",fontSize:".9rem",flexShrink:0}}>›</span>
             </div>
-
-            {/* Asset photo */}
-            {a.asset_photo_url && (
-              <img src={a.asset_photo_url} alt={a.item} className="asset-photo" onClick={()=>setLightbox(a.asset_photo_url)} />
-            )}
-
-            {/* Stats row */}
-            <div className="asset-stats-row">
-              <div className="asset-stat">
-                <div className="asset-stat-val">{a.cost>0?fmt$(a.cost):"—"}</div>
-                <div className="asset-stat-label">Paid</div>
-              </div>
-              <div className="asset-stat">
-                <div className="asset-stat-val">{a.replacement_cost>0?fmt$(a.replacement_cost):"—"}</div>
-                <div className="asset-stat-label">Replace</div>
-              </div>
-              <div className="asset-stat">
-                <div className="asset-stat-val">{assetLogs.length > 0 ? (totalServiceCost > 0 ? fmt$(totalServiceCost) : "$0") : "—"}</div>
-                <div className="asset-stat-label">Serviced</div>
-              </div>
-            </div>
-
-            {/* Lifespan bar */}
+            {/* Thin lifespan bar */}
             {lifespanPct !== null && (
-              <div className="asset-lifespan-row">
-                <div className="asset-lifespan-label">
-                  <span>Lifespan · {ageYears}yr of ~{lifespanYears}yr</span>
-                  <span style={{color:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"#92610A":"var(--sage)",fontWeight:700}}>
-                    {lifespanStatus==="alert"?"Past expected lifespan":lifespanStatus==="warn"?"Aging":"Good"}
-                  </span>
-                </div>
-                <div className="asset-lifespan-bar">
-                  <div className="asset-lifespan-fill" style={{
-                    width:`${lifespanPct}%`,
-                    background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)"
-                  }}/>
-                </div>
+              <div style={{margin:"0 1rem .75rem",height:3,background:"var(--stone)",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:2,background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)"}}/>
               </div>
             )}
-
-            {/* Warranty row */}
-            {a.expiry_date && (
-              <div className="asset-warranty-row" style={{
-                background:warrantyExpired?"var(--cream)":warrantySoon?"#FFF8E6":"var(--sage-light)",
-                color:warrantyExpired?"#A8A09A":warrantySoon?"#92610A":"var(--sage)"
-              }}>
-                <span style={{fontSize:"1rem"}}>🛡️</span>
-                <span style={{flex:1,fontSize:".78rem",fontWeight:500}}>
-                  {warrantyExpired ? `Warranty expired ${fmtD(a.expiry_date)}` :
-                   warrantySoon ? `Warranty expires in ${warrantyDays} days — ${fmtD(a.expiry_date)}` :
-                   `Warranty active — expires ${fmtD(a.expiry_date)}`}
-                </span>
-                {a.last_serviced && <span style={{fontSize:".7rem",color:"#A8A09A"}}>Last serviced {fmtD(a.last_serviced)}</span>}
-              </div>
-            )}
-
-            {/* Service log */}
-            <div className="asset-service-section">
-              <div className="asset-service-header" onClick={()=>setExpandedService(isExpanded?null:a.id)}>
-                <span className="asset-service-title">
-                  Service Log · {assetLogs.length} entr{assetLogs.length!==1?"ies":"y"}
-                </span>
-                <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
-                  <button className="btn btn-ghost btn-sm" style={{fontSize:".68rem"}} onClick={e=>{e.stopPropagation();openNewService(a.id);}}>＋ Log</button>
-                  <span style={{fontSize:".72rem",color:"#A8A09A"}}>{isExpanded?"▲":"▼"}</span>
-                </div>
-              </div>
-              {isExpanded && (
-                <div className="asset-service-log">
-                  {assetLogs.length===0 ? (
-                    <div style={{textAlign:"center",padding:"1rem",fontSize:".82rem",color:"#A8A09A"}}>
-                      No service history yet — <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(a.id)}>Log first service</button>
-                    </div>
-                  ) : assetLogs.map(s=>(
-                    <div key={s.id} className="asset-service-entry">
-                      <div className="asset-service-dot"/>
-                      <div className="asset-service-body">
-                        <div className="asset-service-desc">{s.description}</div>
-                        <div className="asset-service-meta">
-                          <span>{fmtD(s.service_date)}</span>
-                          {s.notes && <span>{s.notes}</span>}
-                        </div>
-                      </div>
-                      <div className="asset-service-cost">{s.cost>0?fmt$(s.cost):"—"}</div>
-                      <div style={{display:"flex",gap:"3px",marginLeft:".3rem"}}>
-                        <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)}>Edit</button>
-                        <button className="btn btn-danger btn-sm" onClick={()=>setServiceConfirm(s.id)}>✕</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         );
       })}
