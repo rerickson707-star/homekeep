@@ -2196,6 +2196,15 @@ function OnboardingWizard({ session, onComplete }) {
         await supabase.from("profiles").insert([profilePayload]);
       }
       await onComplete({ launchSetup: !skipSetup });
+      // Fire welcome email after onboarding — we now have their real name
+      fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk",
+        },
+        body: JSON.stringify({ email: session.user.email, name: name.trim() || session.user.email.split("@")[0] }),
+      }).catch(() => {});
     } catch(e) {
       console.error("Onboarding save error:", e);
       await onComplete({ launchSetup: false });
@@ -2381,16 +2390,6 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
-    // Fire welcome email — async, don't block signup UX
-    fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk",
-      },
-      body: JSON.stringify({ email, name: email.split("@")[0] }),
-    }).then(r => { if(!r.ok) r.json().then(d => console.warn("Welcome email failed:", d)); })
-      .catch(e => console.warn("Welcome email error:", e));
     setSuccess("Account created! Check your email to confirm, then log in.");
   };
 
