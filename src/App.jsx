@@ -1177,49 +1177,54 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--dark)}
 .auth-bg{position:fixed;inset:0;background:var(--dark);overflow:hidden;pointer-events:none}
 /* ══ ONBOARDING WIZARD ══ */
-.wizard-wrap{min-height:100vh;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:1.5rem 1rem;position:relative;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box}
-@media(min-height:700px){.wizard-wrap{justify-content:center}}
-.wizard-wrap::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(193,98,43,.15) 0%,transparent 70%);top:-150px;right:-150px;pointer-events:none}
-.wizard-wrap::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(74,137,184,.1) 0%,transparent 70%);bottom:-100px;left:-100px;pointer-events:none}
-.wizard-card{background:var(--white);border-radius:22px;width:100%;max-width:480px;overflow:visible;box-shadow:0 32px 80px rgba(0,0,0,.4);position:relative;z-index:1;margin:1.5rem auto}
-.wizard-progress{display:flex;gap:4px;padding:1.2rem 1.4rem .8rem}
-.wizard-step-dot{flex:1;height:4px;border-radius:2px;transition:background .3s}
-.wizard-step-dot.done{background:var(--rust)}
-.wizard-step-dot.active{background:var(--rust);opacity:.5}
-.wizard-step-dot.pending{background:var(--stone)}
-.wizard-body{padding:1.4rem 1.6rem 1rem}
-.wizard-icon{font-size:2.5rem;margin-bottom:.8rem;display:block}
-.wizard-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;color:var(--dark);margin-bottom:.4rem;line-height:1.2}
-.wizard-sub{font-size:.88rem;color:#9E9690;line-height:1.6;margin-bottom:1.4rem}
-.wizard-footer{padding:.8rem 1.6rem 1.4rem;display:flex;gap:.6rem;justify-content:space-between;align-items:center;border-top:1px solid var(--stone)}
-.wizard-back{background:none;border:none;font-family:'Hanken Grotesk',sans-serif;font-size:.84rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
-.wizard-back:hover{color:var(--dark)}
-.wizard-next{padding:.75rem 1.6rem;background:var(--rust);color:#fff;border:none;border-radius:10px;font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .18s;box-shadow:0 3px 12px rgba(192,90,40,.3)}
-.wizard-next:hover{background:#A84820;transform:translateY(-1px)}
-.wizard-next:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.wizard-skip{background:none;border:none;font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;color:#9E9690;cursor:pointer;padding:.4rem 0}
-.wizard-skip:hover{color:var(--dark)}
-.wizard-field{display:flex;flex-direction:column;gap:5px;margin-bottom:.9rem}
-.wizard-field label{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
-.wizard-field input,.wizard-field select,.wizard-field textarea{width:100%;padding:.65rem .9rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.9rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .15s}
-.wizard-field input:focus,.wizard-field select:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(192,90,40,.1)}
-.wizard-lookup-btn{width:100%;padding:.72rem;background:var(--rust);color:#fff;border:none;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.5rem}
-.wizard-lookup-btn:hover{background:#A84820}
-.wizard-lookup-btn:disabled{opacity:.6;cursor:not-allowed}
-.wizard-found{background:var(--sage-light);border:1px solid #B8D9CC;border-radius:var(--r-sm);padding:.75rem 1rem;margin-top:.7rem;font-size:.82rem;color:var(--sage);font-weight:500}
-.wizard-notfound{background:var(--cream2);border:1px solid var(--stone);border-radius:var(--r-sm);padding:.75rem 1rem;margin-top:.7rem;font-size:.82rem;color:#7A7370;line-height:1.5}
-.wizard-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem}
-.wizard-chip{background:var(--white);border:1px solid #B8D9CC;border-radius:8px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;color:var(--dark)}
-.wizard-done-list{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem}
-.wizard-done-item{display:flex;align-items:center;gap:.75rem;padding:.75rem .9rem;background:var(--cream);border-radius:12px;border:1px solid var(--stone)}
-.wizard-done-icon{font-size:1.3rem;flex-shrink:0}
-.wizard-done-title{font-weight:600;font-size:.88rem;color:var(--dark)}
-.wizard-done-sub{font-size:.74rem;color:#9E9690;margin-top:1px}
-.wizard-autocomplete{position:relative}
-.wizard-suggestions{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);z-index:500;overflow:hidden;max-height:200px;overflow-y:auto}
-.wizard-suggestion{padding:.6rem .9rem;font-size:.84rem;cursor:pointer;border-bottom:1px solid var(--stone);color:var(--dark);display:flex;align-items:flex-start;gap:.5rem;transition:background .12s}
-.wizard-suggestion:last-child{border-bottom:none}
-.wizard-suggestion:hover{background:var(--rust-light)}
+/* ── ONBOARDING ─────────────────────────────────────────────────────────────── */
+.onb-screen{position:fixed;inset:0;background:#1C3D31;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box}
+.onb-bar-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(244,237,223,.12);z-index:10}
+.onb-bar-fill{height:100%;background:#C16140;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.onb-inner{flex:1;display:flex;flex-direction:column;justify-content:center;padding:5rem 2rem 2.5rem;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}
+@media(max-width:480px){.onb-inner{padding:5rem 1.4rem 2rem}}
+.onb-wordmark{position:fixed;top:0;left:0;right:0;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.6rem;z-index:9}
+.onb-wordmark-dot{width:28px;height:28px;background:#C16140;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.onb-wordmark-name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#F4EDDF;letter-spacing:-.2px}
+.onb-step{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,237,223,.38);margin-bottom:1.6rem}
+.onb-q{font-family:'Fraunces',serif;font-size:clamp(1.75rem,5vw,2.4rem);font-weight:400;color:#F4EDDF;line-height:1.15;margin-bottom:.6rem}
+.onb-hint{font-size:.9rem;color:rgba(244,237,223,.5);line-height:1.65;margin-bottom:2rem}
+.onb-input{width:100%;padding:.95rem 1.1rem;background:rgba(244,237,223,.07);border:1.5px solid rgba(244,237,223,.15);border-radius:14px;font-family:'Hanken Grotesk',sans-serif;font-size:1.05rem;color:#F4EDDF;outline:none;transition:all .2s;box-sizing:border-box;-webkit-appearance:none}
+.onb-input::placeholder{color:rgba(244,237,223,.28)}
+.onb-input:focus{background:rgba(244,237,223,.11);border-color:rgba(244,237,223,.35);box-shadow:0 0 0 3px rgba(244,237,223,.06)}
+.onb-btn{width:100%;padding:1rem 1.5rem;background:#C16140;color:#fff;border:none;border-radius:14px;font-family:'Hanken Grotesk',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;margin-top:1.1rem;transition:all .18s;box-shadow:0 4px 20px rgba(193,97,64,.35);letter-spacing:.01em}
+.onb-btn:hover{background:#A84820;transform:translateY(-1px);box-shadow:0 6px 24px rgba(193,97,64,.4)}
+.onb-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.onb-back{background:none;border:none;font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;color:rgba(244,237,223,.38);cursor:pointer;padding:0;margin-top:.85rem;display:block;transition:color .15s}
+.onb-back:hover{color:rgba(244,237,223,.7)}
+.onb-skip{background:none;border:none;font-family:'Hanken Grotesk',sans-serif;font-size:.8rem;color:rgba(244,237,223,.3);cursor:pointer;padding:0;margin-top:.6rem;display:block;transition:color .15s}
+.onb-skip:hover{color:rgba(244,237,223,.55)}
+.onb-goals{display:flex;flex-direction:column;gap:.6rem;margin-bottom:.5rem}
+.onb-goal{display:flex;align-items:center;gap:.9rem;padding:.95rem 1.1rem;background:rgba(244,237,223,.06);border:1.5px solid rgba(244,237,223,.1);border-radius:14px;cursor:pointer;transition:all .18s;text-align:left;width:100%}
+.onb-goal:hover{background:rgba(244,237,223,.1);border-color:rgba(244,237,223,.2)}
+.onb-goal.sel{background:rgba(193,97,64,.18);border-color:#C16140}
+.onb-goal-ico{width:38px;height:38px;border-radius:10px;background:rgba(244,237,223,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.05rem}
+.onb-goal.sel .onb-goal-ico{background:rgba(193,97,64,.3)}
+.onb-goal-text{flex:1;min-width:0}
+.onb-goal-label{font-size:.92rem;font-weight:600;color:#F4EDDF;line-height:1.25}
+.onb-goal-sub{font-size:.72rem;color:rgba(244,237,223,.45);margin-top:2px;line-height:1.4}
+.onb-goal-check{width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(244,237,223,.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .18s}
+.onb-goal.sel .onb-goal-check{background:#C16140;border-color:#C16140}
+.onb-addr-pill{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:rgba(244,237,223,.08);border:1.5px solid rgba(244,237,223,.15);border-radius:12px;margin-bottom:.75rem}
+.onb-addr-pill span{font-size:.85rem;font-weight:500;color:#F4EDDF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:.75rem}
+.onb-addr-pill button{flex-shrink:0;background:none;border:none;color:rgba(244,237,223,.45);font-family:'Hanken Grotesk',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;padding:0}
+.onb-addr-pill button:hover{color:#F4EDDF}
+.onb-found{background:rgba(167,191,168,.12);border:1px solid rgba(167,191,168,.25);border-radius:12px;padding:.85rem 1rem;margin-top:.5rem}
+.onb-found-ok{font-size:.75rem;font-weight:700;color:#7DCF9E;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.onb-found-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.onb-found-chip{background:rgba(244,237,223,.08);border:1px solid rgba(244,237,223,.12);border-radius:8px;padding:.28rem .65rem;font-size:.72rem;font-weight:600;color:rgba(244,237,223,.7)}
+.onb-notfound{background:rgba(244,237,223,.05);border:1px solid rgba(244,237,223,.1);border-radius:12px;padding:.85rem 1rem;margin-top:.5rem;font-size:.8rem;color:rgba(244,237,223,.45);line-height:1.55}
+.onb-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1E3D30;border:1.5px solid rgba(244,237,223,.15);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.4);z-index:500;overflow:hidden;max-height:220px;overflow-y:auto}
+.onb-suggestion{padding:.7rem 1rem;font-size:.85rem;cursor:pointer;border-bottom:1px solid rgba(244,237,223,.07);color:#F4EDDF;display:flex;align-items:flex-start;gap:.65rem;transition:background .12s}
+.onb-suggestion:last-child{border-bottom:none}
+.onb-suggestion:hover{background:rgba(244,237,223,.07)}
+.onb-suggestion-ico{color:rgba(244,237,223,.35);font-size:.9rem;margin-top:1px;flex-shrink:0}
+.onb-loading{display:flex;align-items:center;gap:.65rem;font-size:.85rem;color:rgba(244,237,223,.45);margin-top:.65rem}
 
 /* ══ AUTH SCREEN ══ */
 .auth-bg{position:fixed;inset:0;background:var(--dark);overflow:hidden;pointer-events:none}
@@ -2099,32 +2104,42 @@ function LandingPage({ onSignIn, onSignUp }) {
 
 // ─── ONBOARDING WIZARD ───────────────────────────────────────────────────────
 function OnboardingWizard({ session, onComplete }) {
-  const [step, setStep] = useState(1);
+  const TOTAL = 3;
+  const [step, setStep]   = useState(1);
   const [saving, setSaving] = useState(false);
 
   // Step 1 — Name
   const [name, setName] = useState("");
 
   // Step 2 — Address
-  const [address, setAddress] = useState("");
+  const [address, setAddress]         = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [lookupState, setLookupState] = useState("idle");
+  const [showSug, setShowSug]         = useState(false);
+  const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound
   const [propertyData, setPropertyData] = useState(null);
-  const [suggesting, setSuggesting] = useState(false);
+  const [suggesting, setSuggesting]   = useState(false);
   const [selectedAddress, setSelectedAddress] = useState("");
   const debounceRef = useRef(null);
-  const suggestRef = useRef(null);
+  const suggestRef  = useRef(null);
   const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
 
+  // Step 3 — Goal
+  const [goal, setGoal] = useState("");
+  const GOALS = [
+    { id:"maintenance", label:"Stay on top of maintenance",    sub:"Reminders, seasonal tasks, service history",   ico:"🔧" },
+    { id:"costs",       label:"Track costs & expenses",        sub:"Repairs, utilities, project spending",         ico:"📊" },
+    { id:"selling",     label:"Prepare my home for sale",      sub:"Document work done, assets, and upgrades",     ico:"🏠" },
+    { id:"warranties",  label:"Organize warranties & insurance",sub:"Never lose a policy or warranty card again",   ico:"🔒" },
+  ];
+
   useEffect(() => {
-    const handler = e => { if(suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggestions(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = e => { if(suggestRef.current && !suggestRef.current.contains(e.target)) setShowSug(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, []);
 
   const handleAddressInput = (val) => {
-    setAddress(val); setShowSuggestions(true); setLookupState("idle");
+    setAddress(val); setShowSug(true); setLookupState("idle");
     setPropertyData(null); setSelectedAddress("");
     clearTimeout(debounceRef.current);
     if (val.length < 3) { setSuggestions([]); setSuggesting(false); return; }
@@ -2135,21 +2150,20 @@ function OnboardingWizard({ session, onComplete }) {
         const resp = await fetch(url);
         const json = await resp.json();
         setSuggestions((json.features||[]).map(f => ({
-          formatted: f.properties.formatted,
           line1: f.properties.address_line1 || f.properties.street || "",
-          city: f.properties.city || "",
+          city:  f.properties.city || "",
           state: f.properties.state_code || f.properties.state || "",
-          zip: f.properties.postcode || "",
+          zip:   f.properties.postcode || "",
         })));
       } catch { setSuggestions([]); }
       finally { setSuggesting(false); }
-    }, 200);
+    }, 220);
   };
 
   const selectSuggestion = async (s) => {
     const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
     setAddress(addr); setSelectedAddress(addr);
-    setSuggestions([]); setShowSuggestions(false); setSuggesting(false);
+    setSuggestions([]); setShowSug(false); setSuggesting(false);
     setLookupState("loading");
     try {
       const result = await lookupProperty(addr);
@@ -2163,46 +2177,31 @@ function OnboardingWizard({ session, onComplete }) {
     setLookupState("idle"); setPropertyData(null); setSuggesting(false);
   };
 
-  // Save profile and proceed
   const handleFinish = async (skipSetup = false) => {
     setSaving(true);
     const uid = session.user.id;
     try {
-      const profilePayload = {
-        user_id: uid,
-        name: name.trim() || "",
+      const payload = {
+        user_id: uid, name: name.trim(), goal: goal || null, onboarding_complete: true,
         address: propertyData?.address || address || "",
-        type: propertyData?.type || "",
-        year: propertyData?.year || "",
-        sqft: propertyData?.sqft || "",
-        bedrooms: propertyData?.bedrooms || "",
-        bathrooms: propertyData?.bathrooms || "",
-        lot_size: propertyData?.lot_size || "",
+        type: propertyData?.type || "", year: propertyData?.year || "",
+        sqft: propertyData?.sqft || "", bedrooms: propertyData?.bedrooms || "",
+        bathrooms: propertyData?.bathrooms || "", lot_size: propertyData?.lot_size || "",
         last_sale_price: propertyData?.last_sale_price || "",
         last_sale_date: propertyData?.last_sale_date || "",
-        zestimate: propertyData?.zestimate || "",
-        rent_zestimate: propertyData?.rent_zestimate || "",
-        hoa_fee: propertyData?.hoa_fee || "",
-        photo_url: propertyData?.photo_url || "",
+        zestimate: propertyData?.zestimate || "", rent_zestimate: propertyData?.rent_zestimate || "",
+        hoa_fee: propertyData?.hoa_fee || "", photo_url: propertyData?.photo_url || "",
         tax_history: propertyData?.tax_history ? JSON.stringify(propertyData.tax_history) : "",
         price_history: propertyData?.price_history ? JSON.stringify(propertyData.price_history) : "",
         schools: propertyData?.schools ? JSON.stringify(propertyData.schools) : "",
-        onboarding_complete: true,
       };
-      const {data: existing} = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
-      if (existing && existing.length > 0) {
-        await supabase.from("profiles").update(profilePayload).eq("user_id", uid);
-      } else {
-        await supabase.from("profiles").insert([profilePayload]);
-      }
+      const { data: existing } = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
+      if (existing?.length > 0) { await supabase.from("profiles").update(payload).eq("user_id", uid); }
+      else { await supabase.from("profiles").insert([payload]); }
       await onComplete({ launchSetup: !skipSetup });
-      // Fire welcome email after onboarding — we now have their real name
       fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk",
-        },
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk"},
         body: JSON.stringify({ email: session.user.email, name: name.trim() || session.user.email.split("@")[0] }),
       }).catch(() => {});
     } catch(e) {
@@ -2211,155 +2210,171 @@ function OnboardingWizard({ session, onComplete }) {
     }
   };
 
-  const ProgressDots = () => (
-    <div className="wizard-progress">
-      {[1,2].map(i => (
-        <div key={i} className={`wizard-step-dot ${i < step ? "done" : i === step ? "active" : "pending"}`}/>
-      ))}
+  const pct = `${Math.round((step / TOTAL) * 100)}%`;
+  const firstName = name.split(" ")[0];
+
+  const Wordmark = () => (
+    <div className="onb-wordmark">
+      <div className="onb-wordmark-dot">
+        <svg viewBox="0 0 48 48" fill="none" width="16" height="16">
+          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <span className="onb-wordmark-name">Steadwell</span>
+    </div>
+  );
+
+  const ProgressBar = () => (
+    <div className="onb-bar-track">
+      <div className="onb-bar-fill" style={{width: pct}}/>
     </div>
   );
 
   // ── Step 1: Name ─────────────────────────────────────────────────────────────
   if (step === 1) return (
-    <div className="wizard-wrap">
-      <div className="wizard-card">
-        <ProgressDots />
-        <div className="wizard-body">
-          <span className="wizard-icon">🏡</span>
-          <div className="wizard-title">Welcome to Steadwell</div>
-          <div className="wizard-sub">Your home's command center. Quick setup takes about 2 minutes.</div>
-          <div className="wizard-field">
-            <label>What should we call you?</label>
-            <input
-              autoFocus value={name} onChange={e => setName(e.target.value)}
-              placeholder="Your first name"
-              onKeyDown={e => e.key === "Enter" && name.trim() && setStep(2)}
-            />
-          </div>
-        </div>
-        <div className="wizard-footer" style={{justifyContent:"flex-end"}}>
-          <button className="wizard-next" disabled={!name.trim()} onClick={() => setStep(2)}>
-            {name.trim() ? `Hi ${name.split(" ")[0]} — continue →` : "Continue →"}
-          </button>
-        </div>
+    <div className="onb-screen">
+      <ProgressBar/>
+      <Wordmark/>
+      <div className="onb-inner">
+        <div className="onb-step">Step 1 of {TOTAL}</div>
+        <div className="onb-q">What's your name?</div>
+        <div className="onb-hint">We'll use this to personalize your experience.</div>
+        <input
+          className="onb-input" autoFocus value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="First name"
+          onKeyDown={e => e.key === "Enter" && name.trim() && setStep(2)}
+        />
+        <button className="onb-btn" disabled={!name.trim()} onClick={() => setStep(2)}>
+          {name.trim() ? `Continue, ${firstName} →` : "Continue →"}
+        </button>
       </div>
     </div>
   );
 
   // ── Step 2: Address ───────────────────────────────────────────────────────────
   if (step === 2) return (
-    <div className="wizard-wrap">
-      <div className="wizard-card">
-        <ProgressDots />
-        <div className="wizard-body">
-          <span className="wizard-icon">📍</span>
-          <div className="wizard-title">What's your home address?</div>
-          <div className="wizard-sub">
-            Start typing and select from the list — we'll look up your home's details automatically.
+    <div className="onb-screen">
+      <ProgressBar/>
+      <Wordmark/>
+      <div className="onb-inner">
+        <div className="onb-step">Step 2 of {TOTAL}</div>
+        <div className="onb-q">Where's your home?</div>
+        <div className="onb-hint">We'll look up your home's details automatically — year built, square footage, and more.</div>
+
+        {(lookupState === "found" || lookupState === "notfound") ? (
+          <div className="onb-addr-pill">
+            <span>{selectedAddress || address}</span>
+            <button onClick={resetAddress}>Change</button>
           </div>
-
-          {lookupState === "idle" || lookupState === "loading" ? (
-            <div className="wizard-autocomplete" ref={suggestRef}>
-              <div className="wizard-field" style={{position:"relative"}}>
-                <label>Home Address</label>
-                <input
-                  autoFocus value={address}
-                  onChange={e => handleAddressInput(e.target.value)}
-                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                  placeholder="123 Maple Street, Tampa, FL"
-                  autoComplete="off"
-                  onKeyDown={e => { if(e.key === "Escape") setShowSuggestions(false); }}
-                  style={{paddingRight: suggesting ? "2.2rem" : undefined}}
-                />
-                {suggesting && (
-                  <span style={{position:"absolute",right:"10px",top:"calc(50% + 10px)",transform:"translateY(-50%)"}}>
-                    <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
-                  </span>
-                )}
-              </div>
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="wizard-suggestions">
-                  {suggestions.map((s,i) => (
-                    <div key={i} className="wizard-suggestion" onMouseDown={() => selectSuggestion(s)}>
-                      <span>📍</span>
-                      <div>
-                        <div style={{fontWeight:500}}>{s.line1}</div>
-                        <div style={{fontSize:".72rem",color:"#A8A09A"}}>{[s.city,s.state,s.zip].filter(Boolean).join(", ")}</div>
-                      </div>
+        ) : (
+          <div ref={suggestRef} style={{position:"relative"}}>
+            <input
+              className="onb-input" autoFocus value={address}
+              onChange={e => handleAddressInput(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSug(true)}
+              placeholder="123 Maple St, Tampa, FL"
+              autoComplete="off"
+              style={{paddingRight: suggesting ? "2.5rem" : undefined}}
+            />
+            {suggesting && (
+              <span style={{position:"absolute",right:"14px",top:"50%",transform:"translateY(-50%)"}}>
+                <span className="spinner" style={{width:14,height:14,borderWidth:2,borderColor:"rgba(244,237,223,.3)",borderTopColor:"rgba(244,237,223,.7)"}}/>
+              </span>
+            )}
+            {showSug && suggestions.length > 0 && (
+              <div className="onb-suggestions">
+                {suggestions.map((s,i) => (
+                  <div key={i} className="onb-suggestion" onMouseDown={() => selectSuggestion(s)}>
+                    <span className="onb-suggestion-ico">📍</span>
+                    <div>
+                      <div style={{fontWeight:500}}>{s.line1}</div>
+                      <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)"}}>{[s.city,s.state,s.zip].filter(Boolean).join(", ")}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-              {showSuggestions && !suggesting && suggestions.length === 0 && address.length >= 5 && (
-                <div style={{fontSize:".8rem",color:"#A8A09A",padding:".5rem .75rem",background:"var(--cream)",borderRadius:"8px",marginTop:".35rem"}}>
-                  Keep typing — include your city and state.
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"10px",border:"1px solid var(--stone)"}}>
-              <div style={{display:"flex",alignItems:"center",gap:".5rem",minWidth:0}}>
-                <span style={{fontSize:"1rem",flexShrink:0}}>📍</span>
-                <span style={{fontSize:".84rem",fontWeight:500,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selectedAddress || address}</span>
-              </div>
-              <button onClick={resetAddress} style={{flexShrink:0,marginLeft:".75rem",fontSize:".75rem",color:"var(--rust)",background:"none",border:"none",cursor:"pointer",fontWeight:600,padding:0}}>Change</button>
-            </div>
-          )}
-
-          {lookupState === "loading" && (
-            <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".75rem",background:"var(--cream)",borderRadius:"10px",fontSize:".85rem",color:"#5A534B",marginTop:".5rem"}}>
-              <span className="spinner" style={{width:14,height:14,borderWidth:2}}/>
-              Looking up your home…
-            </div>
-          )}
-
-          {lookupState === "found" && propertyData && (
-            <div className="wizard-found">
-              <div style={{fontWeight:600,marginBottom:".4rem",color:"#2A9D6A"}}>✓ Home found</div>
-              <div style={{fontSize:".78rem",color:"#5A534B",marginBottom:".6rem"}}>{propertyData.address || selectedAddress}</div>
-              <div className="wizard-chips">
-                {[propertyData.type, propertyData.year?`Built ${propertyData.year}`:null, propertyData.sqft?`${Number(propertyData.sqft).toLocaleString()} sqft`:null, propertyData.bedrooms?`${propertyData.bedrooms} bed`:null, propertyData.bathrooms?`${propertyData.bathrooms} bath`:null].filter(Boolean).map((v,i)=>(
-                  <span key={i} className="wizard-chip">{v}</span>
+                  </div>
                 ))}
               </div>
-              <div style={{marginTop:".6rem",fontSize:".75rem",color:"#A8A09A"}}>
-                Not right? <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".75rem",fontWeight:600,padding:0}}>Search again</button>
+            )}
+            {showSug && !suggesting && suggestions.length === 0 && address.length >= 5 && (
+              <div style={{fontSize:".78rem",color:"rgba(244,237,223,.38)",marginTop:".5rem",paddingLeft:".2rem"}}>
+                Keep typing — include your city and state.
               </div>
-            </div>
-          )}
-
-          {lookupState === "notfound" && (
-            <div className="wizard-notfound">
-              We couldn't find property data for this address — no problem. You can add your home details manually after setup.
-              <div style={{marginTop:".5rem"}}>
-                <button onClick={resetAddress} style={{background:"none",border:"none",color:"var(--rust)",cursor:"pointer",fontSize:".78rem",fontWeight:600,padding:0}}>← Try a different address</button>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="wizard-footer">
-          <button className="wizard-back" onClick={() => { resetAddress(); setStep(1); }}>← Back</button>
-          <div style={{display:"flex",flexDirection:"column",gap:".4rem",alignItems:"flex-end"}}>
-            <button
-              className="wizard-next"
-              disabled={!address.trim() || lookupState === "loading"}
-              onClick={() => handleFinish(false)}
-            >
-              {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Saving…</> :
-               lookupState === "found" ? "Set up my home →" :
-               lookupState === "notfound" ? "Continue anyway →" : "Continue →"}
-            </button>
-            {address.trim() && lookupState !== "loading" && !saving && (
-              <button onClick={() => handleFinish(true)} style={{fontSize:".72rem",color:"#A8A09A",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
-                Skip setup for now
-              </button>
             )}
           </div>
+        )}
+
+        {lookupState === "loading" && (
+          <div className="onb-loading">
+            <span className="spinner" style={{width:14,height:14,borderWidth:2,borderColor:"rgba(244,237,223,.2)",borderTopColor:"rgba(244,237,223,.6)"}}/>
+            Looking up your home…
+          </div>
+        )}
+
+        {lookupState === "found" && propertyData && (
+          <div className="onb-found">
+            <div className="onb-found-ok">Home found</div>
+            <div className="onb-found-chips">
+              {[propertyData.type, propertyData.year?`Built ${propertyData.year}`:null, propertyData.sqft?`${Number(propertyData.sqft).toLocaleString()} sqft`:null, propertyData.bedrooms?`${propertyData.bedrooms} bed`:null, propertyData.bathrooms?`${propertyData.bathrooms} bath`:null].filter(Boolean).map((v,i)=>(
+                <span key={i} className="onb-found-chip">{v}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {lookupState === "notfound" && (
+          <div className="onb-notfound">
+            We couldn't find property data for this address — no problem. You can add details manually later.
+          </div>
+        )}
+
+        <button
+          className="onb-btn"
+          disabled={!address.trim() || lookupState === "loading" || saving}
+          onClick={() => setStep(3)}
+        >
+          {lookupState === "found" ? "That's my home →" : address.trim() ? "Continue →" : "Continue →"}
+        </button>
+        <button className="onb-back" onClick={() => { resetAddress(); setStep(1); }}>← Back</button>
+      </div>
+    </div>
+  );
+
+  // ── Step 3: Goal ─────────────────────────────────────────────────────────────
+  if (step === 3) return (
+    <div className="onb-screen">
+      <ProgressBar/>
+      <Wordmark/>
+      <div className="onb-inner">
+        <div className="onb-step">Step 3 of {TOTAL}</div>
+        <div className="onb-q">What brings you here{firstName ? `, ${firstName}` : ""}?</div>
+        <div className="onb-hint">We'll tailor your experience around your main goal.</div>
+        <div className="onb-goals">
+          {GOALS.map(g => (
+            <button key={g.id} className={`onb-goal ${goal === g.id ? "sel" : ""}`} onClick={() => setGoal(g.id)}>
+              <div className="onb-goal-ico">{g.ico}</div>
+              <div className="onb-goal-text">
+                <div className="onb-goal-label">{g.label}</div>
+                <div className="onb-goal-sub">{g.sub}</div>
+              </div>
+              <div className="onb-goal-check">
+                {goal === g.id && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+            </button>
+          ))}
         </div>
+        <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
+          {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
+        </button>
+        <button className="onb-skip" onClick={() => handleFinish(true)}>
+          Skip for now — go to my dashboard
+        </button>
+        <button className="onb-back" onClick={() => setStep(2)}>← Back</button>
       </div>
     </div>
   );
 }
+
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth, initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode); // login | signup | reset

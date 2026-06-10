@@ -3,19 +3,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("DB_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const FROM = "Steadwell <hello@trysteadwell.app>";
 
 function localDate(daysFromNow = 0): string {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
   return d.toISOString().slice(0, 10);
-}
-
-function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function daysUntil(dateStr: string): number {
@@ -27,9 +22,15 @@ function daysUntil(dateStr: string): number {
 serve(async (_req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Get all users
   const { data: { users }, error: userErr } = await supabase.auth.admin.listUsers();
   if (userErr) return new Response(JSON.stringify({ error: userErr.message }), { status: 500 });
+
+  // Build profile name map: user_id → first name
+  const { data: profiles } = await supabase.from("profiles").select("user_id, name");
+  const nameMap: Record<string, string> = {};
+  for (const p of profiles || []) {
+    if (p.name) nameMap[p.user_id] = p.name.split(" ")[0]; // first name only
+  }
 
   const today = localDate(0);
   const in7 = localDate(7);
@@ -39,44 +40,29 @@ serve(async (_req) => {
     const email = user.email;
     if (!email) continue;
     const userId = user.id;
-    const name = email.split("@")[0];
+    const name = nameMap[userId] || email.split("@")[0];
 
-    // Fetch upcoming tasks (next 7 days, not completed)
     const { data: upcomingTasks } = await supabase
-      .from("tasks")
-      .select("title, due_date, priority, status")
-      .eq("user_id", userId)
-      .gte("due_date", today)
-      .lte("due_date", in7)
-      .neq("status", "Completed")
-      .order("due_date");
+      .from("tasks").select("title, due_date, priority, status")
+      .eq("user_id", userId).gte("due_date", today).lte("due_date", in7)
+      .neq("status", "Completed").order("due_date");
 
-    // Fetch overdue tasks
     const { data: overdueTasks } = await supabase
-      .from("tasks")
-      .select("title, due_date, priority")
-      .eq("user_id", userId)
-      .lt("due_date", today)
-      .neq("status", "Completed")
-      .order("due_date");
+      .from("tasks").select("title, due_date, priority")
+      .eq("user_id", userId).lt("due_date", today)
+      .neq("status", "Completed").order("due_date");
 
-    // Fetch expiring warranties (next 30 days)
     const in30 = localDate(30);
     const { data: expiringWarranties } = await supabase
-      .from("warranties")
-      .select("item, expiry_date, category")
-      .eq("user_id", userId)
-      .gte("expiry_date", today)
-      .lte("expiry_date", in30)
+      .from("warranties").select("item, expiry_date, category")
+      .eq("user_id", userId).gte("expiry_date", today).lte("expiry_date", in30)
       .order("expiry_date");
 
-    // Skip if nothing to report
     const hasContent = (upcomingTasks?.length ?? 0) > 0 ||
                        (overdueTasks?.length ?? 0) > 0 ||
                        (expiringWarranties?.length ?? 0) > 0;
     if (!hasContent) { results.push(`${email}: skipped (nothing to report)`); continue; }
 
-    // Build task rows
     const taskRows = (upcomingTasks ?? []).map(t => {
       const days = daysUntil(t.due_date);
       const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
@@ -123,13 +109,9 @@ serve(async (_req) => {
 
     const weekLabel = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
-    const html = `
-<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:580px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
     <div style="background:#234A3D;padding:28px 40px;display:flex;align-items:center;gap:12px;">
@@ -162,12 +144,7 @@ serve(async (_req) => {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: FROM,
-        to: [email],
-        subject: `Your Steadwell digest — week of ${weekLabel}`,
-        html,
-      }),
+      body: JSON.stringify({ from: FROM, to: [email], subject: `Your Steadwell digest — week of ${weekLabel}`, html }),
     });
 
     const result = await res.json();
