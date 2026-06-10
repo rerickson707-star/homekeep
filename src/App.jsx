@@ -1181,7 +1181,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .onb-screen{position:fixed;inset:0;background:#1C3D31;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box}
 .onb-bar-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(244,237,223,.12);z-index:10}
 .onb-bar-fill{height:100%;background:#C16140;transition:width .4s cubic-bezier(.4,0,.2,1)}
-.onb-inner{flex:1;display:flex;flex-direction:column;justify-content:center;padding:5rem 2rem 2.5rem;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}
+.onb-inner{flex:1;display:flex;flex-direction:column;justify-content:center;padding:5rem 2rem 5rem;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}
 @media(max-width:480px){.onb-inner{padding:5rem 1.4rem 2rem}}
 .onb-wordmark{position:fixed;top:0;left:0;right:0;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.6rem;z-index:9}
 .onb-wordmark-dot{width:28px;height:28px;background:#C16140;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -1427,49 +1427,50 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .setup-done{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--sage-deep);font-weight:600;margin-bottom:1rem}
 
 /* wizard pages */
-.hsw-wrap{padding:.25rem 0}
-.hsw-progress{display:flex;gap:4px;margin-bottom:1.25rem}
-.hsw-prog-seg{flex:1;height:4px;border-radius:2px;background:var(--stone);transition:background .3s}
-.hsw-prog-seg.done{background:var(--pine)}
-.hsw-prog-seg.active{background:var(--rust)}
-.hsw-section-title{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:var(--dark);margin-bottom:.25rem}
-.hsw-section-sub{font-size:.82rem;color:#7A7370;margin-bottom:1.25rem;line-height:1.5}
-.hsw-q{margin-bottom:1rem}
-.hsw-q-label{font-size:.83rem;font-weight:600;color:var(--dark);margin-bottom:.5rem}
-.hsw-q-sub{font-size:.74rem;color:#9E9690;margin-bottom:.45rem}
-.yn-row{display:flex;gap:.5rem;flex-wrap:wrap}
-.yn{padding:.45rem 1.25rem;border-radius:20px;border:1.5px solid var(--stone);background:none;cursor:pointer;font-size:.82rem;font-weight:600;font-family:'Hanken Grotesk',sans-serif;color:#7A7370;transition:all .15s;white-space:nowrap}
-.yn:hover{border-color:var(--pine);color:var(--pine)}
-.yn.sel-yes{background:var(--pine);color:#fff;border-color:var(--pine)}
-.yn.sel-no{background:#5A534B;color:#fff;border-color:#5A534B}
-.yn.sel-opt{background:var(--pine);color:#fff;border-color:var(--pine)}
-.hsw-sub-q{margin-top:.65rem;padding:.75rem;background:var(--cream2);border-radius:10px;border:1px solid var(--stone);display:flex;flex-direction:column;gap:.65rem}
-.hsw-free{width:100%;padding:.5rem .75rem;border:1.5px solid var(--stone);border-radius:10px;font-size:.82rem;font-family:'Hanken Grotesk',sans-serif;color:var(--dark);background:var(--white);resize:none;outline:none}
-.hsw-free:focus{border-color:var(--pine)}
-.hsw-nav{display:flex;justify-content:space-between;align-items:center;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--stone)}
-
-/* review screen */
-.hsw-review-tabs{display:flex;background:var(--cream2);border-radius:8px;padding:2px;gap:2px;margin-bottom:1rem}
-.hsw-rtab{flex:1;padding:.35rem .5rem;border-radius:6px;border:none;background:none;font-size:.77rem;font-weight:600;font-family:'Hanken Grotesk',sans-serif;color:#9E9690;cursor:pointer;transition:all .15s}
-.hsw-rtab.on{background:var(--white);color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.1)}
-.hsw-review-list{display:flex;flex-direction:column;gap:.4rem;max-height:46vh;overflow-y:auto;padding-right:.25rem}
-.hsw-item{display:flex;align-items:flex-start;gap:.65rem;padding:.6rem .75rem;background:var(--cream2);border-radius:9px;border:1px solid var(--stone);cursor:pointer;transition:background .1s}
-.hsw-item:hover{background:rgba(193,97,64,.05)}
-.hsw-item input[type=checkbox]{accent-color:var(--rust);width:15px;height:15px;flex-shrink:0;margin-top:2px;cursor:pointer}
-.hsw-item-info{flex:1;min-width:0}
-.hsw-item-title{font-size:.83rem;font-weight:500;color:var(--dark);line-height:1.3}
-.hsw-item-sub{font-size:.7rem;color:#9E9690;margin-top:2px}
-.hsw-dup-badge{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:8px;background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;flex-shrink:0;white-space:nowrap}
-.hsw-dup-block{background:#FFFBF0;border:1px solid #F0E0A0;border-radius:10px;padding:.6rem .75rem;margin-top:.35rem;font-size:.75rem;color:#7A6030}
+/* ── HOME SETUP WIZARD ──────────────────────────────────────────────────────── */
+.setup-screen{position:fixed;inset:0;background:#1C3D31;display:flex;flex-direction:column;z-index:500;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.setup-inner{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:5rem 2rem 9rem;max-width:540px;width:100%;margin:0 auto;box-sizing:border-box}
+@media(max-width:480px){.setup-inner{padding:5rem 1.4rem 9rem}}
+.setup-actions{position:fixed;bottom:0;left:0;right:0;padding:.85rem 2rem 2rem;background:linear-gradient(to bottom,transparent,#1C3D31 30%);z-index:501;pointer-events:none}
+.setup-actions>*{pointer-events:auto;max-width:540px;margin:0 auto;display:block}
+@media(max-width:480px){.setup-inner{padding:5rem 1.4rem 2.5rem}}
+.setup-q{font-family:'Fraunces',serif;font-size:clamp(1.4rem,4.5vw,1.9rem);font-weight:400;color:#F4EDDF;line-height:1.2;margin-bottom:.45rem}
+.setup-hint{font-size:.84rem;color:rgba(244,237,223,.45);line-height:1.6;margin-bottom:1.6rem}
+.setup-label{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(244,237,223,.38);margin-bottom:.6rem;margin-top:1.2rem}
+.setup-cards{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.5rem}
+.setup-card{display:flex;align-items:center;gap:.85rem;padding:.9rem 1.05rem;background:rgba(244,237,223,.06);border:1.5px solid rgba(244,237,223,.1);border-radius:14px;cursor:pointer;transition:all .16s;text-align:left;width:100%;font-family:'Hanken Grotesk',sans-serif}
+.setup-card:hover{background:rgba(244,237,223,.1);border-color:rgba(244,237,223,.2)}
+.setup-card.sel{background:rgba(193,97,64,.2);border-color:#C16140}
+.setup-card.sel-no{background:rgba(90,83,75,.25);border-color:rgba(90,83,75,.5)}
+.setup-card-check{width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(244,237,223,.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .16s}
+.setup-card.sel .setup-card-check{background:#C16140;border-color:#C16140}
+.setup-card.sel-no .setup-card-check{background:rgba(90,83,75,.6);border-color:rgba(90,83,75,.6)}
+.setup-card-label{font-size:.95rem;font-weight:600;color:#F4EDDF}
+.setup-card-sub{font-size:.72rem;color:rgba(244,237,223,.45);margin-top:2px}
+.setup-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem}
+.setup-chip{padding:.55rem 1rem;background:rgba(244,237,223,.06);border:1.5px solid rgba(244,237,223,.1);border-radius:22px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;font-weight:600;color:rgba(244,237,223,.6);transition:all .16s}
+.setup-chip:hover{background:rgba(244,237,223,.1);color:#F4EDDF}
+.setup-chip.sel{background:rgba(193,97,64,.22);border-color:#C16140;color:#F4EDDF}
+.setup-sub{margin-top:.8rem;padding:1rem 1.1rem;background:rgba(244,237,223,.04);border:1px solid rgba(244,237,223,.08);border-radius:14px;display:flex;flex-direction:column;gap:1rem}
+.setup-free{width:100%;padding:.8rem 1rem;background:rgba(244,237,223,.07);border:1.5px solid rgba(244,237,223,.12);border-radius:12px;font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:#F4EDDF;resize:none;outline:none;box-sizing:border-box;-webkit-appearance:none}
+.setup-free::placeholder{color:rgba(244,237,223,.28)}
+.setup-free:focus{border-color:rgba(244,237,223,.3);background:rgba(244,237,223,.1)}
+/* review */
+.setup-review-stat{display:flex;align-items:center;gap:.85rem;padding:1rem 1.1rem;background:rgba(244,237,223,.06);border:1px solid rgba(244,237,223,.08);border-radius:14px;margin-bottom:.5rem}
+.setup-review-num{font-family:'Fraunces',serif;font-size:1.6rem;font-weight:400;color:#F4EDDF;min-width:2.5rem;text-align:center}
+.setup-review-label{font-size:.88rem;font-weight:600;color:#F4EDDF;line-height:1.3}
+.setup-review-sub{font-size:.72rem;color:rgba(244,237,223,.45);margin-top:2px}
+.setup-detail-list{margin-top:.5rem}
+.setup-detail-item{display:flex;align-items:flex-start;gap:.6rem;padding:.55rem .65rem;border-bottom:1px solid rgba(244,237,223,.06);cursor:pointer}
+.setup-detail-item:last-child{border-bottom:none}
+.setup-detail-item input[type=checkbox]{accent-color:#C16140;width:15px;height:15px;flex-shrink:0;margin-top:2px;cursor:pointer}
+.setup-detail-title{font-size:.82rem;color:rgba(244,237,223,.8);line-height:1.3}
+.setup-detail-sub{font-size:.7rem;color:rgba(244,237,223,.35);margin-top:2px}
+.hsw-dup-badge{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:8px;background:rgba(255,200,0,.15);color:#FFD060;border:1px solid rgba(255,200,0,.2);flex-shrink:0;white-space:nowrap}
+.hsw-dup-block{background:rgba(244,237,223,.05);border:1px solid rgba(244,237,223,.1);border-radius:10px;padding:.6rem .75rem;margin-top:.35rem;font-size:.75rem;color:rgba(244,237,223,.55)}
 .hsw-dup-choices{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
-.hsw-dup-btn{padding:.28rem .65rem;border-radius:10px;border:1.5px solid var(--stone);background:none;font-size:.72rem;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:all .15s}
-.hsw-dup-btn.active{background:var(--pine);color:#fff;border-color:var(--pine)}
-.hsw-util-chips{display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem 0}
-.hsw-util-chip{padding:.3rem .75rem;border-radius:20px;background:var(--cream2);border:1px solid var(--stone);font-size:.76rem;font-weight:600;color:#5A534B}
-.hsw-summary-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem}
-.hsw-summary-stat{background:var(--cream2);border-radius:10px;padding:.55rem .85rem;text-align:center;flex:1;min-width:60px}
-.hsw-summary-num{font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;color:var(--pine)}
-.hsw-summary-label{font-size:.65rem;color:#9E9690;margin-top:1px}
+.hsw-dup-btn{padding:.28rem .65rem;border-radius:10px;border:1.5px solid rgba(244,237,223,.15);background:none;font-size:.72rem;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:all .15s;color:rgba(244,237,223,.6)}
+.hsw-dup-btn.active{background:#C16140;color:#fff;border-color:#C16140}
 
 /* ══ SAFE RESPONSIVE FIXES ══ */
 
@@ -6242,12 +6243,11 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [insData, setInsData] = useState({});
-  const [showSetup, setShowSetup] = useState(false);
 
   // Auto-open setup wizard when coming directly from onboarding
   useEffect(() => {
@@ -8138,6 +8138,7 @@ export default function App() {
   const [showContractors, setShowContractors] = useState(false);
   const [contractors, setContractors] = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -8347,13 +8348,13 @@ export default function App() {
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup}/>}
             </>
           )}
         </main>
 
         {/* ── Navigation — hidden when Documents is open ── */}
-        <nav className="bottom-nav" style={(showDocs||showContractors) ? {display:"none"} : {}}>
+        <nav className="bottom-nav" style={(showDocs||showContractors||showSetup) ? {display:"none"} : {}}>
           {TABS.map(t=>(
             <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
@@ -8968,34 +8969,60 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
 
 function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Appliances","Review"];
-  const [step, setStep]     = useState(0);
+  const LS_KEY = `sw_wizard_${userId}`;
+
+  const [step, setStepRaw] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [reviewTab, setReviewTab] = useState("assets");
   const [assetDetails, setAssetDetails] = useState({});
 
-  // Answers state
-  const [A, setA] = useState({
+  // Persist step + answers to localStorage on every change
+  const setStep = (n) => {
+    setStepRaw(n);
+    try { localStorage.setItem(LS_KEY + "_step", String(n)); } catch {}
+  };
+
+  const DEFAULT_A = {
     hvac:      { hasCentralAC:null, acType:null, acAge:null, hasFurnace:null, furnaceFuel:null, furnaceAge:null, hasHumidifier:null, notes:"" },
     water:     { source:null, hasPressureTank:null, hasWaterHeater:null, heaterType:null, heaterAge:null, hasSoftener:null, notes:"" },
     structure: { roofType:null, roofAge:null, exteriorType:null, foundationType:null, hasChimney:null, notes:"" },
     extras:    { hasPool:null, poolType:null, poolChemistry:null, hasIrrigation:null, hasSolar:null, hasSeptic:null, hasGenerator:null, notes:"" },
     appliances:{ hasFridge:null, fridgeAge:null, hasDishwasher:null, dwAge:null, hasWasher:null, washerAge:null, hasDryer:null, dryerAge:null, dryerFuel:null, hasRange:null, rangeAge:null, rangeFuel:null, hasMicrowave:null, mwAge:null, notes:"" },
     custom:"",
+  };
+
+  // Restore from localStorage on mount
+  const [A, setARaw] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      const savedStep = localStorage.getItem(LS_KEY + "_step");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (savedStep) setTimeout(() => setStepRaw(Math.min(Number(savedStep), 4)), 0); // max step 4 (not review) so they re-confirm
+        return {...DEFAULT_A, ...parsed};
+      }
+    } catch {}
+    return DEFAULT_A;
   });
+
+  const setA = (updater) => {
+    setARaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   const set = (section, key, val) => setA(a => ({...a, [section]:{...a[section],[key]:val}}));
   const setDetail = (i, field, val) => setAssetDetails(d => ({...d, [i]:{...(d[i]||{}), [field]:val}}));
+  const [expanded, setExpanded] = useState("assets"); // auto-expand assets on review
 
-  // Generated output (computed on step 4 — review)
-  const [generated, setGenerated] = useState(null);
-  // Checked state for review items
+  // Generated output
+  const [generated, setGenerated]         = useState(null);
   const [assetChecks, setAssetChecks]     = useState({});
   const [taskChecks, setTaskChecks]       = useState({});
   const [projectChecks, setProjectChecks] = useState({});
-  // Duplicate resolution: "add_new" | "update" | "skip" per asset key
   const [dupResolutions, setDupResolutions] = useState({});
 
-  // Compute duplicates against existing assets
   const findDup = (asset) => {
     if (!existingAssets.length) return null;
     const words = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g,"").split(" ").filter(w=>w.length>3);
@@ -9006,21 +9033,21 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     ) || null;
   };
 
-  // Navigate to review — generate output
+  // Navigate to review — generate output and auto-expand assets
   const goReview = () => {
     const result = generateHomeProfile(A);
     setGenerated(result);
-    // Init all checked true
     const ac={}, tc={}, pc={};
     result.assets.forEach((_,i)   => ac[i] = true);
     result.tasks.forEach((_,i)    => tc[i] = true);
     result.projects.forEach((_,i) => pc[i] = true);
     setAssetChecks(ac); setTaskChecks(tc); setProjectChecks(pc);
-    // Init dup resolutions to "add_new" (user can change)
     const dr={};
     result.assets.forEach((a,i) => { if(findDup(a)) dr[i] = "add_new"; });
     setDupResolutions(dr);
-    setStep(5); // Review is now step 5
+    setExpanded(null); // don't auto-expand — let user choose
+    setStepRaw(5);
+    try { localStorage.setItem(LS_KEY + "_step", "5"); } catch {}
   };
 
   // Batch save to Supabase
@@ -9059,14 +9086,18 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       }
 
       // 2. Save selected tasks (resolve asset_id from keyToId)
+      const TASK_FIELDS = ["title","status","priority","due_date","category","notes","recurring","vendor"];
       const taskRows = generated.tasks
         .filter((_,i) => taskChecks[i])
-        .map(({ _assetKey, ...t }) => ({
-          ...t,
-          asset_id: _assetKey ? (keyToId[_assetKey] || null) : null,
-          user_id: userId,
-        }));
-      if (taskRows.length) await supabase.from("tasks").insert(taskRows);
+        .map(({ _assetKey, ...t }) => {
+          const base = { user_id: userId, asset_id: null }; // asset_id linked after migration
+          TASK_FIELDS.forEach(f => { if (t[f] !== undefined) base[f] = t[f]; });
+          return base;
+        });
+      if (taskRows.length) {
+        const { error: tErr } = await supabase.from("tasks").insert(taskRows);
+        if (tErr) console.error("Task insert error:", tErr.message);
+      }
 
       // 3. Save selected projects — Plus/Pro only
       const canCreateProjects = planData?.plan === "plus" || planData?.plan === "pro";
@@ -9094,6 +9125,8 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       const pCount = canCreateProjects ? Object.values(projectChecks).filter(Boolean).length : 0;
       const msg = `✓ Home profile set up — ${aCount} assets, ${tCount} tasks${pCount ? `, ${pCount} projects` : ""} created`;
       toast(msg);
+      // Clear saved wizard state
+      try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_step"); } catch {}
       onComplete();
     } catch (err) {
       toast("Error saving — " + err.message, "error");
@@ -9102,17 +9135,27 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
   };
 
   // ── Shared sub-components ────────────────────────────────────────────────────
-  const YN = ({ section, field, val, label="Yes", noLabel="No" }) => (
-    <div className="yn-row">
-      <button className={`yn ${val===true?"sel-yes":""}`}  onClick={()=>set(section,field,true)}>✓ {label}</button>
-      <button className={`yn ${val===false?"sel-no":""}`}  onClick={()=>set(section,field,false)}>✕ {noLabel}</button>
+  const YN = ({ section, field, val }) => (
+    <div className="setup-cards">
+      <button className={`setup-card ${val===true?"sel":""}`} onClick={()=>set(section,field,val===true?null:true)}>
+        <div className="setup-card-check">
+          {val===true&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </div>
+        <div><div className="setup-card-label">Yes</div></div>
+      </button>
+      <button className={`setup-card ${val===false?"sel-no":""}`} onClick={()=>set(section,field,val===false?null:false)}>
+        <div className="setup-card-check">
+          {val===false&&<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>}
+        </div>
+        <div><div className="setup-card-label" style={{color:val===false?"rgba(244,237,223,.7)":"rgba(244,237,223,.85)"}}>No</div></div>
+      </button>
     </div>
   );
 
   const Opts = ({ section, field, val, options }) => (
-    <div className="yn-row">
+    <div className="setup-chips">
       {options.map(([v,l]) => (
-        <button key={v} className={`yn ${val===v?"sel-opt":""}`} onClick={()=>set(section,field,v)}>{l}</button>
+        <button key={v} className={`setup-chip ${val===v?"sel":""}`} onClick={()=>set(section,field,val===v?null:v)}>{l}</button>
       ))}
     </div>
   );
@@ -9121,96 +9164,113 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     <Opts section={section} field={field} val={val} options={[["0-5","0–5 yrs"],["6-10","6–10 yrs"],["11-15","11–15 yrs"],["16+","16+ yrs"]]}/>
   );
 
+  const pct = `${Math.round(((step+1) / STEPS.length) * 100)}%`;
   const Progress = () => (
-    <div style={{marginBottom:"1.1rem"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
-        <span style={{fontSize:".7rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em"}}>
-          {step < STEPS.length - 1 ? `Step ${step+1} of ${STEPS.length-1}` : "Review"}
-        </span>
-        <button onClick={onComplete} style={{fontSize:".7rem",color:"#C8C0B8",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
+    <div className="onb-bar-track" style={{position:"fixed",top:0,left:0,right:0}}>
+      <div className="onb-bar-fill" style={{width:pct}}/>
+    </div>
+  );
+
+  const Wordmark = () => (
+    <div className="onb-wordmark">
+      <div className="onb-wordmark-dot">
+        <svg viewBox="0 0 48 48" fill="none" width="16" height="16">
+          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <span className="onb-wordmark-name">Steadwell</span>
+    </div>
+  );
+
+  const StepHeader = ({ stepNum, title, hint }) => (
+    <>
+      <div className="onb-step" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span>Step {stepNum} of {STEPS.length - 1}</span>
+        <button onClick={onComplete} style={{background:"none",border:"none",color:"rgba(244,237,223,.3)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".7rem",fontWeight:600,padding:0,letterSpacing:".04em"}}>
           Finish later ✕
         </button>
       </div>
-      <div className="hsw-progress">
-        {STEPS.map((s,i) => <div key={s} className={`hsw-prog-seg ${i<step?"done":i===step?"active":""}`}/>)}
-      </div>
-    </div>
+      <div className="setup-q">{title}</div>
+      {hint && <div className="setup-hint">{hint}</div>}
+    </>
   );
 
   // ── STEP 0 — HVAC ────────────────────────────────────────────────────────────
   if (step === 0) return (
-    <div className="hsw-wrap">
-      <Progress/>
-      <div className="hsw-section-title">Heating & Cooling</div>
-      <div className="hsw-section-sub">Tell us what climate systems you have. We'll create the right maintenance reminders — like filter changes and annual tune-ups. <strong>Skip anything that doesn't apply.</strong></div>
+    <>
+    <div className="setup-screen">
+      <Progress/><Wordmark/>
+      <div className="setup-inner">
+      <StepHeader stepNum={1} title="Heating & Cooling" hint="Tell us what climate systems you have. We'll create the right maintenance reminders."/>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Do you have central air conditioning or a heat pump?</div>
+      <div>
+        <div className="setup-label">Do you have central air conditioning or a heat pump?</div>
         <YN section="hvac" field="hasCentralAC" val={A.hvac.hasCentralAC}/>
         {A.hvac.hasCentralAC && (
-          <div className="hsw-sub-q">
+          <div className="setup-sub">
             <div>
-              <div className="hsw-q-label">What type?</div>
+              <div className="setup-label">What type?</div>
               <Opts section="hvac" field="acType" val={A.hvac.acType} options={[["central_ac","Central AC"],["heat_pump","Heat pump"],["both","Both"]]}/>
             </div>
             <div>
-              <div className="hsw-q-label">How old is the system?</div>
+              <div className="setup-label">How old is the system?</div>
               <AgeOpts section="hvac" field="acAge" val={A.hvac.acAge}/>
             </div>
           </div>
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Do you have a furnace or boiler?</div>
+      <div style={{marginTop:"1.25rem"}}>
+        <div className="setup-label">Do you have a furnace or boiler?</div>
         <YN section="hvac" field="hasFurnace" val={A.hvac.hasFurnace}/>
         {A.hvac.hasFurnace && (
-          <div className="hsw-sub-q">
+          <div className="setup-sub">
             <div>
-              <div className="hsw-q-label">Fuel type?</div>
+              <div className="setup-label">Fuel type?</div>
               <Opts section="hvac" field="furnaceFuel" val={A.hvac.furnaceFuel} options={[["gas","Gas"],["oil","Oil"],["electric","Electric"],["propane","Propane"]]}/>
             </div>
             <div>
-              <div className="hsw-q-label">How old is the furnace?</div>
+              <div className="setup-label">How old is the furnace?</div>
               <AgeOpts section="hvac" field="furnaceAge" val={A.hvac.furnaceAge}/>
             </div>
           </div>
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Whole-house humidifier or dehumidifier?</div>
+      <div style={{marginTop:"1.25rem"}}>
+        <div className="setup-label">Whole-house humidifier or dehumidifier?</div>
         <YN section="hvac" field="hasHumidifier" val={A.hvac.hasHumidifier}/>
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
-        <div className="hsw-q-sub">e.g. mini-split, radiant floor heating, window units</div>
-        <textarea className="hsw-free" rows={2} value={A.hvac.notes} onChange={e=>set("hvac","notes",e.target.value)} placeholder="Describe any other heating or cooling systems…"/>
+      <div style={{marginTop:"1.25rem"}}>
+        <div className="setup-label">Anything else? <span style={{fontWeight:400,opacity:.5}}>optional</span></div>
+        <div style={{fontSize:".75rem",color:"rgba(244,237,223,.35)",marginBottom:".5rem"}}>e.g. mini-split, radiant floor heating, window units</div>
+        <textarea className="setup-free" rows={2} value={A.hvac.notes} onChange={e=>set("hvac","notes",e.target.value)} placeholder="Other heating or cooling systems…"/>
       </div>
 
-      <div className="hsw-nav">
-        <div/>
-        <button className="btn btn-primary" onClick={()=>setStep(1)}>Continue →</button>
       </div>
     </div>
+    <div className="setup-actions"><button className="onb-btn" style={{width:"100%",marginTop:0}} onClick={()=>setStep(1)}>Continue →</button></div>
+  </>
   );
 
   // ── STEP 1 — WATER ───────────────────────────────────────────────────────────
   if (step === 1) return (
-    <div className="hsw-wrap">
-      <Progress/>
-      <div className="hsw-section-title">💧 Water Systems</div>
-      <div className="hsw-section-sub">Your water source and heater type determine very different maintenance needs.</div>
+    <>
+    <div className="setup-screen">
+      <Progress/><Wordmark/>
+      <div className="setup-inner">
+      <StepHeader stepNum={2} title="Water Systems" hint="Your water source and heater type determine very different maintenance needs."/>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">What is your water source?</div>
+      <div>
+        <div className="setup-label">What is your water source?</div>
         <Opts section="water" field="source" val={A.water.source} options={[["city","City water"],["well","Private well"],["both","Both"]]}/>
         {(A.water.source==="well"||A.water.source==="both") && (
-          <div className="hsw-sub-q">
+          <div className="setup-sub">
             <div>
-              <div className="hsw-q-label">Do you have a pressure tank?</div>
-              <div className="yn-row">
+              <div className="setup-label">Do you have a pressure tank?</div>
+              <div className="setup-chips">
                 <button className={`yn ${A.water.hasPressureTank===true?"sel-yes":""}`}  onClick={()=>set("water","hasPressureTank",true)}>✓ Yes</button>
                 <button className={`yn ${A.water.hasPressureTank===false?"sel-no":""}`}  onClick={()=>set("water","hasPressureTank",false)}>✕ No</button>
                 <button className={`yn ${A.water.hasPressureTank===null&&A.water.source?"sel-opt":""}`} onClick={()=>set("water","hasPressureTank",null)}>Not sure</button>
@@ -9220,104 +9280,110 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Do you have a water heater?</div>
+      <div>
+        <div className="setup-label">Do you have a water heater?</div>
         <YN section="water" field="hasWaterHeater" val={A.water.hasWaterHeater}/>
         {A.water.hasWaterHeater && (
-          <div className="hsw-sub-q">
+          <div className="setup-sub">
             <div>
-              <div className="hsw-q-label">Tank or tankless?</div>
+              <div className="setup-label">Tank or tankless?</div>
               <Opts section="water" field="heaterType" val={A.water.heaterType} options={[["tank","Storage tank"],["tankless","Tankless / on-demand"]]}/>
             </div>
             <div>
-              <div className="hsw-q-label">How old is the water heater?</div>
+              <div className="setup-label">How old is the water heater?</div>
               <AgeOpts section="water" field="heaterAge" val={A.water.heaterAge}/>
             </div>
           </div>
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Do you have a water softener or whole-house filtration?</div>
+      <div>
+        <div className="setup-label">Do you have a water softener or whole-house filtration?</div>
         <YN section="water" field="hasSoftener" val={A.water.hasSoftener}/>
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
-        <textarea className="hsw-free" rows={2} value={A.water.notes} onChange={e=>set("water","notes",e.target.value)} placeholder="e.g. whole-house filtration, UV purifier, rainwater collection…"/>
+      <div>
+        <div className="setup-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="setup-free" rows={2} value={A.water.notes} onChange={e=>set("water","notes",e.target.value)} placeholder="e.g. whole-house filtration, UV purifier, rainwater collection…"/>
       </div>
 
-      <div className="hsw-nav">
-        <button className="btn btn-ghost" onClick={()=>setStep(0)}>← Back</button>
-        <button className="btn btn-primary" onClick={()=>setStep(2)}>Continue →</button>
       </div>
     </div>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+        <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(0)}>← Back</button>
+        <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={()=>setStep(2)}>Continue →</button>
+      </div></div>
+  </>
   );
 
   // ── STEP 2 — STRUCTURE ───────────────────────────────────────────────────────
   if (step === 2) return (
-    <div className="hsw-wrap">
-      <Progress/>
-      <div className="hsw-section-title">🏠 Structure & Exterior</div>
-      <div className="hsw-section-sub">Roof type and age, foundation, and exterior material all drive different maintenance schedules.</div>
+    <>
+    <div className="setup-screen">
+      <Progress/><Wordmark/>
+      <div className="setup-inner">
+      <StepHeader stepNum={3} title="Structure & Exterior" hint="Your roof and structural systems are your biggest long-term investments."/>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">What type of roof do you have?</div>
+      <div>
+        <div className="setup-label">What type of roof do you have?</div>
         <Opts section="structure" field="roofType" val={A.structure.roofType} options={[["shingle","Asphalt shingle"],["metal","Metal"],["tile","Tile / clay"],["flat","Flat"],["unknown","Not sure"]]}/>
         {A.structure.roofType && A.structure.roofType !== "unknown" && (
-          <div className="hsw-sub-q">
-            <div className="hsw-q-label">How old is the roof?</div>
+          <div className="setup-sub">
+            <div className="setup-label">How old is the roof?</div>
             <AgeOpts section="structure" field="roofAge" val={A.structure.roofAge}/>
           </div>
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">What is your exterior made of?</div>
+      <div>
+        <div className="setup-label">What is your exterior made of?</div>
         <Opts section="structure" field="exteriorType" val={A.structure.exteriorType} options={[["brick","Brick"],["vinyl_siding","Vinyl siding"],["stucco","Stucco"],["wood","Wood"],["mixed","Mixed"]]}/>
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">What type of foundation do you have?</div>
+      <div>
+        <div className="setup-label">What type of foundation do you have?</div>
         <Opts section="structure" field="foundationType" val={A.structure.foundationType} options={[["slab","Slab"],["crawlspace","Crawl space"],["basement","Basement"],["unknown","Not sure"]]}/>
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Do you have a chimney or fireplace?</div>
+      <div>
+        <div className="setup-label">Do you have a chimney or fireplace?</div>
         <YN section="structure" field="hasChimney" val={A.structure.hasChimney}/>
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
-        <textarea className="hsw-free" rows={2} value={A.structure.notes} onChange={e=>set("structure","notes",e.target.value)} placeholder="e.g. detached garage, deck, fence, retaining wall…"/>
+      <div>
+        <div className="setup-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="setup-free" rows={2} value={A.structure.notes} onChange={e=>set("structure","notes",e.target.value)} placeholder="e.g. detached garage, deck, fence, retaining wall…"/>
       </div>
 
-      <div className="hsw-nav">
-        <button className="btn btn-ghost" onClick={()=>setStep(1)}>← Back</button>
-        <button className="btn btn-primary" onClick={()=>setStep(3)}>Continue →</button>
       </div>
     </div>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+        <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(1)}>← Back</button>
+        <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={()=>setStep(3)}>Continue →</button>
+      </div></div>
+  </>
   );
 
   // ── STEP 3 — EXTRAS ──────────────────────────────────────────────────────────
   if (step === 3) return (
-    <div className="hsw-wrap">
-      <Progress/>
-      <div className="hsw-section-title">⚡ Additional Systems</div>
-      <div className="hsw-section-sub">Pool, solar, generator — each comes with its own maintenance track.</div>
+    <>
+    <div className="setup-screen">
+      <Progress/><Wordmark/>
+      <div className="setup-inner">
+      <StepHeader stepNum={4} title="Additional Systems" hint="Pools, solar, generators, and other specialty systems. Skip what doesn't apply."/>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Do you have a pool or hot tub?</div>
+      <div>
+        <div className="setup-label">Do you have a pool or hot tub?</div>
         <YN section="extras" field="hasPool" val={A.extras.hasPool}/>
         {A.extras.hasPool && (
-          <div className="hsw-sub-q">
+          <div className="setup-sub">
             <div>
-              <div className="hsw-q-label">Which do you have?</div>
+              <div className="setup-label">Which do you have?</div>
               <Opts section="extras" field="poolType" val={A.extras.poolType} options={[["pool","Pool only"],["hot_tub","Hot tub only"],["both","Both"]]}/>
             </div>
             {(A.extras.poolType==="pool"||A.extras.poolType==="both") && (
               <div>
-                <div className="hsw-q-label">Pool chemistry type?</div>
+                <div className="setup-label">Pool chemistry type?</div>
                 <Opts section="extras" field="poolChemistry" val={A.extras.poolChemistry} options={[["chlorine","Chlorine"],["saltwater","Saltwater"]]}/>
               </div>
             )}
@@ -9331,274 +9397,303 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
         ["hasSeptic","🔄","Do you have a septic system?"],
         ["hasGenerator","⚡","Do you have a backup generator?"],
       ].map(([field, icon, label]) => (
-        <div key={field} className="hsw-q">
-          <div className="hsw-q-label">{icon} {label}</div>
+        <div key={field}>
+          <div className="setup-label">{icon} {label}</div>
           <YN section="extras" field={field} val={A.extras[field]}/>
         </div>
       ))}
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Anything else we should know? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
-        <textarea className="hsw-free" rows={2} value={A.extras.notes} onChange={e=>set("extras","notes",e.target.value)} placeholder="e.g. EV charger, whole-house battery, second kitchen, ADU…"/>
+      <div>
+        <div className="setup-label">Anything else we should know? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="setup-free" rows={2} value={A.extras.notes} onChange={e=>set("extras","notes",e.target.value)} placeholder="e.g. EV charger, whole-house battery, second kitchen, ADU…"/>
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Any other systems or assets to add? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
-        <textarea className="hsw-free" rows={2} value={A.custom} onChange={e=>setA(a=>({...a,custom:e.target.value}))} placeholder="Freeform — anything not covered above…"/>
+      <div>
+        <div className="setup-label">Any other systems or assets to add? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <textarea className="setup-free" rows={2} value={A.custom} onChange={e=>setA(a=>({...a,custom:e.target.value}))} placeholder="Freeform — anything not covered above…"/>
       </div>
 
-      <div className="hsw-nav">
-        <button className="btn btn-ghost" onClick={()=>setStep(2)}>← Back</button>
-        <button className="btn btn-primary" onClick={()=>setStep(4)}>Continue →</button>
       </div>
     </div>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+        <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(2)}>← Back</button>
+        <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={()=>setStep(4)}>Continue →</button>
+      </div></div>
+  </>
   );
 
   // ── STEP 4 — APPLIANCES ─────────────────────────────────────────────────────
   if (step === 4) return (
-    <div className="hsw-wrap">
-      <Progress/>
-      <div className="hsw-section-title">Appliances</div>
-      <div className="hsw-section-sub">Tell us about your major appliances. We'll track their age and create maintenance reminders. Skip anything you don't have.</div>
+    <>
+    <div className="setup-screen">
+      <Progress/><Wordmark/>
+      <div className="setup-inner">
+      <StepHeader stepNum={5} title="Appliances" hint="Tell us about your major appliances and we'll track maintenance."/>
+      <div className="setup-hint">Tell us about your major appliances. We'll track their age and create maintenance reminders. Skip anything you don't have.</div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Refrigerator</div>
+      <div>
+        <div className="setup-label">Refrigerator</div>
         <YN section="appliances" field="hasFridge" val={A.appliances.hasFridge}/>
-        {A.appliances.hasFridge && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="fridgeAge" val={A.appliances.fridgeAge}/></div></div>}
+        {A.appliances.hasFridge && <div className="setup-sub"><div><div className="setup-label">How old?</div><AgeOpts section="appliances" field="fridgeAge" val={A.appliances.fridgeAge}/></div></div>}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Dishwasher</div>
+      <div>
+        <div className="setup-label">Dishwasher</div>
         <YN section="appliances" field="hasDishwasher" val={A.appliances.hasDishwasher}/>
-        {A.appliances.hasDishwasher && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="dwAge" val={A.appliances.dwAge}/></div></div>}
+        {A.appliances.hasDishwasher && <div className="setup-sub"><div><div className="setup-label">How old?</div><AgeOpts section="appliances" field="dwAge" val={A.appliances.dwAge}/></div></div>}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Washing Machine</div>
+      <div>
+        <div className="setup-label">Washing Machine</div>
         <YN section="appliances" field="hasWasher" val={A.appliances.hasWasher}/>
-        {A.appliances.hasWasher && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="washerAge" val={A.appliances.washerAge}/></div></div>}
+        {A.appliances.hasWasher && <div className="setup-sub"><div><div className="setup-label">How old?</div><AgeOpts section="appliances" field="washerAge" val={A.appliances.washerAge}/></div></div>}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Dryer</div>
+      <div>
+        <div className="setup-label">Dryer</div>
         <YN section="appliances" field="hasDryer" val={A.appliances.hasDryer}/>
         {A.appliances.hasDryer && (
-          <div className="hsw-sub-q">
-            <div><div className="hsw-q-label">Fuel type?</div><Opts section="appliances" field="dryerFuel" val={A.appliances.dryerFuel} options={[["gas","Gas"],["electric","Electric"]]}/></div>
-            <div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="dryerAge" val={A.appliances.dryerAge}/></div>
+          <div className="setup-sub">
+            <div><div className="setup-label">Fuel type?</div><Opts section="appliances" field="dryerFuel" val={A.appliances.dryerFuel} options={[["gas","Gas"],["electric","Electric"]]}/></div>
+            <div><div className="setup-label">How old?</div><AgeOpts section="appliances" field="dryerAge" val={A.appliances.dryerAge}/></div>
           </div>
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Oven / Range</div>
+      <div>
+        <div className="setup-label">Oven / Range</div>
         <YN section="appliances" field="hasRange" val={A.appliances.hasRange}/>
         {A.appliances.hasRange && (
-          <div className="hsw-sub-q">
-            <div><div className="hsw-q-label">Fuel type?</div><Opts section="appliances" field="rangeFuel" val={A.appliances.rangeFuel} options={[["gas","Gas"],["electric","Electric"],["dual","Dual fuel"]]}/></div>
-            <div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="rangeAge" val={A.appliances.rangeAge}/></div>
+          <div className="setup-sub">
+            <div><div className="setup-label">Fuel type?</div><Opts section="appliances" field="rangeFuel" val={A.appliances.rangeFuel} options={[["gas","Gas"],["electric","Electric"],["dual","Dual fuel"]]}/></div>
+            <div><div className="setup-label">How old?</div><AgeOpts section="appliances" field="rangeAge" val={A.appliances.rangeAge}/></div>
           </div>
         )}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Built-in Microwave</div>
+      <div>
+        <div className="setup-label">Built-in Microwave</div>
         <YN section="appliances" field="hasMicrowave" val={A.appliances.hasMicrowave}/>
-        {A.appliances.hasMicrowave && <div className="hsw-sub-q"><div><div className="hsw-q-label">How old?</div><AgeOpts section="appliances" field="mwAge" val={A.appliances.mwAge}/></div></div>}
+        {A.appliances.hasMicrowave && <div className="setup-sub"><div><div className="setup-label">How old?</div><AgeOpts section="appliances" field="mwAge" val={A.appliances.mwAge}/></div></div>}
       </div>
 
-      <div className="hsw-q">
-        <div className="hsw-q-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
-        <div className="hsw-q-sub">e.g. wine fridge, garbage disposal, second fridge, trash compactor</div>
-        <textarea className="hsw-free" rows={2} value={A.appliances.notes} onChange={e=>set("appliances","notes",e.target.value)} placeholder="Other appliances…"/>
+      <div>
+        <div className="setup-label">Anything else? <span style={{fontWeight:400,color:"#9E9690"}}>(optional)</span></div>
+        <div style={{fontSize:".75rem",color:"rgba(244,237,223,.35)",marginBottom:".5rem"}}>e.g. wine fridge, garbage disposal, second fridge, trash compactor</div>
+        <textarea className="setup-free" rows={2} value={A.appliances.notes} onChange={e=>set("appliances","notes",e.target.value)} placeholder="Other appliances…"/>
       </div>
 
-      <div className="hsw-nav">
-        <button className="btn btn-ghost" onClick={()=>setStep(3)}>← Back</button>
-        <button className="btn btn-primary" onClick={goReview}>Review my plan →</button>
       </div>
     </div>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+        <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(3)}>← Back</button>
+        <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={goReview}>Review my plan →</button>
+      </div></div>
+  </>
   );
 
-  // ── STEP 5 — REVIEW ──────────────────────────────────────────────────────────
+  // ── STEP 5 — REVIEW ─────────────────────────────────────────────────────────
   if (step === 5 && generated) {
     const selA = generated.assets.filter((_,i)  => assetChecks[i]);
     const selT = generated.tasks.filter((_,i)   => taskChecks[i]);
     const selP = generated.projects.filter((_,i) => projectChecks[i]);
+    const canCreateProjects = planData?.plan === "plus" || planData?.plan === "pro";
+
+    const SECTIONS = [
+      {
+        key:"assets", label:"Assets to track", count:selA.length, total:generated.assets.length,
+        icon:"🏠", sub:"Your home's systems and appliances",
+        hint:"Tap any item to include or exclude it. Add details like brand and model number now — or anytime from the Assets tab.",
+      },
+      {
+        key:"tasks", label:"Maintenance tasks", count:selT.length, total:generated.tasks.length,
+        icon:"✓", sub:"Scheduled reminders and to-dos",
+        hint:"All tasks are selected by default. Tap any to remove it. You can always add or edit tasks later from the Tasks tab.",
+      },
+      {
+        key:"projects", label:"Project suggestions", count:selP.length, total:generated.projects.length,
+        icon:"📋", sub:"Bigger work items with budgets",
+        hint: canCreateProjects ? "Suggested projects based on your home's age. You can edit or delete these from the Money tab." : "Upgrade to Plus to track home improvement projects with budgets.",
+      },
+    ];
 
     return (
-      <div className="hsw-wrap">
-        <Progress/>
-        <div className="hsw-section-title">Your maintenance plan is ready</div>
-        <div className="hsw-section-sub">Here's what we'll create. Uncheck anything you don't want. You can always add or edit later.</div>
+      <div className="setup-screen">
+        <Progress/><Wordmark/>
+        <div className="setup-inner" style={{paddingBottom:"7rem"}}>
 
-        {/* Summary row */}
-        <div className="hsw-summary-row">
-          {[
-            [selA.length, "assets"],
-            [selT.length, "tasks"],
-            [selP.length, "projects"],
-          ].map(([n,l]) => (
-            <div key={l} className="hsw-summary-stat">
-              <div className="hsw-summary-num">{n}</div>
-              <div className="hsw-summary-label">{l}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Tab toggle */}
-        <div className="hsw-review-tabs">
-          {[["assets","Assets"],["tasks","Tasks"],["projects","Projects"],["utilities","Utilities"]].map(([k,l]) => (
-            <button key={k} className={`hsw-rtab ${reviewTab===k?"on":""}`} onClick={()=>setReviewTab(k)}>{l}</button>
-          ))}
-        </div>
-
-        {/* Assets tab */}
-        {reviewTab === "assets" && (
-          <div className="hsw-review-list">
-            {generated.assets.length === 0 ? (
-              <div style={{color:"#9E9690",fontSize:".83rem",padding:".5rem"}}>No assets generated — answer more questions to add assets.</div>
-            ) : generated.assets.map((a, i) => {
-              const dup = findDup(a);
-              const res = dupResolutions[i] || "add_new";
-              const det = assetDetails[i] || {};
-              return (
-                <div key={i} style={{marginBottom:".5rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",background:"var(--white)"}}>
-                  {/* Main row */}
-                  <div className="hsw-item" style={{borderRadius:0,border:"none"}} onClick={()=>setAssetChecks(c=>({...c,[i]:!c[i]}))}>
-                    <input type="checkbox" checked={!!assetChecks[i]} readOnly/>
-                    <div className="hsw-item-info">
-                      <div className="hsw-item-title">{det.brand ? `${det.brand} ` : ""}{a.item}</div>
-                      <div className="hsw-item-sub">{a.category}{a.notes ? ` · ${a.notes}` : ""}</div>
-                    </div>
-                    {dup && <span className="hsw-dup-badge">⚠ Similar exists</span>}
-                  </div>
-                  {/* Detail fields — always visible when checked */}
-                  {assetChecks[i] && (
-                    <div style={{padding:".6rem .85rem .75rem",borderTop:"1px solid var(--stone)",background:"var(--cream)"}}>
-                      <div style={{fontSize:".7rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".5rem"}}>
-                        Add details — optional, but helps track this asset
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".4rem"}}>
-                        {[
-                          {key:"brand",  ph:"Brand (e.g. Carrier, LG, GE)"},
-                          {key:"model",  ph:"Model number"},
-                          {key:"serial", ph:"Serial number"},
-                          {key:"year",   ph:"Install / purchase year"},
-                          {key:"vendor", ph:"Purchased from / installed by"},
-                        ].map(({key,ph})=>(
-                          <input key={key}
-                            value={det[key]||""}
-                            onChange={e=>setDetail(i,key,e.target.value)}
-                            placeholder={ph}
-                            style={{padding:".4rem .6rem",border:"1.5px solid var(--stone)",borderRadius:"8px",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",color:"var(--dark)",background:"var(--white)",outline:"none",gridColumn: key==="vendor"?"1 / -1":undefined}}
-                            onFocus={e=>e.target.style.borderColor="var(--pine)"}
-                            onBlur={e=>e.target.style.borderColor="var(--stone)"}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Dup handling */}
-                  {dup && assetChecks[i] && (
-                    <div className="hsw-dup-block">
-                      <div>Existing: <strong>{dup.item}</strong> · {dup.category}</div>
-                      <div style={{marginTop:"2px",color:"#9E9690"}}>You may have two of this system — choose how to handle:</div>
-                      <div className="hsw-dup-choices">
-                        {[["add_new","Add as new"],["update","Update existing"],["skip","Skip"]].map(([v,l]) => (
-                          <button key={v} className={`hsw-dup-btn ${res===v?"active":""}`}
-                            onClick={e=>{e.stopPropagation();setDupResolutions(d=>({...d,[i]:v}));}}>
-                            {l}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="onb-step" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>Review</span>
+            <button onClick={onComplete} style={{background:"none",border:"none",color:"rgba(244,237,223,.3)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".7rem",fontWeight:600,padding:0}}>
+              Finish later ✕
+            </button>
           </div>
-        )}
 
-        {/* Tasks tab */}
-        {reviewTab === "tasks" && (
-          <div className="hsw-review-list">
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:".4rem"}}>
-              <span style={{fontSize:".72rem",color:"#9E9690"}}>{selT.length} of {generated.tasks.length} selected</span>
-              <div style={{display:"flex",gap:".4rem"}}>
-                <button className="btn btn-ghost btn-sm" onClick={()=>setTaskChecks(Object.fromEntries(generated.tasks.map((_,i)=>[i,true])))}>All</button>
-                <button className="btn btn-ghost btn-sm" onClick={()=>setTaskChecks(Object.fromEntries(generated.tasks.map((_,i)=>[i,false])))}>None</button>
-              </div>
-            </div>
-            {generated.tasks.map((t, i) => (
-              <div key={i} className="hsw-item" onClick={()=>setTaskChecks(c=>({...c,[i]:!c[i]}))}>
-                <input type="checkbox" checked={!!taskChecks[i]} readOnly/>
-                <div className="hsw-item-info">
-                  <div className="hsw-item-title">{t.title}</div>
-                  <div className="hsw-item-sub">
-                    {t.priority} · {t.recurring ? `🔁 ${t.recurring}` : "one-time"} · due {new Date(t.due_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+          <div className="setup-q">Your plan is ready</div>
+          <div className="setup-hint" style={{marginBottom:"1.25rem"}}>
+            Tap each section to review what will be created. You can add brand, model, and serial details now — or edit any asset later from the Assets tab.
+          </div>
+
+          {/* Section cards */}
+          {SECTIONS.map(({key, label, count, total, icon, sub, hint}) => (
+            <div key={key} style={{marginBottom:".65rem",borderRadius:"16px",overflow:"hidden",border:`1.5px solid ${expanded===key?"#C16140":"rgba(244,237,223,.1)"}`,transition:"border-color .2s"}}>
+
+              {/* Section header — always visible */}
+              <div
+                onClick={()=>setExpanded(expanded===key?null:key)}
+                style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem 1.1rem",cursor:"pointer",background:expanded===key?"rgba(193,97,64,.12)":"rgba(244,237,223,.05)",transition:"background .2s"}}
+              >
+                <div style={{width:40,height:40,borderRadius:10,background:"rgba(244,237,223,.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>{icon}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:".92rem",color:"#F4EDDF",lineHeight:1.2}}>{label}</div>
+                  <div style={{fontSize:".72rem",color:"rgba(244,237,223,.45)",marginTop:2}}>
+                    {expanded===key ? sub : <span style={{color:"rgba(193,97,64,.8)",fontWeight:600}}>Tap to review →</span>}
                   </div>
                 </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:400,color:count>0?"#F4EDDF":"rgba(244,237,223,.3)",lineHeight:1}}>{count}</div>
+                  <div style={{fontSize:".65rem",color:"rgba(244,237,223,.35)",marginTop:1}}>of {total}</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,color:"rgba(244,237,223,.3)",transform:expanded===key?"rotate(90deg)":"none",transition:"transform .2s"}}>
+                  <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
-            ))}
-          </div>
-        )}
 
-        {/* Projects tab */}
-        {reviewTab === "projects" && (
-          <div className="hsw-review-list">
-            {generated.projects.length === 0 ? (
-              <div style={{color:"#9E9690",fontSize:".83rem",padding:".5rem"}}>No projects suggested — your systems are all in good shape.</div>
-            ) : (
-              <>
-                {(planData?.plan === "free") && (
-                  <div style={{background:"#EEF4FF",border:"1px solid #C5D5F7",borderRadius:"10px",padding:".7rem .85rem",marginBottom:".5rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem"}}>
-                    <div style={{fontSize:".78rem",color:"#3B5FBF",lineHeight:1.4}}>
-                      <strong>Projects are a Plus feature.</strong> Upgrade to automatically create these budget plans.
-                    </div>
-                  </div>
-                )}
-                {generated.projects.map((p, i) => {
-                  const isLocked = planData?.plan === "free";
-                  return (
-                    <div key={i}
-                      className="hsw-item"
-                      onClick={()=>!isLocked && setProjectChecks(c=>({...c,[i]:!c[i]}))}
-                      style={{opacity: isLocked ? 0.5 : 1, cursor: isLocked ? "default" : "pointer"}}
-                    >
-                      <input type="checkbox" checked={isLocked ? false : !!projectChecks[i]} readOnly disabled={isLocked}/>
-                      <div className="hsw-item-info">
-                        <div className="hsw-item-title">{p.name}</div>
-                        <div className="hsw-item-sub">{p.notes} · Budget: ${p.budget?.toLocaleString()}</div>
+              {/* Expanded content */}
+              {expanded === key && (
+                <div style={{background:"rgba(0,0,0,.15)"}}>
+                  {/* Hint */}
+                  <div style={{padding:".6rem 1.1rem",fontSize:".73rem",color:"rgba(244,237,223,.4)",borderBottom:"1px solid rgba(244,237,223,.06)"}}>{hint}</div>
+
+                  {/* Assets */}
+                  {key === "assets" && generated.assets.map((a,i) => {
+                    const included = !!assetChecks[i];
+                    const dup = findDup(a);
+                    const res = dupResolutions[i] || "add_new";
+                    const det = assetDetails[i] || {};
+                    return (
+                      <div key={i} style={{borderBottom:"1px solid rgba(244,237,223,.06)"}}>
+                        {/* Toggle row */}
+                        <div
+                          onClick={()=>setAssetChecks(c=>({...c,[i]:!c[i]}))}
+                          style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1.1rem",cursor:"pointer",opacity:included?1:.45,transition:"opacity .15s"}}
+                        >
+                          {/* Big visible toggle */}
+                          <div style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${included?"#C16140":"rgba(244,237,223,.2)"}`,background:included?"#C16140":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
+                            {included
+                              ? <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              : <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1 1L8 8M8 1L1 8" stroke="rgba(244,237,223,.4)" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                            }
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:".88rem",fontWeight:600,color:"#F4EDDF",textDecoration:included?"none":"line-through",transition:"text-decoration .15s"}}>
+                              {det.brand?`${det.brand} `:""}{a.item}
+                            </div>
+                            <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)",marginTop:2}}>{a.category}{a.notes?` · ${a.notes}`:""}</div>
+                          </div>
+                          {dup && <span className="hsw-dup-badge" style={{flexShrink:0}}>Similar exists</span>}
+                        </div>
+                        {/* Detail fields when included */}
+                        {included && (
+                          <div style={{padding:".5rem 1.1rem .75rem 3.8rem",background:"rgba(244,237,223,.02)"}}>
+                            <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(244,237,223,.3)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>Add details — optional</div>
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".35rem"}}>
+                              {[{k:"brand",ph:"Brand"},{k:"model",ph:"Model #"},{k:"serial",ph:"Serial #"},{k:"year",ph:"Year"},{k:"vendor",ph:"Purchased from"}].map(({k,ph})=>(
+                                <input key={k} value={det[k]||""} onChange={e=>setDetail(i,k,e.target.value)} placeholder={ph}
+                                  className="setup-free" style={{padding:".38rem .65rem",fontSize:".76rem",borderRadius:"9px",gridColumn:k==="vendor"?"1 / -1":undefined}}/>
+                              ))}
+                            </div>
+                            {dup && (
+                              <div className="hsw-dup-block" style={{marginTop:".5rem"}}>
+                                <div>Similar existing: <strong style={{color:"rgba(244,237,223,.7)"}}>{dup.item}</strong></div>
+                                <div className="hsw-dup-choices">
+                                  {[["add_new","Add new"],["update","Update"],["skip","Skip"]].map(([v,l])=>(
+                                    <button key={v} className={`hsw-dup-btn ${res===v?"active":""}`}
+                                      onClick={e=>{e.stopPropagation();setDupResolutions(d=>({...d,[i]:v}));}}>
+                                      {l}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {isLocked && <span style={{fontSize:".65rem",color:"#3B5FBF",fontWeight:700,flexShrink:0}}>Plus</span>}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
+                    );
+                  })}
 
-        {/* Utilities tab */}
-        {reviewTab === "utilities" && (
-          <div>
-            <div style={{fontSize:".82rem",color:"#5A534B",marginBottom:".6rem",lineHeight:1.5}}>
-              Based on your answers, you'll want to track these utility expenses in the <strong>Finances → Utilities</strong> tab:
-            </div>
-            <div className="hsw-util-chips">
-              {generated.utilities.map(u => <span key={u} className="hsw-util-chip">⚡ {u}</span>)}
-            </div>
-            <div style={{fontSize:".75rem",color:"#9E9690",marginTop:".75rem"}}>
-              Utilities are not created automatically — head to Finances → Utilities after setup to start logging your bills.
-            </div>
-          </div>
-        )}
+                  {/* Tasks */}
+                  {key === "tasks" && (
+                    <>
+                      <div style={{display:"flex",justifyContent:"flex-end",gap:".4rem",padding:".45rem 1.1rem",borderBottom:"1px solid rgba(244,237,223,.06)"}}>
+                        <button onClick={()=>setTaskChecks(Object.fromEntries(generated.tasks.map((_,i)=>[i,true])))} style={{background:"rgba(244,237,223,.08)",border:"none",borderRadius:"6px",fontSize:".7rem",color:"rgba(244,237,223,.6)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:".25rem .6rem",fontWeight:600}}>Select all</button>
+                        <button onClick={()=>setTaskChecks(Object.fromEntries(generated.tasks.map((_,i)=>[i,false])))} style={{background:"rgba(244,237,223,.08)",border:"none",borderRadius:"6px",fontSize:".7rem",color:"rgba(244,237,223,.6)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:".25rem .6rem",fontWeight:600}}>Deselect all</button>
+                      </div>
+                      {generated.tasks.map((t,i) => {
+                        const included = !!taskChecks[i];
+                        const priorityColor = t.priority==="Urgent"?"#FF7B5C":t.priority==="High"?"#FFB830":"rgba(244,237,223,.35)";
+                        return (
+                          <div key={i}
+                            onClick={()=>setTaskChecks(c=>({...c,[i]:!c[i]}))}
+                            style={{display:"flex",alignItems:"center",gap:".75rem",padding:".7rem 1.1rem",borderBottom:"1px solid rgba(244,237,223,.06)",cursor:"pointer",opacity:included?1:.4,transition:"opacity .15s"}}
+                          >
+                            <div style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${included?"#C16140":"rgba(244,237,223,.18)"}`,background:included?"#C16140":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
+                              {included && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:".85rem",fontWeight:500,color:"#F4EDDF",textDecoration:included?"none":"line-through"}}>{t.title}</div>
+                              <div style={{fontSize:".7rem",color:"rgba(244,237,223,.38)",marginTop:2}}>
+                                <span style={{color:priorityColor,fontWeight:600}}>{t.priority}</span>{t.recurring?` · ${t.recurring}`:""} · due {new Date(t.due_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
 
-        <div className="hsw-nav">
-          <button className="btn btn-ghost" onClick={()=>setStep(3)}>← Back</button>
-          <button className="btn btn-rust" onClick={save} disabled={saving||(!selA.length&&!selT.length&&!selP.length)}>
-            {saving ? "Setting up…" : `Set up my home (${selA.length+selT.length+selP.length} items) →`}
+                  {/* Projects */}
+                  {key === "projects" && (
+                    generated.projects.length === 0 ? (
+                      <div style={{padding:"1.25rem 1.1rem",fontSize:".82rem",color:"rgba(244,237,223,.35)"}}>No projects suggested — your systems look to be in good shape.</div>
+                    ) : generated.projects.map((p,i) => {
+                      const locked = !canCreateProjects;
+                      const included = !locked && !!projectChecks[i];
+                      return (
+                        <div key={i}
+                          onClick={()=>!locked && setProjectChecks(c=>({...c,[i]:!c[i]}))}
+                          style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1.1rem",borderBottom:"1px solid rgba(244,237,223,.06)",cursor:locked?"default":"pointer",opacity:included||locked?.9:0.4,transition:"opacity .15s"}}
+                        >
+                          <div style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${locked?"rgba(193,97,64,.4)":included?"#C16140":"rgba(244,237,223,.18)"}`,background:locked?"rgba(193,97,64,.15)":included?"#C16140":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                            {locked ? <span style={{fontSize:".55rem",color:"#C16140",fontWeight:700}}>+</span>
+                              : included && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:".88rem",fontWeight:600,color:"#F4EDDF",textDecoration:(!locked&&!included)?"line-through":"none"}}>{p.name}</div>
+                            <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)",marginTop:2}}>Budget: ${p.budget?.toLocaleString()}{locked?" · Plus feature":""}</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+        </div>
+
+        {/* Sticky save bar */}
+        <div className="setup-actions">
+          <button
+            className="onb-btn"
+            style={{marginTop:0,width:"100%"}}
+            onClick={save}
+            disabled={saving||(!selA.length&&!selT.length&&!selP.length)}
+          >
+            {saving
+              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up your home…</>
+              : `Save ${selA.length+selT.length+selP.length} items to my home →`}
           </button>
         </div>
       </div>
