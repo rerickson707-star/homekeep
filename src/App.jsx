@@ -2384,9 +2384,13 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     // Fire welcome email — async, don't block signup UX
     fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk",
+      },
       body: JSON.stringify({ email, name: email.split("@")[0] }),
-    }).catch(() => {}); // silent fail — email is best-effort
+    }).then(r => { if(!r.ok) r.json().then(d => console.warn("Welcome email failed:", d)); })
+      .catch(e => console.warn("Welcome email error:", e));
     setSuccess("Account created! Check your email to confirm, then log in.");
   };
 
@@ -4848,12 +4852,12 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
   // Load projects
   useEffect(() => {
     if(!userId) return;
-    supabase.from("projects").select("*").eq("user_id", userId).order("created_at", {ascending:false})
-      .then(({data}) => { if(data) setProjects(data); });
-    supabase.from("utilities").select("*").eq("user_id", userId).order("created_at", {ascending:true})
-      .then(({data}) => { if(data) setUtilities(data); });
+    supabase.from("projects").select("*").eq("user_id", userId)
+      .then(({data, error}) => { if(error) console.error("Projects load error:", error.message, error.code); if(data) setProjects(data); });
+    supabase.from("utilities").select("*").eq("user_id", userId)
+      .then(({data, error}) => { if(error) console.error("Utilities load error:", error.message, error.code); if(data) setUtilities(data); });
     supabase.from("utility_bills").select("*").eq("user_id", userId).order("bill_date", {ascending:false})
-      .then(({data}) => { if(data) setBills(data); });
+      .then(({data, error}) => { if(error) console.error("Utility bills load error:", error.message, error.code); if(data) setBills(data); });
   }, [userId]);
 
   // ── Expense CRUD
