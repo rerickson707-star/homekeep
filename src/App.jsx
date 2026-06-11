@@ -4052,7 +4052,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
-function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[] }) {
+function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[] }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone);
   const month = new Date().getMonth();
@@ -4098,7 +4098,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
       if(!error) { setTasks(tasks.map(t=>t.id===editId?{...payload,id:editId}:t)); toast("Task updated ✓"); }
       else toast("Error saving","error");
     } else {
-      const {data,error} = await supabase.from("tasks").insert([{...payload,user_id:userId}]).select();
+      const {data,error} = await supabase.from("tasks").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
       if(!error&&data) { setTasks([...tasks,data[0]]); toast("Task added ✓"); }
       else toast("Error adding","error");
     }
@@ -4389,7 +4389,7 @@ function Tasks({ tasks, setTasks, toast, userId, profile, warranties: assets=[],
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[] }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[] }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -4431,7 +4431,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
       if(!error) { setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a)); toast("Asset updated ✓"); }
       else { console.error("Asset update error:", error); toast("Error saving: "+error.message,"error"); }
     } else {
-      const {data,error} = await supabase.from("warranties").insert([{...payload,user_id:userId}]).select();
+      const {data,error} = await supabase.from("warranties").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
       if(!error&&data) { setAssets([...assets,data[0]]); toast("Asset added ✓"); }
       else { console.error("Asset insert error:", error); toast("Error adding: "+error.message,"error"); }
     }
@@ -4481,7 +4481,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, s
         toast("Service log updated ✓");
       } else { console.error("Service update error:", error); toast("Error saving: "+error.message,"error"); }
     } else {
-      const {error} = await supabase.from("asset_service_log").insert([{...payload,user_id:userId}]);
+      const {error} = await supabase.from("asset_service_log").insert([{...payload,user_id:userId,property_id:propertyId}]);
       if(!error) {
         await reloadServiceLogs();
         await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id).eq("user_id",userId);
@@ -4858,7 +4858,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects }) {
+function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -4913,7 +4913,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
       if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId,user_id:userId}:e)); toast("Expense updated ✓"); }
       else toast("Error saving — "+error.message,"error");
     } else {
-      const {data,error} = await supabase.from("expenses").insert([{...payload,user_id:userId}]).select();
+      const {data,error} = await supabase.from("expenses").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
       if(!error&&data?.[0]) { setExpenses([...expenses,data[0]]); toast("Expense logged ✓"); }
       else toast("Error adding — "+(error?.message||"unknown error"),"error");
     }
@@ -4941,7 +4941,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
       if(!error) { setProjects(projects.map(p=>p.id===projectEditId?{...payload,id:projectEditId,user_id:userId}:p)); toast("Project updated ✓"); }
       else { toast("Error saving — "+error.message,"error"); return; }
     } else {
-      const {data,error} = await supabase.from("projects").insert([{...payload,user_id:userId}]).select();
+      const {data,error} = await supabase.from("projects").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
       if(!error&&data?.[0]) { setProjects([...projects,data[0]]); toast("Project created ✓"); }
       else { toast("Error creating — "+(error?.message||"unknown error"),"error"); return; }
     }
@@ -6463,7 +6463,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
   const [modal, setModal] = useState(false);
   const [insModal, setInsModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -6953,6 +6953,54 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           ))}
         </div>
       </div>
+
+      {/* ── My Properties (Pro) ── */}
+      {allProfiles.length > 0 && (
+        <div className="panel" style={{marginBottom:".85rem"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
+            <div className="panel-title" style={{marginBottom:0}}>My Properties</div>
+            {planData?.plan === "pro" && allProfiles.length < 3 && (
+              <button className="btn btn-sm btn-primary" onClick={onAddProperty}>+ Add property</button>
+            )}
+            {planData?.plan !== "pro" && (
+              <button className="btn btn-sm btn-ghost" onClick={onUpgrade} style={{fontSize:".7rem"}}>
+                Pro — up to 3
+              </button>
+            )}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+            {allProfiles.map(p => (
+              <div key={p.id}
+                onClick={() => onSwitchProperty?.(p.id)}
+                style={{display:"flex",alignItems:"center",gap:".85rem",padding:".8rem 1rem",borderRadius:14,border:`1.5px solid ${p.id===propertyId?"var(--rust)":"var(--stone)"}`,background:p.id===propertyId?"var(--rust-light)":"var(--white)",cursor:"pointer",transition:"all .18s"}}
+              >
+                <div style={{width:36,height:36,borderRadius:10,background:p.id===propertyId?"rgba(193,97,64,.15)":"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <svg viewBox="0 0 48 48" fill="none" width="18" height="18">
+                    <path d="M12 34L12 20L24 10L36 20L36 34" stroke={p.id===propertyId?"var(--rust)":"#9E9690"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M8 35.5L40 35.5" stroke={p.id===propertyId?"var(--rust)":"#9E9690"} strokeWidth="3" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:".88rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {p.nickname || p.address?.split(",")[0] || "My Home"}
+                  </div>
+                  <div style={{fontSize:".72rem",color:"#9E9690",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {p.address || "No address set"}{p.year ? ` · Built ${p.year}` : ""}
+                  </div>
+                </div>
+                {p.id === propertyId && (
+                  <span style={{fontSize:".7rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {planData?.plan !== "pro" && (
+            <div style={{fontSize:".72rem",color:"#9E9690",marginTop:".75rem",textAlign:"center",lineHeight:1.5}}>
+              Upgrade to Pro to manage up to 3 properties
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Contractors Tile ── */}
       <div className="docs-tile" onClick={onShowContractors}>
@@ -8519,6 +8567,225 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   );
 }
 
+// ─── PROPERTY SWITCHER ────────────────────────────────────────────────────────
+function PropertySwitcher({ allProfiles, activePropertyId, onSwitch, onAdd, planData }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const isPro = planData?.plan === "pro";
+  const canAdd = isPro && allProfiles.length < 3;
+  const active = allProfiles.find(p => p.id === activePropertyId) || allProfiles[0];
+  const shortAddr = (p) => p?.address?.split(",")[0] || p?.nickname || "My Home";
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  if (allProfiles.length < 2 && !canAdd) return null;
+
+  return (
+    <div ref={ref} style={{position:"relative",flexShrink:0}}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.1)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:22,padding:".28rem .75rem .28rem .65rem",cursor:"pointer",color:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:500,transition:"background .18s",maxWidth:200}}
+      >
+        <svg viewBox="0 0 48 48" fill="none" width="14" height="14" style={{flexShrink:0}}>
+          <path d="M12 34L12 20L24 10L36 20L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M8 35.5L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{shortAddr(active)}</span>
+        <span style={{opacity:.5,fontSize:".65rem",flexShrink:0}}>▾</span>
+      </button>
+      {open && (
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:"var(--white)",borderRadius:14,boxShadow:"var(--shadow-lg)",border:"1px solid var(--stone)",overflow:"hidden",minWidth:200,zIndex:300}}>
+          {allProfiles.map(p => (
+            <button key={p.id}
+              onClick={() => { onSwitch(p.id); setOpen(false); }}
+              style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:".7rem 1rem",background:p.id===activePropertyId?"var(--cream)":"var(--white)",border:"none",borderBottom:"1px solid var(--stone)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".83rem",color:"var(--dark)",textAlign:"left",transition:"background .12s"}}
+            >
+              <svg viewBox="0 0 48 48" fill="none" width="14" height="14" style={{flexShrink:0,opacity:.5}}>
+                <path d="M12 34L12 20L24 10L36 20L36 34" stroke="#234A3D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8 35.5L40 35.5" stroke="#234A3D" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:p.id===activePropertyId?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{shortAddr(p)}</div>
+                {p.nickname && p.address && <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address.split(",")[0]}</div>}
+              </div>
+              {p.id === activePropertyId && <span style={{color:"var(--rust)",fontSize:".75rem",fontWeight:700,flexShrink:0}}>✓</span>}
+            </button>
+          ))}
+          {canAdd && (
+            <button
+              onClick={() => { onAdd(); setOpen(false); }}
+              style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:".7rem 1rem",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".83rem",color:"var(--rust)",fontWeight:600,textAlign:"left"}}
+            >
+              <span style={{fontSize:"1.1rem",lineHeight:1}}>+</span> Add a property
+            </button>
+          )}
+          {!isPro && (
+            <div style={{padding:".65rem 1rem",fontSize:".72rem",color:"#9E9690",borderTop:"1px solid var(--stone)",background:"var(--cream)"}}>
+              Upgrade to Pro for up to 3 properties
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ADD PROPERTY MODAL ───────────────────────────────────────────────────────
+function AddPropertyModal({ userId, onClose, onCreated }) {
+  const [step, setStep] = useState(1); // 1=address, 2=nickname
+  const [address, setAddress] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [lookupState, setLookupState] = useState("idle");
+  const [propertyData, setPropertyData] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const debounceRef = useRef(null);
+  const suggestRef = useRef(null);
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+
+  const handleInput = (val) => {
+    setAddress(val); setLookupState("idle"); setPropertyData(null); setSelectedAddress("");
+    clearTimeout(debounceRef.current);
+    if (val.length < 2) { setSuggestions([]); return; }
+    setSuggesting(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
+        setSuggestions(results);
+      } catch { setSuggestions([]); }
+      finally { setSuggesting(false); }
+    }, 120);
+  };
+
+  const selectSug = async (s) => {
+    setAddress(s.description); setSelectedAddress(s.description);
+    setSuggestions([]);
+    setLookupState("loading");
+    try {
+      const result = await lookupProperty(s.description);
+      if (result) { setPropertyData(result); setLookupState("found"); }
+      else setLookupState("notfound");
+    } catch { setLookupState("notfound"); }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const payload = {
+      user_id: userId,
+      name: nickname.trim() || address.split(",")[0],
+      nickname: nickname.trim() || null,
+      address: propertyData?.address || address,
+      type: propertyData?.type || "",
+      year: propertyData?.year || "",
+      sqft: propertyData?.sqft || "",
+      bedrooms: propertyData?.bedrooms || "",
+      bathrooms: propertyData?.bathrooms || "",
+      lot_size: propertyData?.lot_size || "",
+      zestimate: propertyData?.zestimate || "",
+      last_sale_price: propertyData?.last_sale_price || "",
+      photo_url: propertyData?.photo_url || "",
+      onboarding_complete: true,
+    };
+    const { data, error } = await supabase.from("profiles").insert([payload]).select();
+    setSaving(false);
+    if (error) { alert("Error saving: " + error.message); return; }
+    onCreated(data[0]);
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(23,30,28,.55)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",backdropFilter:"blur(8px)"}}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{background:"var(--white)",borderRadius:22,width:"100%",maxWidth:480,boxShadow:"var(--shadow-lg)"}}>
+        {/* Header */}
+        <div style={{padding:"1.25rem 1.4rem .85rem",borderBottom:"1px solid var(--stone)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:"var(--dark)"}}>
+            {step === 1 ? "Add a property" : "Name this property"}
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:"1.3rem",cursor:"pointer",color:"#9E9690",padding:".2rem .4rem"}}>×</button>
+        </div>
+
+        <div style={{padding:"1.25rem 1.4rem"}}>
+          {step === 1 ? (
+            <>
+              <div style={{fontSize:".82rem",color:"#7A7370",marginBottom:"1rem",lineHeight:1.55}}>
+                Enter the address and we'll look up the property details automatically.
+              </div>
+              <div ref={suggestRef} style={{position:"relative",marginBottom:"1rem"}}>
+                <input
+                  autoFocus className="btn" value={address}
+                  onChange={e => handleInput(e.target.value)}
+                  placeholder="123 Main St, Tampa, FL"
+                  style={{width:"100%",padding:".65rem .95rem",border:"1.5px solid var(--stone)",borderRadius:12,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif",color:"var(--dark)",background:"var(--white)",outline:"none",boxSizing:"border-box"}}
+                />
+                {suggestions.length > 0 && (
+                  <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:12,boxShadow:"var(--shadow-lg)",zIndex:100,overflow:"hidden"}}>
+                    {suggestions.map((s,i) => (
+                      <div key={i} onMouseDown={() => selectSug(s)}
+                        style={{padding:".65rem .95rem",cursor:"pointer",borderBottom:"1px solid var(--stone)",fontSize:".85rem",color:"var(--dark)"}}
+                        onMouseEnter={e => e.currentTarget.style.background="var(--cream)"}
+                        onMouseLeave={e => e.currentTarget.style.background=""}
+                      >
+                        <div style={{fontWeight:500}}>{s.mainText}</div>
+                        <div style={{fontSize:".72rem",color:"#9E9690"}}>{s.secondaryText}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {lookupState === "loading" && <div style={{fontSize:".82rem",color:"#9E9690",marginBottom:".75rem"}}>Looking up property…</div>}
+              {lookupState === "found" && <div style={{fontSize:".82rem",color:"var(--pine)",fontWeight:600,marginBottom:".75rem"}}>✓ Property found</div>}
+              {lookupState === "notfound" && <div style={{fontSize:".82rem",color:"#9E9690",marginBottom:".75rem"}}>Address saved — you can add details later.</div>}
+              <div style={{display:"flex",gap:".6rem",justifyContent:"flex-end"}}>
+                <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+                <button className="btn btn-primary" disabled={!address.trim() || lookupState==="loading"} onClick={() => setStep(2)}>
+                  Continue →
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:".82rem",color:"#7A7370",marginBottom:"1rem",lineHeight:1.55}}>
+                Give it a nickname so you can tell your properties apart. Optional.
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:".5rem",marginBottom:"1rem"}}>
+                {["Beach House","Rental Property","Vacation Home","Parents' Home","Investment Property"].map(n => (
+                  <button key={n} onClick={() => setNickname(n)}
+                    style={{padding:".32rem .8rem",borderRadius:20,border:`1.5px solid ${nickname===n?"var(--rust)":"var(--stone)"}`,background:nickname===n?"var(--rust-light)":"var(--white)",color:nickname===n?"var(--rust)":"#7A7370",fontSize:".75rem",fontWeight:600,cursor:"pointer"}}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <input
+                autoFocus
+                value={nickname}
+                onChange={e => setNickname(e.target.value)}
+                placeholder="Or type your own…"
+                style={{width:"100%",padding:".65rem .95rem",border:"1.5px solid var(--stone)",borderRadius:12,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif",color:"var(--dark)",background:"var(--white)",outline:"none",marginBottom:"1rem",boxSizing:"border-box"}}
+              />
+              <div style={{padding:".75rem 1rem",background:"var(--cream)",borderRadius:10,marginBottom:"1rem",fontSize:".82rem",color:"#7A7370"}}>
+                <div style={{fontWeight:600,color:"var(--dark)",marginBottom:2}}>{address.split(",")[0]}</div>
+                <div>{address.split(",").slice(1).join(",").trim()}</div>
+              </div>
+              <div style={{display:"flex",gap:".6rem",justifyContent:"flex-end"}}>
+                <button className="btn btn-ghost" onClick={() => setStep(1)}>← Back</button>
+                <button className="btn btn-primary" disabled={saving} onClick={save}>
+                  {saving ? "Saving…" : "Add property →"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // URL-based routing for legal pages
   if (typeof window !== "undefined") {
@@ -8545,9 +8812,17 @@ export default function App() {
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [activePropertyId, setActivePropertyIdRaw] = useState(null);
+  const [showAddProperty, setShowAddProperty] = useState(false);
   const [serviceLogs, setServiceLogs] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const { toasts, show: toast } = useToast();
+
+  const setActivePropertyId = (id, uid) => {
+    setActivePropertyIdRaw(id);
+    try { localStorage.setItem(`sw_prop_${uid || session?.user?.id}`, id); } catch {}
+  };
 
   // Plan derived from profile — re-computes whenever profile loads
   const planData = usePlan(profile);
@@ -8567,31 +8842,68 @@ export default function App() {
   // ── Load data when user logs in
   useEffect(() => {
     if (!session?.user) {
-      setTasks([]); setWarranties([]); setExpenses([]); setProfile(null); setServiceLogs([]);
+      setTasks([]); setWarranties([]); setExpenses([]); setProfile(null);
+      setAllProfiles([]); setServiceLogs([]);
       setDataLoading(true);
       return;
     }
     const uid = session.user.id;
     async function loadData() {
       setDataLoading(true);
-      const [t, w, e, p, sl, c] = await Promise.all([
-        supabase.from("tasks").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
-        supabase.from("warranties").select("*").eq("user_id", uid).order("expiry_date", { ascending: true }),
-        supabase.from("expenses").select("*").eq("user_id", uid).order("date", { ascending: false }),
-        supabase.from("profiles").select("*").eq("user_id", uid).limit(1),
-        supabase.from("asset_service_log").select("*").eq("user_id", uid).order("service_date", { ascending: false }),
+      // Load all profiles first to determine active property
+      const pResult = await supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true });
+      const profiles = pResult.data || [];
+      setAllProfiles(profiles);
+
+      // Determine active property
+      let storedId = null;
+      try { storedId = localStorage.getItem(`sw_prop_${uid}`); } catch {}
+      const activePid = (storedId && profiles.find(p => p.id === storedId))
+        ? storedId
+        : profiles[0]?.id || null;
+
+      setActivePropertyIdRaw(activePid);
+      const activeP = profiles.find(p => p.id === activePid) || profiles[0] || null;
+      if (activeP) setProfile(activeP);
+
+      // Load data scoped to active property
+      const [t, w, e, sl, c] = await Promise.all([
+        supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", activePid).order("created_at", { ascending: false }),
+        supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", activePid).order("expiry_date", { ascending: true }),
+        supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", activePid).order("date", { ascending: false }),
+        supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", activePid).order("service_date", { ascending: false }),
         supabase.from("contractors").select("*").eq("user_id", uid).order("name", { ascending: true }),
       ]);
       if(t.data) setTasks(t.data);
       if(w.data) setWarranties(w.data);
       if(e.data) setExpenses(e.data);
-      if(p.data && p.data.length > 0) setProfile(p.data[0]);
       if(sl.data) setServiceLogs(sl.data);
       if(c.data) setContractors(c.data);
       setDataLoading(false);
     }
     loadData();
   }, [session]);
+
+  // ── Switch active property and reload all scoped data
+  const switchProperty = async (propertyId) => {
+    const uid = session.user.id;
+    setActivePropertyId(propertyId, uid);
+    const newProfile = allProfiles.find(p => p.id === propertyId);
+    if (newProfile) setProfile(newProfile);
+    setTasks([]); setWarranties([]); setExpenses([]); setServiceLogs([]);
+    setDataLoading(true);
+    const [t, w, e, sl] = await Promise.all([
+      supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", propertyId).order("created_at", { ascending: false }),
+      supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", propertyId).order("expiry_date", { ascending: true }),
+      supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", propertyId).order("date", { ascending: false }),
+      supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", propertyId).order("service_date", { ascending: false }),
+    ]);
+    if(t.data) setTasks(t.data);
+    if(w.data) setWarranties(w.data);
+    if(e.data) setExpenses(e.data);
+    if(sl.data) setServiceLogs(sl.data);
+    setDataLoading(false);
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -8710,6 +9022,13 @@ export default function App() {
             <div className="ico"><svg viewBox="0 0 48 48" fill="none" width="58%" height="58%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg></div>
             <span className="name">Steadwell</span>
           </div>
+          <PropertySwitcher
+            allProfiles={allProfiles}
+            activePropertyId={activePropertyId}
+            onSwitch={switchProperty}
+            onAdd={() => setShowAddProperty(true)}
+            planData={planData}
+          />
           <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
           <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)}/>
         </header>
@@ -8747,10 +9066,10 @@ export default function App() {
           ) : (
             <>
               {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
-              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup}/>}
+              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/>}
+              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>}
             </>
           )}
         </main>
@@ -8787,6 +9106,19 @@ export default function App() {
             planData={planData}
             onUpgrade={()=>{ setShowExport(false); setShowUpgrade(true); }}
             onClose={()=>setShowExport(false)}
+          />
+        )}
+        {showAddProperty && (
+          <AddPropertyModal
+            userId={uid}
+            onClose={() => setShowAddProperty(false)}
+            onCreated={async (newProfile) => {
+              const updated = [...allProfiles, newProfile];
+              setAllProfiles(updated);
+              setShowAddProperty(false);
+              await switchProperty(newProfile.id);
+              toast(`✓ ${newProfile.address?.split(",")[0] || "New property"} added`);
+            }}
           />
         )}
         {showUpgrade && (
@@ -9496,7 +9828,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
           await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id).eq("user_id",userId);
           keyToId[_key] = dup.id;
         } else {
-          const { data } = await supabase.from("warranties").insert([{...enriched, user_id:userId}]).select("id");
+          const { data } = await supabase.from("warranties").insert([{...enriched, user_id:userId, property_id:profile?.id}]).select("id");
           if (data?.[0]) keyToId[_key] = data[0].id;
         }
       }
@@ -9506,7 +9838,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       const taskRows = generated.tasks
         .filter((_,i) => taskChecks[i])
         .map(({ _assetKey, ...t }) => {
-          const base = { user_id: userId, asset_id: null }; // asset_id linked after migration
+          const base = { user_id: userId, asset_id: null, property_id: profile?.id };
           TASK_FIELDS.forEach(f => { if (t[f] !== undefined) base[f] = t[f]; });
           return base;
         });
@@ -9520,7 +9852,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       if (canCreateProjects) {
         const projRows = generated.projects
           .filter((_,i) => projectChecks[i])
-          .map(({ ...p }) => ({ ...p, user_id: userId }));
+          .map(({ ...p }) => ({ ...p, user_id: userId, property_id: profile?.id }));
         if (projRows.length) await supabase.from("projects").insert(projRows);
       }
 
