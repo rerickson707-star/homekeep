@@ -2153,7 +2153,7 @@ function OnboardingWizard({ session, onComplete }) {
   const [selectedAddress, setSelectedAddress] = useState("");
   const debounceRef = useRef(null);
   const suggestRef  = useRef(null);
-  const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [goals, setGoals] = useState([]);
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
   const GOALS = [
@@ -3326,7 +3326,7 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
   const [showLookupWarning, setShowLookupWarning] = useState(false);
   const suggestRef = useRef(null);
   const debounceRef = useRef(null);
-  const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
   // Address lookup limits per plan
   const isPro   = planData?.plan === "pro";
@@ -8745,7 +8745,7 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef(null);
   const suggestRef = useRef(null);
-  const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
   const handleInput = (val) => {
     setAddress(val); setLookupState("idle"); setPropertyData(null); setSelectedAddress("");
