@@ -2123,9 +2123,8 @@ function OnboardingWizard({ session, onComplete }) {
   const debounceRef = useRef(null);
   const suggestRef  = useRef(null);
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-
-  // Step 3 — Goal
-  const [goal, setGoal] = useState("");
+  const [goals, setGoals] = useState([]);
+  const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
   const GOALS = [
     { id:"maintenance", label:"Stay on top of maintenance",    sub:"Reminders, seasonal tasks, service history",   ico:"🔧" },
     { id:"costs",       label:"Track costs & expenses",        sub:"Repairs, utilities, project spending",         ico:"📊" },
@@ -2176,7 +2175,7 @@ function OnboardingWizard({ session, onComplete }) {
     const uid = session.user.id;
     try {
       const payload = {
-        user_id: uid, name: name.trim(), goal: goal || null, onboarding_complete: true,
+        user_id: uid, name: name.trim(), goal: goals.length ? goals.join(",") : null, onboarding_complete: true,
         address: propertyData?.address || address || "",
         type: propertyData?.type || "", year: propertyData?.year || "",
         sqft: propertyData?.sqft || "", bedrooms: propertyData?.bedrooms || "",
@@ -2342,17 +2341,17 @@ function OnboardingWizard({ session, onComplete }) {
       <div className="onb-inner">
         <div className="onb-step">Step 3 of {TOTAL}</div>
         <div className="onb-q">What brings you here{firstName ? `, ${firstName}` : ""}?</div>
-        <div className="onb-hint">We'll tailor your experience around your main goal.</div>
+        <div className="onb-hint">Select all that apply — we'll personalize your experience around what matters to you.</div>
         <div className="onb-goals">
           {GOALS.map(g => (
-            <button key={g.id} className={`onb-goal ${goal === g.id ? "sel" : ""}`} onClick={() => setGoal(g.id)}>
+            <button key={g.id} className={`onb-goal ${goals.includes(g.id) ? "sel" : ""}`} onClick={() => toggleGoal(g.id)}>
               <div className="onb-goal-ico">{g.ico}</div>
               <div className="onb-goal-text">
                 <div className="onb-goal-label">{g.label}</div>
                 <div className="onb-goal-sub">{g.sub}</div>
               </div>
               <div className="onb-goal-check">
-                {goal === g.id && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                {goals.includes(g.id) && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
             </button>
           ))}
@@ -6257,6 +6256,204 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   );
 }
 
+// ─── HOME HISTORY REPORT GENERATOR ───────────────────────────────────────────
+function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [] }) {
+  const addr    = profile?.address || "Your Home";
+  const owner   = profile?.name   || "";
+  const today   = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
+  const year    = profile?.year   ? `Built ${profile.year}` : "";
+  const sqft    = profile?.sqft   ? `${Number(profile.sqft).toLocaleString()} sqft` : "";
+  const beds    = profile?.bedrooms   ? `${profile.bedrooms} bed` : "";
+  const baths   = profile?.bathrooms  ? `${profile.bathrooms} bath` : "";
+  const lot     = profile?.lot_size   ? `${Number(profile.lot_size).toLocaleString()} sqft lot` : "";
+  const zest    = profile?.zestimate  ? `$${Number(profile.zestimate).toLocaleString()}` : "";
+  const lastSale = profile?.last_sale_price ? `$${Number(profile.last_sale_price).toLocaleString()}` : "";
+
+  // Assets — non-insurance items
+  const assets = warranties.filter(w => w.item && w.category !== "Insurance");
+  const now = new Date();
+  const ageYrs = d => d ? Math.floor((now - new Date(d+"T00:00:00")) / (365.25*86400000)) : null;
+  const fmtDate = d => d ? new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+  const condColor = c => ({ Excellent:"#3B6D11", Good:"#3B6D11", Fair:"#854F0B", Poor:"#A32D2D" })[c] || "#5A534B";
+
+  // Service logs — most recent first, cap at 20
+  const logs = [...serviceLogs].sort((a,b) => (b.service_date||"") > (a.service_date||"") ? 1 : -1).slice(0, 20);
+
+  // Expenses by category totals
+  const expTotal = expenses.reduce((s,e) => s + Number(e.amount||0), 0);
+  const byCat = {};
+  expenses.forEach(e => { byCat[e.category||"Other"] = (byCat[e.category||"Other"] || 0) + Number(e.amount||0); });
+  const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  // Completed tasks
+  const done = tasks.filter(t => t.status === "Completed").slice(0, 15);
+
+  const assetRows = assets.map(a => {
+    const age = a.install_date ? ageYrs(a.install_date) : null;
+    const badge = age === null ? "" : age < 6 ? "Good" : age < 12 ? "Fair" : "Aging";
+    const badgeBg = { Good:"#EAF3DE", Fair:"#FAEEDA", Aging:"#FCEBEB" }[badge] || "#F4EDDF";
+    const badgeFg = { Good:"#3B6D11", Fair:"#854F0B", Aging:"#A32D2D" }[badge] || "#5A534B";
+    return `<tr>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;">${a.item}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.category||"—"}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.install_date ? fmtDate(a.install_date) : "—"}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.last_serviced ? fmtDate(a.last_serviced) : a.install_date ? fmtDate(a.install_date) : "—"}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;"><span style="background:${badgeBg};color:${badgeFg};font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;">${badge||a.condition||"—"}</span></td>
+    </tr>`;
+  }).join("");
+
+  const logRows = logs.map(l => `<tr>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${fmtDate(l.service_date)}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;">${l.description||"Service"}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${l.vendor||"—"}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#2A2723;text-align:right;">${l.cost ? `$${Number(l.cost).toLocaleString()}` : "—"}</td>
+  </tr>`).join("");
+
+  const taskRows = done.map(t => `<tr>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;">${t.title}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${t.category||"—"}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${t.due_date ? fmtDate(t.due_date) : "—"}</td>
+  </tr>`).join("");
+
+  const catRows = topCats.map(([cat, amt]) => `<tr>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#2A2723;">${cat}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;text-align:right;">$${Number(amt).toLocaleString()}</td>
+  </tr>`).join("");
+
+  const specs = [year, profile?.type, sqft, beds, baths, lot].filter(Boolean);
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home History Report — ${addr}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #F4EDDF; color: #2A2723; }
+  .print-btn { position: fixed; top: 20px; right: 20px; background: #C16140; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 999; }
+  .page { background: #fff; max-width: 760px; margin: 24px auto; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+  .cover { background: #234A3D; padding: 48px 40px 36px; }
+  .cover-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: rgba(244,237,223,.45); margin-bottom: 10px; }
+  .cover-addr { font-size: 26px; font-weight: 700; color: #F4EDDF; margin-bottom: 4px; line-height: 1.2; }
+  .cover-sub { font-size: 14px; color: rgba(244,237,223,.55); margin-bottom: 28px; }
+  .cover-specs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .spec-chip { background: rgba(244,237,223,.1); border: 1px solid rgba(244,237,223,.15); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #F4EDDF; }
+  .cover-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(244,237,223,.1); }
+  .cover-val { }
+  .cover-val-lbl { font-size: 11px; color: rgba(244,237,223,.4); margin-bottom: 3px; }
+  .cover-val-num { font-size: 28px; font-weight: 700; color: #F4EDDF; }
+  .cover-meta { text-align: right; font-size: 12px; color: rgba(244,237,223,.4); line-height: 1.6; }
+  .section { padding: 28px 40px; border-bottom: 1px solid #EDE5D5; }
+  .section:last-child { border-bottom: none; }
+  .sec-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #A8A09A; margin-bottom: 16px; }
+  .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 4px; }
+  .stat-card { background: #F9F5ED; border-radius: 8px; padding: 12px 14px; }
+  .stat-val { font-size: 20px; font-weight: 700; color: #234A3D; }
+  .stat-lbl { font-size: 11px; color: #A8A09A; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: #A8A09A; text-transform: uppercase; letter-spacing: .05em; padding: 0 6px 8px; border-bottom: 2px solid #E8E0D0; }
+  th:last-child { text-align: right; }
+  .disclaimer { background: #FBF7EE; border: 1px solid #E8E0D0; border-radius: 8px; padding: 16px 18px; margin: 28px 40px; }
+  .disclaimer-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #A8A09A; margin-bottom: 8px; }
+  .disclaimer-text { font-size: 11px; color: #7A7370; line-height: 1.65; }
+  .footer { background: #234A3D; padding: 14px 40px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-txt { font-size: 11px; color: rgba(244,237,223,.4); }
+  @media print {
+    .print-btn { display: none; }
+    body { background: #fff; }
+    .page { margin: 0; border-radius: 0; box-shadow: none; max-width: 100%; page-break-after: avoid; }
+    .section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">⬇ Save as PDF</button>
+
+<div class="page">
+  <!-- Cover -->
+  <div class="cover">
+    <div class="cover-label">Home History Report</div>
+    <div class="cover-addr">${addr}</div>
+    <div class="cover-sub">Prepared by ${owner || "Homeowner"} · ${today}</div>
+    <div class="cover-specs">${specs.map(s=>`<span class="spec-chip">${s}</span>`).join("")}</div>
+    ${zest || lastSale ? `<div class="cover-foot">
+      ${zest ? `<div class="cover-val"><div class="cover-val-lbl">Estimated value</div><div class="cover-val-num">${zest}</div></div>` : ""}
+      <div class="cover-meta">
+        ${lastSale ? `Last sale price: ${lastSale}` : ""}<br>
+        Generated by Steadwell
+      </div>
+    </div>` : ""}
+  </div>
+
+  <!-- Summary stats -->
+  <div class="section">
+    <div class="sec-title">Summary</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${assets.length}</div><div class="stat-lbl">Systems tracked</div></div>
+      <div class="stat-card"><div class="stat-val">${logs.length}</div><div class="stat-lbl">Service records</div></div>
+      <div class="stat-card"><div class="stat-val">${expTotal > 0 ? "$"+Math.round(expTotal).toLocaleString() : "—"}</div><div class="stat-lbl">Total invested</div></div>
+    </div>
+  </div>
+
+  <!-- Systems & Assets -->
+  ${assets.length > 0 ? `<div class="section">
+    <div class="sec-title">Home Systems & Assets</div>
+    <table>
+      <thead><tr><th>System / Asset</th><th>Category</th><th>Installed</th><th>Last Serviced</th><th>Status</th></tr></thead>
+      <tbody>${assetRows}</tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- Service & Maintenance History -->
+  ${logs.length > 0 ? `<div class="section">
+    <div class="sec-title">Service & Maintenance History</div>
+    <table>
+      <thead><tr><th>Date</th><th>Description</th><th>Vendor</th><th style="text-align:right">Cost</th></tr></thead>
+      <tbody>${logRows}</tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- Completed maintenance tasks -->
+  ${done.length > 0 ? `<div class="section">
+    <div class="sec-title">Completed Maintenance Tasks</div>
+    <table>
+      <thead><tr><th>Task</th><th>Category</th><th>Completed</th></tr></thead>
+      <tbody>${taskRows}</tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- Spending by category -->
+  ${topCats.length > 0 ? `<div class="section">
+    <div class="sec-title">Home Spending by Category</div>
+    <table>
+      <thead><tr><th>Category</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>${catRows}</tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- Disclaimer -->
+  <div class="disclaimer">
+    <div class="disclaimer-title">Important Notice</div>
+    <div class="disclaimer-text">This Home History Report is a personal summary prepared by the homeowner using Steadwell, a home management application. It is based solely on information provided by the homeowner and has not been independently verified. This document is <strong>NOT</strong> a legal seller disclosure statement, does <strong>NOT</strong> constitute a warranty of any kind, and does <strong>NOT</strong> guarantee compliance with applicable local, state, or federal real estate disclosure laws. Buyers should conduct their own independent inspections and due diligence. Sellers should consult a licensed real estate attorney or agent for disclosure requirements specific to their jurisdiction. Steadwell, Inc. assumes no responsibility for the accuracy, completeness, or legal sufficiency of the information contained in this report.</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span class="footer-txt">Generated by Steadwell · trysteadwell.app</span>
+    <span class="footer-txt">${today}</span>
+  </div>
+</div>
+
+</body>
+</html>`;
+
+  const win = window.open("", "_blank");
+  if (!win) { alert("Please allow popups to generate the report."); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup }) {
   const [modal, setModal] = useState(false);
@@ -6771,6 +6968,24 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── Home History Report Tile ── */}
+      <div className="docs-tile" onClick={() => {
+        const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
+        if (!isPaid) { onUpgrade(); return; }
+        generateHomeHistoryReport({ profile, warranties, serviceLogs, expenses, tasks });
+      }}>
+        <div className="docs-tile-header">
+          <div>
+            <div className="docs-tile-title">
+              Home History Report
+              {planData?.plan === "free" && <span style={{fontSize:".65rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:"8px",marginLeft:"6px"}}>Plus</span>}
+            </div>
+            <div className="docs-tile-count">PDF summary of your home's systems, maintenance & improvements</div>
+          </div>
+          <span style={{color:"#A8A09A",fontSize:".85rem"}}>↓</span>
+        </div>
       </div>
 
       {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
