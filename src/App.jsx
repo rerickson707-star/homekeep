@@ -2122,7 +2122,7 @@ function OnboardingWizard({ session, onComplete }) {
   const [selectedAddress, setSelectedAddress] = useState("");
   const debounceRef = useRef(null);
   const suggestRef  = useRef(null);
-  const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
   // Step 3 — Goal
   const [goal, setGoal] = useState("");
@@ -2143,26 +2143,19 @@ function OnboardingWizard({ session, onComplete }) {
     setAddress(val); setShowSug(true); setLookupState("idle");
     setPropertyData(null); setSelectedAddress("");
     clearTimeout(debounceRef.current);
-    if (val.length < 3) { setSuggestions([]); setSuggesting(false); return; }
+    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
     setSuggesting(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(val)}&filter=countrycode:us&type=street&limit=5&apiKey=${GEO_KEY}`;
-        const resp = await fetch(url);
-        const json = await resp.json();
-        setSuggestions((json.features||[]).map(f => ({
-          line1: f.properties.address_line1 || f.properties.street || "",
-          city:  f.properties.city || "",
-          state: f.properties.state_code || f.properties.state || "",
-          zip:   f.properties.postcode || "",
-        })));
-      } catch { setSuggestions([]); }
+        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
+        setSuggestions(results);
+      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
       finally { setSuggesting(false); }
-    }, 220);
+    }, 120);
   };
 
   const selectSuggestion = async (s) => {
-    const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
+    const addr = s.description;
     setAddress(addr); setSelectedAddress(addr);
     setSuggestions([]); setShowSug(false); setSuggesting(false);
     setLookupState("loading");
@@ -2290,8 +2283,8 @@ function OnboardingWizard({ session, onComplete }) {
                   <div key={i} className="onb-suggestion" onMouseDown={() => selectSuggestion(s)}>
                     <span className="onb-suggestion-ico">📍</span>
                     <div>
-                      <div style={{fontWeight:500}}>{s.line1}</div>
-                      <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)"}}>{[s.city,s.state,s.zip].filter(Boolean).join(", ")}</div>
+                      <div style={{fontWeight:500}}>{s.mainText}</div>
+                      <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)"}}>{s.secondaryText}</div>
                     </div>
                   </div>
                 ))}
@@ -2374,6 +2367,40 @@ function OnboardingWizard({ session, onComplete }) {
       </div>
     </div>
   );
+}
+
+// ─── GOOGLE PLACES AUTOCOMPLETE (REST) ──────────────────────────────────────
+// Direct REST call to Places API (New) — no SDK loading required
+async function googlePlacesAutocomplete(input, key) {
+  const resp = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": key,
+    },
+    body: JSON.stringify({
+      input,
+      includedRegionCodes: ["us"],
+      languageCode: "en",
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(`Places API ${resp.status}: ${err?.error?.message || resp.statusText}`);
+  }
+  const data = await resp.json();
+  return (data.suggestions || [])
+    .filter(s => s.placePrediction)
+    .slice(0, 5)
+    .map(s => {
+      const p = s.placePrediction;
+      return {
+        placeId:       p.placeId || "",
+        description:   (p.text?.text || "").replace(/, USA$/, ""),
+        mainText:      p.structuredFormat?.mainText?.text || p.text?.text || "",
+        secondaryText: p.structuredFormat?.secondaryText?.text || "",
+      };
+    });
 }
 
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
@@ -3259,7 +3286,7 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const suggestRef = useRef(null);
   const debounceRef = useRef(null);
-  const GEO_KEY = import.meta.env.VITE_GEOAPIFY_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -3268,36 +3295,24 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Debounced address autocomplete via Geoapify
+  // Address autocomplete via Google Places
   const handleAddrInput = (val) => {
     setLookupAddr(val);
     setShowSuggestions(true);
     clearTimeout(debounceRef.current);
-    if (val.length < 4) { setSuggestions([]); return; }
+    if (val.length < 2) { setSuggestions([]); return; }
     debounceRef.current = setTimeout(async () => {
       setSuggestLoading(true);
       try {
-        const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(val)}&filter=countrycode:us&type=street&limit=6&apiKey=${GEO_KEY}`;
-        const resp = await fetch(url);
-        const json = await resp.json();
-        const features = json.features || [];
-        setSuggestions(features.map(f => ({
-          formatted: f.properties.formatted,
-          line1: f.properties.address_line1 || f.properties.street || "",
-          city:  f.properties.city || f.properties.county || "",
-          state: f.properties.state_code || f.properties.state || "",
-          zip:   f.properties.postcode || "",
-        })));
-      } catch(e) {
-        setSuggestions([]);
-      }
-      setSuggestLoading(false);
-    }, 350);
+        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
+        setSuggestions(results);
+      } catch { setSuggestions([]); }
+      finally { setSuggestLoading(false); }
+    }, 120);
   };
 
   const selectSuggestion = (s) => {
-    const addr = [s.line1, s.city, s.state, s.zip].filter(Boolean).join(", ");
-    setLookupAddr(addr);
+    setLookupAddr(s.description);
     setSuggestions([]);
     setShowSuggestions(false);
   };
@@ -3388,8 +3403,8 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
                 <div key={i} className="lookup-suggestion" onMouseDown={()=>selectSuggestion(s)}>
                   <span className="lookup-suggestion-icon">📍</span>
                   <div>
-                    <div className="lookup-suggestion-text">{s.line1}</div>
-                    <div className="lookup-suggestion-sub">{[s.city, s.state, s.zip].filter(Boolean).join(", ")}</div>
+                    <div className="lookup-suggestion-text">{s.mainText}</div>
+                    <div className="lookup-suggestion-sub">{s.secondaryText}</div>
                   </div>
                 </div>
               ))}
