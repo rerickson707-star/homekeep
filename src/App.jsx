@@ -2522,7 +2522,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
-function UserMenu({ user, onSignOut, onFeedback }) {
+function UserMenu({ user, onSignOut, onFeedback, onExport }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -2542,6 +2542,9 @@ function UserMenu({ user, onSignOut, onFeedback }) {
           <div className="user-dd-email">{user.email}</div>
           <button className="user-dd-item" onClick={()=>{setOpen(false);onFeedback();}}>
             <span>💬</span> Send Feedback
+          </button>
+          <button className="user-dd-item" onClick={()=>{setOpen(false);onExport();}}>
+            <span>⬇</span> Export My Data
           </button>
           <div className="user-dd-divider"/>
           <button className="user-dd-item danger" onClick={()=>{setOpen(false);onSignOut();}}>
@@ -4850,7 +4853,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planData, onUpgrade, contractors=[] }) {
+function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -4858,7 +4861,7 @@ function Expenses({ expenses, setExpenses, toast, userId, serviceLogs=[], planDa
   const [catF, setCatF] = useState("All");
   const [sort, setSort] = useState("date_desc");
   const [confirm, setConfirm] = useState(null);
-  const [projects, setProjects] = useState([]);
+  // projects/setProjects come from App props
   const [projectModal, setProjectModal] = useState(false);
   const [projectEditData, setProjectEditData] = useState({});
   const [projectEditId, setProjectEditId] = useState(null);
@@ -6994,6 +6997,168 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 }
 
 
+// ─── EXPORT MODAL ─────────────────────────────────────────────────────────────
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contractors, profile, planData, onUpgrade, onClose }) {
+  const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
+  const [downloading, setDownloading] = useState(false);
+
+  const SHEETS = [
+    {
+      name: "Tasks",
+      count: tasks.length,
+      cols: ["title","status","priority","category","due_date","recurring","notes","vendor"],
+      data: tasks,
+    },
+    {
+      name: "Assets",
+      count: warranties.length,
+      cols: ["item","category","condition","install_date","expiry_date","lifespan_years","cost","replacement_cost","model","serial_number","vendor","notes"],
+      data: warranties,
+    },
+    {
+      name: "Expenses",
+      count: expenses.length,
+      cols: ["description","amount","date","category","vendor","notes"],
+      data: expenses,
+    },
+    {
+      name: "Service Logs",
+      count: serviceLogs.length,
+      cols: ["description","service_date","cost","vendor","notes"],
+      data: serviceLogs,
+    },
+    {
+      name: "Projects",
+      count: projects.length,
+      cols: ["name","status","budget","start_date","end_date","contractor_name","description","notes"],
+      data: projects,
+    },
+    {
+      name: "Contractors",
+      count: contractors.length,
+      cols: ["name","company","trade","phone","email","website","rating","would_hire_again","notes"],
+      data: contractors,
+    },
+  ];
+
+  const totalRecords = SHEETS.reduce((s, sh) => s + sh.count, 0);
+
+  const downloadXLSX = async () => {
+    if (!isPaid) { onUpgrade(); return; }
+    setDownloading(true);
+    try {
+      const XLSX = await loadXLSX();
+      const wb = XLSX.utils.book_new();
+
+      // Summary sheet
+      const summaryData = [
+        ["Steadwell Home Data Export"],
+        ["Generated", new Date().toLocaleDateString("en-US", {year:"numeric",month:"long",day:"numeric"})],
+        ["Home", profile?.address || ""],
+        ["Owner", profile?.name || ""],
+        [],
+        ["Sheet", "Records"],
+        ...SHEETS.map(s => [s.name, s.count]),
+        [],
+        ["Total records", totalRecords],
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      summarySheet["!cols"] = [{wch:28},{wch:20}];
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+      // One sheet per data type
+      for (const sheet of SHEETS) {
+        const headers = sheet.cols.map(c => c.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase()));
+        const rows = sheet.data.map(row => sheet.cols.map(col => {
+          const v = row[col];
+          if (v === null || v === undefined) return "";
+          if (typeof v === "boolean") return v ? "Yes" : "No";
+          return v;
+        }));
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        ws["!cols"] = sheet.cols.map(() => ({wch:18}));
+        XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+      }
+
+      const addr = (profile?.address || "home").replace(/[^a-zA-Z0-9]/g,"-").slice(0,30);
+      XLSX.writeFile(wb, `steadwell-${addr}.xlsx`);
+    } catch(e) {
+      console.error("Export failed:", e);
+      alert("Export failed — please try again.");
+    }
+    setDownloading(false);
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.7)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem"}}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"var(--white)",borderRadius:"18px",width:"100%",maxWidth:"460px",boxShadow:"0 24px 80px rgba(0,0,0,.3)"}}>
+        {/* Header */}
+        <div style={{padding:"1.25rem 1.4rem 1rem",borderBottom:"1px solid var(--stone)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:"var(--dark)"}}>Export My Data</div>
+            <div style={{fontSize:".75rem",color:"#9E9690",marginTop:2}}>Downloads as a single Excel file with {SHEETS.length + 1} tabs</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:"1.3rem",cursor:"pointer",color:"#9E9690",lineHeight:1,padding:".2rem .4rem"}}>×</button>
+        </div>
+
+        {/* Upgrade prompt for free users */}
+        {!isPaid && (
+          <div style={{margin:"1rem 1.4rem 0",padding:".85rem 1rem",background:"#EEF4FF",border:"1px solid #C5D5F7",borderRadius:"10px",fontSize:".82rem",color:"#3B5FBF",lineHeight:1.5}}>
+            <strong>Export is a Plus feature.</strong> Upgrade to download your data anytime.
+            <button onClick={onUpgrade} style={{display:"block",marginTop:".5rem",background:"#3B5FBF",color:"#fff",border:"none",borderRadius:"8px",padding:".35rem .85rem",fontSize:".78rem",fontWeight:600,cursor:"pointer"}}>
+              Upgrade to Plus
+            </button>
+          </div>
+        )}
+
+        {/* Sheet preview */}
+        <div style={{padding:"1rem 1.4rem"}}>
+          {SHEETS.map((sheet, i) => (
+            <div key={sheet.name} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".6rem 0",borderBottom: i < SHEETS.length-1 ? "1px solid var(--stone)" : "none"}}>
+              <div style={{width:28,height:22,borderRadius:"4px",background:"var(--cream)",border:"1px solid var(--stone)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{fontSize:".58rem",fontWeight:700,color:"#5A534B"}}>{i+2}</span>
+              </div>
+              <div style={{flex:1}}>
+                <span style={{fontSize:".85rem",fontWeight:500,color:"var(--dark)"}}>{sheet.name}</span>
+                <span style={{fontSize:".75rem",color:"#9E9690",marginLeft:".5rem"}}>{sheet.count} records</span>
+              </div>
+              {sheet.count === 0 && <span style={{fontSize:".7rem",color:"#C2B8AE"}}>Empty</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Download button */}
+        <div style={{padding:"0 1.4rem 1.4rem"}}>
+          <button
+            onClick={downloadXLSX}
+            disabled={downloading || !isPaid && false}
+            style={{width:"100%",padding:".85rem",background: isPaid ? "var(--pine)" : "var(--stone)",color: isPaid ? "#fff" : "#9E9690",border:"none",borderRadius:"10px",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:600,cursor: isPaid ? "pointer" : "not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:".5rem"}}
+          >
+            {downloading
+              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2,borderColor:"rgba(255,255,255,.3)",borderTopColor:"#fff"}}/> Building your file…</>
+              : <>⬇ Download Excel file ({totalRecords} records)</>}
+          </button>
+          <div style={{textAlign:"center",marginTop:".65rem",fontSize:".72rem",color:"#A8A09A"}}>
+            Opens in Excel, Google Sheets, or Numbers · Tab 1 is a summary
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 // ─── HOME PROFILE GENERATION ENGINE ──────────────────────────────────────────
 //
@@ -8362,11 +8527,13 @@ export default function App() {
   const [screen, setScreen] = useState("landing"); // landing | login | signup
   const [tab, setTab] = useState("dashboard");
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showExport,   setShowExport]   = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
   const [showContractors, setShowContractors] = useState(false);
   const [contractors, setContractors] = useState([]);
+  const [projects,    setProjects]    = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -8539,7 +8706,7 @@ export default function App() {
             <span className="name">Steadwell</span>
           </div>
           <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
-          <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)}/>
+          <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)}/>
         </header>
 
         {/* ── Main Content ── */}
@@ -8577,7 +8744,7 @@ export default function App() {
               {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
               {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/>}
               {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup}/>}
             </>
           )}
@@ -8601,6 +8768,20 @@ export default function App() {
             userId={uid}
             currentTab={tab}
             onClose={()=>setShowFeedback(false)}
+          />
+        )}
+        {showExport && (
+          <ExportModal
+            tasks={tasks}
+            warranties={warranties}
+            expenses={expenses}
+            serviceLogs={serviceLogs}
+            projects={projects}
+            contractors={contractors}
+            profile={profile}
+            planData={planData}
+            onUpgrade={()=>{ setShowExport(false); setShowUpgrade(true); }}
+            onClose={()=>setShowExport(false)}
           />
         )}
         {showUpgrade && (
