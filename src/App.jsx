@@ -803,6 +803,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .doc-list{border-top:1px solid var(--stone)}
 .doc-type-chip{font-size:.6rem;font-weight:700;letter-spacing:.04em;padding:1px 6px;border-radius:4px;text-transform:uppercase;flex-shrink:0}
 .docs-tile{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1rem 1.1rem;cursor:pointer;transition:background .12s;margin-bottom:1rem}
+/* ── HOME TOOLBOX ── */
+.toolbox{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:1rem}
+.toolbox-card{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1rem 1.05rem;cursor:pointer;transition:box-shadow .2s cubic-bezier(.4,0,.2,1),transform .2s cubic-bezier(.4,0,.2,1),border-color .2s;display:flex;flex-direction:column;gap:.55rem;position:relative;overflow:hidden}
+.toolbox-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--mid)}
+.toolbox-card-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;background:linear-gradient(150deg,var(--cream),var(--cream2));border:1px solid var(--stone)}
+.toolbox-card-title{font-weight:700;font-size:.88rem;color:var(--dark);line-height:1.2}
+.toolbox-card-desc{font-size:.72rem;color:#9E9690;line-height:1.45}
+.toolbox-card-badge{position:absolute;top:.7rem;right:.8rem;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:8px}
+.toolbox-card.pine-tint{border-color:rgba(35,74,61,.2);background:linear-gradient(135deg,var(--white),rgba(231,237,231,.4))}
+.toolbox-card.pine-tint .toolbox-card-ico{background:linear-gradient(150deg,rgba(167,191,168,.2),rgba(167,191,168,.35));border-color:rgba(35,74,61,.15)}
+.toolbox-card.pine-tint .toolbox-card-title{color:var(--pine)}
+@media(max-width:380px){.toolbox{grid-template-columns:1fr}}
 .docs-tile:hover{background:var(--cream)}
 .docs-tile-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
 .docs-tile-title{font-family:'Fraunces',serif;font-size:.95rem;font-weight:500;color:var(--dark)}
@@ -6959,112 +6971,87 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
-      {/* ── Documents Tile ── */}
-      <div className="docs-tile" onClick={onShowDocs}>
-        <div className="docs-tile-header">
-          <div>
-            <div className="docs-tile-title">Documents</div>
-            <div className="docs-tile-count">Deeds, insurance, inspection reports & more</div>
-          </div>
-          <span style={{color:"#A8A09A",fontSize:".85rem"}}>›</span>
-        </div>
-        <div className="docs-tile-cats">
-          {DOC_CATEGORIES.slice(0,6).map(cat => (
-            <span key={cat.id} className="docs-tile-cat" style={{color:cat.border,background:cat.bg,borderColor:cat.border+"40"}}>
-              {cat.label.split(" ")[0]}
-            </span>
-          ))}
-        </div>
+      {/* ── Home Toolbox ── */}
+      <div className="sh" style={{marginTop:".25rem"}}>
+        <span className="sh-title" style={{fontSize:"1rem"}}>Home Toolbox</span>
       </div>
+      <div className="toolbox">
 
-      {/* ── My Properties (Pro) ── */}
-      {allProfiles.length > 0 && (
-        <div className="panel" style={{marginBottom:".85rem"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
-            <div className="panel-title" style={{marginBottom:0}}>My Properties</div>
-            {planData?.plan === "pro" && allProfiles.length < 3 && (
-              <button className="btn btn-sm btn-primary" onClick={onAddProperty}>+ Add property</button>
-            )}
-            {planData?.plan !== "pro" && (
-              <button className="btn btn-sm btn-ghost" onClick={onUpgrade} style={{fontSize:".7rem"}}>
-                Pro — up to 3
-              </button>
-            )}
+        {/* Documents */}
+        <div className="toolbox-card pine-tint" onClick={onShowDocs}>
+          <div className="toolbox-card-ico">📄</div>
+          <div>
+            <div className="toolbox-card-title">Documents</div>
+            <div className="toolbox-card-desc">Deeds, permits, inspection reports</div>
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
-            {allProfiles.map(p => (
-              <div key={p.id}
-                onClick={() => onSwitchProperty?.(p.id)}
-                style={{display:"flex",alignItems:"center",gap:".85rem",padding:".8rem 1rem",borderRadius:14,border:`1.5px solid ${p.id===propertyId?"var(--rust)":"var(--stone)"}`,background:p.id===propertyId?"var(--rust-light)":"var(--white)",cursor:"pointer",transition:"all .18s"}}
-              >
-                <div style={{width:36,height:36,borderRadius:10,background:p.id===propertyId?"rgba(193,97,64,.15)":"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <svg viewBox="0 0 48 48" fill="none" width="18" height="18">
-                    <path d="M12 34L12 20L24 10L36 20L36 34" stroke={p.id===propertyId?"var(--rust)":"#9E9690"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M8 35.5L40 35.5" stroke={p.id===propertyId?"var(--rust)":"#9E9690"} strokeWidth="3" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:".88rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                    {p.nickname || p.address?.split(",")[0] || "My Home"}
-                  </div>
-                  <div style={{fontSize:".72rem",color:"#9E9690",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                    {p.address || "No address set"}{p.year ? ` · Built ${p.year}` : ""}
-                  </div>
-                </div>
-                {p.id === propertyId && (
-                  <span style={{fontSize:".7rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>
-                )}
+        </div>
+
+        {/* Contractors */}
+        <div className="toolbox-card pine-tint" onClick={onShowContractors}>
+          <div className="toolbox-card-ico">👷</div>
+          <div>
+            <div className="toolbox-card-title">Contractors</div>
+            <div className="toolbox-card-desc">
+              {contractors.length > 0 ? `${contractors.length} saved pro${contractors.length > 1 ? "s" : ""}` : "Trusted pros & service history"}
+            </div>
+          </div>
+        </div>
+
+        {/* Home History Report */}
+        <div className="toolbox-card" onClick={() => {
+          const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
+          if (!isPaid) { onUpgrade(); return; }
+          generateHomeHistoryReport({ profile, warranties, serviceLogs, expenses, tasks });
+        }}>
+          {planData?.plan === "free" && <span className="toolbox-card-badge" style={{background:"#EEF4FF",color:"#3B5FBF"}}>Plus</span>}
+          <div className="toolbox-card-ico">📊</div>
+          <div>
+            <div className="toolbox-card-title">Home Report</div>
+            <div className="toolbox-card-desc">Generate a PDF of your home history</div>
+          </div>
+        </div>
+
+        {/* Setup Wizard */}
+        <div className="toolbox-card" onClick={() => setShowSetup(true)}>
+          <div className="toolbox-card-ico">🔧</div>
+          <div>
+            <div className="toolbox-card-title">Setup Wizard</div>
+            <div className="toolbox-card-desc">Update your home systems profile</div>
+          </div>
+        </div>
+
+        {/* My Properties — spans full width when Pro and has multiple */}
+        {allProfiles.length > 1 || planData?.plan === "pro" ? (
+          <div className="toolbox-card" style={{gridColumn:"1/-1"}} onClick={planData?.plan==="pro"&&allProfiles.length<3 ? onAddProperty : undefined}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".65rem"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
+                <div className="toolbox-card-ico" style={{width:32,height:32,fontSize:"1rem"}}>🏠</div>
+                <div className="toolbox-card-title">My Properties</div>
               </div>
-            ))}
-          </div>
-          {planData?.plan !== "pro" && (
-            <div style={{fontSize:".72rem",color:"#9E9690",marginTop:".75rem",textAlign:"center",lineHeight:1.5}}>
-              Upgrade to Pro to manage up to 3 properties
+              {planData?.plan === "pro" && allProfiles.length < 3 && (
+                <button className="btn btn-sm btn-primary" onClick={e=>{e.stopPropagation();onAddProperty();}}>+ Add</button>
+              )}
+              {planData?.plan !== "pro" && (
+                <button className="btn btn-sm btn-ghost" onClick={e=>{e.stopPropagation();onUpgrade();}} style={{fontSize:".68rem"}}>Pro — up to 3</button>
+              )}
             </div>
-          )}
-        </div>
-      )}
+            <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
+              {allProfiles.map(p => (
+                <div key={p.id} onClick={e=>{e.stopPropagation();onSwitchProperty?.(p.id);}}
+                  style={{display:"flex",alignItems:"center",gap:".7rem",padding:".6rem .75rem",borderRadius:12,border:`1.5px solid ${p.id===propertyId?"var(--rust)":"var(--stone)"}`,background:p.id===propertyId?"var(--rust-light)":"var(--cream)",cursor:"pointer",transition:"all .15s"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:".83rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {p.nickname || p.address?.split(",")[0] || "My Home"}
+                    </div>
+                    <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address?.split(",").slice(1,3).join(",").trim() || ""}{p.year?` · ${p.year}`:""}</div>
+                  </div>
+                  {p.id === propertyId && <span style={{fontSize:".65rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
-      {/* ── Contractors Tile ── */}
-      <div className="docs-tile" onClick={onShowContractors}>
-        <div className="docs-tile-header">
-          <div>
-            <div className="docs-tile-title">Contractors</div>
-            <div className="docs-tile-count">
-              {contractors.length > 0
-                ? `${contractors.length} saved · ${TRADES.filter(t=>contractors.some(c=>c.trade===t)).slice(0,3).join(", ")}`
-                : "Save your trusted plumbers, electricians, and more"}
-            </div>
-          </div>
-          <span style={{color:"#A8A09A",fontSize:".85rem"}}>›</span>
-        </div>
-        {contractors.length > 0 && (
-          <div className="docs-tile-cats">
-            {contractors.slice(0,4).map(c=>(
-              <span key={c.id} className="docs-tile-cat" style={{color:"var(--pine)",background:"rgba(35,74,61,.08)",borderColor:"rgba(35,74,61,.2)"}}>
-                {c.name.split(" ")[0]}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Home History Report Tile ── */}
-      <div className="docs-tile" onClick={() => {
-        const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
-        if (!isPaid) { onUpgrade(); return; }
-        generateHomeHistoryReport({ profile, warranties, serviceLogs, expenses, tasks });
-      }}>
-        <div className="docs-tile-header">
-          <div>
-            <div className="docs-tile-title">
-              Home History Report
-              {planData?.plan === "free" && <span style={{fontSize:".65rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:"8px",marginLeft:"6px"}}>Plus</span>}
-            </div>
-            <div className="docs-tile-count">PDF summary of your home's systems, maintenance & improvements</div>
-          </div>
-          <span style={{color:"#A8A09A",fontSize:".85rem"}}>↓</span>
-        </div>
       </div>
 
       {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
