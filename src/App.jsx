@@ -3314,7 +3314,7 @@ function PhotoUpload({ userId, currentUrl, onUploaded }) {
 }
 
 
-function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
+function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const [lookupAddr, setLookupAddr] = useState(data.address || "");
   const [lookupState, setLookupState] = useState("idle");
@@ -3323,9 +3323,25 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [showLookupWarning, setShowLookupWarning] = useState(false);
   const suggestRef = useRef(null);
   const debounceRef = useRef(null);
   const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
+
+  // Address lookup limits per plan
+  const isPro   = planData?.plan === "pro";
+  const isPlus  = planData?.plan === "plus";
+  const LIMIT   = isPro ? 99 : 2; // Pro = unlimited, Free/Plus = 2/year
+  const LS_KEY  = `sw_addr_lookups_${userId}_${new Date().getFullYear()}`;
+  const usedCount = parseInt(localStorage.getItem(LS_KEY) || "0");
+  const remaining = Math.max(0, LIMIT - usedCount);
+  const atLimit   = !isPro && usedCount >= LIMIT;
+
+  const incrementLookupCount = () => {
+    if (!isPro) {
+      try { localStorage.setItem(LS_KEY, String(usedCount + 1)); } catch {}
+    }
+  };
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -3358,19 +3374,33 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
 
   const handleLookup = async () => {
     if (!lookupAddr.trim()) return;
+    // Guard: check lookup limit
+    if (atLimit) {
+      setLookupState("blocked");
+      setLookupMsg("");
+      return;
+    }
+    // Show warning dialog (unless first lookup on a blank address)
+    if (data.address && data.address !== lookupAddr && !showLookupWarning) {
+      setShowLookupWarning(true);
+      return;
+    }
+    setShowLookupWarning(false);
+    runLookup();
+  };
+
+  const runLookup = async () => {
     setLookupState("loading");
     setLookupMsg("Looking up property data — this takes 10–30 seconds…");
     setPreview(null);
     setSuggestions([]);
     setShowSuggestions(false);
-    // Always pre-fill address so user isn't left with nothing
     onChange({...data, address: lookupAddr.trim()});
     try {
       const result = await lookupProperty(lookupAddr.trim());
       if (!result) {
         setLookupState("notfound");
         setLookupMsg("");
-        // Still save the address they typed
         return;
       }
       onChange({
@@ -3397,6 +3427,7 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
       setPreview(result);
       setLookupState("ok");
       setLookupMsg("Property found! Fields have been filled in — review and edit anything below.");
+      incrementLookupCount();
     } catch (err) {
       setLookupState("notfound");
       setLookupMsg("");
@@ -3405,9 +3436,37 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
 
   return (
     <div>
+      {/* ── Address Lookup Warning Dialog ── */}
+      {showLookupWarning && (
+        <div style={{background:"#FFF8F0",border:"1.5px solid #F0C090",borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem"}}>
+          <div style={{fontWeight:700,fontSize:".88rem",color:"#854F0B",marginBottom:".4rem"}}>⚠️ Changing your property address</div>
+          <div style={{fontSize:".82rem",color:"#7A5030",lineHeight:1.55,marginBottom:".75rem"}}>
+            This will overwrite your current property data with new information from {lookupAddr}.
+            {!isPro && <> You have <strong>{remaining} of {LIMIT}</strong> address lookups remaining this year.</>}
+          </div>
+          <div style={{display:"flex",gap:".5rem"}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setShowLookupWarning(false)}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={runLookup}>Yes, look up this address</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Lookup blocked ── */}
+      {lookupState === "blocked" && (
+        <div style={{background:"#FFF0F0",border:"1.5px solid #F0B0B0",borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem"}}>
+          <div style={{fontWeight:700,fontSize:".88rem",color:"#A32D2D",marginBottom:".4rem"}}>Address lookup limit reached</div>
+          <div style={{fontSize:".82rem",color:"#7A2020",lineHeight:1.55}}>
+            You've used all {LIMIT} address lookups for {new Date().getFullYear()}. Upgrade to Pro for unlimited lookups.
+          </div>
+        </div>
+      )}
+
       {/* ── Property Lookup Box ── */}
       <div className="lookup-box">
-        <div className="lookup-title">🔍 Auto-Fill from Address</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".5rem"}}>
+          <div className="lookup-title">🔍 Auto-Fill from Address</div>
+          {!isPro && <span style={{fontSize:".68rem",color:"#9E9690",fontWeight:500}}>{remaining} lookup{remaining!==1?"s":""} left this year</span>}
+        </div>
         <div className="lookup-autocomplete" ref={suggestRef}>
           <div className="lookup-row">
             <input
@@ -6509,8 +6568,10 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
-  const [modal, setModal] = useState(false);
-  const [insModal, setInsModal] = useState(false);
+  const [editModal, setEditModal] = useState(false); // unified edit modal
+  const [editTab, setEditTab]     = useState("property"); // "property" | "insurance"
+  const [modal, setModal]         = useState(false); // kept for setup banner compat
+  const [insModal, setInsModal]   = useState(false); // kept for ins-empty click
   const [editData, setEditData] = useState({});
   const [insData, setInsData] = useState({});
 
@@ -6536,8 +6597,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     try { localStorage.setItem(`sw_pp_${userId}`, String(val)); } catch {}
   };
 
-  const openEdit = () => { setEditData({...profile}); setModal(true); };
-  const openIns  = () => { setInsData({...profile}); setInsModal(true); };
+  const openEdit    = () => { setEditData({...profile}); setInsData({...profile}); setEditTab("property"); setEditModal(true); };
+  const openIns     = () => { setInsData({...profile}); setInsModal(true); };
+  const openEditOld = () => { setEditData({...profile}); setModal(true); }; // setup banner only
 
   const save = async () => {
     const payload = {...editData};
@@ -6553,7 +6615,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       if(!error&&data) { setProfile({...editData,id:data[0].id}); toast("Home profile saved ✓"); }
       else toast("Error saving","error");
     }
-    setModal(false);
+    setModal(false); setEditModal(false);
   };
 
   const saveIns = async () => {
@@ -6574,7 +6636,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       if(!error) { setProfile({...profile,...insFields}); toast("Insurance saved ✓"); }
       else toast("Error saving","error");
     }
-    setInsModal(false);
+    setInsModal(false); setEditModal(false);
   };
 
   // Parse JSON fields
@@ -6675,10 +6737,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     <div>
       <div className="sh">
         <span className="sh-title">My Home</span>
-        <button className="btn btn-ghost" onClick={openEdit}>✏️ Edit</button>
+        <button className="btn btn-ghost" onClick={openEdit}>Edit</button>
       </div>
 
-      {/* ── Home Setup Banner ── */}
+      {/* ── Home Setup Banner (only shown if not done) ── */}
       {showSetup ? (
         <div className="wizard-card" style={{marginBottom:"1rem"}}>
           <HomeSetupWizard
@@ -6691,9 +6753,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             onComplete={()=>setShowSetup(false)}
           />
         </div>
-      ) : setupDone ? (
-        <div className="setup-done">✓ Home profile set up · <button className="btn btn-ghost btn-sm" onClick={()=>setShowSetup(true)}>Update</button></div>
-      ) : (
+      ) : setupDone ? null : (
         <div className="setup-banner">
           <div className="setup-banner-text">
             <strong>Set up your home profile</strong>
@@ -6839,7 +6899,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         <div className="home-section-header">
           <span className="home-section-title">🛡️ Homeowners Insurance</span>
           <button className="btn btn-ghost btn-sm" onClick={openIns}>
-            {profile?.ins_company ? "✏️ Edit" : "＋ Add"}
+            {profile?.ins_company ? "Edit" : "Add"}
           </button>
         </div>
         {profile?.ins_company ? (
@@ -7064,7 +7124,25 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       </div>
 
-      {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
+      {/* ── Unified Edit Modal (Property + Setup only) ── */}
+      {editModal && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setEditModal(false)}>
+          <div className="modal">
+            <div className="modal-header">
+              <span className="modal-title">Edit Home Profile</span>
+              <button className="modal-close" onClick={()=>setEditModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos} planData={planData}/>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={()=>setEditModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={()=>{ save(); }}>Save changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Insurance Modal (separate) ── */}
       {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}    </div>
   );
 }
