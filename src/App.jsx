@@ -899,14 +899,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   --display:'Fraunces',Georgia,serif;
   --body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;
   --maxw:1180px;
-  min-height:100vh;overflow-x:hidden;position:relative;
+  min-height:100vh;overflow-x:clip;position:relative;
   background:var(--linen);color:var(--ink);
   font-family:var(--body);-webkit-font-smoothing:antialiased;
   line-height:1.6;letter-spacing:-.005em;
   -webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-wrap:break-word;
   -webkit-tap-highlight-color:transparent;
 }
-.lp-root *{box-sizing:border-box}
+.lp-root *{box-sizing:border-box;max-width:100%}
+img,.lp-root img{max-width:100%;height:auto}
 .lp-root::selection,.lp-root ::selection{background:var(--terracotta);color:#fff}
 /* grain overlay */
 .lp-root::before{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.05;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -1143,7 +1144,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .lp-root .wrap{padding:0 20px}
   .lp-root .hero{padding:116px 0 64px}
   .lp-root .hero-grid{gap:40px}
-  .lp-root .hero-vis{margin:0 auto;max-width:420px;width:100%}
+  .lp-root .hero-vis{margin:0 auto;max-width:100%;width:100%}
   .lp-root .hero-p{font-size:1.05rem}
   .lp-root .stats-in{grid-template-columns:1fr 1fr;gap:34px 0;padding:34px 0}
   .lp-root .stat-cell:nth-child(2){border-right:none}
@@ -1152,7 +1153,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .lp-root .feat{padding:26px 24px}
   .lp-root .feat.spot{padding:28px 24px}
   .lp-root .feat.spot h3{font-size:1.5rem}
-  .lp-root .price-wrap{grid-template-columns:1fr;max-width:460px}
+  .lp-root .price-wrap{grid-template-columns:1fr;max-width:100%}
   .lp-root .foot-in{flex-direction:column;align-items:flex-start;gap:18px}
   .lp-root .foot-copy{justify-content:flex-start;flex-direction:column;gap:4px}
   .lp-root .hero-btns{gap:10px}
@@ -1176,6 +1177,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .lp-root .pv-stat:nth-child(3){grid-column:span 2}
   .lp-root .pcard{padding:30px 24px}
   .lp-root .tcard{padding:26px 24px}
+  .lp-root .wrap{padding:0 18px}
+  .lp-root .pv{transform:none !important}
+  .lp-root .hero-vis{width:100%;max-width:100%}
 }
 /* touch devices: disable 3D tilt + cursor glow (can shimmer/alias on mobile GPUs) */
 @media(hover:none){
@@ -2149,7 +2153,7 @@ function OnboardingWizard({ session, onComplete }) {
   const [selectedAddress, setSelectedAddress] = useState("");
   const debounceRef = useRef(null);
   const suggestRef  = useRef(null);
-  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
   const [goals, setGoals] = useState([]);
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
   const GOALS = [
@@ -3321,7 +3325,7 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos }) {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const suggestRef = useRef(null);
   const debounceRef = useRef(null);
-  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -8663,7 +8667,7 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef(null);
   const suggestRef = useRef(null);
-  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+  const GMAPS_KEY = import.meta.env.VITE_GMAPS_KEY;
 
   const handleInput = (val) => {
     setAddress(val); setLookupState("idle"); setPropertyData(null); setSelectedAddress("");
