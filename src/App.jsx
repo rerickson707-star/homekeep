@@ -196,11 +196,11 @@ const CSS = `
 
 html{scroll-behavior:smooth}
 body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior-x:none}
-.app{min-height:100vh;display:flex;flex-direction:column;padding-bottom:var(--bottom-nav);max-width:100vw;overflow-x:clip}
+.app{min-height:100dvh;display:flex;flex-direction:column;padding-top:var(--hdr);padding-bottom:var(--bottom-nav);max-width:100vw;overflow-x:clip}
 /* app always pads for bottom-nav */
 
 /* ══ HEADER ══ */
-.hdr{height:var(--hdr);background:var(--pine);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:sticky;top:0;z-index:200;gap:.75rem;box-shadow:0 2px 12px -4px rgba(23,48,38,.35)}
+.hdr{height:var(--hdr);background:var(--pine);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:fixed;top:0;left:0;right:0;z-index:200;gap:.75rem;box-shadow:0 2px 12px -4px rgba(23,48,38,.35);-webkit-transform:translateZ(0);transform:translateZ(0);will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .hdr-logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .hdr-logo .ico{width:32px;height:32px;background:var(--rust);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .hdr-logo .name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#fff;letter-spacing:-.3px}
@@ -210,6 +210,16 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .search-wrap input:focus{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
 .search-icon{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);font-size:.8rem;pointer-events:none;opacity:.45}
 .search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--white);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);border:1px solid var(--stone);overflow:hidden;z-index:300}
+/* Mobile: collapse search to icon, hide property switcher */
+@media(max-width:639px){
+  .search-wrap{flex:0;max-width:none}
+  .search-wrap input{display:none}
+  .search-icon{position:static;transform:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer;pointer-events:auto;opacity:1;font-size:.9rem}
+  .search-wrap.mobile-open{flex:1;max-width:none}
+  .search-wrap.mobile-open input{display:block}
+  .search-wrap.mobile-open .search-icon{display:none}
+  .prop-switcher-hdr{display:none}
+}
 .sr-item{padding:.6rem .9rem;display:flex;align-items:center;gap:.65rem;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--stone);font-size:.82rem}
 .sr-item:last-child{border-bottom:none}
 .sr-item:hover{background:var(--cream)}
@@ -3540,13 +3550,20 @@ function SearchBar({ tasks, warranties, expenses, onNavigate }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const ref = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    const handler = e => { if(ref.current && !ref.current.contains(e.target)) { setOpen(false); setFocused(false); } };
+    const handler = e => { if(ref.current && !ref.current.contains(e.target)) { setOpen(false); setFocused(false); setMobileOpen(false); } };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Auto-focus input when mobile search opens
+  useEffect(() => {
+    if (mobileOpen && inputRef.current) inputRef.current.focus();
+  }, [mobileOpen]);
 
   const trimmed = q.trim();
 
@@ -3558,9 +3575,15 @@ function SearchBar({ tasks, warranties, expenses, onNavigate }) {
   const showDropdown = open && (focused || trimmed.length >= 2);
 
   return (
-    <div className="search-wrap" ref={ref} role="search">
-      <span className="search-icon">🔍</span>
+    <div className={`search-wrap${mobileOpen ? " mobile-open" : ""}`} ref={ref} role="search">
+      <span
+        className="search-icon"
+        onClick={() => setMobileOpen(true)}
+        role="button"
+        aria-label="Open search"
+      >🔍</span>
       <input
+        ref={inputRef}
         value={q}
         onChange={e=>{ setQ(e.target.value); setOpen(true); }}
         onFocus={()=>{ setOpen(true); setFocused(true); }}
@@ -9022,13 +9045,15 @@ export default function App() {
             <div className="ico"><svg viewBox="0 0 48 48" fill="none" width="58%" height="58%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg></div>
             <span className="name">Steadwell</span>
           </div>
-          <PropertySwitcher
-            allProfiles={allProfiles}
-            activePropertyId={activePropertyId}
-            onSwitch={switchProperty}
-            onAdd={() => setShowAddProperty(true)}
-            planData={planData}
-          />
+          <div className="prop-switcher-hdr">
+            <PropertySwitcher
+              allProfiles={allProfiles}
+              activePropertyId={activePropertyId}
+              onSwitch={switchProperty}
+              onAdd={() => setShowAddProperty(true)}
+              planData={planData}
+            />
+          </div>
           <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
           <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)}/>
         </header>
