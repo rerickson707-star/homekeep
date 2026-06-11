@@ -2491,18 +2491,20 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <div className="auth-sub">Sign in to manage your home</div>
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
-          <div className="auth-field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
-          </div>
-          <div className="auth-field">
-            <label>Password</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
-            <button className="auth-forgot" onClick={()=>switchMode("reset")}>Forgot password?</button>
-          </div>
-          <button className="auth-btn auth-btn-primary" onClick={handleLogin} disabled={loading}>
-            {loading ? "Signing in…" : "Sign In"}
-          </button>
+          <form onSubmit={e=>{e.preventDefault();handleLogin();}} autoComplete="on">
+            <div className="auth-field">
+              <label>Email</label>
+              <input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+            <div className="auth-field">
+              <label>Password</label>
+              <input type="password" name="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" />
+              <button type="button" className="auth-forgot" onClick={()=>switchMode("reset")}>Forgot password?</button>
+            </div>
+            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
           <div className="auth-switch">Don't have an account? <button onClick={()=>switchMode("signup")}>Create one</button></div>
         </>}
 
@@ -2511,21 +2513,23 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <div className="auth-sub">Start managing your home today</div>
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
-          <div className="auth-field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
-          </div>
-          <div className="auth-field">
-            <label>Password</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" />
-          </div>
-          <div className="auth-field">
-            <label>Confirm Password</label>
-            <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignup()} />
-          </div>
-          <button className="auth-btn auth-btn-primary" onClick={handleSignup} disabled={loading}>
-            {loading ? "Creating account…" : "Create Account"}
-          </button>
+          <form onSubmit={e=>{e.preventDefault();handleSignup();}} autoComplete="on">
+            <div className="auth-field">
+              <label>Email</label>
+              <input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+            <div className="auth-field">
+              <label>Password</label>
+              <input type="password" name="new-password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" />
+            </div>
+            <div className="auth-field">
+              <label>Confirm Password</label>
+              <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="••••••••" />
+            </div>
+            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+              {loading ? "Creating account…" : "Create Account"}
+            </button>
+          </form>
           <div className="auth-switch">Already have an account? <button onClick={()=>switchMode("login")}>Sign in</button></div>
         </>}
 
@@ -2534,13 +2538,15 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <div className="auth-sub">We'll send you a reset link</div>
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
-          <div className="auth-field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e=>e.key==="Enter"&&handleReset()} />
-          </div>
-          <button className="auth-btn auth-btn-primary" onClick={handleReset} disabled={loading}>
-            {loading ? "Sending…" : "Send Reset Link"}
-          </button>
+          <form onSubmit={e=>{e.preventDefault();handleReset();}}>
+            <div className="auth-field">
+              <label>Email</label>
+              <input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+              {loading ? "Sending…" : "Send Reset Link"}
+            </button>
+          </form>
           <div className="auth-switch"><button onClick={()=>switchMode("login")}>← Back to sign in</button></div>
         </>}
       </div>
@@ -8797,13 +8803,11 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
 }
 
 export default function App() {
-  // URL-based routing for legal pages
-  if (typeof window !== "undefined") {
-    const path = window.location.pathname;
-    if (path === "/terms" || path === "/terms.html") return <TermsPage />;
-    if (path === "/privacy" || path === "/privacy.html") return <PrivacyPage />;
-    if (path === "/ada" || path === "/accessibility") return <ADAPage />;
-  }
+  // URL-based routing for legal pages — check before any hooks
+  const _path = typeof window !== "undefined" ? window.location.pathname : "";
+  if (_path === "/terms" || _path === "/terms.html") return <TermsPage />;
+  if (_path === "/privacy" || _path === "/privacy.html") return <PrivacyPage />;
+  if (_path === "/ada" || _path === "/accessibility" || _path === "/ada/") return <ADAPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
