@@ -2845,7 +2845,191 @@ const ASSET_ICONS = {
   Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
 };
 
-function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey }) {
+const ASSET_INTEL_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/asset-intelligence";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk";
+
+function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
+  const [loading, setLoading] = useState(false);
+  const [result,  setResult]  = useState(null);
+  const [error,   setError]   = useState("");
+  const [applied, setApplied] = useState(false);
+
+  const tier   = planData?.plan || "free";
+  const isPlus = tier === "plus" || tier === "pro";
+  const isPro  = tier === "pro";
+  const canUse = isPlus;
+  const hasEnough = data.brand || data.model;
+
+  const run = async () => {
+    if (!canUse) { onUpgrade(); return; }
+    if (!hasEnough) return;
+    setLoading(true); setError(""); setResult(null); setApplied(false);
+    try {
+      const resp = await fetch(ASSET_INTEL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({
+          brand: data.brand, model: data.model, category: data.category,
+          install_date: data.install_date,
+          zip_code: profile?.address?.match(/\b\d{5}\b/)?.[0] || "",
+          tier,
+        }),
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error || "Lookup failed");
+      setResult(json.data);
+    } catch(e) { setError(e.message || "Something went wrong — try again"); }
+    setLoading(false);
+  };
+
+  const apply = () => {
+    if (!result) return;
+    const u = {...data};
+    // Fill every empty field — never overwrite existing data
+    if (result.item         && !u.item)              u.item              = result.item;
+    if (result.brand        && !u.brand)             u.brand             = result.brand;
+    if (result.model        && !u.model)             u.model             = result.model;
+    if (result.category     && !u.category)          u.category          = result.category;
+    if (result.condition    && !u.condition)         u.condition         = result.condition;
+    if (result.lifespan_years && !u.lifespan_years)  u.lifespan_years    = result.lifespan_years;
+    if (result.warranty_expiry && !u.expiry_date)    u.expiry_date       = result.warranty_expiry;
+    if (result.replacement_cost_low && !u.replacement_cost)
+      u.replacement_cost = Math.round((result.replacement_cost_low + (result.replacement_cost_high || result.replacement_cost_low)) / 2);
+    // O&M manual — prefer om_manual_url, fall back to manual_url
+    const manualLink = result.om_manual_url || result.manual_url;
+    if (manualLink && !u.document_ref)               u.document_ref      = manualLink;
+    // Build notes with support URL and maintenance tip if notes empty
+    if (!u.notes) {
+      const noteParts = [];
+      if (result.support_url)      noteParts.push(`Support: ${result.support_url}`);
+      if (result.maintenance_tip)  noteParts.push(`Tip: ${result.maintenance_tip}`);
+      if (noteParts.length)        u.notes = noteParts.join("\n");
+    }
+    onChange(u);
+    setApplied(true);
+  };
+
+  const fmt$ = n => n ? `$${Number(n).toLocaleString()}` : null;
+
+  return (
+    <div style={{marginBottom:"1rem"}}>
+      <button type="button" onClick={run} disabled={loading || !hasEnough}
+        style={{width:"100%",display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1.1rem",borderRadius:14,
+          border:`1.5px solid ${canUse?"rgba(35,74,61,.25)":"var(--stone)"}`,
+          background:canUse?"linear-gradient(135deg,rgba(35,74,61,.06),rgba(35,74,61,.03))":"var(--cream)",
+          cursor:!hasEnough?"not-allowed":"pointer",opacity:!hasEnough?.55:1,
+          transition:"all .2s",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
+        <div style={{width:36,height:36,borderRadius:10,background:canUse?"rgba(35,74,61,.12)":"var(--stone)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"1.1rem"}}>
+          {loading?"⏳":applied?"✓":"✨"}
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:".88rem",color:canUse?"var(--pine)":"var(--dark)",display:"flex",alignItems:"center",gap:6}}>
+            Smart Fill
+            {!canUse&&<span style={{fontSize:".62rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:8}}>Plus</span>}
+          </div>
+          <div style={{fontSize:".72rem",color:"#9E9690",marginTop:1}}>
+            {loading?"Looking up your asset…":applied?"Fields filled — review and save":!hasEnough?"Enter brand or model number first":canUse?"Auto-fill lifespan, costs, manual & PM schedule":"Upgrade to auto-fill asset details with AI"}
+          </div>
+        </div>
+        {!loading&&<span style={{color:"#C2B8AE",fontSize:".85rem",flexShrink:0}}>→</span>}
+      </button>
+
+      {error&&<div style={{marginTop:".5rem",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:10,fontSize:".78rem",color:"var(--red)"}}>⚠ {error}</div>}
+
+      {result && !applied && (
+        <div style={{marginTop:".65rem",background:"var(--cream)",border:"1.5px solid rgba(35,74,61,.2)",borderRadius:14,overflow:"hidden"}}>
+          <div style={{background:"rgba(35,74,61,.07)",padding:".7rem 1rem",borderBottom:"1px solid rgba(35,74,61,.1)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontWeight:700,fontSize:".82rem",color:"var(--pine)"}}>✨ Smart Fill results</div>
+            <div style={{fontSize:".7rem",color:"#9E9690"}}>{data.brand} {data.model}</div>
+          </div>
+          <div style={{padding:".85rem 1rem",display:"flex",flexDirection:"column",gap:".6rem"}}>
+            {result.condition_assessment&&<div style={{fontSize:".8rem",color:"var(--dark)",lineHeight:1.5,fontStyle:"italic",paddingBottom:".6rem",borderBottom:"1px solid var(--stone)"}}>"{result.condition_assessment}"</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+              {result.lifespan_years&&<div style={{background:"var(--white)",borderRadius:10,padding:".6rem .75rem",border:"1px solid var(--stone)"}}>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Lifespan</div>
+                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--dark)"}}>{result.lifespan_years} yrs</div>
+                {result.years_remaining!=null&&<div style={{fontSize:".7rem",color:result.years_remaining<3?"var(--red)":result.years_remaining<6?"var(--gold)":"#3B6D11",marginTop:1}}>~{Math.max(0,result.years_remaining)} yrs remaining</div>}
+              </div>}
+              {result.warranty_years&&<div style={{background:"var(--white)",borderRadius:10,padding:".6rem .75rem",border:"1px solid var(--stone)"}}>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Warranty</div>
+                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--dark)"}}>{result.warranty_years} yr{result.warranty_years>1?"s":""}</div>
+                {result.warranty_expiry&&<div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>Expires {new Date(result.warranty_expiry).toLocaleDateString("en-US",{month:"short",year:"numeric"})}</div>}
+              </div>}
+              {isPlus&&result.replacement_cost_low&&<div style={{background:"var(--white)",borderRadius:10,padding:".6rem .75rem",border:"1px solid var(--stone)"}}>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Replacement</div>
+                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--dark)"}}>{fmt$(result.replacement_cost_low)}–{fmt$(result.replacement_cost_high)}</div>
+                {result.replacement_cost_note&&<div style={{fontSize:".68rem",color:"#9E9690",marginTop:1,lineHeight:1.4}}>{result.replacement_cost_note}</div>}
+              </div>}
+              {isPro&&result.contractor_cost_low&&<div style={{background:"rgba(35,74,61,.05)",borderRadius:10,padding:".6rem .75rem",border:"1px solid rgba(35,74,61,.15)"}}>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"var(--pine)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Installed cost</div>
+                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--pine)"}}>{fmt$(result.contractor_cost_low)}–{fmt$(result.contractor_cost_high)}</div>
+                {result.contractor_note&&<div style={{fontSize:".68rem",color:"#9E9690",marginTop:1,lineHeight:1.4}}>{result.contractor_note}</div>}
+              </div>}
+            </div>
+            {result.pm_schedule?.length>0&&<div>
+              <div style={{fontSize:".7rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>Maintenance schedule</div>
+              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
+                {result.pm_schedule.slice(0,4).map((pm,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".45rem .65rem",background:"var(--white)",borderRadius:9,border:"1px solid var(--stone)"}}>
+                    <span style={{fontSize:".8rem",flexShrink:0}}>{pm.diy?"🔧":"👷"}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".8rem",fontWeight:600,color:"var(--dark)"}}>{pm.title}</div>
+                      <div style={{fontSize:".68rem",color:"#9E9690"}}>Every {pm.interval_months<12?`${pm.interval_months} mo`:`${pm.interval_months/12} yr`} · {pm.diy?"DIY":"Contractor"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>}
+            {(result.manual_url || result.om_manual_url || result.support_url) && (
+              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
+                {result.om_manual_url && (
+                  <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".5rem .75rem",background:"rgba(35,74,61,.06)",borderRadius:10,border:"1px solid rgba(35,74,61,.15)"}}>
+                    <span style={{fontSize:"1rem"}}>📋</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>O&M Manual</div>
+                      <a href={result.om_manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".68rem",color:"var(--sky)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{result.om_manual_url.replace(/^https?:\/\//,"")}</a>
+                    </div>
+                    <a href={result.om_manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".7rem",fontWeight:600,color:"var(--pine)",textDecoration:"none",flexShrink:0}}>Open →</a>
+                  </div>
+                )}
+                {result.manual_url && result.manual_url !== result.om_manual_url && (
+                  <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".5rem .75rem",background:"var(--white)",borderRadius:10,border:"1px solid var(--stone)"}}>
+                    <span style={{fontSize:"1rem"}}>📖</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)"}}>Owner's Manual</div>
+                      <a href={result.manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".68rem",color:"var(--sky)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{result.manual_url.replace(/^https?:\/\//,"")}</a>
+                    </div>
+                    <a href={result.manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".7rem",fontWeight:600,color:"#9E9690",textDecoration:"none",flexShrink:0}}>Open →</a>
+                  </div>
+                )}
+                {result.support_url && (
+                  <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".5rem .75rem",background:"var(--white)",borderRadius:10,border:"1px solid var(--stone)"}}>
+                    <span style={{fontSize:"1rem"}}>🔗</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)"}}>Manufacturer Support</div>
+                      <a href={result.support_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".68rem",color:"var(--sky)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{result.support_url.replace(/^https?:\/\//,"")}</a>
+                    </div>
+                    <a href={result.support_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".7rem",fontWeight:600,color:"#9E9690",textDecoration:"none",flexShrink:0}}>Open →</a>
+                  </div>
+                )}
+              </div>
+            )}
+            {result.maintenance_tip&&<div style={{padding:".55rem .75rem",background:"rgba(167,191,168,.12)",borderRadius:10,fontSize:".78rem",color:"var(--pine)",lineHeight:1.5,border:"1px solid rgba(167,191,168,.3)"}}>💡 {result.maintenance_tip}</div>}
+            <div style={{fontSize:".65rem",color:"#B0A8A0",lineHeight:1.5,borderTop:"1px solid var(--stone)",paddingTop:".5rem"}}>
+              Estimates based on typical US market data. Get a licensed contractor quote before budgeting for major replacements.
+            </div>
+          </div>
+          <div style={{padding:".75rem 1rem",borderTop:"1px solid var(--stone)",display:"flex",gap:".5rem"}}>
+            <button type="button" onClick={apply} style={{flex:1,padding:".65rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>Apply to asset ✓</button>
+            <button type="button" onClick={()=>setResult(null)} style={{padding:".65rem .9rem",background:"none",border:"1px solid var(--stone)",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",color:"#9E9690",cursor:"pointer"}}>Dismiss</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile }) {
   const f = (k,v) => {
     const updated = {...data,[k]:v};
     onChange(updated);
@@ -2871,6 +3055,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
         onUpgrade={onUpgrade}
       />
       <div className="scan-divider">or fill in manually</div>
+      <SmartFillButton data={data} onChange={(d)=>{onChange(d);if(draftKey){try{localStorage.setItem(draftKey,JSON.stringify(d));}catch{}}}} planData={planData} onUpgrade={onUpgrade} profile={profile}/>
       <div className="fg">
       <div className="field s2"><label>Asset Name *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Carrier HVAC System, Samsung Fridge" /></div>
       <div className="field"><label>Category</label>
@@ -5046,7 +5231,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
 
         {/* Modals */}
-        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)}/></Modal>}
+        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
         {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
@@ -5143,7 +5328,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         );
       })}
 
-      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)}/></Modal>}
+      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
