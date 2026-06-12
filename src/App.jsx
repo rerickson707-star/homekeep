@@ -4946,14 +4946,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Restore modal state after page reload (iOS killed the tab, Vite HMR, etc.)
   const restoreAttempted = useRef(false);
   useEffect(() => {
-    if (restoreAttempted.current) return;
-    if (assets.length === 0) return;
+    if (restoreAttempted.current || assets.length === 0) return;
     restoreAttempted.current = true;
     try {
       const saved = localStorage.getItem(MODAL_KEY);
       if (!saved) return;
       const { editId: savedId, open } = JSON.parse(saved);
       if (!open) return;
+      // Clear FIRST — prevents re-trigger if openEdit causes re-render
+      localStorage.removeItem(MODAL_KEY);
       setTimeout(() => {
         if (savedId) {
           const asset = assets.find(a => a.id === savedId);
@@ -4961,9 +4962,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         } else {
           openNew();
         }
-      }, 100);
+      }, 150);
     } catch {}
-  });
+  }, [assets.length]); // eslint-disable-line
 
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
