@@ -3434,7 +3434,10 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
 
       const resp = await fetch(AI_SCAN_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk",
+        },
         body: JSON.stringify({ fileBase64: base64, mimeType, scanType }),
       });
 
@@ -6512,7 +6515,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
             r.readAsDataURL(file);
           });
           const resp = await fetch(AI_SCAN_URL, {
-            method:"POST", headers:{"Content-Type":"application/json"},
+            method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk"},
             body: JSON.stringify({ fileBase64:base64, mimeType:file.type, scanType:"document" }),
           });
           return resp.json();
