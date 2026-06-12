@@ -4944,17 +4944,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
 
   // Restore modal state after page reload (iOS killed the tab, Vite HMR, etc.)
-  const [restoreAttempted, setRestoreAttempted] = useState(false);
+  const restoreAttempted = useRef(false);
   useEffect(() => {
-    if (restoreAttempted) return;
+    if (restoreAttempted.current) return;
     if (assets.length === 0) return;
-    setRestoreAttempted(true);
+    restoreAttempted.current = true;
     try {
       const saved = localStorage.getItem(MODAL_KEY);
       if (!saved) return;
       const { editId: savedId, open } = JSON.parse(saved);
       if (!open) return;
-      // Small delay so the component is fully mounted before opening modal
       setTimeout(() => {
         if (savedId) {
           const asset = assets.find(a => a.id === savedId);
@@ -4964,7 +4963,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         }
       }, 100);
     } catch {}
-  }); // No dependency array — runs every render until restoreAttempted is true
+  });
 
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
