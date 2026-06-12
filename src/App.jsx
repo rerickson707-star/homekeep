@@ -4944,27 +4944,34 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
 
   // Restore modal state after page reload (iOS killed the tab, Vite HMR, etc.)
-  const restoreAttempted = useRef(false);
+  // One-time restore on first mount after true page reload
   useEffect(() => {
-    if (restoreAttempted.current || assets.length === 0) return;
-    restoreAttempted.current = true;
+    const saved = localStorage.getItem(MODAL_KEY);
+    if (!saved) return;
     try {
-      const saved = localStorage.getItem(MODAL_KEY);
-      if (!saved) return;
+      localStorage.removeItem(MODAL_KEY); // clear immediately to prevent any loops
       const { editId: savedId, open } = JSON.parse(saved);
       if (!open) return;
-      // Clear FIRST — prevents re-trigger if openEdit causes re-render
-      localStorage.removeItem(MODAL_KEY);
-      setTimeout(() => {
-        if (savedId) {
-          const asset = assets.find(a => a.id === savedId);
-          if (asset) openEdit(asset);
-        } else {
-          openNew();
+      // Wait for assets to be available
+      const tryRestore = (attempts = 0) => {
+        const current = window.__sw_assets_ref__ || [];
+        if (current.length > 0) {
+          if (savedId) {
+            const asset = current.find(a => a.id === savedId);
+            if (asset) openEdit(asset);
+          } else {
+            openNew();
+          }
+        } else if (attempts < 10) {
+          setTimeout(() => tryRestore(attempts + 1), 200);
         }
-      }, 150);
+      };
+      setTimeout(() => tryRestore(), 200);
     } catch {}
-  }, [assets.length]); // eslint-disable-line
+  }, []); // Empty array = runs exactly once on mount, never again
+
+  // Keep a window ref to assets for the restore function above
+  useEffect(() => { window.__sw_assets_ref__ = assets; }, [assets]);
 
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
