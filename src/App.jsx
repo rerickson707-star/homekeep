@@ -3351,25 +3351,67 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     if (!file) return;
     e.target.value = "";
 
-    const isPdf  = file.type === "application/pdf";
-    const isImage = file.type.startsWith("image/");
+    const isImage = file.type.startsWith("image/") || file.name.match(/\.(heic|heif|jpg|jpeg|png|webp|gif)$/i);
+    const isPdf   = file.type === "application/pdf";
     if (!isPdf && !isImage) { setError("Please select an image or PDF."); return; }
-    if (file.size > 20 * 1024 * 1024) { setError("File must be under 20MB."); return; }
+    if (file.size > 50 * 1024 * 1024) { setError("File must be under 50MB."); return; }
 
     setScanning(true); setError("");
 
     try {
-      const base64 = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload  = () => res(reader.result.split(",")[1]);
-        reader.onerror = () => rej(new Error("Failed to read file"));
-        reader.readAsDataURL(file);
-      });
+      let base64, mimeType;
+
+      if (isPdf) {
+        // PDFs sent as-is
+        base64 = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload  = () => res(reader.result.split(",")[1]);
+          reader.onerror = () => rej(new Error("Failed to read file"));
+          reader.readAsDataURL(file);
+        });
+        mimeType = "application/pdf";
+      } else {
+        // All images: convert to JPEG via canvas (handles HEIC, HEIF, PNG, WebP etc.)
+        // This ensures Claude gets a supported format regardless of what the camera produced
+        const result = await new Promise((resolve, reject) => {
+          const img = new Image();
+          const objectUrl = URL.createObjectURL(file);
+          img.onload = () => {
+            try {
+              // Resize to max 1600px on longest side — good for text, smaller payload
+              const MAX = 1600;
+              let { width, height } = img;
+              if (width > MAX || height > MAX) {
+                if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+                else { width = Math.round(width * MAX / height); height = MAX; }
+              }
+              const canvas = document.createElement("canvas");
+              canvas.width = width; canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx.fillStyle = "#fff";
+              ctx.fillRect(0, 0, width, height);
+              ctx.drawImage(img, 0, 0, width, height);
+              URL.revokeObjectURL(objectUrl);
+              canvas.toBlob(blob => {
+                if (!blob) { reject(new Error("Failed to process image")); return; }
+                const reader = new FileReader();
+                reader.onload  = () => resolve(reader.result.split(",")[1]);
+                reader.onerror = () => reject(new Error("Failed to read processed image"));
+                reader.readAsDataURL(blob);
+              }, "image/jpeg", 0.92);
+            } catch(err) { reject(err); }
+          };
+          img.onerror = () => reject(new Error("Could not load image — try a different photo"));
+          img.src = objectUrl;
+        });
+        base64   = result;
+        mimeType = "image/jpeg";
+      }
 
       const resp = await fetch(AI_SCAN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileBase64: base64, mimeType: file.type, scanType }),
+        body: JSON.stringify({ fileBase64: base64, mimeType, scanType }),
       });
 
       const data = await resp.json();
