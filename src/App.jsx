@@ -4943,22 +4943,28 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     try { localStorage.setItem(MODAL_KEY, JSON.stringify({ editId: a.id, open: true })); } catch {}
   };
 
-  // Restore modal state after page reload (e.g. iOS tab switch)
+  // Restore modal state after page reload (iOS killed the tab, Vite HMR, etc.)
+  const [restoreAttempted, setRestoreAttempted] = useState(false);
   useEffect(() => {
+    if (restoreAttempted) return;
     if (assets.length === 0) return;
+    setRestoreAttempted(true);
     try {
       const saved = localStorage.getItem(MODAL_KEY);
       if (!saved) return;
       const { editId: savedId, open } = JSON.parse(saved);
       if (!open) return;
-      if (savedId) {
-        const asset = assets.find(a => a.id === savedId);
-        if (asset) { openEdit(asset); return; }
-      } else {
-        openNew();
-      }
+      // Small delay so the component is fully mounted before opening modal
+      setTimeout(() => {
+        if (savedId) {
+          const asset = assets.find(a => a.id === savedId);
+          if (asset) openEdit(asset);
+        } else {
+          openNew();
+        }
+      }, 100);
     } catch {}
-  }, [assets.length]); // eslint-disable-line
+  }); // No dependency array — runs every render until restoreAttempted is true
 
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
@@ -9763,11 +9769,12 @@ export default function App() {
             </div>
           ) : (
             <>
-              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/>}
-              {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)}/>}
-              {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/>}
-              {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>}
+              {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
+              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/></div>
+              <div style={{display:tab==="tasks"?"block":"none"}}><Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)}/></div>
+              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/></div>
             </>
           )}
         </main>
