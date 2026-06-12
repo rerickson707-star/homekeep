@@ -3819,7 +3819,162 @@ function Calendar({ tasks, mini = false, onDayClick }) {
   );
 }
 
-// ─── DAY DETAIL MODAL ────────────────────────────────────────────────────────
+// ─── HOME AUDIT CHECKLIST ─────────────────────────────────────────────────────
+const AUDIT_ITEMS = [
+  { id:"hvac",       label:"HVAC / Air Conditioning",  icon:"❄️",  categories:["HVAC","Heating","Cooling","Heat Pump"] },
+  { id:"heating",    label:"Heating / Furnace",         icon:"🔥",  categories:["Heating","Furnace","Boiler"] },
+  { id:"water",      label:"Water Heater",              icon:"💧",  categories:["Plumbing","Water Heater","Water"] },
+  { id:"roof",       label:"Roof",                      icon:"🏠",  categories:["Roof","Structure","Exterior"] },
+  { id:"electrical", label:"Electrical Panel",          icon:"⚡",  categories:["Electrical"] },
+  { id:"appliances", label:"Kitchen Appliances",        icon:"🍳",  categories:["Appliances","Kitchen"] },
+  { id:"laundry",    label:"Washer / Dryer",            icon:"👕",  categories:["Appliances","Laundry"] },
+  { id:"exterior",   label:"Exterior & Landscaping",   icon:"🌿",  categories:["Exterior","Landscaping","Foundation"] },
+];
+
+function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profile }) {
+  const [expanded, setExpanded] = useState(false);
+  const NA_KEY = `sw_audit_na_${userId}`;
+  const [naItems, setNaItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(NA_KEY) || "[]"); } catch { return []; }
+  });
+
+  const markNA = (itemId, e) => {
+    e.stopPropagation();
+    const updated = [...naItems, itemId];
+    setNaItems(updated);
+    try { localStorage.setItem(NA_KEY, JSON.stringify(updated)); } catch {}
+  };
+
+  const undoNA = (itemId, e) => {
+    e.stopPropagation();
+    const updated = naItems.filter(id => id !== itemId);
+    setNaItems(updated);
+    try { localStorage.setItem(NA_KEY, JSON.stringify(updated)); } catch {}
+  };
+
+  // Check which items have at least one asset with model or serial number filled
+  const itemStatus = AUDIT_ITEMS.map(item => {
+    const match = warranties.find(w =>
+      item.categories.some(cat =>
+        w.category?.toLowerCase().includes(cat.toLowerCase()) ||
+        w.item?.toLowerCase().includes(item.id.toLowerCase())
+      )
+    );
+    const hasDetail = match && (match.model || match.serial_number || match.brand || match.install_date);
+    return {
+      ...item,
+      hasAsset:  !!match,
+      hasDetail: !!hasDetail,
+      isNA:      naItems.includes(item.id),
+      asset:     match,
+    };
+  });
+
+  const withDetail  = itemStatus.filter(i => i.hasDetail || i.isNA).length;
+  const total       = AUDIT_ITEMS.length;
+  const pct         = Math.round((withDetail / total) * 100);
+  const incomplete  = itemStatus.filter(i => !i.hasDetail && !i.isNA);
+  const naList      = itemStatus.filter(i => i.isNA);
+  const visible     = expanded ? incomplete : incomplete.slice(0, 2);
+
+  if (pct === 100) return null;
+
+  return (
+    <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1.1rem 1.2rem",marginBottom:".85rem",boxShadow:"var(--shadow)"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem"}}>
+        <div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",marginBottom:2}}>
+            Complete your home profile
+          </div>
+          <div style={{fontSize:".72rem",color:"#9E9690"}}>
+            {withDetail} of {total} systems documented · {pct}% complete
+          </div>
+        </div>
+        <div style={{textAlign:"right",flexShrink:0}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,color:pct>=75?"#3B6D11":pct>=40?"var(--gold)":"var(--rust)",lineHeight:1}}>{pct}%</div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{height:6,background:"var(--stone)",borderRadius:3,marginBottom:"1rem",overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${pct}%`,borderRadius:3,background:pct>=75?"#639922":pct>=40?"var(--gold)":"var(--rust)",transition:"width .4s cubic-bezier(.4,0,.2,1)"}}/>
+      </div>
+
+      {/* Incomplete items */}
+      <div style={{display:"flex",flexDirection:"column",gap:".4rem",marginBottom:incomplete.length>0?".75rem":0}}>
+        {visible.map(item => (
+          <div key={item.id}
+            style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem",borderRadius:12,border:"1.5px solid var(--stone)",background:"var(--cream)",transition:"all .18s"}}
+          >
+            <span style={{fontSize:"1.1rem",flexShrink:0}}>{item.icon}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{item.label}</div>
+              <div style={{fontSize:".71rem",color:"#9E9690",marginTop:1}}>
+                {item.hasAsset ? "Asset added — add model & serial number" : "Not yet added"}
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:".4rem",flexShrink:0}}>
+              {item.hasAsset ? (
+                /* Has asset but missing details — open it directly */
+                <button
+                  onClick={() => onOpenAsset(item.asset.id)}
+                  style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:8,background:"#FFF8E6",color:"#854F0B",border:"1px solid #F5CC76",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                >
+                  Add details →
+                </button>
+              ) : (
+                /* Missing entirely — Add or mark N/A */
+                <>
+                  <button
+                    onClick={() => onNavigate("warranties")}
+                    style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:8,background:"var(--rust-light)",color:"var(--rust)",border:"1px solid rgba(193,97,64,.25)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                  >
+                    Add →
+                  </button>
+                  <button
+                    onClick={(e) => markNA(item.id, e)}
+                    style={{fontSize:".7rem",fontWeight:600,padding:"3px 8px",borderRadius:8,background:"var(--stone)",color:"#9E9690",border:"1px solid var(--mid)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                    title="Mark as not applicable"
+                  >
+                    N/A
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Show more / less */}
+      {incomplete.length > 2 && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{width:"100%",padding:".5rem",background:"none",border:"1px solid var(--stone)",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".76rem",fontWeight:600,color:"#9E9690",cursor:"pointer",marginBottom:naList.length>0?".6rem":0}}
+        >
+          {expanded ? "Show less ↑" : `Show ${incomplete.length - 2} more ↓`}
+        </button>
+      )}
+
+      {/* N/A items — collapsed, expandable */}
+      {naList.length > 0 && (
+        <div style={{marginTop:".5rem",padding:".5rem .7rem",background:"var(--cream2)",borderRadius:10,border:"1px solid var(--stone)"}}>
+          <div style={{fontSize:".7rem",color:"#9E9690",marginBottom:naList.length>0?".35rem":0}}>
+            {naList.length} item{naList.length>1?"s":""} marked as N/A
+            {naList.map(item => (
+              <span key={item.id} style={{display:"inline-flex",alignItems:"center",gap:4,margin:"2px 4px",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:8,padding:"1px 7px",fontSize:".68rem",color:"#7A7370"}}>
+                {item.icon} {item.label}
+                <button onClick={(e)=>undoNA(item.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#9E9690",fontSize:".75rem",padding:0,lineHeight:1,marginLeft:2}} title="Undo">↩</button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function DayDetail({ date, tasks, onClose, onEdit }) {
   const dt = new Date(date + "T00:00:00");
   const label = dt.toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric", year:"numeric"});
@@ -3869,7 +4024,7 @@ function DayDetail({ date, tasks, onClose, onEdit }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade }) {
+function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId }) {
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -3945,6 +4100,11 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── HOME AUDIT CHECKLIST — show when setup is done but profile is incomplete ── */}
+      {profile?.home_setup_complete && warranties.length > 0 && (
+        <HomeAuditChecklist warranties={warranties} onNavigate={onNavigate} onOpenAsset={onOpenAsset} userId={userId} profile={profile}/>
       )}
 
       {/* Health score + cost forecast — always show but context-aware */}
@@ -4493,7 +4653,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[] }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -4510,6 +4670,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Asset CRUD
   const openNew = () => { setEditData({condition:"Good"}); setEditId(null); setModal(true); };
   const openEdit = a => { setEditData({...a}); setEditId(a.id); setModal(true); };
+
+  // Deep-link: open a specific asset from Dashboard checklist
+  useEffect(() => {
+    if (pendingEditId && assets.length > 0) {
+      const asset = assets.find(a => a.id === pendingEditId);
+      if (asset) { openEdit(asset); onClearPendingEdit?.(); }
+    }
+  }, [pendingEditId, assets.length]);
 
   const save = async () => {
     if(!editData.item?.trim()) return;
@@ -8896,6 +9064,7 @@ export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [showFeedback, setShowFeedback] = useState(false);
   const [showExport,   setShowExport]   = useState(false);
+  const [pendingAssetEdit, setPendingAssetEdit] = useState(null); // asset ID to open on Assets tab
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
@@ -9163,9 +9332,9 @@ export default function App() {
             </div>
           ) : (
             <>
-              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>}
+              {tab==="dashboard" && <Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/>}
               {tab==="tasks" && <Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
-              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/>}
+              {tab==="warranties" && <Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)}/>}
               {tab==="expenses" && <Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/>}
               {tab==="profile" && <Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>}
             </>
