@@ -4900,8 +4900,6 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
 function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit }) {
-  const MODAL_KEY = `sw_asset_modal_${userId}`;
-
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -4930,7 +4928,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       if (saved) base = {...base, ...JSON.parse(saved)};
     } catch {}
     setEditData(base); setEditId(null); setModal(true);
-    try { localStorage.setItem(MODAL_KEY, JSON.stringify({ editId: null, open: true })); } catch {}
   };
 
   const openEdit = a => {
@@ -4940,39 +4937,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       if (saved) base = {...base, ...JSON.parse(saved)};
     } catch {}
     setEditData(base); setEditId(a.id); setModal(true);
-    try { localStorage.setItem(MODAL_KEY, JSON.stringify({ editId: a.id, open: true })); } catch {}
   };
 
   // Restore modal state after page reload (iOS killed the tab, Vite HMR, etc.)
-  // One-time restore on first mount after true page reload
-  useEffect(() => {
-    const saved = localStorage.getItem(MODAL_KEY);
-    if (!saved) return;
-    try {
-      localStorage.removeItem(MODAL_KEY); // clear immediately to prevent any loops
-      const { editId: savedId, open } = JSON.parse(saved);
-      if (!open) return;
-      // Wait for assets to be available
-      const tryRestore = (attempts = 0) => {
-        const current = window.__sw_assets_ref__ || [];
-        if (current.length > 0) {
-          if (savedId) {
-            const asset = current.find(a => a.id === savedId);
-            if (asset) openEdit(asset);
-          } else {
-            openNew();
-          }
-        } else if (attempts < 10) {
-          setTimeout(() => tryRestore(attempts + 1), 200);
-        }
-      };
-      setTimeout(() => tryRestore(), 200);
-    } catch {}
-  }, []); // Empty array = runs exactly once on mount, never again
-
-  // Keep a window ref to assets for the restore function above
-  useEffect(() => { window.__sw_assets_ref__ = assets; }, [assets]);
-
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
     if (pendingEditId && assets.length > 0) {
