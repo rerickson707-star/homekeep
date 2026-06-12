@@ -3415,8 +3415,10 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
       });
 
       const data = await resp.json();
+      console.log("[Scan] status:", resp.status, "response:", JSON.stringify(data));
       if (!resp.ok || !data.ok) throw new Error(data.error || "Scan failed");
 
+      console.log("[Scan] fields:", JSON.stringify(data.fields));
       onScanComplete(data.fields);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
