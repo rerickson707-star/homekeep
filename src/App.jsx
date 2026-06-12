@@ -3030,32 +3030,193 @@ function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
   );
 }
 
-function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile }) {
+// ─── ASSET ADD CHOICE MODAL ──────────────────────────────────────────────────
+function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
+  const canScan = planData?.aiScan;
+
+  const CHOICES = [
+    {
+      mode: "nameplate",
+      icon: "📷",
+      title: "Scan the nameplate",
+      desc: "Point your camera at the equipment tag — fills brand, model, serial number in 10 seconds",
+      badge: canScan ? null : "Plus",
+      primary: true,
+    },
+    {
+      mode: "smartfill",
+      icon: "✨",
+      title: "Enter model number",
+      desc: "Type a brand or model and AI looks up specs, warranty length, and maintenance schedule",
+      badge: canScan ? null : "Plus",
+      primary: false,
+    },
+    {
+      mode: "receipt",
+      icon: "🔖",
+      title: "Upload receipt or warranty",
+      desc: "Scan a paper doc or photo to auto-fill purchase date, cost, and warranty expiry",
+      badge: canScan ? null : "Plus",
+      primary: false,
+    },
+    {
+      mode: "manual",
+      icon: "✏️",
+      title: "Fill in manually",
+      desc: "Enter the details yourself",
+      badge: null,
+      primary: false,
+    },
+  ];
+
+  const handleChoice = (choice) => {
+    if (choice.badge && !canScan) { onUpgrade(); return; }
+    onChoose(choice.mode);
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(23,30,28,.6)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(8px)"}}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{background:"#1C3D31",width:"100%",maxWidth:"540px",borderRadius:"24px 24px 0 0",padding:"1.5rem 1.25rem 2rem",boxShadow:"0 -12px 50px rgba(23,48,38,.5)"}}>
+        {/* Handle */}
+        <div style={{width:36,height:4,background:"rgba(244,237,223,.2)",borderRadius:2,margin:"0 auto 1.25rem"}}/>
+
+        <div style={{marginBottom:"1.25rem"}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,color:"#F4EDDF",marginBottom:4}}>
+            Add a home system
+          </div>
+          <div style={{fontSize:".8rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
+            Choose how you'd like to add it
+          </div>
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:".6rem",marginBottom:"1rem"}}>
+          {CHOICES.map(choice => (
+            <button
+              key={choice.mode}
+              onClick={() => handleChoice(choice)}
+              style={{
+                display:"flex",alignItems:"center",gap:"1rem",
+                padding:"1rem 1.1rem",borderRadius:16,border:"none",
+                background: choice.primary
+                  ? "var(--rust)"
+                  : "rgba(255,255,255,.07)",
+                cursor:"pointer",textAlign:"left",
+                transition:"all .18s",width:"100%",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = choice.primary ? "#A84820" : "rgba(255,255,255,.12)"}
+              onMouseLeave={e => e.currentTarget.style.background = choice.primary ? "var(--rust)" : "rgba(255,255,255,.07)"}
+            >
+              <div style={{
+                width:46,height:46,borderRadius:13,flexShrink:0,
+                background: choice.primary ? "rgba(255,255,255,.18)" : "rgba(255,255,255,.08)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:"1.3rem",
+              }}>
+                {choice.icon}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                  <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".95rem",color:"#F4EDDF"}}>
+                    {choice.title}
+                  </span>
+                  {choice.badge && (
+                    <span style={{fontSize:".6rem",fontWeight:700,padding:"2px 7px",borderRadius:8,background:"rgba(193,97,64,.35)",color:"#F4EDDF",flexShrink:0}}>
+                      {choice.badge}
+                    </span>
+                  )}
+                </div>
+                <div style={{fontSize:".78rem",color: choice.primary ? "rgba(255,255,255,.75)" : "rgba(244,237,223,.45)",lineHeight:1.45}}>
+                  {choice.desc}
+                </div>
+              </div>
+              <span style={{color: choice.primary ? "rgba(255,255,255,.6)" : "rgba(244,237,223,.25)",fontSize:"1rem",flexShrink:0}}>→</span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{width:"100%",padding:".75rem",background:"none",border:"1px solid rgba(255,255,255,.12)",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",color:"rgba(244,237,223,.45)",cursor:"pointer"}}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile, initialMode }) {
   const f = (k,v) => {
     const updated = {...data,[k]:v};
     onChange(updated);
-    // Auto-save draft to localStorage
     if (draftKey) {
       try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {}
     }
   };
-  // Auto-set lifespan when category changes
   const handleCategory = (cat) => {
     const updated = {...data, category:cat, lifespan_years: data.lifespan_years || DEFAULT_LIFESPAN[cat] || 15};
     onChange(updated);
     if (draftKey) { try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {} }
   };
+
+  // Auto-trigger nameplate camera on mount if that path was chosen
+  const nameplateRef = useRef(null);
+  useEffect(() => {
+    if (initialMode === "nameplate" && nameplateRef.current) {
+      setTimeout(() => nameplateRef.current?.click(), 200);
+    }
+  }, []); // eslint-disable-line
   return (
     <div>
-      <AIScanButton
-        onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan Receipt or Warranty Card"
-        description="Auto-fill asset name, model, purchase date, cost & warranty expiry"
-        scanType="warranty"
-        planData={planData}
-        onUpgrade={onUpgrade}
-      />
-      <div className="scan-divider">or fill in manually</div>
+      {/* ── AI Scan Hero ── */}
+      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.1rem 1.1rem .9rem",marginBottom:"1rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".5rem"}}>
+          <span style={{fontSize:"1rem"}}>✨</span>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Fill with AI</div>
+          {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
+        </div>
+        <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
+          Point your camera at the nameplate tag, or upload a receipt or warranty card.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+          <AIScanButton
+            onScanComplete={fields => {
+              const mapped = {};
+              if (fields.item)            mapped.item           = fields.item;
+              if (fields.brand)           mapped.brand          = fields.brand;
+              if (fields.model)           mapped.model          = fields.model;
+              if (fields.serial_number)   mapped.serial_number  = fields.serial_number;
+              if (fields.category)        mapped.category       = fields.category;
+              if (fields.manufacture_date) mapped.install_date  = fields.manufacture_date;
+              if (fields.notes || fields.capacity || fields.voltage) {
+                const noteParts = [fields.capacity, fields.voltage, fields.notes].filter(Boolean);
+                mapped.notes = noteParts.join(" · ");
+              }
+              onChange({...data, ...mapped});
+            }}
+            label="Scan Nameplate"
+            description="Point camera at equipment tag"
+            scanType="nameplate"
+            planData={planData}
+            onUpgrade={onUpgrade}
+            useCamera={true}
+            compact={true}
+            triggerRef={nameplateRef}
+          />
+          <AIScanButton
+            onScanComplete={fields => onChange({...data,...fields})}
+            label="Upload Receipt"
+            description="Warranty card or receipt"
+            scanType="warranty"
+            planData={planData}
+            onUpgrade={onUpgrade}
+            useCamera={false}
+            compact={true}
+          />
+        </div>
+      </div>
+
       <SmartFillButton data={data} onChange={(d)=>{onChange(d);if(draftKey){try{localStorage.setItem(draftKey,JSON.stringify(d));}catch{}}}} planData={planData} onUpgrade={onUpgrade} profile={profile}/>
       <div className="fg">
       <div className="field s2"><label>Asset Name *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Carrier HVAC System, Samsung Fridge" /></div>
@@ -3166,7 +3327,7 @@ function ProUpgradeModal({ onClose }) {
 // ─── AI SCAN BUTTON ───────────────────────────────────────────────────────────
 const AI_SCAN_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/ai-document-scan";
 
-function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade }) {
+function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef }) {
   const [scanning, setScanning]   = useState(false);
   const [error, setError]         = useState("");
   const [success, setSuccess]     = useState(false);
@@ -3182,7 +3343,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ""; // reset so same file can be re-selected
+    e.target.value = "";
 
     const isPdf  = file.type === "application/pdf";
     const isImage = file.type.startsWith("image/");
@@ -3192,7 +3353,6 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     setScanning(true); setError("");
 
     try {
-      // Read as base64
       const base64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload  = () => res(reader.result.split(",")[1]);
@@ -3218,12 +3378,39 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     setScanning(false);
   };
 
-  const SCAN_ICONS = { receipt:"📸", warranty:"🔖", invoice:"📋", insurance:"🛡️", document:"📄" };
+  const SCAN_ICONS = { receipt:"📸", warranty:"🔖", invoice:"📋", insurance:"🛡️", document:"📄", nameplate:"📷" };
   const icon = SCAN_ICONS[scanType] || "✨";
+
+  if (compact) {
+    return (
+      <>
+        <input ref={fileRef} type="file"
+          accept="image/*"
+          {...(useCamera ? { capture:"environment" } : {})}
+          style={{display:"none"}} onChange={handleFile}
+        />
+        <button ref={triggerRef} type="button" onClick={handleClick} disabled={scanning}
+          style={{display:"flex",alignItems:"center",gap:".5rem",padding:".65rem 1rem",borderRadius:12,border:"1.5px solid",
+            borderColor: useCamera ? "rgba(35,74,61,.3)" : "var(--stone)",
+            background: useCamera ? "linear-gradient(135deg,#234A3D,#2E5A4A)" : "var(--white)",
+            color: useCamera ? "#F4EDDF" : "var(--dark)",
+            fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,
+            cursor:"pointer",flex:1,justifyContent:"center",transition:"all .2s"}}>
+          <span style={{fontSize:"1.1rem"}}>{scanning?"⏳":success?"✓":icon}</span>
+          <span>{scanning?"Scanning…":success?"Done!":label}</span>
+          {!canScan && <span style={{fontSize:".6rem",background:"rgba(255,255,255,.2)",padding:"1px 6px",borderRadius:6,marginLeft:2}}>Plus</span>}
+        </button>
+      </>
+    );
+  }
 
   return (
     <div style={{marginBottom:"1rem"}}>
-      <input ref={fileRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleFile}/>
+      <input ref={fileRef} type="file"
+        accept={useCamera ? "image/*" : "image/*,.pdf"}
+        {...(useCamera ? { capture:"environment" } : {})}
+        style={{display:"none"}} onChange={handleFile}
+      />
       <button type="button" className="scan-btn scan-btn-bg" onClick={handleClick} disabled={scanning}>
         <div className="scan-btn-inner">
           <div className="scan-btn-icon">
@@ -4917,17 +5104,17 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const draftKey = (id) => `sw_asset_draft_${userId}_${id || "new"}`;
 
   const closeModal = () => {
-    closeModal();
-    try { localStorage.removeItem(MODAL_KEY); } catch {}
+    setModal(false);
+    setAddMode(null);
   };
 
+  const [addMode, setAddMode] = useState(null); // null | "choose" | "nameplate" | "smartfill" | "manual"
+
   const openNew = () => {
-    let base = {condition:"Good"};
-    try {
-      const saved = localStorage.getItem(draftKey(null));
-      if (saved) base = {...base, ...JSON.parse(saved)};
-    } catch {}
-    setEditData(base); setEditId(null); setModal(true);
+    setEditData({condition:"Good"});
+    setEditId(null);
+    setAddMode("choose");
+    setModal(true);
   };
 
   const openEdit = a => {
@@ -5232,7 +5419,33 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
 
         {/* Modals */}
-        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>closeModal()} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
+        {modal && (
+          addMode === "choose" ? (
+            <AssetAddChoiceModal
+              onClose={closeModal}
+              onChoose={(mode) => setAddMode(mode)}
+              planData={planData}
+              onUpgrade={onUpgrade}
+            />
+          ) : (
+            <Modal
+              title={editId ? "Edit Asset" : addMode === "nameplate" ? "Scan Nameplate" : addMode === "smartfill" ? "Smart Fill" : "Add Asset"}
+              onClose={()=>closeModal()}
+              onSave={addMode === "choose" ? undefined : save}
+            >
+              <AssetForm
+                data={editData}
+                onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}}
+                userId={userId}
+                planData={planData}
+                onUpgrade={onUpgrade}
+                draftKey={draftKey(editId)}
+                profile={null}
+                initialMode={addMode}
+              />
+            </Modal>
+          )
+        )}
         {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
@@ -5329,7 +5542,33 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         );
       })}
 
-      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>closeModal()} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
+      {modal && (
+        addMode === "choose" ? (
+          <AssetAddChoiceModal
+            onClose={closeModal}
+            onChoose={(mode) => setAddMode(mode)}
+            planData={planData}
+            onUpgrade={onUpgrade}
+          />
+        ) : (
+          <Modal
+            title={editId ? "Edit Asset" : addMode === "nameplate" ? "Scan Nameplate" : addMode === "smartfill" ? "Smart Fill" : "Add Asset"}
+            onClose={()=>closeModal()}
+            onSave={save}
+          >
+            <AssetForm
+              data={editData}
+              onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}}
+              userId={userId}
+              planData={planData}
+              onUpgrade={onUpgrade}
+              draftKey={draftKey(editId)}
+              profile={null}
+              initialMode={addMode}
+            />
+          </Modal>
+        )
+      )}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
