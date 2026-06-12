@@ -2845,11 +2845,20 @@ const ASSET_ICONS = {
   Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
 };
 
-function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[] }) {
-  const f = (k,v) => onChange({...data,[k]:v});
+function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey }) {
+  const f = (k,v) => {
+    const updated = {...data,[k]:v};
+    onChange(updated);
+    // Auto-save draft to localStorage
+    if (draftKey) {
+      try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {}
+    }
+  };
   // Auto-set lifespan when category changes
   const handleCategory = (cat) => {
-    onChange({...data, category:cat, lifespan_years: data.lifespan_years || DEFAULT_LIFESPAN[cat] || 15});
+    const updated = {...data, category:cat, lifespan_years: data.lifespan_years || DEFAULT_LIFESPAN[cat] || 15};
+    onChange(updated);
+    if (draftKey) { try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {} }
   };
   return (
     <div>
@@ -3831,28 +3840,53 @@ const AUDIT_ITEMS = [
   { id:"exterior",   label:"Exterior & Landscaping",   icon:"🌿",  categories:["Exterior","Landscaping","Foundation"] },
 ];
 
+const KEY_FIELDS = [
+  { key:"brand",         label:"Brand" },
+  { key:"model",         label:"Model #" },
+  { key:"serial_number", label:"Serial #" },
+  { key:"install_date",  label:"Install date" },
+];
+
 function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profile }) {
   const [expanded, setExpanded] = useState(false);
-  const NA_KEY = `sw_audit_na_${userId}`;
-  const [naItems, setNaItems] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(NA_KEY) || "[]"); } catch { return []; }
-  });
+  const NA_KEY      = `sw_audit_na_${userId}`;
+  const NOINFO_KEY  = `sw_audit_noinfo_${userId}`;
+  const REMIND_KEY  = `sw_audit_remind_${userId}`;
+
+  const [naItems,     setNaItems]     = useState(() => { try { return JSON.parse(localStorage.getItem(NA_KEY)||"[]"); } catch { return []; } });
+  const [noInfoItems, setNoInfoItems] = useState(() => { try { return JSON.parse(localStorage.getItem(NOINFO_KEY)||"[]"); } catch { return []; } });
+  const [remindCount, setRemindCount] = useState(() => { try { return JSON.parse(localStorage.getItem(REMIND_KEY)||"{}"); } catch { return {}; } });
 
   const markNA = (itemId, e) => {
     e.stopPropagation();
-    const updated = [...naItems, itemId];
-    setNaItems(updated);
-    try { localStorage.setItem(NA_KEY, JSON.stringify(updated)); } catch {}
+    const u = [...naItems, itemId];
+    setNaItems(u);
+    try { localStorage.setItem(NA_KEY, JSON.stringify(u)); } catch {}
   };
-
   const undoNA = (itemId, e) => {
     e.stopPropagation();
-    const updated = naItems.filter(id => id !== itemId);
-    setNaItems(updated);
-    try { localStorage.setItem(NA_KEY, JSON.stringify(updated)); } catch {}
+    const u = naItems.filter(id=>id!==itemId);
+    setNaItems(u);
+    try { localStorage.setItem(NA_KEY, JSON.stringify(u)); } catch {}
+  };
+  const markNoInfo = (itemId, e) => {
+    e.stopPropagation();
+    const u = [...noInfoItems, itemId];
+    setNoInfoItems(u);
+    try { localStorage.setItem(NOINFO_KEY, JSON.stringify(u)); } catch {}
+  };
+  const undoNoInfo = (itemId, e) => {
+    e.stopPropagation();
+    const u = noInfoItems.filter(id=>id!==itemId);
+    setNoInfoItems(u);
+    try { localStorage.setItem(NOINFO_KEY, JSON.stringify(u)); } catch {}
+  };
+  const incrementRemind = (itemId) => {
+    const u = {...remindCount, [itemId]: (remindCount[itemId]||0)+1};
+    setRemindCount(u);
+    try { localStorage.setItem(REMIND_KEY, JSON.stringify(u)); } catch {}
   };
 
-  // Check which items have at least one asset with model or serial number filled
   const itemStatus = AUDIT_ITEMS.map(item => {
     const match = warranties.find(w =>
       item.categories.some(cat =>
@@ -3860,22 +3894,29 @@ function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profi
         w.item?.toLowerCase().includes(item.id.toLowerCase())
       )
     );
-    const hasDetail = match && (match.model || match.serial_number || match.brand || match.install_date);
+    // Find which KEY_FIELDS are missing
+    const missingFields = match
+      ? KEY_FIELDS.filter(f => !match[f.key]?.toString().trim())
+      : KEY_FIELDS; // all missing if no asset
+    const hasDetail = !!match && missingFields.length === 0;
     return {
       ...item,
-      hasAsset:  !!match,
-      hasDetail: !!hasDetail,
-      isNA:      naItems.includes(item.id),
-      asset:     match,
+      hasAsset:     !!match,
+      hasDetail,
+      missingFields,
+      isNA:         naItems.includes(item.id),
+      isNoInfo:     noInfoItems.includes(item.id),
+      remindCount:  remindCount[item.id] || 0,
+      asset:        match,
     };
   });
 
-  const withDetail  = itemStatus.filter(i => i.hasDetail || i.isNA).length;
-  const total       = AUDIT_ITEMS.length;
-  const pct         = Math.round((withDetail / total) * 100);
-  const incomplete  = itemStatus.filter(i => !i.hasDetail && !i.isNA);
-  const naList      = itemStatus.filter(i => i.isNA);
-  const visible     = expanded ? incomplete : incomplete.slice(0, 2);
+  const withDetail = itemStatus.filter(i => i.hasDetail || i.isNA || i.isNoInfo).length;
+  const total      = AUDIT_ITEMS.length;
+  const pct        = Math.round((withDetail / total) * 100);
+  const incomplete = itemStatus.filter(i => !i.hasDetail && !i.isNA && !i.isNoInfo);
+  const dismissed  = itemStatus.filter(i => i.isNA || i.isNoInfo);
+  const visible    = expanded ? incomplete : incomplete.slice(0, 2);
 
   if (pct === 100) return null;
 
@@ -3891,9 +3932,7 @@ function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profi
             {withDetail} of {total} systems documented · {pct}% complete
           </div>
         </div>
-        <div style={{textAlign:"right",flexShrink:0}}>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,color:pct>=75?"#3B6D11":pct>=40?"var(--gold)":"var(--rust)",lineHeight:1}}>{pct}%</div>
-        </div>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,color:pct>=75?"#3B6D11":pct>=40?"var(--gold)":"var(--rust)",lineHeight:1}}>{pct}%</div>
       </div>
 
       {/* Progress bar */}
@@ -3902,46 +3941,66 @@ function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profi
       </div>
 
       {/* Incomplete items */}
-      <div style={{display:"flex",flexDirection:"column",gap:".4rem",marginBottom:incomplete.length>0?".75rem":0}}>
+      <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginBottom:incomplete.length>0?".75rem":0}}>
         {visible.map(item => (
-          <div key={item.id}
-            style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem",borderRadius:12,border:"1.5px solid var(--stone)",background:"var(--cream)",transition:"all .18s"}}
-          >
-            <span style={{fontSize:"1.1rem",flexShrink:0}}>{item.icon}</span>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{item.label}</div>
-              <div style={{fontSize:".71rem",color:"#9E9690",marginTop:1}}>
-                {item.hasAsset ? "Asset added — add model & serial number" : "Not yet added"}
+          <div key={item.id} style={{borderRadius:12,border:"1.5px solid var(--stone)",background:"var(--cream)",overflow:"hidden"}}>
+            {/* Main row */}
+            <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem"}}>
+              <span style={{fontSize:"1.1rem",flexShrink:0}}>{item.icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{item.label}</div>
+                <div style={{fontSize:".71rem",color:"#9E9690",marginTop:1}}>
+                  {item.hasAsset
+                    ? <span style={{color:"#854F0B"}}>Missing: {item.missingFields.map(f=>f.label).join(", ")}</span>
+                    : "Not yet added"}
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:".35rem",flexShrink:0}}>
+                {item.hasAsset ? (
+                  <button
+                    onClick={() => { incrementRemind(item.id); onOpenAsset(item.asset.id); }}
+                    style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:8,background:"#FFF8E6",color:"#854F0B",border:"1px solid #F5CC76",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                  >
+                    Add details →
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { incrementRemind(item.id); onNavigate("warranties"); }}
+                      style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:8,background:"var(--rust-light)",color:"var(--rust)",border:"1px solid rgba(193,97,64,.25)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                    >
+                      Add →
+                    </button>
+                    <button
+                      onClick={(e) => markNA(item.id, e)}
+                      style={{fontSize:".7rem",fontWeight:600,padding:"3px 8px",borderRadius:8,background:"var(--stone)",color:"#9E9690",border:"1px solid var(--mid)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                      title="I don't have this system"
+                    >
+                      N/A
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:".4rem",flexShrink:0}}>
-              {item.hasAsset ? (
-                /* Has asset but missing details — open it directly */
-                <button
-                  onClick={() => onOpenAsset(item.asset.id)}
-                  style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:8,background:"#FFF8E6",color:"#854F0B",border:"1px solid #F5CC76",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
-                >
-                  Add details →
-                </button>
-              ) : (
-                /* Missing entirely — Add or mark N/A */
-                <>
+            {/* Missing fields highlight */}
+            {item.hasAsset && item.missingFields.length > 0 && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:".3rem",padding:".4rem .85rem .6rem",borderTop:"1px solid var(--stone)"}}>
+                {item.missingFields.map(f => (
+                  <span key={f.key} style={{fontSize:".68rem",fontWeight:600,padding:"2px 8px",borderRadius:6,background:"#FFF3E0",color:"#B45309",border:"1px solid #FED7AA"}}>
+                    {f.label} missing
+                  </span>
+                ))}
+                {/* After 2 reminders, show "I don't have this info" */}
+                {item.remindCount >= 2 && (
                   <button
-                    onClick={() => onNavigate("warranties")}
-                    style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:8,background:"var(--rust-light)",color:"var(--rust)",border:"1px solid rgba(193,97,64,.25)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
+                    onClick={(e) => markNoInfo(item.id, e)}
+                    style={{fontSize:".68rem",fontWeight:600,padding:"2px 8px",borderRadius:6,background:"var(--stone)",color:"#9E9690",border:"1px solid var(--mid)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}
                   >
-                    Add →
+                    I don't have this info
                   </button>
-                  <button
-                    onClick={(e) => markNA(item.id, e)}
-                    style={{fontSize:".7rem",fontWeight:600,padding:"3px 8px",borderRadius:8,background:"var(--stone)",color:"#9E9690",border:"1px solid var(--mid)",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}
-                    title="Mark as not applicable"
-                  >
-                    N/A
-                  </button>
-                </>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -3950,21 +4009,22 @@ function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profi
       {incomplete.length > 2 && (
         <button
           onClick={() => setExpanded(e => !e)}
-          style={{width:"100%",padding:".5rem",background:"none",border:"1px solid var(--stone)",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".76rem",fontWeight:600,color:"#9E9690",cursor:"pointer",marginBottom:naList.length>0?".6rem":0}}
+          style={{width:"100%",padding:".5rem",background:"none",border:"1px solid var(--stone)",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".76rem",fontWeight:600,color:"#9E9690",cursor:"pointer",marginBottom:dismissed.length>0?".6rem":0}}
         >
           {expanded ? "Show less ↑" : `Show ${incomplete.length - 2} more ↓`}
         </button>
       )}
 
-      {/* N/A items — collapsed, expandable */}
-      {naList.length > 0 && (
+      {/* Dismissed items (N/A + no info) */}
+      {dismissed.length > 0 && (
         <div style={{marginTop:".5rem",padding:".5rem .7rem",background:"var(--cream2)",borderRadius:10,border:"1px solid var(--stone)"}}>
-          <div style={{fontSize:".7rem",color:"#9E9690",marginBottom:naList.length>0?".35rem":0}}>
-            {naList.length} item{naList.length>1?"s":""} marked as N/A
-            {naList.map(item => (
-              <span key={item.id} style={{display:"inline-flex",alignItems:"center",gap:4,margin:"2px 4px",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:8,padding:"1px 7px",fontSize:".68rem",color:"#7A7370"}}>
+          <div style={{fontSize:".7rem",color:"#9E9690",display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
+            <span style={{marginRight:4}}>{dismissed.length} item{dismissed.length>1?"s":""} skipped:</span>
+            {dismissed.map(item => (
+              <span key={item.id} style={{display:"inline-flex",alignItems:"center",gap:4,background:"var(--white)",border:"1px solid var(--stone)",borderRadius:8,padding:"1px 7px",fontSize:".68rem",color:"#7A7370"}}>
                 {item.icon} {item.label}
-                <button onClick={(e)=>undoNA(item.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#9E9690",fontSize:".75rem",padding:0,lineHeight:1,marginLeft:2}} title="Undo">↩</button>
+                <span style={{fontSize:".6rem",color:"#B0A8A0",marginLeft:1}}>{item.isNA?"N/A":"no info"}</span>
+                <button onClick={(e) => item.isNA ? undoNA(item.id,e) : undoNoInfo(item.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#9E9690",fontSize:".75rem",padding:0,lineHeight:1,marginLeft:2}} title="Undo">↩</button>
               </span>
             ))}
           </div>
@@ -4668,8 +4728,31 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [selectedAsset, setSelectedAsset] = useState(null); // null = list, id = detail view
 
   // Asset CRUD
-  const openNew = () => { setEditData({condition:"Good"}); setEditId(null); setModal(true); };
-  const openEdit = a => { setEditData({...a}); setEditId(a.id); setModal(true); };
+  const draftKey = (id) => `sw_asset_draft_${userId}_${id || "new"}`;
+
+  const openNew = () => {
+    // Restore any saved new-asset draft
+    let base = {condition:"Good"};
+    try {
+      const saved = localStorage.getItem(draftKey(null));
+      if (saved) base = {...base, ...JSON.parse(saved)};
+    } catch {}
+    setEditData(base); setEditId(null); setModal(true);
+  };
+
+  const openEdit = a => {
+    // Restore draft if exists, otherwise use saved asset data
+    let base = {...a};
+    try {
+      const saved = localStorage.getItem(draftKey(a.id));
+      if (saved) {
+        const draft = JSON.parse(saved);
+        // Only restore draft fields that are newer/different
+        base = {...base, ...draft};
+      }
+    } catch {}
+    setEditData(base); setEditId(a.id); setModal(true);
+  };
 
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
@@ -4700,11 +4783,19 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     };
     if(editId) {
       const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
-      if(!error) { setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a)); toast("Asset updated ✓"); }
+      if(!error) {
+        setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a));
+        toast("Asset updated ✓");
+        try { localStorage.removeItem(draftKey(editId)); } catch {}
+      }
       else { console.error("Asset update error:", error); toast("Error saving: "+error.message,"error"); }
     } else {
       const {data,error} = await supabase.from("warranties").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
-      if(!error&&data) { setAssets([...assets,data[0]]); toast("Asset added ✓"); }
+      if(!error&&data) {
+        setAssets([...assets,data[0]]);
+        toast("Asset added ✓");
+        try { localStorage.removeItem(draftKey(null)); } catch {}
+      }
       else { console.error("Asset insert error:", error); toast("Error adding: "+error.message,"error"); }
     }
     setModal(false);
@@ -4955,7 +5046,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
 
         {/* Modals */}
-        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)}/></Modal>}
         {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
@@ -5052,7 +5143,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         );
       })}
 
-      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={setEditData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)}/></Modal>}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
