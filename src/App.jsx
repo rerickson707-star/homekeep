@@ -262,6 +262,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 /* ══ TOAST ══ */
 .toast-wrap{position:fixed;bottom:calc(var(--bottom-nav) + .75rem);right:.75rem;z-index:999;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
 @media(min-width:769px){.toast-wrap{bottom:calc(var(--bottom-nav) + 1rem);right:1.25rem}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 .toast{background:var(--dark);color:#fff;padding:.6rem 1rem;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:280px}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{border-left:3px solid var(--sage)}
@@ -4899,6 +4900,8 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
 function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit }) {
+  const MODAL_KEY = `sw_asset_modal_${userId}`;
+
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -4910,34 +4913,52 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [serviceEditId, setServiceEditId] = useState(null);
   const [serviceAssetId, setServiceAssetId] = useState(null);
   const [serviceConfirm, setServiceConfirm] = useState(null);
-  const [selectedAsset, setSelectedAsset] = useState(null); // null = list, id = detail view
+  const [selectedAsset, setSelectedAsset] = useState(null);
 
   // Asset CRUD
   const draftKey = (id) => `sw_asset_draft_${userId}_${id || "new"}`;
 
+  const closeModal = () => {
+    closeModal();
+    try { localStorage.removeItem(MODAL_KEY); } catch {}
+  };
+
   const openNew = () => {
-    // Restore any saved new-asset draft
     let base = {condition:"Good"};
     try {
       const saved = localStorage.getItem(draftKey(null));
       if (saved) base = {...base, ...JSON.parse(saved)};
     } catch {}
     setEditData(base); setEditId(null); setModal(true);
+    try { localStorage.setItem(MODAL_KEY, JSON.stringify({ editId: null, open: true })); } catch {}
   };
 
   const openEdit = a => {
-    // Restore draft if exists, otherwise use saved asset data
     let base = {...a};
     try {
       const saved = localStorage.getItem(draftKey(a.id));
-      if (saved) {
-        const draft = JSON.parse(saved);
-        // Only restore draft fields that are newer/different
-        base = {...base, ...draft};
-      }
+      if (saved) base = {...base, ...JSON.parse(saved)};
     } catch {}
     setEditData(base); setEditId(a.id); setModal(true);
+    try { localStorage.setItem(MODAL_KEY, JSON.stringify({ editId: a.id, open: true })); } catch {}
   };
+
+  // Restore modal state after page reload (e.g. iOS tab switch)
+  useEffect(() => {
+    if (assets.length === 0) return;
+    try {
+      const saved = localStorage.getItem(MODAL_KEY);
+      if (!saved) return;
+      const { editId: savedId, open } = JSON.parse(saved);
+      if (!open) return;
+      if (savedId) {
+        const asset = assets.find(a => a.id === savedId);
+        if (asset) { openEdit(asset); return; }
+      } else {
+        openNew();
+      }
+    } catch {}
+  }, [assets.length]); // eslint-disable-line
 
   // Deep-link: open a specific asset from Dashboard checklist
   useEffect(() => {
@@ -4983,7 +5004,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       }
       else { console.error("Asset insert error:", error); toast("Error adding: "+error.message,"error"); }
     }
-    setModal(false);
+    closeModal();
   };
 
   const confirmDel = async () => {
@@ -5231,7 +5252,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
 
         {/* Modals */}
-        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
+        {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>closeModal()} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
         {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
@@ -5328,7 +5349,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         );
       })}
 
-      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>setModal(false)} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
+      {modal && <Modal title={editId?"Edit Asset":"Add Asset"} onClose={()=>closeModal()} onSave={save}><AssetForm data={editData} onChange={(d)=>{setEditData(d);try{localStorage.setItem(draftKey(editId),JSON.stringify(d));}catch{}}} userId={userId} planData={planData} onUpgrade={onUpgrade} draftKey={draftKey(editId)} profile={null}/></Modal>}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
@@ -9328,6 +9349,105 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
   );
 }
 
+// ─── PWA INSTALL PROMPT ──────────────────────────────────────────────────────
+function PWAInstallPrompt() {
+  const [prompt, setPrompt]     = useState(null);
+  const [visible, setVisible]   = useState(false);
+  const [isIOS, setIsIOS]       = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    // Don't show if already installed or dismissed
+    const alreadyDismissed = localStorage.getItem("sw_pwa_dismissed");
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    if (isStandalone || alreadyDismissed) return;
+
+    // iOS detection — no beforeinstallprompt, needs manual instructions
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(ios);
+
+    // Show after 2nd visit
+    const visits = parseInt(localStorage.getItem("sw_visits") || "0") + 1;
+    localStorage.setItem("sw_visits", String(visits));
+    if (visits < 2) return;
+
+    if (ios) {
+      // Show iOS instructions after small delay
+      setTimeout(() => setVisible(true), 4000);
+    } else {
+      // Chrome/Android — capture beforeinstallprompt
+      const handler = (e) => {
+        e.preventDefault();
+        setPrompt(e);
+        setTimeout(() => setVisible(true), 4000);
+      };
+      window.addEventListener("beforeinstallprompt", handler);
+      return () => window.removeEventListener("beforeinstallprompt", handler);
+    }
+  }, []);
+
+  const dismiss = () => {
+    setVisible(false);
+    setDismissed(true);
+    localStorage.setItem("sw_pwa_dismissed", "1");
+  };
+
+  const install = async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === "accepted") {
+      setVisible(false);
+      localStorage.setItem("sw_pwa_dismissed", "1");
+    }
+  };
+
+  if (!visible || dismissed) return null;
+
+  return (
+    <div style={{
+      position:"fixed", bottom:"calc(var(--bottom-nav) + 12px)", left:"12px", right:"12px",
+      background:"#1C3D31", borderRadius:16, padding:"1rem 1.1rem",
+      boxShadow:"0 8px 32px rgba(23,48,38,.5)", zIndex:399,
+      display:"flex", alignItems:"flex-start", gap:".85rem",
+      animation:"slideUp .3s ease"
+    }}>
+      <div style={{width:40,height:40,borderRadius:11,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+        <svg viewBox="0 0 48 48" fill="none" width="22" height="22">
+          <path d="M12 34L12 20L24 10L36 20L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M8 35.5L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:".9rem",color:"#F4EDDF",marginBottom:3}}>
+          Add Steadwell to your home screen
+        </div>
+        <div style={{fontSize:".75rem",color:"rgba(244,237,223,.6)",lineHeight:1.5,marginBottom:".7rem"}}>
+          {isIOS
+            ? 'Tap the share button below, then "Add to Home Screen" — keeps the app open when you switch between apps.'
+            : "Install Steadwell for a faster, app-like experience that stays open when you switch apps."}
+        </div>
+        {!isIOS && (
+          <button onClick={install} style={{background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:".45rem 1rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",fontWeight:700,cursor:"pointer",marginRight:8}}>
+            Install app
+          </button>
+        )}
+        <button onClick={dismiss} style={{background:"rgba(244,237,223,.1)",color:"rgba(244,237,223,.6)",border:"none",borderRadius:10,padding:".45rem .85rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",cursor:"pointer"}}>
+          Not now
+        </button>
+      </div>
+      <button onClick={dismiss} style={{background:"none",border:"none",color:"rgba(244,237,223,.4)",cursor:"pointer",fontSize:"1.1rem",padding:0,lineHeight:1,flexShrink:0}}>✕</button>
+    </div>
+  );
+}
+
+// Register service worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 export default function App() {
   // URL-based routing for legal pages — check before any hooks
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
@@ -9337,7 +9457,42 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTabRaw] = useState(() => {
+    try { return localStorage.getItem("sw_tab") || "dashboard"; } catch { return "dashboard"; }
+  });
+  const setTab = (t) => {
+    setTabRaw(t);
+    try { localStorage.setItem("sw_tab", t); } catch {}
+  };
+
+  // Page visibility — save state when user switches away, toast on return
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === "hidden") {
+        // Flush any pending state
+        try { localStorage.setItem("sw_tab", tab); } catch {}
+      } else if (document.visibilityState === "visible") {
+        // Show subtle welcome back if they were gone > 30 seconds
+        const lastHidden = parseInt(localStorage.getItem("sw_hidden_at") || "0");
+        const gap = Date.now() - lastHidden;
+        if (lastHidden && gap > 30000 && gap < 3600000) {
+          toast("Welcome back — your work is saved");
+        }
+        try { localStorage.removeItem("sw_hidden_at"); } catch {}
+      }
+    };
+    const setHiddenTime = () => {
+      if (document.visibilityState === "hidden") {
+        try { localStorage.setItem("sw_hidden_at", String(Date.now())); } catch {}
+      }
+    };
+    document.addEventListener("visibilitychange", handler);
+    document.addEventListener("visibilitychange", setHiddenTime);
+    return () => {
+      document.removeEventListener("visibilitychange", handler);
+      document.removeEventListener("visibilitychange", setHiddenTime);
+    };
+  }, [tab]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showExport,   setShowExport]   = useState(false);
   const [pendingAssetEdit, setPendingAssetEdit] = useState(null); // asset ID to open on Assets tab
@@ -9629,6 +9784,7 @@ export default function App() {
         </nav>
 
         <Toasts toasts={toasts}/>
+        <PWAInstallPrompt/>
         {showFeedback && (
           <FeedbackModal
             user={session.user}
