@@ -3179,7 +3179,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
             Point your camera at the nameplate tag, or upload a receipt or warranty card.
           </div>
         )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",alignItems:"start"}}>
           <AIScanButton
             onScanComplete={fields => {
               const mapped = {};
@@ -3389,7 +3389,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
 
   if (compact) {
     return (
-      <>
+      <div style={{flex:1,display:"flex",flexDirection:"column",gap:".3rem"}}>
         <input ref={fileRef} type="file"
           accept="image/*"
           {...(useCamera ? { capture:"environment" } : {})}
@@ -3397,18 +3397,23 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
         />
         <button ref={triggerRef} type="button" onClick={handleClick} disabled={scanning}
           style={{display:"flex",alignItems:"center",gap:".5rem",padding:".65rem 1rem",borderRadius:12,border:"1.5px solid",
-            borderColor: useCamera ? "rgba(193,97,64,.6)" : "var(--stone)",
-            background: useCamera ? "linear-gradient(135deg,#234A3D,#2E5A4A)" : "var(--white)",
-            color: useCamera ? "#F4EDDF" : "var(--dark)",
+            borderColor: error ? "rgba(192,57,43,.5)" : useCamera ? "rgba(193,97,64,.6)" : "var(--stone)",
+            background: error ? "rgba(192,57,43,.15)" : useCamera ? "linear-gradient(135deg,#234A3D,#2E5A4A)" : "var(--white)",
+            color: error ? "#C0392B" : useCamera ? "#F4EDDF" : "var(--dark)",
             fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,
-            cursor:"pointer",flex:1,justifyContent:"center",transition:"all .2s",
-            animation: highlighted && useCamera ? "scanPulse 1.5s ease-in-out 3" : "none",
+            cursor:"pointer",width:"100%",justifyContent:"center",transition:"all .2s",
+            animation: highlighted && useCamera && !error ? "scanPulse 1.5s ease-in-out 3" : "none",
           }}>
-          <span style={{fontSize:"1.1rem"}}>{scanning?"⏳":success?"✓":icon}</span>
-          <span>{scanning?"Scanning…":success?"Done!":label}</span>
+          <span style={{fontSize:"1.1rem"}}>{scanning?"⏳":error?"⚠":success?"✓":icon}</span>
+          <span>{scanning?"Scanning…":error?"Scan failed":success?"Done!":label}</span>
           {!canScan && <span style={{fontSize:".6rem",background:"rgba(255,255,255,.2)",padding:"1px 6px",borderRadius:6,marginLeft:2}}>Plus</span>}
         </button>
-      </>
+        {error && (
+          <div style={{fontSize:".7rem",color:"#C0392B",background:"rgba(192,57,43,.08)",border:"1px solid rgba(192,57,43,.2)",borderRadius:8,padding:".4rem .65rem",lineHeight:1.4}}>
+            {error} — <button type="button" onClick={()=>setError("")} style={{background:"none",border:"none",color:"#C0392B",cursor:"pointer",textDecoration:"underline",fontSize:".7rem",padding:0}}>dismiss</button>
+          </div>
+        )}
+      </div>
     );
   }
 
