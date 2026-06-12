@@ -263,6 +263,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .toast-wrap{position:fixed;bottom:calc(var(--bottom-nav) + .75rem);right:.75rem;z-index:999;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
 @media(min-width:769px){.toast-wrap{bottom:calc(var(--bottom-nav) + 1rem);right:1.25rem}}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes scanPulse{0%{box-shadow:0 0 0 0 rgba(193,97,64,.5)}70%{box-shadow:0 0 0 8px rgba(193,97,64,0)}100%{box-shadow:0 0 0 0 rgba(193,97,64,0)}}
 .toast{background:var(--dark);color:#fff;padding:.6rem 1rem;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:280px}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{border-left:3px solid var(--sage)}
@@ -3159,14 +3160,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
     onChange(updated);
     if (draftKey) { try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {} }
   };
-
-  // Auto-trigger nameplate camera on mount if that path was chosen
   const nameplateRef = useRef(null);
-  useEffect(() => {
-    if (initialMode === "nameplate" && nameplateRef.current) {
-      setTimeout(() => nameplateRef.current?.click(), 200);
-    }
-  }, []); // eslint-disable-line
   return (
     <div>
       {/* ── AI Scan Hero ── */}
@@ -3176,9 +3170,15 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Fill with AI</div>
           {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
         </div>
-        <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
-          Point your camera at the nameplate tag, or upload a receipt or warranty card.
-        </div>
+        {initialMode === "nameplate" ? (
+          <div style={{fontSize:".78rem",color:"rgba(244,237,223,.75)",marginBottom:".85rem",lineHeight:1.5,fontWeight:500}}>
+            Point your camera at the nameplate tag on your appliance or system — model number, serial number, and brand fill in automatically.
+          </div>
+        ) : (
+          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
+            Point your camera at the nameplate tag, or upload a receipt or warranty card.
+          </div>
+        )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
           <AIScanButton
             onScanComplete={fields => {
@@ -3195,7 +3195,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
               }
               onChange({...data, ...mapped});
             }}
-            label="Scan Nameplate"
+            label={initialMode === "nameplate" ? "Tap to scan tag" : "Scan Nameplate"}
             description="Point camera at equipment tag"
             scanType="nameplate"
             planData={planData}
@@ -3203,6 +3203,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
             useCamera={true}
             compact={true}
             triggerRef={nameplateRef}
+            highlighted={initialMode === "nameplate"}
           />
           <AIScanButton
             onScanComplete={fields => onChange({...data,...fields})}
@@ -3215,6 +3216,11 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
             compact={true}
           />
         </div>
+        {initialMode === "nameplate" && (
+          <div style={{marginTop:".6rem",fontSize:".7rem",color:"rgba(244,237,223,.4)",textAlign:"center",lineHeight:1.4}}>
+            After scanning, review the filled fields below and tap Save
+          </div>
+        )}
       </div>
 
       <SmartFillButton data={data} onChange={(d)=>{onChange(d);if(draftKey){try{localStorage.setItem(draftKey,JSON.stringify(d));}catch{}}}} planData={planData} onUpgrade={onUpgrade} profile={profile}/>
@@ -3327,7 +3333,7 @@ function ProUpgradeModal({ onClose }) {
 // ─── AI SCAN BUTTON ───────────────────────────────────────────────────────────
 const AI_SCAN_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/ai-document-scan";
 
-function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef }) {
+function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef, highlighted=false }) {
   const [scanning, setScanning]   = useState(false);
   const [error, setError]         = useState("");
   const [success, setSuccess]     = useState(false);
@@ -3391,11 +3397,13 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
         />
         <button ref={triggerRef} type="button" onClick={handleClick} disabled={scanning}
           style={{display:"flex",alignItems:"center",gap:".5rem",padding:".65rem 1rem",borderRadius:12,border:"1.5px solid",
-            borderColor: useCamera ? "rgba(35,74,61,.3)" : "var(--stone)",
+            borderColor: useCamera ? "rgba(193,97,64,.6)" : "var(--stone)",
             background: useCamera ? "linear-gradient(135deg,#234A3D,#2E5A4A)" : "var(--white)",
             color: useCamera ? "#F4EDDF" : "var(--dark)",
             fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,
-            cursor:"pointer",flex:1,justifyContent:"center",transition:"all .2s"}}>
+            cursor:"pointer",flex:1,justifyContent:"center",transition:"all .2s",
+            animation: highlighted && useCamera ? "scanPulse 1.5s ease-in-out 3" : "none",
+          }}>
           <span style={{fontSize:"1.1rem"}}>{scanning?"⏳":success?"✓":icon}</span>
           <span>{scanning?"Scanning…":success?"Done!":label}</span>
           {!canScan && <span style={{fontSize:".6rem",background:"rgba(255,255,255,.2)",padding:"1px 6px",borderRadius:6,marginLeft:2}}>Plus</span>}
