@@ -1755,7 +1755,6 @@ function LandingPage({ onSignIn, onSignUp }) {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  // Hero typewriter — cycles through example addresses
   useEffect(() => {
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const addrs = ["1420 Maple Grove Dr", "88 Lakeview Ave", "327 Birchwood Ln"];
@@ -1773,7 +1772,6 @@ function LandingPage({ onSignIn, onSignUp }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Scroll reveals, count-up, and feature glow
   useEffect(() => {
     const io = new IntersectionObserver(
       (es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
@@ -1817,20 +1815,32 @@ function LandingPage({ onSignIn, onSignUp }) {
     </svg>
   );
 
-  const questions = [
-    "How old is my water heater?", "What maintenance is due this season?",
-    "How much have I spent on my home?", "When does my HVAC warranty expire?",
-    "Are my utility bills unusually high?", "What has my home sold for historically?",
+  const features = [
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>, title: "Instant property lookup", desc: "Type your address and we pull 50+ fields from public records — year built, tax history, every past sale, estimated value. No forms.", tag: "Automatic" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranty & asset tracking", desc: "Every appliance, model number, serial number, and warranty with expiry alerts. Scan the nameplate tag with your camera — AI fills the rest.", tag: "Never lose a receipt" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home's age and systems — so nothing slips through.", tag: "Stay ahead" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & spending", desc: "See every dollar your home has cost you, broken down by category. Weigh it against what your home is worth.", tag: "Know your numbers" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>, title: "Document vault", desc: "Deeds, permits, inspections, insurance — filed and searchable, tied to the asset or project they belong to.", tag: "All your paperwork" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>, title: "Shared home access", desc: "Invite your spouse or partner. They get full access to tasks, assets, and documents — always on the same page.", tag: "Pro feature" },
   ];
 
-  const features = [
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 3C9 7 7 9.5 7 13a5 5 0 0 0 10 0c0-3.5-2-6-5-10z"/></svg>, title: "Climate-aware upkeep", desc: "Maintenance tuned to your zip code's climate zone and the season — so you're prepping for what your home actually faces.", tag: "Seasonal" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Utility spike alerts", desc: "Log your bills and Steadwell flags unusual jumps in usage — catch a leak or a failing system before it becomes a crisis.", tag: "Unique to Steadwell" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranties & assets", desc: "Every appliance, model number, and warranty with expiry alerts — plus service history that follows each asset.", tag: "Never lose a receipt" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & investment", desc: "See every dollar your home has cost you, broken down by category — and weigh it against what your home is worth.", tag: "Know your numbers" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>, title: "Document vault", desc: "Deeds, permits, inspections, insurance — filed, searchable, and tied to the asset or project they belong to.", tag: "All your paperwork" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>, title: "Tax & sale history", desc: "Years of property tax records and every past sale — your home's full financial story, on one timeline.", tag: "Property data" },
+  const comparisons = [
+    { feature: "Instant address auto-fill", sw: true, hz: false, hb: false },
+    { feature: "AI nameplate scan", sw: true, hz: false, hb: false },
+    { feature: "Smart Fill from model number", sw: true, hz: false, hb: false },
+    { feature: "Home History Report (PDF)", sw: true, hz: "paid add-on", hb: false },
+    { feature: "Shared household access", sw: true, hz: true, hb: false },
+    { feature: "Modern mobile UI", sw: true, hz: false, hb: true },
+    { feature: "Free tier available", sw: true, hz: false, hb: true },
+    { feature: "Contractor rolodex", sw: true, hz: false, hb: true },
+    { feature: "Cost forecasting", sw: true, hz: true, hb: false },
   ];
+
+  const CkIcon = ({ val }) => {
+    if (val === true)  return <span style={{color:"#3B6D11",fontWeight:700,fontSize:"1rem"}}>✓</span>;
+    if (val === false) return <span style={{color:"#C2B8AE",fontSize:".85rem"}}>—</span>;
+    return <span style={{color:"#854F0B",fontSize:".72rem",fontWeight:600}}>{val}</span>;
+  };
 
   return (
     <div className="lp-root">
@@ -1847,10 +1857,11 @@ function LandingPage({ onSignIn, onSignUp }) {
             <a onClick={() => scrollTo("features")}>Features</a>
             <a onClick={() => scrollTo("how")}>How it works</a>
             <a onClick={() => scrollTo("pricing")}>Pricing</a>
+            <a href="/blog" style={{color:"inherit",textDecoration:"none"}}>Blog</a>
           </div>
           <div className="lp-nav-cta">
             <button className="lp-signin" onClick={onSignIn}>Sign in</button>
-            <button className="btn btn-pine" onClick={onSignUp}>Join the beta</button>
+            <button className="btn btn-pine" onClick={onSignUp}>Get started free</button>
           </div>
         </div>
       </nav>
@@ -1871,24 +1882,24 @@ function LandingPage({ onSignIn, onSignUp }) {
         </div>
         <div className="wrap hero-grid">
           <div className="rv">
-            <span className="hero-badge"><span className="pdot"/> Now in beta — free to join</span>
+            <span className="hero-badge"><span className="pdot"/> Free to join — no credit card</span>
             <h1>Your home,<br/><em>kept well.</em></h1>
-            <p className="hero-p">Type your address and Steadwell fills in the rest — then keeps your maintenance, costs, and records in order, year after year.</p>
+            <p className="hero-p">The average homeowner spends $21,400 a year on their home — and tracks almost none of it. Steadwell changes that. Type your address and we fill in the rest.</p>
             <div className="hero-addr" role="presentation">
               <span className="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
               <span className="typed">{typed}<span className="caret"/></span>
               <span className="go">Look up <span aria-hidden="true">→</span></span>
             </div>
             <div className="hero-btns">
-              <button className="btn btn-terra" onClick={onSignUp}>Join the beta — it's free <span aria-hidden="true">→</span></button>
+              <button className="btn btn-terra" onClick={onSignUp}>Start for free <span aria-hidden="true">→</span></button>
               <button className="btn btn-ghost" onClick={() => scrollTo("features")}>See how it works</button>
             </div>
-            <p className="hero-micro"><b>No credit card.</b> Free forever plan available.</p>
+            <p className="hero-micro"><b>Free forever plan.</b> No credit card required. Setup in 3 minutes.</p>
           </div>
           <div className="hero-vis rv" style={{ transitionDelay: ".14s" }}>
             <div className="blob" aria-hidden="true"/>
             <div className="pv">
-              <div className="pv-bar"><i/><i/><i/><span className="pv-url">steadwell.app</span></div>
+              <div className="pv-bar"><i/><i/><i/><span className="pv-url">trysteadwell.app</span></div>
               <div className="pv-body">
                 <div className="pv-greet">Good morning, Alex.</div>
                 <div className="pv-sub">Your home is in good shape — 2 things coming up this week.</div>
@@ -1910,19 +1921,11 @@ function LandingPage({ onSignIn, onSignUp }) {
       <section className="stats">
         <div className="wrap">
           <div className="stats-in rv">
-            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="50">50</span><span className="suf">+</span></div><div className="stat-l">Data fields per home</div></div>
+            <div className="stat-cell"><div className="stat-n">$<span className="cnt" data-to="21400">21400</span></div><div className="stat-l">Avg. annual home spend</div></div>
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="50">50</span><span className="suf">+</span></div><div className="stat-l">Data fields auto-filled</div></div>
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="3">3</span><span className="suf"> min</span></div><div className="stat-l">Average setup time</div></div>
             <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">To get started</div></div>
-            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="3">3</span><span className="suf"> min</span></div><div className="stat-l">To set up your home</div></div>
-            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="100">100</span><span className="suf">%</span></div><div className="stat-l">Your data, private</div></div>
           </div>
-        </div>
-      </section>
-
-      {/* ── QUESTIONS MARQUEE ── */}
-      <section className="qs" aria-label="Questions Steadwell answers">
-        <div className="qs-label">Questions Steadwell answers for you</div>
-        <div className="qs-track">
-          {[...questions, ...questions].map((q, i) => <span key={i} className="q-pill">{q}</span>)}
         </div>
       </section>
 
@@ -1939,23 +1942,23 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="head center rv">
             <div className="eyebrow">Everything in one place</div>
             <h2 className="h2">Built for homeowners,<br/>not real estate agents</h2>
-            <p className="sub">From the moment you move in, Steadwell quietly keeps the whole picture — what your home is, what it needs, and what it's worth.</p>
+            <p className="sub">From the moment you move in, Steadwell quietly keeps the whole picture — what your home is, what it needs, and what it costs.</p>
           </div>
           <div className="bento">
             <div className="feat spot rv">
               <div>
-                <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
-                <h3>Type your address. We do the rest.</h3>
-                <p>Steadwell pulls 50+ fields from public records in seconds — year built, square footage, beds &amp; baths, tax history, every past sale, and nearby schools. No forms, no manual entry.</p>
-                <span className="tag">Instant property lookup</span>
+                <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+                <h3>Scan the nameplate. Done.</h3>
+                <p>Point your phone camera at any appliance tag — HVAC unit, water heater, fridge — and AI reads the model number, serial number, and brand in seconds. No typing, no searching.</p>
+                <span className="tag">AI-powered</span>
               </div>
               <div className="spot-vis" aria-hidden="true">
-                <div className="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg> 1420 Maple Grove Dr</div>
+                <div className="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scanning nameplate…</div>
                 <div className="spot-grid">
-                  <div>Year built<b>1987</b></div>
-                  <div>Square feet<b>2,140</b></div>
-                  <div>Last sale<b>$352,000</b></div>
-                  <div>Est. value<b>$418,000</b></div>
+                  <div>Brand<b>Carrier</b></div>
+                  <div>Model<b>24ACC636A003</b></div>
+                  <div>Serial<b>3819M12345</b></div>
+                  <div>Warranty<b>10 years</b></div>
                 </div>
               </div>
             </div>
@@ -1977,14 +1980,14 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="head center rv">
             <div className="eyebrow">Up and running in minutes</div>
             <h2 className="h2">No manual entry for<br/>the boring stuff</h2>
-            <p className="sub">Steadwell does the heavy lifting from your address. You just keep it pointed in the right direction.</p>
+            <p className="sub">Steadwell does the heavy lifting from your address. You keep it pointed in the right direction.</p>
           </div>
           <div className="steps">
             {[
-              { n: "1", t: "Create your account", d: "Email and you're in — under 60 seconds, no card." },
-              { n: "2", t: "Enter your address", d: "We pull 50+ fields from public records automatically." },
-              { n: "3", t: "Start tracking", d: "Tasks, warranties, costs, and documents — all in one place." },
-              { n: "4", t: "Stay ahead", d: "Reminders surface what's due before it slips." },
+              { n: "1", t: "Create your free account", d: "Email and you're in — under 60 seconds, no card required." },
+              { n: "2", t: "Enter your address", d: "We pull 50+ fields from public records instantly. Year built, tax history, every past sale." },
+              { n: "3", t: "Scan your appliances", d: "Point your camera at any nameplate — AI reads brand, model, serial number, and warranty automatically." },
+              { n: "4", t: "Stay ahead, always", d: "Maintenance reminders, warranty alerts, and cost tracking keep you in control year after year." },
             ].map((s, i) => (
               <div key={i} className="step rv" style={{ transitionDelay: (i * 0.08) + "s" }}>
                 <div className="num">{s.n}</div>
@@ -1992,6 +1995,50 @@ function LandingPage({ onSignIn, onSignUp }) {
                 <p>{s.d}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMPARISON ── */}
+      <section className="block" id="compare" style={{background:"rgba(35,74,61,.03)"}}>
+        <div className="wrap">
+          <div className="head center rv">
+            <div className="eyebrow">How we compare</div>
+            <h2 className="h2">The modern alternative<br/>to HomeZada &amp; Centriq</h2>
+            <p className="sub">Centriq shut down in 2025. HomeZada is expensive and dated. Steadwell was built from scratch for how homeowners actually live in 2026.</p>
+          </div>
+          <div className="rv" style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:480,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem"}}>
+              <thead>
+                <tr>
+                  <th style={{textAlign:"left",padding:".75rem 1rem",borderBottom:"2px solid var(--lp-line)",color:"var(--ink-soft)",fontWeight:600,fontSize:".8rem",textTransform:"uppercase",letterSpacing:".05em"}}>Feature</th>
+                  <th style={{padding:".75rem 1rem",borderBottom:"2px solid var(--terracotta)",color:"var(--pine)",fontWeight:700,textAlign:"center",background:"rgba(35,74,61,.04)",borderRadius:"8px 8px 0 0"}}>Steadwell</th>
+                  <th style={{padding:".75rem 1rem",borderBottom:"2px solid var(--lp-line)",color:"var(--ink-soft)",fontWeight:600,textAlign:"center",fontSize:".85rem"}}>HomeZada</th>
+                  <th style={{padding:".75rem 1rem",borderBottom:"2px solid var(--lp-line)",color:"var(--ink-soft)",fontWeight:600,textAlign:"center",fontSize:".85rem"}}>HomeBinder</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisons.map((row, i) => (
+                  <tr key={i} style={{borderBottom:"1px solid var(--lp-line)"}}>
+                    <td style={{padding:".7rem 1rem",color:"var(--ink)",fontWeight:500}}>{row.feature}</td>
+                    <td style={{padding:".7rem 1rem",textAlign:"center",background:"rgba(35,74,61,.03)"}}><CkIcon val={row.sw}/></td>
+                    <td style={{padding:".7rem 1rem",textAlign:"center"}}><CkIcon val={row.hz}/></td>
+                    <td style={{padding:".7rem 1rem",textAlign:"center"}}><CkIcon val={row.hb}/></td>
+                  </tr>
+                ))}
+                <tr>
+                  <td style={{padding:".7rem 1rem",color:"var(--ink)",fontWeight:500}}>Starting price</td>
+                  <td style={{padding:".7rem 1rem",textAlign:"center",background:"rgba(35,74,61,.03)",color:"var(--pine)",fontWeight:700}}>Free</td>
+                  <td style={{padding:".7rem 1rem",textAlign:"center",color:"var(--ink-soft)"}}>$59/yr</td>
+                  <td style={{padding:".7rem 1rem",textAlign:"center",color:"var(--ink-soft)"}}>$99/yr</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style={{textAlign:"center",marginTop:"2rem"}}>
+            <button className="btn btn-terra" onClick={onSignUp} style={{padding:".85rem 2rem",fontSize:"1rem"}}>
+              Try Steadwell free →
+            </button>
           </div>
         </div>
       </section>
@@ -2028,71 +2075,74 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="head center rv">
             <div className="eyebrow">Simple pricing</div>
             <h2 className="h2">Start free. Upgrade when ready.</h2>
-            <p className="sub">Use Steadwell free for as long as you like. Unlock more when your home needs more.</p>
+            <p className="sub">Use Steadwell free for as long as you like. Unlock AI features and advanced tools when your home needs more.</p>
           </div>
           <div className="price-wrap">
-
-            {/* FREE */}
             <div className="pcard rv">
               <div className="plan">Free</div>
               <div className="price">$0<span> / month</span></div>
               <p className="pdesc">Everything you need to get started and stay organized.</p>
               <ul className="plist">
-                {[
-                  "Unlimited tasks + basic recurring",
-                  "Unlimited assets & expenses",
-                  "5 documents",
-                  "1 property",
-                  "Property auto-fill",
-                  "Contractor rolodex",
-                  "Weekly digest email",
-                  "Basic reminders",
-                ].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Unlimited tasks & maintenance reminders","Unlimited assets & expense tracking","Property auto-fill (50+ fields)","Contractor rolodex","5 documents","Weekly email digest","1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
-
-            {/* PLUS */}
             <div className="pcard plus rv" style={{transitionDelay:".06s"}}>
               <span className="pbadge">Most popular</span>
               <div className="plan">Plus</div>
               <div className="price">$4.99<span> / month</span></div>
-              <p className="pdesc">Automation and intelligence for the serious homeowner.</p>
+              <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {[
-                  "Everything in Free",
-                  "Full recurring task engine",
-                  "Home health score",
-                  "5-year cost forecasting",
-                  "Daily reminders & warranty alerts",
-                  "25 documents",
-                  "AI receipt scan",
-                  "Full Home Setup Wizard",
-                ].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate scan","Smart Fill from model number","Home health score","5-year cost forecasting","Daily reminders & warranty alerts","25 documents","Full home setup wizard"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus</button>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $4.99/mo</button>
             </div>
-
-            {/* PRO */}
             <div className="pcard prem rv" style={{transitionDelay:".12s"}}>
               <div className="plan">Pro</div>
               <div className="price">$9.99<span> / month</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
-                {[
-                  "Everything in Plus",
-                  "Up to 3 properties",
-                  "Unlimited documents",
-                  "Shared home access",
-                  "Pre-sale home report included",
-                  "Contractor verified badge",
-                  "Regional price benchmarking",
-                  "Priority support",
-                ].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Plus","Up to 3 properties","Unlimited documents","Shared household access","Home History Report (PDF)","Contractor cost estimates","Data export (Excel)","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro</button>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $9.99/mo</button>
             </div>
+          </div>
+        </div>
+      </section>
 
+      {/* ── BLOG PREVIEW ── */}
+      <section className="block" id="blog">
+        <div className="wrap">
+          <div className="head rv" style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:"1rem"}}>
+            <div>
+              <div className="eyebrow">From the blog</div>
+              <h2 className="h2" style={{marginBottom:0}}>Homeowner guides</h2>
+            </div>
+            <a href="/blog" style={{color:"var(--terracotta)",textDecoration:"none",fontWeight:600,fontSize:".9rem",flexShrink:0}}>All articles →</a>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"1.25rem",marginTop:"2rem"}}>
+            {[
+              { title:"HVAC maintenance schedule: what every homeowner needs to know", tag:"Maintenance", time:"5 min read", slug:"hvac-maintenance-schedule" },
+              { title:"How to find your appliance serial number (and why it matters)", tag:"Tips", time:"3 min read", slug:"find-appliance-serial-number" },
+              { title:"The real cost of deferred home maintenance", tag:"Finance", time:"6 min read", slug:"cost-of-deferred-maintenance" },
+            ].map((post, i) => (
+              <a key={i} href={`/blog/${post.slug}`} style={{textDecoration:"none",display:"flex",flexDirection:"column",background:"var(--card)",border:"1px solid var(--lp-line)",borderRadius:14,overflow:"hidden",transition:"box-shadow .2s,transform .2s"}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 24px rgba(35,74,61,.1)";e.currentTarget.style.transform="translateY(-2px)"}}
+                onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform=""}}
+              >
+                <div style={{background:"linear-gradient(135deg,#234A3D,#2E5A4A)",height:80,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <svg viewBox="0 0 48 48" fill="none" width="32" height="32"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/></svg>
+                </div>
+                <div style={{padding:"1rem 1.1rem",flex:1,display:"flex",flexDirection:"column",gap:".5rem"}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <span style={{fontSize:".68rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"var(--pine)",padding:"2px 8px",borderRadius:8}}>{post.tag}</span>
+                    <span style={{fontSize:".68rem",color:"var(--ink-soft)"}}>{post.time}</span>
+                  </div>
+                  <div style={{fontWeight:600,fontSize:".9rem",color:"var(--ink)",lineHeight:1.4}}>{post.title}</div>
+                  <div style={{marginTop:"auto",paddingTop:".5rem",fontSize:".8rem",color:"var(--terracotta)",fontWeight:600}}>Read more →</div>
+                </div>
+              </a>
+            ))}
           </div>
         </div>
       </section>
@@ -2102,8 +2152,9 @@ function LandingPage({ onSignIn, onSignUp }) {
         <div className="glow" aria-hidden="true"/>
         <div className="wrap rv">
           <h2>Your home is your<br/><em>biggest investment.</em></h2>
-          <p>Start keeping it well — free forever, set up in minutes, no credit card required.</p>
+          <p>Start keeping it well — free forever, set up in 3 minutes, no credit card required.</p>
           <button className="btn btn-terra btn-xl" onClick={onSignUp}>Create your free account <span aria-hidden="true">→</span></button>
+          <p style={{marginTop:"1rem",fontSize:".8rem",opacity:.55}}>Join homeowners already using Steadwell to stay on top of maintenance, costs, and documentation.</p>
         </div>
       </section>
 
@@ -2116,18 +2167,20 @@ function LandingPage({ onSignIn, onSignUp }) {
               <span className="wm">Steadwell</span>
               <span className="foot-tag">— Your home, kept well.</span>
             </div>
-            <div className="foot-links">
+            <div className="foot-links" style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
               <a onClick={() => scrollTo("features")}>Features</a>
               <a onClick={() => scrollTo("pricing")}>Pricing</a>
+              <a href="/blog" style={{color:"inherit",textDecoration:"none"}}>Blog</a>
               <a onClick={onSignIn}>Sign in</a>
             </div>
           </div>
-          <div className="foot-copy">
-            <span>&copy; 2026 Steadwell. Built for homeowners.</span>
+          <div style={{marginTop:"1.5rem",paddingTop:"1rem",borderTop:"1px solid rgba(244,237,223,.08)",display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:"1rem",alignItems:"center"}}>
+            <span style={{fontSize:".8rem",color:"rgba(244,237,223,.35)"}}>&copy; 2026 Steadwell, LLC. Built for homeowners.</span>
             <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
-              <a href="/terms" style={{color:"rgba(244,237,223,.45)",textDecoration:"none",fontSize:".8rem"}}>Terms of Service</a>
-              <a href="/privacy" style={{color:"rgba(244,237,223,.45)",textDecoration:"none",fontSize:".8rem"}}>Privacy Policy</a>
-              <a href="/ada" style={{color:"rgba(244,237,223,.45)",textDecoration:"none",fontSize:".8rem"}}>Accessibility</a>
+              <a href="/terms" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Terms</a>
+              <a href="/privacy" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Privacy</a>
+              <a href="/ada" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Accessibility</a>
+              <a href="/blog" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Blog</a>
             </div>
           </div>
         </div>
@@ -9902,6 +9955,8 @@ export default function App() {
   if (_path === "/terms" || _path === "/terms.html") return <TermsPage />;
   if (_path === "/privacy" || _path === "/privacy.html") return <PrivacyPage />;
   if (_path === "/ada" || _path === "/accessibility" || _path === "/ada/") return <ADAPage />;
+  if (_path === "/blog" || _path === "/blog/") return <BlogIndex />;
+  if (_path.startsWith("/blog/")) return <BlogPost slug={_path.replace("/blog/","")} />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -10476,6 +10531,160 @@ function PrivacyPage() {
 
 
 // ─── ADA ACCESSIBILITY STATEMENT ─────────────────────────────────────────────
+// ─── BLOG ────────────────────────────────────────────────────────────────────
+const BLOG_POSTS = [
+  {
+    slug: "hvac-maintenance-schedule",
+    title: "HVAC Maintenance Schedule: What Every Homeowner Needs to Know",
+    description: "A complete guide to HVAC maintenance — when to change filters, schedule tune-ups, and what warning signs mean your system needs attention.",
+    tag: "Maintenance", time: "5 min read", date: "June 2026",
+    content: `
+      <h2>Why HVAC maintenance matters more than you think</h2>
+      <p>Your HVAC system is the most expensive mechanical system in your home — a replacement can run $5,000 to $12,000. Yet most homeowners don't give it a second thought until something breaks. A little attention each season can add years to its life and keep your energy bills under control.</p>
+
+      <h2>Monthly: Change your air filter</h2>
+      <p>This is the single most important thing you can do. A clogged filter forces your system to work harder, increases energy consumption by up to 15%, and can cause the system to overheat. Use MERV 8–11 rated filters and mark your calendar. If you have pets or allergies, change every 30 days. Otherwise every 60–90 days is fine.</p>
+
+      <h2>Spring: Pre-season cooling checkup</h2>
+      <p>Schedule a professional tune-up before the first hot day — technicians are booked solid in June and July. During a tune-up, a technician should: clean the condenser coils, check refrigerant levels, inspect electrical connections, lubricate moving parts, and test the thermostat calibration. Expect to pay $80–150.</p>
+
+      <h2>Fall: Pre-season heating checkup</h2>
+      <p>Same idea for your heating system. If you have a gas furnace, have a technician inspect the heat exchanger for cracks — a cracked heat exchanger can leak carbon monoxide into your home. Also check and clean your vents and returns, and test your carbon monoxide detectors.</p>
+
+      <h2>When to replace instead of repair</h2>
+      <p>The general rule: if a repair costs more than half the unit's value, and the system is over 10 years old, replacement makes more sense. A new high-efficiency system (16+ SEER) can cut cooling costs by 20–40% compared to an older unit.</p>
+
+      <h2>Track it in Steadwell</h2>
+      <p>Add your HVAC unit as an asset in Steadwell — brand, model, install date — and Steadwell will remind you when service is due and track your service history over time. If you use Steadwell Plus, the AI Smart Fill feature can look up your unit's lifespan, typical maintenance schedule, and even find the owner's manual automatically.</p>
+    `
+  },
+  {
+    slug: "find-appliance-serial-number",
+    title: "How to Find Your Appliance Serial Number (and Why It Matters)",
+    description: "Serial numbers unlock warranty claims, recall notices, and appliance history. Here's exactly where to find them on every major appliance.",
+    tag: "Tips", time: "3 min read", date: "June 2026",
+    content: `
+      <h2>Why you need your serial number</h2>
+      <p>Your appliance's serial number is your ticket to warranty service, recall notices, and replacement parts. Without it, manufacturers often won't help you. And if you ever file a home insurance claim, having documented serial numbers speeds up the process dramatically.</p>
+
+      <h2>Where to find serial numbers by appliance</h2>
+      <p><strong>Refrigerator:</strong> Inside the fridge on the left or right wall, or behind the crisper drawers. Sometimes on the door frame.</p>
+      <p><strong>Washing machine:</strong> Inside the lid (top-load) or inside the door on the frame (front-load).</p>
+      <p><strong>Dryer:</strong> Inside the door on the frame, or on the back panel.</p>
+      <p><strong>Dishwasher:</strong> On the inner door panel — open the door and look around the edge.</p>
+      <p><strong>HVAC / Air conditioner:</strong> On the metal nameplate on the side or back of the outdoor unit. Also on the indoor air handler.</p>
+      <p><strong>Water heater:</strong> On a sticker on the side of the tank, usually near the top.</p>
+      <p><strong>Oven / Range:</strong> In the drawer below the oven, or on the frame behind the oven door.</p>
+
+      <h2>How to decode a serial number</h2>
+      <p>Many manufacturers embed the manufacture date in the serial number. For example, Whirlpool uses the first letter and number to indicate the year and week of manufacture. Knowing this helps you assess remaining lifespan and check for open recalls.</p>
+
+      <h2>The fastest way to record them all</h2>
+      <p>With Steadwell, you can scan the nameplate tag directly with your camera. Our AI reads the brand, model number, and serial number in seconds and saves everything to your home profile. No typing, no spreadsheets — just point and scan.</p>
+    `
+  },
+  {
+    slug: "cost-of-deferred-maintenance",
+    title: "The Real Cost of Deferred Home Maintenance",
+    description: "Skipping maintenance feels like saving money — until it doesn't. Here's what deferred maintenance actually costs homeowners, with real numbers.",
+    tag: "Finance", time: "6 min read", date: "May 2026",
+    content: `
+      <h2>The $1 in prevention myth is real</h2>
+      <p>The old rule says $1 in preventive maintenance saves $5–10 in repair costs later. The actual numbers are often worse. A $15 water heater anode rod replacement (a 20-minute job) can prevent a $800–1,200 water heater replacement. A $120 annual roof inspection can catch a $200 flashing repair before it becomes a $12,000 structural repair.</p>
+
+      <h2>The most expensive deferred maintenance items</h2>
+      <p><strong>Roof maintenance:</strong> A roof ignored for years often requires full replacement ($8,000–25,000) instead of targeted repairs ($200–2,000). Water infiltration from a failing roof can cause tens of thousands in structural damage.</p>
+      <p><strong>HVAC neglect:</strong> Skipping annual service shortens unit life by 3–5 years. A unit that should last 18 years might fail at 13. At $6,000–10,000 for replacement, that's $1,000+ per skipped year of service.</p>
+      <p><strong>Gutters:</strong> Clogged gutters cause water to pool against your foundation. Foundation repairs start at $4,000 and can exceed $25,000. Annual gutter cleaning costs $150–300.</p>
+      <p><strong>Caulking and sealing:</strong> Failing caulk around windows and doors lets in moisture and air. Energy losses add $200–500/year to bills. Recaulking costs $100–300 every 5–7 years.</p>
+
+      <h2>Why homeowners defer maintenance</h2>
+      <p>The primary reason isn't laziness — it's information gaps. Most homeowners don't know when maintenance is due, don't have a record of what's been done, and don't feel the urgency until something fails. Out of sight, genuinely out of mind.</p>
+
+      <h2>The solution is a maintenance system</h2>
+      <p>Steadwell tracks every system in your home with reminders before maintenance is due — not after something breaks. Over time, your service history becomes a valuable record that proves your home was well maintained, which matters when it's time to sell.</p>
+    `
+  },
+];
+
+function BlogIndex() {
+  return (
+    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
+      {/* Nav */}
+      <nav style={{background:"#234A3D",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <a href="/" style={{display:"flex",alignItems:"center",gap:".5rem",textDecoration:"none"}}>
+          <svg viewBox="0 0 48 48" fill="none" width="28" height="28"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/></svg>
+          <span style={{color:"#F4EDDF",fontWeight:700,fontSize:"1.05rem"}}>Steadwell</span>
+        </a>
+        <a href="/" style={{color:"rgba(244,237,223,.6)",textDecoration:"none",fontSize:".85rem"}}>← Back to home</a>
+      </nav>
+      {/* Header */}
+      <div style={{maxWidth:800,margin:"0 auto",padding:"3rem 1.5rem 2rem"}}>
+        <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C16140",marginBottom:".5rem"}}>Steadwell Blog</div>
+        <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"2.5rem",fontWeight:500,color:"#2A2723",marginBottom:".75rem",lineHeight:1.2}}>Homeowner guides &amp; tips</h1>
+        <p style={{color:"#7A7370",fontSize:"1.05rem",lineHeight:1.6}}>Practical advice for keeping your home well — maintenance schedules, cost breakdowns, and expert tips from the Steadwell team.</p>
+      </div>
+      {/* Posts */}
+      <div style={{maxWidth:800,margin:"0 auto",padding:"0 1.5rem 4rem",display:"flex",flexDirection:"column",gap:"1.25rem"}}>
+        {BLOG_POSTS.map(post => (
+          <a key={post.slug} href={`/blog/${post.slug}`} style={{textDecoration:"none",background:"#fff",borderRadius:14,border:"1px solid #E6DECF",padding:"1.5rem",display:"flex",flexDirection:"column",gap:".6rem",transition:"box-shadow .2s,transform .2s"}}
+            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 24px rgba(35,74,61,.1)";e.currentTarget.style.transform="translateY(-2px)"}}
+            onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform=""}}>
+            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+              <span style={{fontSize:".7rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"#234A3D",padding:"2px 9px",borderRadius:8}}>{post.tag}</span>
+              <span style={{fontSize:".72rem",color:"#A8A09A"}}>{post.time} · {post.date}</span>
+            </div>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#2A2723",lineHeight:1.3}}>{post.title}</div>
+            <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.55}}>{post.description}</div>
+            <div style={{fontSize:".82rem",color:"#C16140",fontWeight:600,marginTop:".25rem"}}>Read more →</div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BlogPost({ slug }) {
+  const post = BLOG_POSTS.find(p => p.slug === slug);
+  if (!post) {
+    return (
+      <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"1rem"}}>
+        <div style={{fontSize:"1.2rem",color:"#2A2723",fontWeight:500}}>Post not found</div>
+        <a href="/blog" style={{color:"#C16140",textDecoration:"none"}}>← Back to blog</a>
+      </div>
+    );
+  }
+  return (
+    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
+      {/* Nav */}
+      <nav style={{background:"#234A3D",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <a href="/" style={{display:"flex",alignItems:"center",gap:".5rem",textDecoration:"none"}}>
+          <svg viewBox="0 0 48 48" fill="none" width="28" height="28"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/></svg>
+          <span style={{color:"#F4EDDF",fontWeight:700,fontSize:"1.05rem"}}>Steadwell</span>
+        </a>
+        <a href="/blog" style={{color:"rgba(244,237,223,.6)",textDecoration:"none",fontSize:".85rem"}}>← All articles</a>
+      </nav>
+      {/* Article */}
+      <article style={{maxWidth:720,margin:"0 auto",padding:"3rem 1.5rem 5rem"}}>
+        <div style={{display:"flex",gap:".5rem",alignItems:"center",marginBottom:"1rem"}}>
+          <span style={{fontSize:".7rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"#234A3D",padding:"2px 9px",borderRadius:8}}>{post.tag}</span>
+          <span style={{fontSize:".72rem",color:"#A8A09A"}}>{post.time} · {post.date}</span>
+        </div>
+        <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.7rem,4vw,2.4rem)",fontWeight:500,color:"#2A2723",lineHeight:1.2,marginBottom:"1rem"}}>{post.title}</h1>
+        <p style={{fontSize:"1.1rem",color:"#7A7370",lineHeight:1.65,marginBottom:"2rem",borderBottom:"1px solid #E6DECF",paddingBottom:"1.5rem"}}>{post.description}</p>
+        <div style={{fontSize:"1rem",lineHeight:1.8,color:"#2A2723"}} dangerouslySetInnerHTML={{__html: post.content.replace(/<h2>/g,'<h2 style="font-family:\'Fraunces\',serif;font-size:1.35rem;font-weight:500;color:#2A2723;margin:2rem 0 .75rem">').replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">').replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">')}}/>
+        {/* CTA */}
+        <div style={{marginTop:"3rem",padding:"1.5rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
+          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",marginBottom:"1rem",lineHeight:1.5}}>Set reminders, scan appliance tags, and keep your home records in one place — free to start.</div>
+          <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".7rem 1.5rem",borderRadius:10,fontWeight:700,fontSize:".9rem"}}>Get started free →</a>
+        </div>
+      </article>
+    </div>
+  );
+}
+
+
 function ADAPage() {
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
