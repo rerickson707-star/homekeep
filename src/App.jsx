@@ -2122,8 +2122,8 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"1.25rem",marginTop:"2rem"}}>
             {[
-              { title:"HVAC maintenance schedule: what every homeowner needs to know", tag:"Maintenance", time:"5 min read", slug:"hvac-maintenance-schedule" },
-              { title:"How to find your appliance serial number (and why it matters)", tag:"Tips", time:"3 min read", slug:"find-appliance-serial-number" },
+              { title:"The complete home maintenance checklist (by season)", tag:"Maintenance", time:"8 min read", slug:"home-maintenance-checklist" },
+              { title:"How to tell how old your water heater is — and when to replace it", tag:"Appliances", time:"4 min read", slug:"how-old-is-my-water-heater" },
               { title:"The real cost of deferred home maintenance", tag:"Finance", time:"6 min read", slug:"cost-of-deferred-maintenance" },
             ].map((post, i) => (
               <a key={i} href={`/blog/${post.slug}`} style={{textDecoration:"none",display:"flex",flexDirection:"column",background:"var(--card)",border:"1px solid var(--lp-line)",borderRadius:14,overflow:"hidden",transition:"box-shadow .2s,transform .2s"}}
@@ -10603,6 +10603,211 @@ const BLOG_POSTS = [
 
       <h2>The solution is a maintenance system</h2>
       <p>Steadwell tracks every system in your home with reminders before maintenance is due — not after something breaks. Over time, your service history becomes a valuable record that proves your home was well maintained, which matters when it's time to sell.</p>
+    `
+  },
+  {
+    slug: "how-old-is-my-water-heater",
+    title: "How to Tell How Old Your Water Heater Is (And When to Replace It)",
+    description: "Most homeowners have no idea how old their water heater is — until it floods the garage. Here's how to decode the serial number and know when to act.",
+    tag: "Appliances", time: "4 min read", date: "June 2026",
+    content: `
+      <h2>Why water heater age matters</h2>
+      <p>The average tank water heater lasts 8–12 years. After that, the risk of failure — and the water damage that comes with it — climbs sharply every year. A failed water heater can dump 40–80 gallons of water into your home before you notice. Knowing your unit's age lets you replace it on your terms, not during an emergency.</p>
+
+      <h2>How to find your water heater's age</h2>
+      <p>The manufacture date is encoded in the serial number on the label near the top of the tank. The format varies by brand, but here are the most common ones:</p>
+      <p><strong>Rheem / Ruud:</strong> The first two digits are the year, the next two are the week. Serial starting with "2317" = manufactured in the 17th week of 2023.</p>
+      <p><strong>A.O. Smith / American / State:</strong> The first letter represents the month (A=January, B=February, etc.) and the next two digits are the year. "C22" = March 2022.</p>
+      <p><strong>Bradford White:</strong> Uses a letter-based code for both year and month. "FG" means the unit was made in 2010.</p>
+      <p><strong>Whirlpool:</strong> The 2nd and 3rd characters are the year, the 4th and 5th are the week.</p>
+
+      <h2>When to replace vs. repair</h2>
+      <p>If your water heater is under 6 years old and has a minor issue (bad thermostat, failed heating element), repair makes sense. If it's over 10 years old, replacement is almost always the right call — parts are harder to find, and a second failure is likely soon after the first. Signs to watch for: rumbling or popping sounds (sediment buildup), rust-colored water, visible corrosion around the tank base, or water pooling underneath.</p>
+
+      <h2>The anode rod: your water heater's secret lifespan extender</h2>
+      <p>Most homeowners have never heard of an anode rod — a metal rod inside the tank that corrodes sacrificially to protect the tank lining. Replacing it every 3–5 years can add years to your water heater's life. It costs about $30–50 in parts and an hour of your time, or $150–200 if you hire a plumber.</p>
+
+      <h2>Track yours in Steadwell</h2>
+      <p>Add your water heater as an asset in Steadwell and we'll track its age, remind you when the anode rod is due, and alert you when the unit is approaching end of life — before you're dealing with a flooded garage.</p>
+    `
+  },
+  {
+    slug: "steadwell-vs-homezada",
+    title: "Steadwell vs. HomeZada: Which Home Management App Is Right for You?",
+    description: "Comparing two leading home management apps across features, price, and ease of use. Here's the honest breakdown for 2026.",
+    tag: "Comparison", time: "5 min read", date: "June 2026",
+    content: `
+      <h2>Two different approaches to home management</h2>
+      <p>HomeZada and Steadwell both aim to help homeowners stay organized, but they take meaningfully different approaches. HomeZada has been around since 2012 and covers a broad surface area — home inventory, finances, documents, maintenance. Steadwell launched in 2025 with a narrower, sharper focus: making maintenance tracking and asset management genuinely frictionless with AI-assisted data capture.</p>
+
+      <h2>Ease of getting started</h2>
+      <p>HomeZada requires you to manually enter your home details, assets, and inventory from scratch — which sounds reasonable until you realize most homeowners have 30–50 items worth tracking. The setup friction is real, and many users report never completing onboarding. Steadwell addresses this directly: scan any appliance nameplate with your phone camera and the AI reads the brand, model, serial number, and manufacture date in seconds. For most people, the app is useful within 10 minutes of signing up.</p>
+
+      <h2>Maintenance scheduling</h2>
+      <p>Both apps offer maintenance reminders. HomeZada's system is more comprehensive on paper — it covers a huge checklist of home systems. Steadwell's reminders are asset-specific and climate-aware: if you're in Florida, you won't get reminders about winterizing pipes. The reminders adapt to your home type, age, and region.</p>
+
+      <h2>Pricing</h2>
+      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($4.99/month) adds AI scanning, smart fill, and document storage. Pro ($9.99/month) adds shared access for families or property managers and multi-property support.</p>
+
+      <h2>Who should use each</h2>
+      <p>HomeZada is a better fit for homeowners who want a comprehensive home inventory system — tracking the value of every item in the house for insurance purposes, for example. Steadwell is the better choice if your primary goal is keeping your home well-maintained and having an accurate record of every appliance and system. If you've tried HomeZada and found it overwhelming to set up, Steadwell is worth a look.</p>
+    `
+  },
+  {
+    slug: "steadwell-vs-homebinder",
+    title: "Steadwell vs. HomeBinder: A Head-to-Head Comparison",
+    description: "HomeBinder has been the go-to home management app for buyers and real estate agents. See how Steadwell compares for everyday homeowners.",
+    tag: "Comparison", time: "4 min read", date: "June 2026",
+    content: `
+      <h2>What HomeBinder does well</h2>
+      <p>HomeBinder has strong adoption in the real estate world — many users first encounter it through their realtor or home inspector at closing. It's solid for storing documents like inspection reports, warranties, and manuals. The interface is clean and the concept — a digital binder for your home — maps well to how homeowners already think about organization.</p>
+
+      <h2>Where HomeBinder falls short</h2>
+      <p>HomeBinder's primary weakness is that it's static. It stores what you put in, but it doesn't actively help you maintain your home. There are no proactive maintenance reminders, no asset lifespan tracking, and no intelligence layered on top of your data. It's a digital filing cabinet, which is useful — but not the same as a system that helps you stay ahead of problems.</p>
+
+      <h2>What Steadwell does differently</h2>
+      <p>Steadwell is built around the idea that the hardest part of home maintenance isn't doing the work — it's knowing what needs doing and when. The app tracks every asset's age and expected lifespan, sends reminders before scheduled maintenance windows, and uses AI to fill in appliance details so you don't have to research them manually. The nameplate scan feature alone saves most homeowners an hour of digging through manuals and model numbers.</p>
+
+      <h2>Which is better for new homeowners?</h2>
+      <p>If you just closed on a home and want to get organized fast, Steadwell's guided onboarding — which asks about your home's age, type, and major systems — gets you to a meaningful maintenance calendar in under 15 minutes. HomeBinder is better if your realtor is already using it and you want continuity from the transaction into ownership.</p>
+
+      <h2>Can you use both?</h2>
+      <p>Yes, and some homeowners do. HomeBinder for document storage and closing records; Steadwell for ongoing maintenance tracking and asset management. That said, Steadwell's document upload feature covers most of what HomeBinder offers, so many users find they can consolidate.</p>
+    `
+  },
+  {
+    slug: "centriq-alternative",
+    title: "Looking for a Centriq Alternative? Here's What to Consider",
+    description: "Centriq shut down in 2023, leaving many homeowners without a home management app. Here's how to find the right replacement and what to look for.",
+    tag: "Comparison", time: "4 min read", date: "June 2026",
+    content: `
+      <h2>What happened to Centriq</h2>
+      <p>Centriq was a popular home management app that allowed homeowners to scan product barcodes and automatically pull up manuals, how-to videos, and service records. It shut down in 2023, leaving a meaningful gap for users who had invested time building their home inventory inside the app. If you're still searching for a solid replacement, you're not alone.</p>
+
+      <h2>What made Centriq worth using</h2>
+      <p>The core appeal was simple: point your phone at a product, and the app does the work of identifying it and finding relevant information. That frictionless data capture is what most home management apps get wrong — they ask you to type in model numbers manually, which almost no one does consistently.</p>
+
+      <h2>What to look for in a replacement</h2>
+      <p>The best Centriq alternatives share a few traits: frictionless asset entry (ideally with camera-based scanning), proactive maintenance reminders rather than passive storage, and a clean mobile experience. You'll also want cloud backup so you never lose your data if an app shuts down again.</p>
+
+      <h2>Why Steadwell is worth trying</h2>
+      <p>Steadwell was built specifically to solve the data-entry problem that killed engagement in most home management apps. The AI nameplate scan reads brand, model, serial number, and manufacture date directly from appliance nameplates — no barcode required. From there, Steadwell looks up the expected lifespan, typical maintenance schedule, and warranty status automatically. It's the workflow Centriq users were hoping for, rebuilt on more reliable AI infrastructure.</p>
+
+      <h2>Getting your data back</h2>
+      <p>If you exported your data from Centriq before it shut down, Steadwell can help you re-enter key items quickly using the Smart Fill feature — enter a model number and the app pulls specs automatically. Most homeowners can rebuild their core asset list in 20–30 minutes.</p>
+    `
+  },
+  {
+    slug: "home-maintenance-checklist",
+    title: "The Complete Home Maintenance Checklist (By Season)",
+    description: "A practical, season-by-season home maintenance checklist covering every major system — HVAC, plumbing, roofing, electrical, and more.",
+    tag: "Maintenance", time: "8 min read", date: "June 2026",
+    content: `
+      <h2>Why seasonal checklists work</h2>
+      <p>Home maintenance is easier when you batch it by season rather than trying to remember individual tasks year-round. Seasonal checkpoints create natural moments to inspect systems before they're stressed — your AC before summer, your heating system before winter, your roof before hurricane season. Here's a practical checklist organized by when each task matters most.</p>
+
+      <h2>Spring checklist (March–May)</h2>
+      <p><strong>HVAC:</strong> Replace air filters. Schedule AC tune-up before the summer rush. Clean condenser coils and clear debris from around the outdoor unit.</p>
+      <p><strong>Roof & gutters:</strong> Inspect roof for winter damage. Clean gutters and downspouts. Check that downspouts direct water at least 6 feet from the foundation.</p>
+      <p><strong>Exterior:</strong> Inspect caulking around windows and doors. Touch up exterior paint where peeling. Check wood decks for soft spots or rot.</p>
+      <p><strong>Plumbing:</strong> Test all outdoor hose bibs. Check under sinks for any winter leak damage.</p>
+
+      <h2>Summer checklist (June–August)</h2>
+      <p><strong>HVAC:</strong> Check air filter monthly during heavy-use months. Monitor energy bills for sudden increases (can signal refrigerant issues).</p>
+      <p><strong>Landscaping:</strong> Trim trees and shrubs back from the house. Check irrigation system for leaks and coverage. Clear any vegetation touching the roof or siding.</p>
+      <p><strong>Safety:</strong> Test smoke and carbon monoxide detectors. Check fire extinguisher pressure. Inspect window and door screens.</p>
+
+      <h2>Fall checklist (September–November)</h2>
+      <p><strong>Heating system:</strong> Schedule furnace or heat pump inspection. Replace air filter. Test thermostat in heating mode before you need it.</p>
+      <p><strong>Roof & gutters:</strong> Clear gutters of fallen leaves (critical — this is the most common cause of ice dams in cold climates and water intrusion everywhere else). Inspect flashing around chimney and skylights.</p>
+      <p><strong>Plumbing:</strong> Insulate exposed pipes in crawl spaces or garages. Know where your main water shutoff is.</p>
+      <p><strong>Weatherproofing:</strong> Check weatherstripping on doors and windows. Seal any gaps around utility penetrations into the house.</p>
+
+      <h2>Winter checklist (December–February)</h2>
+      <p><strong>Water heater:</strong> Flush sediment from tank (connect a hose to the drain valve, let it run for a few minutes). Check the anode rod if you haven't in 3+ years.</p>
+      <p><strong>Interior:</strong> Test GFCI outlets in bathrooms, kitchen, garage, and outdoors. Check attic insulation and ventilation. Look for signs of ice dams or condensation on windows indicating air leaks.</p>
+      <p><strong>Annual:</strong> Review your home insurance coverage. Verify all appliance warranties are documented. Take a walk-through of every room and note anything that needs attention in the new year.</p>
+
+      <h2>Never miss a task with Steadwell</h2>
+      <p>Steadwell's maintenance reminders are tied to your actual home — its age, climate zone, and the systems you have. Instead of a generic checklist, you get personalized reminders that know your AC unit's service history and alert you when it's time to schedule before the summer booking rush. Start free at trysteadwell.app.</p>
+    `
+  },
+  {
+    slug: "what-does-a-home-warranty-cover",
+    title: "What Does a Home Warranty Actually Cover? (And What It Doesn't)",
+    description: "Home warranties sound comprehensive until you file a claim. Here's what's typically covered, what's excluded, and how to decide if one is worth it.",
+    tag: "Finance", time: "5 min read", date: "June 2026",
+    content: `
+      <h2>Home warranty vs. home insurance: the key difference</h2>
+      <p>A home warranty covers mechanical breakdowns of appliances and home systems due to normal wear and tear. Home insurance covers damage from unexpected events — fire, storms, theft. They serve different purposes, and many homeowners need both. Confusion between the two is one of the most common sources of frustration when filing claims.</p>
+
+      <h2>What's typically covered</h2>
+      <p>Standard home warranty plans generally cover: HVAC systems (heating and cooling), plumbing and electrical systems, water heater, refrigerator, dishwasher, oven and range, garbage disposal, and garage door opener. Higher-tier plans add washer/dryer, pool and spa equipment, and roof leak repair.</p>
+
+      <h2>Common exclusions that catch homeowners off guard</h2>
+      <p><strong>Pre-existing conditions:</strong> If a system was already failing when you bought the warranty, the claim will likely be denied. Home warranty companies often send an inspector before approving claims on older systems.</p>
+      <p><strong>Code violations:</strong> If a repair requires bringing the system up to current building code, the warranty typically won't cover the upgrade cost — only the repair itself.</p>
+      <p><strong>Improper installation or maintenance:</strong> If your HVAC breaks down and you can't show it was regularly serviced, the warranty company may deny the claim. This is why maintenance records matter.</p>
+      <p><strong>Secondary damage:</strong> If a leaky pipe damages your floors, the warranty covers fixing the pipe but not the flooring.</p>
+
+      <h2>Is a home warranty worth it?</h2>
+      <p>It depends on your home's age and the condition of its systems. For a home under 5 years old with new appliances, the math rarely works out — you're paying $600–1,200/year in premiums for systems unlikely to fail. For a home 10–20 years old with aging appliances approaching end of life, a warranty can provide real peace of mind and meaningful savings when a major system fails.</p>
+
+      <h2>How to make the most of your warranty</h2>
+      <p>Keep records of all maintenance and service — this is your evidence that you maintained systems properly. Steadwell's maintenance log serves exactly this purpose: a timestamped, organized record of every service event. When a claim gets disputed, that record is what you need.</p>
+    `
+  },
+  {
+    slug: "how-to-find-age-of-house",
+    title: "How to Find Out How Old Your House Is (and Why It Matters)",
+    description: "Your home's age affects everything from maintenance priorities to insurance rates to what systems are likely to fail next. Here's how to find it and what to do with it.",
+    tag: "Tips", time: "5 min read", date: "June 2026",
+    content: `
+      <h2>Why your home's age matters more than you think</h2>
+      <p>Your home's construction year is one of the most useful single data points for planning maintenance. It tells you which building materials were common at the time (and may now be problematic), roughly how old the major systems are, and when key components are likely to reach end of life. A 1978 home is far more likely to have aluminum wiring, cast iron drain pipes, and original windows than a 1998 home. Knowing that shapes your maintenance priorities.</p>
+
+      <h2>How to find your home's year built</h2>
+      <p><strong>County property records:</strong> Your county assessor's website lists year built for every property. Search by address — it's public record and free. In most counties, you'll also find square footage, lot size, and last sale price.</p>
+      <p><strong>Your closing documents:</strong> The property disclosure or appraisal from when you bought the home typically lists year built.</p>
+      <p><strong>Zillow / Redfin / Realtor.com:</strong> Third-party listing sites usually show year built, though their data occasionally lags what's in county records.</p>
+      <p><strong>The home itself:</strong> Permit stamps on the electrical panel, date stamps on roof trusses or concrete in the basement, and manufacturer date codes on windows and HVAC equipment can all tell you when different parts of the home were built or updated.</p>
+
+      <h2>What different construction eras mean for maintenance</h2>
+      <p><strong>Pre-1978:</strong> High likelihood of lead paint on interior surfaces and lead solder in plumbing. Possible asbestos in floor tiles, insulation wrap, or popcorn ceilings. Knob-and-tube or aluminum wiring possible. Prioritize an environmental inspection if you haven't had one.</p>
+      <p><strong>1978–1995:</strong> Polybutylene (PB) plumbing pipe was common — it degrades and fails without warning and may not be covered by home insurance. Check if your supply lines are gray plastic pipe.</p>
+      <p><strong>1995–2010:</strong> Chinese drywall was used in some homes (particularly in Florida) during the construction boom — it off-gasses sulfur compounds that corrode wiring and smell like rotten eggs.</p>
+      <p><strong>2010–present:</strong> Generally safer materials, but HVAC and water heaters from this era are now approaching the 12–15 year replacement window.</p>
+
+      <h2>Set up your maintenance plan around your home's age</h2>
+      <p>Steadwell uses your home's year built and type to generate a tailored maintenance schedule — not a generic checklist. Enter your home's age during onboarding and the app highlights the systems most likely to need attention in the next 1–3 years based on typical lifespans for homes of your vintage.</p>
+    `
+  },
+  {
+    slug: "roof-lifespan-when-to-replace",
+    title: "Roof Lifespan by Material: When Should You Replace Your Roof?",
+    description: "How long does a roof last? It depends on material, climate, and maintenance. Here's a guide to every common roofing type and the signs that replacement is coming.",
+    tag: "Maintenance", time: "6 min read", date: "June 2026",
+    content: `
+      <h2>Average roof lifespan by material</h2>
+      <p>The most important factor in how long your roof lasts is what it's made of. Here are typical lifespans under normal conditions:</p>
+      <p><strong>3-tab asphalt shingles:</strong> 15–20 years. The most common and least expensive option. More vulnerable to wind damage than architectural shingles.</p>
+      <p><strong>Architectural (dimensional) asphalt shingles:</strong> 25–30 years. Thicker and more durable than 3-tab. The current standard for new construction.</p>
+      <p><strong>Metal roofing (standing seam):</strong> 40–70 years. Increasingly popular in Florida and other high-wind areas. Higher upfront cost, dramatically lower lifetime cost.</p>
+      <p><strong>Clay or concrete tile:</strong> 50+ years, but the underlying underlayment typically needs replacement at 20–25 years. Common in Florida, California, and the Southwest.</p>
+      <p><strong>Wood shake:</strong> 20–30 years with proper maintenance. Requires periodic treatment to prevent moss and rot. Less common today due to fire risk.</p>
+      <p><strong>Flat / modified bitumen (low-slope):</strong> 15–25 years depending on membrane type. Common on additions, porches, and commercial-style homes.</p>
+
+      <h2>What shortens a roof's life</h2>
+      <p>Climate is the biggest variable. Florida roofs age faster than Midwest roofs because of intense UV exposure, humidity, and hurricane-force winds. Other life-reducers: poor attic ventilation (heat buildup degrades shingles from underneath), walking on the roof frequently, trees overhanging the roof (moisture and debris), and skipping annual inspections.</p>
+
+      <h2>Signs your roof needs attention now</h2>
+      <p>You don't need to wait for a leak to know your roof is aging. Watch for: shingles that are curling, cupping, or losing granules (granules in the gutters are a tell); daylight visible in the attic; dark streaks or moss growth; flashing that's lifting or cracked around chimneys, vents, or skylights; and sagging sections in the roof deck.</p>
+
+      <h2>Repair vs. replace: how to decide</h2>
+      <p>If less than 25% of the roof is damaged and it's under 15 years old, targeted repairs make sense. If repairs are needed on more than a quarter of the roof, or the system is approaching the end of its expected lifespan, replacement is usually the better investment — you avoid paying for piecemeal repairs on a roof you'll replace in a few years anyway.</p>
+
+      <h2>Track your roof in Steadwell</h2>
+      <p>Add your roof as an asset in Steadwell — material type, installation year, and contractor. Steadwell will calculate its expected replacement window, remind you to schedule annual inspections, and give you a heads-up 2–3 years before replacement is likely due so you can plan financially.</p>
     `
   },
 ];
