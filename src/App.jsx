@@ -10532,7 +10532,67 @@ function PrivacyPage() {
 
 // ─── ADA ACCESSIBILITY STATEMENT ─────────────────────────────────────────────
 // ─── BLOG ────────────────────────────────────────────────────────────────────
-const BLOG_POSTS = [
+const SANITY_PROJECT_ID = "1r1eichb";
+const SANITY_DATASET = "production";
+
+function portableTextToHtml(blocks) {
+  if (!blocks || !Array.isArray(blocks)) return "";
+  return blocks.map(block => {
+    if (block._type !== "block") return "";
+    const tag = block.style === "h2" ? "h2" : block.style === "h3" ? "h3" : "p";
+    const inner = (block.children || []).map(span => {
+      let t = span.text || "";
+      if (span.marks && span.marks.includes("strong")) t = "<strong>" + t + "</strong>";
+      if (span.marks && span.marks.includes("em")) t = "<em>" + t + "</em>";
+      return t;
+    }).join("");
+    return "<" + tag + ">" + inner + "</" + tag + ">";
+  }).join("\n");
+}
+
+function formatSanityDate(dateStr) {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return months[parseInt(parts[1],10)-1] + " " + parts[0];
+}
+
+async function fetchSanityPosts() {
+  try {
+    const query = encodeURIComponent('*[_type == "blogPost"] | order(publishedAt desc) { "slug": slug.current, title, description, tag, publishedAt, readTime, body }');
+    const url = "https://" + SANITY_PROJECT_ID + ".api.sanity.io/v2024-01-01/data/query/" + SANITY_DATASET + "?query=" + query;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results = data.result || [];
+    if (!results.length) return null;
+    return results.map(p => ({
+      slug: p.slug,
+      title: p.title,
+      description: p.description,
+      tag: p.tag,
+      time: p.readTime,
+      date: formatSanityDate(p.publishedAt),
+      content: portableTextToHtml(p.body),
+    }));
+  } catch(e) {
+    return null;
+  }
+}
+
+function useBlogPosts() {
+  const [posts, setPosts] = useState(BLOG_POSTS_FALLBACK);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetchSanityPosts().then(sanityPosts => {
+      if (sanityPosts && sanityPosts.length > 0) setPosts(sanityPosts);
+      setLoading(false);
+    });
+  }, []);
+  return { posts, loading };
+}
+
+const BLOG_POSTS_FALLBACK = [
   {
     slug: "hvac-maintenance-schedule",
     title: "HVAC Maintenance Schedule: What Every Homeowner Needs to Know",
@@ -10813,6 +10873,7 @@ const BLOG_POSTS = [
 ];
 
 function BlogIndex() {
+  const { posts } = useBlogPosts();
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
       {/* Nav */}
@@ -10831,7 +10892,7 @@ function BlogIndex() {
       </div>
       {/* Posts */}
       <div style={{maxWidth:800,margin:"0 auto",padding:"0 1.5rem 4rem",display:"flex",flexDirection:"column",gap:"1.25rem"}}>
-        {BLOG_POSTS.map(post => (
+        {posts.map(post => (
           <a key={post.slug} href={`/blog/${post.slug}`} style={{textDecoration:"none",background:"#fff",borderRadius:14,border:"1px solid #E6DECF",padding:"1.5rem",display:"flex",flexDirection:"column",gap:".6rem",transition:"box-shadow .2s,transform .2s"}}
             onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 24px rgba(35,74,61,.1)";e.currentTarget.style.transform="translateY(-2px)"}}
             onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform=""}}>
@@ -10850,7 +10911,18 @@ function BlogIndex() {
 }
 
 function BlogPost({ slug }) {
-  const post = BLOG_POSTS.find(p => p.slug === slug);
+  const { posts, loading } = useBlogPosts();
+  if (loading) {
+    return (
+      <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"1rem"}}>
+          <span className="spinner" style={{width:28,height:28,borderWidth:3,borderColor:"rgba(35,74,61,.15)",borderTopColor:"#234A3D"}}/>
+          <div style={{fontSize:".9rem",color:"#7A7370"}}>Loading article…</div>
+        </div>
+      </div>
+    );
+  }
+  const post = posts.find(p => p.slug === slug);
   if (!post) {
     return (
       <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"1rem"}}>
@@ -10877,7 +10949,7 @@ function BlogPost({ slug }) {
         </div>
         <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.7rem,4vw,2.4rem)",fontWeight:500,color:"#2A2723",lineHeight:1.2,marginBottom:"1rem"}}>{post.title}</h1>
         <p style={{fontSize:"1.1rem",color:"#7A7370",lineHeight:1.65,marginBottom:"2rem",borderBottom:"1px solid #E6DECF",paddingBottom:"1.5rem"}}>{post.description}</p>
-        <div style={{fontSize:"1rem",lineHeight:1.8,color:"#2A2723"}} dangerouslySetInnerHTML={{__html: post.content.replace(/<h2>/g,'<h2 style="font-family:\'Fraunces\',serif;font-size:1.35rem;font-weight:500;color:#2A2723;margin:2rem 0 .75rem">').replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">').replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">')}}/>
+        <div style={{fontSize:"1rem",lineHeight:1.8,color:"#2A2723"}} dangerouslySetInnerHTML={{__html: (post.content||'').replace(/<h2>/g,'<h2 style="font-family:\'Fraunces\',serif;font-size:1.35rem;font-weight:500;color:#2A2723;margin:2rem 0 .75rem">').replace(/<h3>/g,'<h3 style="font-family:\'Fraunces\',serif;font-size:1.1rem;font-weight:500;color:#2A2723;margin:1.5rem 0 .5rem">').replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">').replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">').replace(/<em>/g,'<em style="color:#5A534B;font-style:italic">')}}/>
         {/* CTA */}
         <div style={{marginTop:"3rem",padding:"1.5rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
