@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliances","Roofing","Landscaping","Structural","Safety","Other"];
+const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliance","Roofing","Landscaping","Structure","Safety","Other"];
 const STATUS_OPTIONS = ["Scheduled","In Progress","Completed","Overdue"];
 const PRIORITY = ["Low","Medium","High","Urgent"];
 const HOME_TYPES = ["Single Family","Townhouse","Condo","Mobile Home","Multi-Family","Other"];
@@ -4404,8 +4404,8 @@ const AUDIT_ITEMS = [
   { id:"water",      label:"Water Heater",              icon:"💧",  categories:["Plumbing","Water Heater","Water"] },
   { id:"roof",       label:"Roof",                      icon:"🏠",  categories:["Roof","Structure","Exterior"] },
   { id:"electrical", label:"Electrical Panel",          icon:"⚡",  categories:["Electrical"] },
-  { id:"appliances", label:"Kitchen Appliances",        icon:"🍳",  categories:["Appliances","Kitchen"] },
-  { id:"laundry",    label:"Washer / Dryer",            icon:"👕",  categories:["Appliances","Laundry"] },
+  { id:"appliances", label:"Kitchen Appliances",        icon:"🍳",  categories:["Appliance","Appliances","Kitchen"] },
+  { id:"laundry",    label:"Washer / Dryer",            icon:"👕",  categories:["Appliance","Appliances","Laundry"] },
   { id:"exterior",   label:"Exterior & Landscaping",   icon:"🌿",  categories:["Exterior","Landscaping","Foundation"] },
 ];
 
@@ -5962,10 +5962,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     );
   }
 
-  // Group assets by category
+  // Group assets by category — normalize legacy plural/variant names
+  const CAT_NORMALIZE = { "Appliances":"Appliance", "Structural":"Structure" };
   const grouped = {};
   list.forEach(a => {
-    const cat = a.category || "Other";
+    const raw = a.category || "Other";
+    const cat = CAT_NORMALIZE[raw] || raw;
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push(a);
   });
@@ -9803,7 +9805,7 @@ function generateHomeProfile(answers) {
   addTask("exterior", extTask.title, "annually", {
     priority: "Low",
     due_date: dueIn(90),
-    category: "Structural",
+    category: "Structure",
     notes: extTask.notes,
   });
 
@@ -9815,13 +9817,13 @@ function generateHomeProfile(answers) {
     addTask("crawlspace", "Inspect crawl space for moisture, mold, and pest activity", "annually", {
       priority: "High",
       due_date: dueIn(45),
-      category: "Structural",
+      category: "Structure",
       notes: "Check vapor barrier condition, look for standing water, wood rot, mold, and signs of pest or rodent entry",
     });
     addTask("crawlspace", "Check and clean crawl space vents", "every 6 months", {
       priority: "Low",
       due_date: dueIn(30),
-      category: "Structural",
+      category: "Structure",
       notes: "Open vents in summer, close in winter (unless conditioned crawl space — then keep sealed year-round)",
     });
   }
@@ -9833,13 +9835,13 @@ function generateHomeProfile(answers) {
     addTask("basement", "Check basement walls and floor for moisture and seepage", "every 6 months", {
       priority: "High",
       due_date: dueIn(30),
-      category: "Structural",
+      category: "Structure",
       notes: "Look for efflorescence, staining, or damp spots — address water intrusion before it causes mold or structural damage",
     });
     addTask("basement", "Test sump pump operation", "annually", {
       priority: "High",
       due_date: dueIn(30),
-      category: "Structural",
+      category: "Structure",
       notes: "Pour water into pit to verify pump activates. Check float switch, discharge line, and backup battery (if present).",
     });
   }
@@ -9864,7 +9866,7 @@ function generateHomeProfile(answers) {
     addTask("chimney", "Inspect chimney cap and crown", "annually", {
       priority: "Medium",
       due_date: dueIn(90),
-      category: "Structural",
+      category: "Structure",
       notes: "Chimney cap prevents rain and animals from entering. Cracked crown allows water into masonry.",
     });
   }
@@ -9873,7 +9875,7 @@ function generateHomeProfile(answers) {
     assets.push({
       _key:      "structure_custom",
       item:      structure.notes.trim(),
-      category:  "Structural",
+      category:  "Structure",
       condition: "Good",
       notes:     "Added from home setup — review and add maintenance tasks manually",
     });
@@ -10076,43 +10078,43 @@ function generateHomeProfile(answers) {
 
   if (appliances?.hasFridge) {
     const year = installYr(appliances.fridgeAge);
-    addAsset("fridge", "Refrigerator", "Appliances", {
+    addAsset("fridge", "Refrigerator", "Appliance", {
       install_date: year ? `${year}-01-01` : null,
       lifespan_years: 15,
       notes: appliances.fridgeAge ? `Age: ${appliances.fridgeAge} years` : null,
     });
     addTask("fridge", "Clean refrigerator condenser coils", "every 6 months", {
-      category: "Appliances", priority: "Medium", due_date: dueIn(90),
+      category: "Appliance", priority: "Medium", due_date: dueIn(90),
       notes: "Pull fridge away from wall, vacuum coils at the back or underneath. Improves efficiency and extends life.",
     });
   }
 
   if (appliances?.hasDishwasher) {
     const year = installYr(appliances.dwAge);
-    addAsset("dishwasher", "Dishwasher", "Appliances", {
+    addAsset("dishwasher", "Dishwasher", "Appliance", {
       install_date: year ? `${year}-01-01` : null,
       lifespan_years: 12,
       notes: appliances.dwAge ? `Age: ${appliances.dwAge} years` : null,
     });
     addTask("dishwasher", "Clean dishwasher filter and run maintenance cycle", "monthly", {
-      category: "Appliances", priority: "Medium", due_date: dueIn(30),
+      category: "Appliance", priority: "Medium", due_date: dueIn(30),
       notes: "Remove and rinse the filter, then run a hot cycle with a cup of white vinegar to remove buildup.",
     });
   }
 
   if (appliances?.hasWasher) {
     const year = installYr(appliances.washerAge);
-    addAsset("washer", "Washing Machine", "Appliances", {
+    addAsset("washer", "Washing Machine", "Appliance", {
       install_date: year ? `${year}-01-01` : null,
       lifespan_years: 12,
       notes: appliances.washerAge ? `Age: ${appliances.washerAge} years` : null,
     });
     addTask("washer", "Clean washing machine drum and dispenser", "monthly", {
-      category: "Appliances", priority: "Medium", due_date: dueIn(30),
+      category: "Appliance", priority: "Medium", due_date: dueIn(30),
       notes: "Run a hot empty cycle with a washing machine cleaner tablet or white vinegar to remove soap buildup and odors.",
     });
     addTask("washer", "Check and clean washing machine hoses", "Annually", {
-      category: "Appliances", priority: "High", due_date: dueIn(180),
+      category: "Appliance", priority: "High", due_date: dueIn(180),
       notes: "Inspect water supply hoses for cracks or bulging. Replace every 5 years regardless — a burst hose is a leading cause of home flooding.",
     });
   }
@@ -10120,13 +10122,13 @@ function generateHomeProfile(answers) {
   if (appliances?.hasDryer) {
     const year = installYr(appliances.dryerAge);
     const fuelLabel = appliances.dryerFuel ? ` (${appliances.dryerFuel})` : "";
-    addAsset("dryer", `Dryer${fuelLabel}`, "Appliances", {
+    addAsset("dryer", `Dryer${fuelLabel}`, "Appliance", {
       install_date: year ? `${year}-01-01` : null,
       lifespan_years: 13,
       notes: [appliances.dryerAge ? `Age: ${appliances.dryerAge} years` : null, appliances.dryerFuel ? `Fuel: ${appliances.dryerFuel}` : null].filter(Boolean).join(" · "),
     });
     addTask("dryer", "Clean dryer exhaust duct", "Annually", {
-      category: "Appliances", priority: "Urgent", due_date: dueIn(30),
+      category: "Appliance", priority: "Urgent", due_date: dueIn(30),
       notes: "Clogged dryer vents are a leading cause of house fires. Disconnect duct, vacuum out lint, and check exterior vent for blockages.",
     });
   }
@@ -10134,14 +10136,14 @@ function generateHomeProfile(answers) {
   if (appliances?.hasRange) {
     const year = installYr(appliances.rangeAge);
     const fuelLabel = appliances.rangeFuel ? ` (${appliances.rangeFuel === "dual" ? "dual fuel" : appliances.rangeFuel})` : "";
-    addAsset("range", `Oven / Range${fuelLabel}`, "Appliances", {
+    addAsset("range", `Oven / Range${fuelLabel}`, "Appliance", {
       install_date: year ? `${year}-01-01` : null,
       lifespan_years: 18,
       notes: [appliances.rangeAge ? `Age: ${appliances.rangeAge} years` : null, appliances.rangeFuel ? `Fuel: ${appliances.rangeFuel}` : null].filter(Boolean).join(" · "),
     });
     if (appliances.rangeFuel === "gas" || appliances.rangeFuel === "dual") {
       addTask("range", "Inspect gas range connections and burners", "Annually", {
-        category: "Appliances", priority: "High", due_date: dueIn(90),
+        category: "Appliance", priority: "High", due_date: dueIn(90),
         notes: "Check gas connections for leaks (use soapy water — bubbles indicate a leak). Clean burner ports and igniters.",
       });
     }
@@ -10149,7 +10151,7 @@ function generateHomeProfile(answers) {
 
   if (appliances?.hasMicrowave) {
     const year = installYr(appliances.mwAge);
-    addAsset("microwave", "Built-in Microwave", "Appliances", {
+    addAsset("microwave", "Built-in Microwave", "Appliance", {
       install_date: year ? `${year}-01-01` : null,
       lifespan_years: 10,
       notes: appliances.mwAge ? `Age: ${appliances.mwAge} years` : null,
@@ -10160,7 +10162,7 @@ function generateHomeProfile(answers) {
     assets.push({
       _key: "appliances_custom",
       item: appliances.notes.trim(),
-      category: "Appliances",
+      category: "Appliance",
       condition: "Good",
       notes: "Added from home setup — add maintenance tasks manually",
     });
@@ -10528,7 +10530,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                   <label>Category</label>
                   <select value={addData.category||""} onChange={e=>setAddData(d=>({...d,category:e.target.value}))}>
                     <option value="">Select…</option>
-                    {["HVAC","Plumbing","Electrical","Appliances","Roofing","Landscaping","Structural","Safety","Other"].map(c=><option key={c}>{c}</option>)}
+                    {ASSET_CATEGORIES.map(c=><option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="field">
@@ -12236,7 +12238,7 @@ const REPLACEMENT_COSTS = {
   "Roofing":    { life:25, cost:16000, label:"Roof replacement"   },
   "Electrical": { life:30, cost:3500,  label:"Electrical panel"   },
   "Structural": { life:40, cost:8000,  label:"Foundation/structure"},
-  "Appliances": { life:12, cost:900,   label:"Appliance"          },
+  "Appliance":  { life:12, cost:900,   label:"Appliance"          }, "Appliances": { life:12, cost:900, label:"Appliance" },
   "Other":      { life:15, cost:2000,  label:"System"             },
 };
 const AGE_TO_YEARS = { "0-5":3, "6-10":8, "11-15":13, "16+":20 };
