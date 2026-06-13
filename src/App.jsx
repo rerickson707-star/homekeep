@@ -1742,6 +1742,56 @@ function Modal({ title, onClose, onSave, children }) {
 // ─── LANDING PAGE ────────────────────────────────────────────────────────────
 
 // ─── LANDING PAGE ────────────────────────────────────────────────────────────
+// ─── SEO / META TAG MANAGEMENT ───────────────────────────────────────────────
+function useSEO({ title, description, canonical, jsonLd } = {}) {
+  useEffect(() => {
+    const siteName = "Steadwell";
+    const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — Home Maintenance Tracking & Asset Management`;
+    const metaDesc = description || "Steadwell helps homeowners track maintenance, manage appliances, and stay ahead of repairs. Free to start.";
+    const canonicalUrl = canonical || "https://www.trysteadwell.app/";
+
+    // Title
+    document.title = fullTitle;
+
+    // Helper to set/create meta tag
+    const setMeta = (selector, attr, value) => {
+      let el = document.querySelector(selector);
+      if (!el) { el = document.createElement("meta"); document.head.appendChild(el); }
+      el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[name="description"]', "content", metaDesc);
+    setMeta('meta[property="og:title"]', "content", fullTitle);
+    setMeta('meta[property="og:description"]', "content", metaDesc);
+    setMeta('meta[property="og:url"]', "content", canonicalUrl);
+    setMeta('meta[name="twitter:title"]', "content", fullTitle);
+    setMeta('meta[name="twitter:description"]', "content", metaDesc);
+
+    // Canonical
+    let canonEl = document.querySelector('link[rel="canonical"]');
+    if (!canonEl) { canonEl = document.createElement("link"); canonEl.setAttribute("rel","canonical"); document.head.appendChild(canonEl); }
+    canonEl.setAttribute("href", canonicalUrl);
+
+    // JSON-LD
+    const existingLd = document.querySelector('script[data-seo="dynamic"]');
+    if (existingLd) existingLd.remove();
+    if (jsonLd) {
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.setAttribute("data-seo","dynamic");
+      script.textContent = JSON.stringify(jsonLd);
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      // Reset to defaults on unmount
+      document.title = `${siteName} — Home Maintenance Tracking & Asset Management`;
+      const ld = document.querySelector('script[data-seo="dynamic"]');
+      if (ld) ld.remove();
+    };
+  }, [title, description, canonical, JSON.stringify(jsonLd)]);
+}
+
 function LandingPage({ onSignIn, onSignUp }) {
   const [scrolled, setScrolled] = useState(false);
   const [typed, setTyped] = useState("1420 Maple Grove Dr");
@@ -10874,6 +10924,19 @@ const BLOG_POSTS_FALLBACK = [
 
 function BlogIndex() {
   const { posts } = useBlogPosts();
+  useSEO({
+    title: "Home Maintenance Blog — Tips, Guides & Comparisons",
+    description: "Expert guides on home maintenance, appliance care, repair costs, and home management apps. Practical advice for every homeowner.",
+    canonical: "https://www.trysteadwell.app/blog",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Blog",
+      "name": "Steadwell Blog",
+      "description": "Expert guides on home maintenance, appliance care, repair costs, and home management apps.",
+      "url": "https://www.trysteadwell.app/blog",
+      "publisher": { "@type": "Organization", "name": "Steadwell", "url": "https://www.trysteadwell.app" }
+    }
+  });
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
       {/* Nav */}
@@ -10923,6 +10986,30 @@ function BlogPost({ slug }) {
     );
   }
   const post = posts.find(p => p.slug === slug);
+
+  useSEO(post ? {
+    title: post.title,
+    description: post.description,
+    canonical: `https://www.trysteadwell.app/blog/${post.slug}`,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": post.title,
+      "description": post.description,
+      "url": `https://www.trysteadwell.app/blog/${post.slug}`,
+      "datePublished": post.date,
+      "dateModified": post.date,
+      "author": { "@type": "Organization", "name": "Steadwell" },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Steadwell",
+        "url": "https://www.trysteadwell.app",
+        "logo": { "@type": "ImageObject", "url": "https://www.trysteadwell.app/icon-512.png" }
+      },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.trysteadwell.app/blog/${post.slug}` }
+    }
+  } : {});
+
   if (!post) {
     return (
       <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"1rem"}}>
