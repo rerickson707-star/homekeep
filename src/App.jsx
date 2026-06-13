@@ -7781,6 +7781,148 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
 }
 
 
+// ─── RECALL CHECK PANEL (used in Profile toolbox) ────────────────────────────
+function RecallCheckPanel({ warranties }) {
+  const [open, setOpen]       = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked]   = useState(false);
+  const [recalls, setRecalls]   = useState([]);
+  const [error, setError]       = useState("");
+
+  const run = async () => {
+    const checkable = warranties.filter(a => a.brand && a.category !== "Insurance");
+    if (!checkable.length) { setChecked(true); setRecalls([]); return; }
+    setChecking(true); setError(""); setChecked(false);
+    const found = [];
+    const seen = new Set();
+    for (const asset of checkable) {
+      const key = asset.brand.split(" ")[0].toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try {
+        const results = await checkCPSCRecall(asset.brand, asset.category, asset.model, asset.serial_number);
+        results.forEach(r => found.push({ asset, recall: r }));
+      } catch(e) { setError("Could not reach recall database — check your connection."); }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    setRecalls(found);
+    setChecked(true);
+    setChecking(false);
+  };
+
+  const handleOpen = () => {
+    setOpen(true);
+    if (!checked && !checking) run();
+  };
+
+  return (
+    <>
+      <div className="toolbox-card" onClick={handleOpen}>
+        <div className="toolbox-card-ico">🛡️</div>
+        <div>
+          <div className="toolbox-card-title">Recall Check</div>
+          <div className="toolbox-card-desc">
+            {checking ? "Checking CPSC database…" : checked ? recalls.length > 0 ? `⚠ ${recalls.length} recall${recalls.length>1?"s":""} found` : "✓ No recalls found" : "Check appliances against CPSC"}
+          </div>
+        </div>
+      </div>
+
+      {open && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)setOpen(false)}}>
+          <div style={{background:"var(--linen)",borderRadius:"22px 22px 0 0",width:"100%",maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            {/* Header */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 1.25rem .75rem",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+              <div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>🛡️ CPSC Recall Check</div>
+                <div style={{fontSize:".72rem",color:"var(--mid)",marginTop:2}}>Checking your appliances against the federal recall database</div>
+              </div>
+              <button onClick={()=>setOpen(false)} style={{background:"var(--stone)",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:"1rem",color:"var(--dark)",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            </div>
+
+            {/* Body */}
+            <div style={{flex:1,overflowY:"auto",padding:"1rem 1.25rem"}}>
+              {/* Checking state */}
+              {checking && (
+                <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1rem",background:"var(--white)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
+                  <span className="spinner" style={{width:16,height:16,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)",flexShrink:0}}/>
+                  <div>
+                    <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>Checking CPSC database…</div>
+                    <div style={{fontSize:".72rem",color:"var(--mid)",marginTop:2}}>Searching {warranties.filter(a=>a.brand).length} branded appliances</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error state */}
+              {error && !checking && (
+                <div style={{padding:".85rem 1rem",background:"#FEF9C3",borderRadius:"var(--r-sm)",border:"1px solid #FDE68A",marginBottom:".75rem"}}>
+                  <div style={{fontSize:".82rem",color:"#92400E",fontWeight:600,marginBottom:".3rem"}}>⚠ {error}</div>
+                  <button onClick={run} style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>↻ Try again</button>
+                </div>
+              )}
+
+              {/* No recalls found */}
+              {checked && !checking && recalls.length === 0 && !error && (
+                <div style={{padding:"1.5rem 1rem",textAlign:"center"}}>
+                  <div style={{fontSize:"2rem",marginBottom:".5rem"}}>✅</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--pine)",marginBottom:".3rem"}}>No active recalls found</div>
+                  <div style={{fontSize:".78rem",color:"var(--mid)",lineHeight:1.5}}>
+                    None of your logged appliances matched active CPSC recalls.
+                    We checked {warranties.filter(a=>a.brand).length} branded {warranties.filter(a=>a.brand).length===1?"appliance":"appliances"}.
+                  </div>
+                  <button onClick={run} style={{marginTop:"1rem",fontSize:".78rem",fontWeight:600,color:"var(--pine)",background:"none",border:"1px solid rgba(35,74,61,.25)",borderRadius:8,padding:".4rem .9rem",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>↻ Check again</button>
+                </div>
+              )}
+
+              {/* Recalls found */}
+              {checked && !checking && recalls.length > 0 && (
+                <div>
+                  <div style={{fontSize:".72rem",fontWeight:700,color:"#991B1B",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".65rem"}}>
+                    {recalls.length} recall{recalls.length>1?"s":""} found — review and take action
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:".65rem"}}>
+                    {recalls.map((r, i) => (
+                      <div key={i} style={{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:"var(--r-sm)",padding:".85rem .9rem"}}>
+                        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem",marginBottom:".4rem"}}>
+                          <div style={{fontWeight:700,fontSize:".82rem",color:"#991B1B"}}>{r.asset.item}</div>
+                          <span style={{fontSize:".62rem",fontWeight:700,padding:"2px 8px",borderRadius:8,flexShrink:0,
+                            background:r.recall.confidence==="high"?"#FEE2E2":"#FEF9C3",
+                            color:r.recall.confidence==="high"?"#991B1B":"#92400E"}}>
+                            {r.recall.matchNote}
+                          </span>
+                        </div>
+                        <div style={{fontSize:".78rem",color:"#B91C1C",fontWeight:600,marginBottom:".3rem"}}>{r.recall.title}</div>
+                        {r.recall.hazard && <div style={{fontSize:".73rem",color:"#7F1D1D",marginBottom:".2rem"}}>⚠ Hazard: {r.recall.hazard}</div>}
+                        {r.recall.remedy && <div style={{fontSize:".73rem",color:"#374151",marginBottom:".4rem"}}>✓ Remedy: {r.recall.remedy}</div>}
+                        {r.recall.date && <div style={{fontSize:".65rem",color:"#9CA3AF",marginBottom:".5rem"}}>Recall date: {r.recall.date}</div>}
+                        <a href={r.recall.url} target="_blank" rel="noopener noreferrer"
+                          style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".75rem",fontWeight:700,color:"#fff",background:"#DC2626",padding:".4rem .85rem",borderRadius:8,textDecoration:"none"}}>
+                          View official recall →
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={run} style={{marginTop:".85rem",fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>↻ Check again</button>
+                </div>
+              )}
+
+              {/* Assets without brand — advisory */}
+              {warranties.filter(a => !a.brand && a.category !== "Insurance").length > 0 && checked && (
+                <div style={{marginTop:".85rem",padding:".7rem .85rem",background:"var(--cream)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
+                  <div style={{fontSize:".72rem",color:"var(--mid)",lineHeight:1.5}}>
+                    <strong style={{color:"var(--dark)"}}>
+                      {warranties.filter(a=>!a.brand&&a.category!=="Insurance").length} {warranties.filter(a=>!a.brand&&a.category!=="Insurance").length===1?"appliance":"appliances"} skipped
+                    </strong> — no brand on file. Use Smart Fill or a nameplate scan to add brand details and improve recall accuracy.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
   const [editModal, setEditModal] = useState(false); // unified edit modal
   const [editTab, setEditTab]     = useState("property"); // "property" | "insurance"
@@ -8394,14 +8536,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           </div>
         </div>
 
-        {/* Product Recall Check */}
-        <div className="toolbox-card" onClick={() => onNavigate("dashboard")}>
-          <div className="toolbox-card-ico">🛡️</div>
-          <div>
-            <div className="toolbox-card-title">Recall Check</div>
-            <div className="toolbox-card-desc">Check appliances against CPSC database</div>
-          </div>
-        </div>
+        {/* Product Recall Check — inline panel */}
+        <RecallCheckPanel warranties={warranties} />
 
         {/* Home History Report */}
         <div className="toolbox-card" onClick={() => {
