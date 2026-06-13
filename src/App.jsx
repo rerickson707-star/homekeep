@@ -7818,6 +7818,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {/* ── Home Value Hero ── */}
       {zestimate > 0 && (
         <div className="value-hero" style={{position:"relative"}}>
+          {/* Refresh button */}
           <button
             onClick={async (e) => {
               if (!profile?.address) return;
@@ -7829,42 +7830,86 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 if (result?.zestimate) {
                   const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || profile.rent_zestimate };
                   const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
-                  if (!error) {
-                    setProfile(p => ({...p, ...updated}));
-                    toast("Home value updated ✓");
-                  } else {
-                    toast("Could not save — try again", "error");
-                  }
-                } else {
-                  toast("No updated value found", "error");
-                }
+                  if (!error) { setProfile(p => ({...p, ...updated})); toast("Home value updated ✓"); }
+                  else toast("Could not save — try again", "error");
+                } else { toast("No updated value found", "error"); }
               } catch(err) { toast("Refresh failed — try again", "error"); }
               btn.textContent = "↻";
               btn.disabled = false;
             }}
             title="Refresh home value"
-            style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)",borderRadius:8,color:"rgba(244,237,223,.75)",fontSize:".82rem",fontWeight:600,width:28,height:28,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
+            style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:8,color:"rgba(244,237,223,.6)",fontSize:".82rem",width:28,height:28,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
             ↻
           </button>
+
+          {/* Value headline */}
           <div className="value-hero-label">Estimated home value</div>
-          <div className="value-hero-amount">{fmt$(zestimate)}</div>
-          <div className="value-hero-row">
+          <div style={{display:"flex",alignItems:"baseline",gap:".75rem",flexWrap:"wrap",marginBottom:".75rem"}}>
+            <div className="value-hero-amount" style={{marginBottom:0}}>{fmt$(zestimate)}</div>
+            {appreciation !== null && (
+              <div style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:".75rem",fontWeight:700,
+                background:appreciation>=0?"rgba(78,160,100,.2)":"rgba(193,97,64,.2)",
+                color:appreciation>=0?"#7DD4A0":"#F0A070"}}>
+                {appreciation >= 0 ? "↑" : "↓"} {fmt$(Math.abs(appreciation))} ({appreciationPct}%)
+              </div>
+            )}
+          </div>
+
+          {/* Key stats row */}
+          <div style={{display:"grid",gridTemplateColumns:`repeat(${[lastSalePrice>0, profile.rent_zestimate>0, profile.sqft>0].filter(Boolean).length + 1},1fr)`,gap:".5rem",marginBottom: taxHistory.length>0 || priceHistory.length>0 ? ".85rem" : 0}}>
             {lastSalePrice > 0 && (
-              <div className="value-hero-stat">
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
                 <div className="value-hero-stat-val">{fmt$(lastSalePrice)}</div>
-                <div className="value-hero-stat-label">Purchase price{profile.last_sale_date?` · ${fmtD(profile.last_sale_date)}`:""}</div>
+                <div className="value-hero-stat-label">Purchase{profile.last_sale_date?` · ${fmtD(profile.last_sale_date)}`:""}</div>
               </div>
             )}
             {profile.rent_zestimate > 0 && (
-              <div className="value-hero-stat">
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
                 <div className="value-hero-stat-val">{fmt$(profile.rent_zestimate)}/mo</div>
                 <div className="value-hero-stat-label">Rent estimate</div>
               </div>
             )}
+            {profile.sqft > 0 && zestimate > 0 && (
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
+                <div className="value-hero-stat-val">{fmt$(Math.round(zestimate/Number(profile.sqft)))}</div>
+                <div className="value-hero-stat-label">Per sq ft</div>
+              </div>
+            )}
+            {profile.hoa_fee > 0 && (
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
+                <div className="value-hero-stat-val">{fmt$(profile.hoa_fee)}/mo</div>
+                <div className="value-hero-stat-label">HOA fee</div>
+              </div>
+            )}
           </div>
-          {appreciation !== null && (
-            <div className={`value-appreciation ${appreciation >= 0 ? "appreciation-pos" : "appreciation-neg"}`}>
-              {appreciation >= 0 ? "↑" : "↓"} {fmt$(Math.abs(appreciation))} ({appreciationPct}%) estimated appreciation
+
+          {/* Tax history */}
+          {taxHistory.length > 0 && (
+            <div style={{marginBottom:".75rem"}}>
+              <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"rgba(255,255,255,.35)",marginBottom:".4rem"}}>Property tax history</div>
+              <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+                {taxHistory.slice(0,4).map((t,i) => (
+                  <div key={i} style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .65rem",textAlign:"center"}}>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:600,color:"#fff"}}>{t.taxPaid||t.tax_paid?fmt$(t.taxPaid||t.tax_paid):"—"}</div>
+                    <div style={{fontSize:".6rem",color:"rgba(255,255,255,.4)",marginTop:1}}>{t.year||t.time}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sale history */}
+          {priceHistory.length > 0 && (
+            <div>
+              <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"rgba(255,255,255,.35)",marginBottom:".4rem"}}>Sale history</div>
+              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
+                {priceHistory.slice(0,3).map((p2,i) => (
+                  <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".4rem .1rem",borderBottom:i<Math.min(priceHistory.length,3)-1?"1px solid rgba(255,255,255,.07)":"none"}}>
+                    <div style={{fontSize:".78rem",color:"rgba(255,255,255,.55)"}}>{p2.date||p2.time||p2.year}</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:600,color:"#fff"}}>{p2.price||p2.value?fmt$(p2.price||p2.value):"—"}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
