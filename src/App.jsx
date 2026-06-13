@@ -1934,7 +1934,7 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="rv">
             <span className="hero-badge"><span className="pdot"/> Free to join — no credit card</span>
             <h1>Your home,<br/><em>kept well.</em></h1>
-            <p className="hero-p">The average homeowner spends $21,400 a year on their home — and tracks almost none of it. Steadwell changes that. Type your address and we fill in the rest.</p>
+            <p className="hero-p">The average homeowner spends over $13,000 a year on their home — and tracks almost none of it. Steadwell changes that. Type your address and we fill in the rest.</p>
             <div className="hero-addr" role="presentation">
               <span className="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
               <span className="typed">{typed}<span className="caret"/></span>
@@ -1944,7 +1944,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <button className="btn btn-terra" onClick={onSignUp}>Start for free <span aria-hidden="true">→</span></button>
               <button className="btn btn-ghost" onClick={() => scrollTo("features")}>See how it works</button>
             </div>
-            <p className="hero-micro"><b>Free forever plan.</b> No credit card required. Setup in 3 minutes.</p>
+            <p className="hero-micro"><b>Free forever plan.</b> No credit card required. Set up in about 10 minutes.</p>
           </div>
           <div className="hero-vis rv" style={{ transitionDelay: ".14s" }}>
             <div className="blob" aria-hidden="true"/>
@@ -1971,10 +1971,10 @@ function LandingPage({ onSignIn, onSignUp }) {
       <section className="stats">
         <div className="wrap">
           <div className="stats-in rv">
-            <div className="stat-cell"><div className="stat-n">$<span className="cnt" data-to="21400">21400</span></div><div className="stat-l">Avg. annual home spend</div></div>
+            <div className="stat-cell"><div className="stat-n">$<span className="cnt" data-to="13000">13000</span><span className="suf">+</span></div><div className="stat-l">Avg. annual home spend</div></div>
             <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">To get started, free forever</div></div>
-            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="3">3</span><span className="suf"> min</span></div><div className="stat-l">Average setup time</div></div>
-            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="10">10</span><span className="suf"> min</span></div><div className="stat-l">Average setup time</div></div>
+            
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="10">10</span><span className="suf"> min</span></div><div className="stat-l">To set up your home</div></div>
           </div>
         </div>
       </section>
@@ -2158,7 +2158,7 @@ function LandingPage({ onSignIn, onSignUp }) {
         <div className="glow" aria-hidden="true"/>
         <div className="wrap rv">
           <h2>Your home is your<br/><em>biggest investment.</em></h2>
-          <p>Start keeping it well — free forever, set up in 3 minutes, no credit card required.</p>
+          <p>Start keeping it well — free forever, set up in about 10 minutes, no credit card required.</p>
           <button className="btn btn-terra btn-xl" onClick={onSignUp}>Create your free account <span aria-hidden="true">→</span></button>
           <p style={{marginTop:"1rem",fontSize:".8rem",opacity:.55}}>Join homeowners already using Steadwell to stay on top of maintenance, costs, and documentation.</p>
         </div>
@@ -4657,7 +4657,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
             Welcome to Steadwell
           </div>
           <div style={{fontSize:".8rem",color:"rgba(244,237,223,.7)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>
-            Set up your home in 3 minutes. We'll generate a personalized maintenance plan based on your home's systems and age.
+            Set up your home in about 10 minutes. We'll generate a personalized maintenance plan based on your home's systems and age.
           </div>
           <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
             <button
