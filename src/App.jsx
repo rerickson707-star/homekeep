@@ -10975,17 +10975,7 @@ function BlogIndex() {
 
 function BlogPost({ slug }) {
   const { posts, loading } = useBlogPosts();
-  if (loading) {
-    return (
-      <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"1rem"}}>
-          <span className="spinner" style={{width:28,height:28,borderWidth:3,borderColor:"rgba(35,74,61,.15)",borderTopColor:"#234A3D"}}/>
-          <div style={{fontSize:".9rem",color:"#7A7370"}}>Loading article…</div>
-        </div>
-      </div>
-    );
-  }
-  const post = posts.find(p => p.slug === slug);
+  const post = loading ? null : posts.find(p => p.slug === slug);
 
   useSEO(post ? {
     title: post.title,
@@ -11009,6 +10999,17 @@ function BlogPost({ slug }) {
       "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.trysteadwell.app/blog/${post.slug}` }
     }
   } : {});
+
+  if (loading) {
+    return (
+      <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"1rem"}}>
+          <span className="spinner" style={{width:28,height:28,borderWidth:3,borderColor:"rgba(35,74,61,.15)",borderTopColor:"#234A3D"}}/>
+          <div style={{fontSize:".9rem",color:"#7A7370"}}>Loading article…</div>
+        </div>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
