@@ -1866,7 +1866,7 @@ function LandingPage({ onSignIn, onSignUp }) {
   );
 
   const features = [
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>, title: "Instant property lookup", desc: "Type your address and we pull 50+ fields from public records — year built, tax history, every past sale, estimated value. No forms.", tag: "Automatic" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>, title: "Instant property lookup", desc: "Type your address and we pull your home's year built, sale history, tax records, and estimated value automatically. No forms, no manual entry.", tag: "Automatic" },
     { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranty & asset tracking", desc: "Every appliance, model number, serial number, and warranty with expiry alerts. Scan the nameplate tag with your camera — AI fills the rest.", tag: "Never lose a receipt" },
     { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home's age and systems — so nothing slips through.", tag: "Stay ahead" },
     { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & spending", desc: "See every dollar your home has cost you, broken down by category. Weigh it against what your home is worth.", tag: "Know your numbers" },
@@ -1972,9 +1972,9 @@ function LandingPage({ onSignIn, onSignUp }) {
         <div className="wrap">
           <div className="stats-in rv">
             <div className="stat-cell"><div className="stat-n">$<span className="cnt" data-to="21400">21400</span></div><div className="stat-l">Avg. annual home spend</div></div>
-            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="50">50</span><span className="suf">+</span></div><div className="stat-l">Data fields auto-filled</div></div>
+            <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">To get started, free forever</div></div>
             <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="3">3</span><span className="suf"> min</span></div><div className="stat-l">Average setup time</div></div>
-            <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">To get started</div></div>
+            <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="10">10</span><span className="suf"> min</span></div><div className="stat-l">Average setup time</div></div>
           </div>
         </div>
       </section>
@@ -1982,7 +1982,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       {/* ── EDITORIAL STATEMENT ── */}
       <section className="band">
         <div className="wrap rv">
-          <p className="stmt">Most home apps are built for buying and selling. Steadwell is built for <em>the years in between.</em></p>
+          <p className="stmt">Your home is your biggest asset. Steadwell is built to help you <em>keep it that way.</em></p>
         </div>
       </section>
 
@@ -1991,8 +1991,8 @@ function LandingPage({ onSignIn, onSignUp }) {
         <div className="wrap">
           <div className="head center rv">
             <div className="eyebrow">Everything in one place</div>
-            <h2 className="h2">Built for homeowners,<br/>not real estate agents</h2>
-            <p className="sub">From the moment you move in, Steadwell quietly keeps the whole picture — what your home is, what it needs, and what it costs.</p>
+            <h2 className="h2">Everything your home needs,<br/>in one place</h2>
+            <p className="sub">From the day you move in, Steadwell keeps the complete picture — what your home is, what it needs, and what it costs.</p>
           </div>
           <div className="bento">
             <div className="feat spot rv">
@@ -2035,7 +2035,7 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="steps">
             {[
               { n: "1", t: "Create your free account", d: "Email and you're in — under 60 seconds, no card required." },
-              { n: "2", t: "Enter your address", d: "We pull 50+ fields from public records instantly. Year built, tax history, every past sale." },
+              { n: "2", t: "Enter your address", d: "We pull your home's year built, sale history, tax records, and estimated value from public records automatically." },
               { n: "3", t: "Scan your appliances", d: "Point your camera at any nameplate — AI reads brand, model, serial number, and warranty automatically." },
               { n: "4", t: "Stay ahead, always", d: "Maintenance reminders, warranty alerts, and cost tracking keep you in control year after year." },
             ].map((s, i) => (
@@ -2049,51 +2049,7 @@ function LandingPage({ onSignIn, onSignUp }) {
         </div>
       </section>
 
-      {/* ── COMPARISON ── */}
-      <section className="block" id="compare" style={{background:"rgba(35,74,61,.03)"}}>
-        <div className="wrap">
-          <div className="head center rv">
-            <div className="eyebrow">How we compare</div>
-            <h2 className="h2">The modern alternative<br/>to HomeZada &amp; Centriq</h2>
-            <p className="sub">Centriq shut down in 2025. HomeZada is expensive and dated. Steadwell was built from scratch for how homeowners actually live in 2026.</p>
-          </div>
-          <div className="rv" style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",minWidth:480,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem"}}>
-              <thead>
-                <tr>
-                  <th style={{textAlign:"left",padding:".75rem 1rem",borderBottom:"2px solid var(--lp-line)",color:"var(--ink-soft)",fontWeight:600,fontSize:".8rem",textTransform:"uppercase",letterSpacing:".05em"}}>Feature</th>
-                  <th style={{padding:".75rem 1rem",borderBottom:"2px solid var(--terracotta)",color:"var(--pine)",fontWeight:700,textAlign:"center",background:"rgba(35,74,61,.04)",borderRadius:"8px 8px 0 0"}}>Steadwell</th>
-                  <th style={{padding:".75rem 1rem",borderBottom:"2px solid var(--lp-line)",color:"var(--ink-soft)",fontWeight:600,textAlign:"center",fontSize:".85rem"}}>HomeZada</th>
-                  <th style={{padding:".75rem 1rem",borderBottom:"2px solid var(--lp-line)",color:"var(--ink-soft)",fontWeight:600,textAlign:"center",fontSize:".85rem"}}>HomeBinder</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisons.map((row, i) => (
-                  <tr key={i} style={{borderBottom:"1px solid var(--lp-line)"}}>
-                    <td style={{padding:".7rem 1rem",color:"var(--ink)",fontWeight:500}}>{row.feature}</td>
-                    <td style={{padding:".7rem 1rem",textAlign:"center",background:"rgba(35,74,61,.03)"}}><CkIcon val={row.sw}/></td>
-                    <td style={{padding:".7rem 1rem",textAlign:"center"}}><CkIcon val={row.hz}/></td>
-                    <td style={{padding:".7rem 1rem",textAlign:"center"}}><CkIcon val={row.hb}/></td>
-                  </tr>
-                ))}
-                <tr>
-                  <td style={{padding:".7rem 1rem",color:"var(--ink)",fontWeight:500}}>Starting price</td>
-                  <td style={{padding:".7rem 1rem",textAlign:"center",background:"rgba(35,74,61,.03)",color:"var(--pine)",fontWeight:700}}>Free</td>
-                  <td style={{padding:".7rem 1rem",textAlign:"center",color:"var(--ink-soft)"}}>$59/yr</td>
-                  <td style={{padding:".7rem 1rem",textAlign:"center",color:"var(--ink-soft)"}}>$99/yr</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div style={{textAlign:"center",marginTop:"2rem"}}>
-            <button className="btn btn-terra" onClick={onSignUp} style={{padding:".85rem 2rem",fontSize:"1rem"}}>
-              Try Steadwell free →
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
+            {/* ── TESTIMONIALS ── */}
       <section className="block">
         <div className="wrap">
           <div className="head center rv">
@@ -2133,7 +2089,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$0<span> / month</span></div>
               <p className="pdesc">Everything you need to get started and stay organized.</p>
               <ul className="plist">
-                {["Unlimited tasks & maintenance reminders","Unlimited assets & expense tracking","Property auto-fill (50+ fields)","Contractor rolodex","5 documents","Weekly email digest","1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Unlimited tasks & maintenance reminders","Unlimited assets & expense tracking","Property auto-fill from public records","Contractor rolodex","5 documents","Weekly email digest","1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
