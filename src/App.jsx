@@ -4628,7 +4628,118 @@ function DayDetail({ date, tasks, onClose, onEdit }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
+// ─── PRODUCT RECALL CHECK ───────────────────────────────────────────────────
+const CPSC_API = "https://www.saferproducts.gov/RestWebServices/Recall";
+
+async function checkCPSCRecall(brand, productType, model, serialNumber) {
+  // Search CPSC by manufacturer name — free public API, no key needed
+  const searchTerm = encodeURIComponent(brand.split(" ")[0]);
+  const url = `${CPSC_API}?format=json&Manufacturer=${searchTerm}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+
+  // Build full text of each recall for matching
+  const getFullText = r => [
+    r.Title || "",
+    (r.Products || []).map(p => p.Description || "").join(" "),
+    r.Description || "",
+    (r.Hazards || []).map(h => h.Name || h.Description || "").join(" "),
+  ].join(" ").toLowerCase();
+
+  // Category keywords to filter by product type
+  const typeWords = (productType || "").toLowerCase()
+    .replace(/hvac/gi, "air conditioner heating furnace")
+    .split(/\s+/).filter(w => w.length > 3);
+
+  const modelClean = (model || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const serialClean = (serialNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  return data.filter(r => {
+    const fullText = getFullText(r);
+
+    // Must match product category (if we have one) to reduce false positives
+    if (typeWords.length > 0 && !typeWords.some(w => fullText.includes(w))) return false;
+
+    // If we have a model number, check if it appears in the recall description
+    // This catches specific model number mentions like "model number XYZ123"
+    if (modelClean.length >= 4) {
+      const modelInText = fullText.replace(/[^a-z0-9]/g, "").includes(modelClean);
+      if (!modelInText) {
+        // Also check individual products array for model match
+        const modelInProducts = (r.Products || []).some(p =>
+          (p.Model || "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(modelClean) ||
+          (p.Description || "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(modelClean)
+        );
+        if (!modelInProducts) return false;
+      }
+    }
+
+    return true;
+  }).map(r => {
+    // Determine confidence level based on what matched
+    const fullText = getFullText(r);
+    const modelMatch = modelClean.length >= 4 &&
+      fullText.replace(/[^a-z0-9]/g, "").includes(modelClean);
+    const serialMatch = serialClean.length >= 4 &&
+      fullText.replace(/[^a-z0-9]/g, "").includes(serialClean);
+
+    return {
+      recallNumber: r.RecallID || r.RecallNumber || "",
+      title: r.Title || "",
+      date: r.RecallDate ? r.RecallDate.slice(0, 10) : "",
+      hazard: (r.Hazards || []).map(h => h.Name || h.Description || "").filter(Boolean).join(", "),
+      remedy: (r.Remedies || []).map(rem => rem.Name || "").filter(Boolean).join(", "),
+      url: r.URL || `https://www.cpsc.gov/Recalls/${r.RecallID || ""}`,
+      products: (r.Products || []).map(p => p.Description || "").filter(Boolean).join(", "),
+      confidence: serialMatch ? "high" : modelMatch ? "high" : "low",
+      matchNote: serialMatch ? "Serial number match" : modelMatch ? "Model number match" : "Brand & category match",
+    };
+  });
+}
+
+function useRecallAlerts(assets) {
+  const [recalls, setRecalls] = useState([]);   // [{asset, recall}]
+  const [checking, setChecking] = useState(false);
+  const [lastChecked, setLastChecked] = useState(null);
+
+  const runCheck = async () => {
+    // Only check assets with a brand — those are the ones we can match
+    const checkable = assets.filter(a => a.brand && a.category !== "Insurance" && a.category !== "Other");
+    if (!checkable.length) return;
+    setChecking(true);
+    const found = [];
+    // Deduplicate by brand to avoid hammering the API
+    const brandsDone = new Set();
+    for (const asset of checkable) {
+      const brandKey = asset.brand.split(" ")[0].toLowerCase();
+      if (brandsDone.has(brandKey)) continue;
+      brandsDone.add(brandKey);
+      try {
+        const results = await checkCPSCRecall(asset.brand, asset.category, asset.model, asset.serial_number);
+        results.forEach(r => found.push({ asset, recall: r }));
+      } catch(e) { /* fail silently */ }
+      // Small delay between requests to be a polite API citizen
+      await new Promise(res => setTimeout(res, 300));
+    }
+    setRecalls(found);
+    setLastChecked(new Date());
+    setChecking(false);
+  };
+
+  // Run once on mount when we have assets, then cache for session
+  useEffect(() => {
+    if (assets.length > 0 && !lastChecked && !checking) {
+      runCheck();
+    }
+  }, [assets.length]);
+
+  return { recalls, checking, lastChecked, runCheck };
+}
+
 function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId }) {
+  const { recalls, checking, runCheck } = useRecallAlerts(warranties);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -4673,6 +4784,60 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         <div className="greeting-name">{profile?.name || username}</div>
         {profile?.address && <div className="greeting-sub">📍 {profile.address}</div>}
       </div>
+
+      {/* ── RECALL ALERTS ── */}
+      {recalls.length > 0 && (
+        <div style={{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:"var(--r)",padding:".9rem 1rem",marginBottom:".85rem"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
+            <span style={{fontSize:"1.3rem",flexShrink:0}}>⚠️</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:".9rem",color:"#991B1B",marginBottom:".2rem"}}>
+                {recalls.length === 1 ? "Product recall found" : `${recalls.length} potential recalls found`}
+              </div>
+              <div style={{fontSize:".78rem",color:"#B91C1C",marginBottom:".6rem"}}>
+                {recalls.length === 1
+                  ? "One of your logged appliances may be affected by a CPSC safety recall. Review and take action."
+                  : "Some of your logged appliances may be affected by CPSC safety recalls. Review each one below."}
+              </div>
+              {recalls.slice(0, 3).map((r, i) => (
+                <div key={i} style={{background:"rgba(255,255,255,.7)",border:"1px solid #FCA5A5",borderRadius:8,padding:".6rem .8rem",marginBottom:i < recalls.length-1 && i < 2 ? ".4rem" : 0}}>
+                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem",flexWrap:"wrap"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
+                      <div style={{fontWeight:700,fontSize:".78rem",color:"#991B1B"}}>{r.asset.item} — {r.asset.brand}</div>
+                      <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,
+                        background:r.recall.confidence==="high"?"#FEE2E2":"#FEF9C3",
+                        color:r.recall.confidence==="high"?"#991B1B":"#92400E"}}>
+                        {r.recall.matchNote}
+                      </span>
+                    </div>
+                      <div style={{fontSize:".73rem",color:"#B91C1C",marginTop:2,lineHeight:1.4}}>{r.recall.title}</div>
+                      {r.recall.hazard && <div style={{fontSize:".7rem",color:"#7F1D1D",marginTop:2}}>⚠ {r.recall.hazard}</div>}
+                      {r.recall.remedy && <div style={{fontSize:".7rem",color:"#4B5563",marginTop:2}}>✓ {r.recall.remedy}</div>}
+                    </div>
+                    <a href={r.recall.url} target="_blank" rel="noopener noreferrer"
+                      style={{flexShrink:0,fontSize:".72rem",fontWeight:700,color:"#991B1B",textDecoration:"none",background:"rgba(239,68,68,.1)",padding:"3px 10px",borderRadius:6,whiteSpace:"nowrap"}}>
+                      View recall →
+                    </a>
+                  </div>
+                  {r.recall.date && <div style={{fontSize:".65rem",color:"#9CA3AF",marginTop:4}}>Recall date: {r.recall.date}</div>}
+                </div>
+              ))}
+              {recalls.length > 3 && (
+                <div style={{fontSize:".75rem",color:"#B91C1C",marginTop:".4rem",fontWeight:600}}>
+                  +{recalls.length - 3} more — review your assets for full list
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {checking && (
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".72rem",color:"var(--mid)",marginBottom:".5rem",padding:"0 .25rem"}}>
+          <span className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)"}}/>
+          Checking CPSC recall database for your appliances…
+        </div>
+      )}
 
       {/* ── NEW USER WELCOME ── show when wizard hasn't been run */}
       {isNewUser && (
@@ -5257,6 +5422,59 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
+function RecallBadge({ brand, category, model, serialNumber }) {
+  const [status, setStatus] = useState("idle"); // idle | checking | found | none | error
+  const [recalls, setRecalls] = useState([]);
+
+  useEffect(() => {
+    if (!brand) return;
+    setStatus("checking");
+    checkCPSCRecall(brand, category, model, serialNumber)
+      .then(results => {
+        setRecalls(results);
+        setStatus(results.length > 0 ? "found" : "none");
+      })
+      .catch(() => setStatus("error"));
+  }, [brand, category]);
+
+  if (status === "checking") return (
+    <div style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".72rem",color:"var(--mid)",marginBottom:".75rem",padding:".6rem .75rem",background:"var(--white)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
+      <span className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)"}}/>
+      Checking CPSC recall database…
+    </div>
+  );
+
+  if (status === "found") return (
+    <div style={{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:"var(--r-sm)",padding:".75rem .9rem",marginBottom:".75rem"}}>
+      <div style={{fontWeight:700,fontSize:".82rem",color:"#991B1B",marginBottom:".3rem"}}>
+        ⚠️ {recalls.length} CPSC recall{recalls.length > 1 ? "s" : ""} found for {brand}
+        {model && <span style={{fontSize:".65rem",fontWeight:500,color:"#B91C1C",marginLeft:6}}>
+          {recalls.some(r=>r.confidence==="high") ? "· Model match confirmed" : "· Review — brand match only"}
+        </span>}
+      </div>
+      {recalls.slice(0, 2).map((r, i) => (
+        <div key={i} style={{marginBottom: i < recalls.length - 1 ? ".4rem" : 0}}>
+          <div style={{fontSize:".75rem",color:"#B91C1C",fontWeight:600}}>{r.title}</div>
+          {r.hazard && <div style={{fontSize:".7rem",color:"#7F1D1D",marginTop:1}}>Hazard: {r.hazard}</div>}
+          {r.remedy && <div style={{fontSize:".7rem",color:"#374151",marginTop:1}}>Remedy: {r.remedy}</div>}
+          <a href={r.url} target="_blank" rel="noopener noreferrer"
+            style={{fontSize:".7rem",color:"#991B1B",fontWeight:700,display:"inline-block",marginTop:4}}>
+            View full recall details →
+          </a>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (status === "none") return (
+    <div style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".72rem",color:"#3B6D11",marginBottom:".75rem",padding:".5rem .75rem",background:"#EAF3DE",borderRadius:"var(--r-sm)",border:"1px solid #97C459"}}>
+      ✓ No active CPSC recalls found for {brand}
+    </div>
+  );
+
+  return null;
+}
+
 function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
@@ -5471,6 +5689,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
         {/* Scrollable body */}
         <div style={{flex:1,overflowY:"auto",padding:"1rem",background:"var(--linen)"}}>
+
+          {/* Recall check for this specific asset */}
+          {asset.brand && (
+            <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} />
+          )}
 
           {/* Overview card */}
           <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
@@ -8204,6 +8427,15 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             <div className="toolbox-card-desc">
               {contractors.length > 0 ? `${contractors.length} saved pro${contractors.length > 1 ? "s" : ""}` : "Trusted pros & service history"}
             </div>
+          </div>
+        </div>
+
+        {/* Product Recall Check */}
+        <div className="toolbox-card" onClick={() => onNavigate("dashboard")}>
+          <div className="toolbox-card-ico">🛡️</div>
+          <div>
+            <div className="toolbox-card-title">Recall Check</div>
+            <div className="toolbox-card-desc">Check appliances against CPSC database</div>
           </div>
         </div>
 
