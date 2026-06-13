@@ -56,6 +56,20 @@ const PROMPTS: Record<string, string> = {
   "description": string (1-2 sentence summary of what this document contains),
   "expiry_date": string (YYYY-MM-DD if document has an expiry or renewal date, otherwise null)
 }`,
+
+  nameplate: `You are reading a photo of an equipment nameplate, data plate, or serial tag — the sticker or metal plate attached to an appliance or home system. Extract every piece of identifying information visible. Return ONLY valid JSON:
+{
+  "item": string (product name/description e.g. "Central Air Conditioner", "Gas Water Heater", "Dishwasher"),
+  "brand": string (manufacturer name, properly capitalized e.g. "Carrier", "Rheem", "Bosch"),
+  "model": string or null (model number exactly as shown, e.g. "24ACC636A003"),
+  "serial_number": string or null (serial number exactly as shown),
+  "category": string (one of: HVAC, Heating, Plumbing, Electrical, Appliances, Roofing, Structure, Exterior, Other),
+  "manufacture_date": string (YYYY-MM-DD or YYYY-MM or YYYY if visible, otherwise null),
+  "capacity": string or null (e.g. "3 Ton", "50 Gallon", "40,000 BTU" — any capacity/rating info),
+  "voltage": string or null (electrical specs if shown, e.g. "240V / 30A"),
+  "notes": string or null (any other useful info: efficiency rating, refrigerant type, fuel type, etc.)
+}
+If a field is not visible or legible, return null for that field. Model and serial numbers are usually labeled "Model No.", "Mod.", "Serial No.", "S/N", or similar.`,
 };
 
 serve(async (req) => {

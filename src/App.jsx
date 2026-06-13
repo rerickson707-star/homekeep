@@ -7334,8 +7334,140 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   win.document.close();
 }
 
-// ─── PROFILE ──────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
+// ─── SHARED ACCESS PANEL ─────────────────────────────────────────────────────
+const SHARED_ACCESS_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/shared-access";
+const ANON_KEY_SA = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk";
+
+function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, toast }) {
+  const [members, setMembers]       = useState([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [sending, setSending]       = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const isPro = planData?.plan === "pro";
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase.from("home_members").select("*").eq("property_id", profile.id).eq("owner_id", userId)
+      .then(({ data }) => { setMembers(data || []); setLoading(false); });
+  }, [profile?.id]);
+
+  const sendInvite = async () => {
+    if (!inviteEmail.trim() || !inviteEmail.includes("@")) { toast("Enter a valid email", "error"); return; }
+    if (inviteEmail.toLowerCase() === userEmail.toLowerCase()) { toast("You can't invite yourself", "error"); return; }
+    setSending(true);
+    try {
+      const resp = await fetch(SHARED_ACCESS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY_SA}` },
+        body: JSON.stringify({
+          ownerName:       profile.name,
+          ownerEmail:      userEmail,
+          memberEmail:     inviteEmail.trim().toLowerCase(),
+          propertyAddress: profile.address,
+          propertyId:      profile.id,
+          ownerId:         userId,
+        }),
+      });
+      const data = await resp.json();
+      if (!data.ok) { toast(data.error || "Invite failed", "error"); }
+      else {
+        toast("Invite sent ✓");
+        setInviteEmail("");
+        // Refresh members list
+        const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id).eq("owner_id", userId);
+        setMembers(updated || []);
+      }
+    } catch { toast("Could not send invite", "error"); }
+    setSending(false);
+  };
+
+  const revoke = async (memberId) => {
+    const { error } = await supabase.from("home_members").delete().eq("id", memberId).eq("owner_id", userId);
+    if (!error) {
+      setMembers(m => m.filter(x => x.id !== memberId));
+      toast("Access removed");
+    }
+  };
+
+  if (!isPro) {
+    return (
+      <div className="panel" style={{marginBottom:".85rem"}}>
+        <div className="panel-title">Shared Access</div>
+        <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,marginBottom:".85rem"}}>
+          Invite your spouse, partner, or household member to view and manage this property together.
+        </div>
+        <button className="btn btn-primary" style={{width:"100%"}} onClick={onUpgrade}>
+          Upgrade to Pro to enable shared access
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="panel" style={{marginBottom:".85rem"}}>
+      <div className="panel-title">Shared Access</div>
+      <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.5,marginBottom:"1rem"}}>
+        Invite a spouse, partner, or household member. They'll see all tasks, assets, expenses, and documents for this property.
+      </div>
+
+      {/* Invite input */}
+      <div style={{display:"flex",gap:".5rem",marginBottom:"1rem"}}>
+        <input
+          type="email"
+          value={inviteEmail}
+          onChange={e => setInviteEmail(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && sendInvite()}
+          placeholder="partner@email.com"
+          style={{flex:1}}
+        />
+        <button className="btn btn-primary" disabled={sending} onClick={sendInvite} style={{flexShrink:0}}>
+          {sending ? "Sending…" : "Invite"}
+        </button>
+      </div>
+
+      {/* Members list */}
+      {loading ? (
+        <div style={{fontSize:".8rem",color:"#9E9690"}}>Loading…</div>
+      ) : members.length === 0 ? (
+        <div style={{fontSize:".8rem",color:"#9E9690",textAlign:"center",padding:".75rem",background:"var(--cream)",borderRadius:10}}>
+          No one invited yet — share access with your household
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
+          {members.map(m => (
+            <div key={m.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:12,border:"1px solid var(--stone)"}}>
+              <div style={{width:34,height:34,borderRadius:"50%",background:"var(--pine)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontWeight:700,fontSize:".85rem",flexShrink:0}}>
+                {m.member_email[0].toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".85rem",fontWeight:500,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.member_email}</div>
+                <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1,display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{
+                    display:"inline-block",width:6,height:6,borderRadius:"50%",
+                    background: m.status === "accepted" ? "#639922" : "#BA7517",
+                    flexShrink:0
+                  }}/>
+                  {m.status === "accepted" ? "Active" : "Invite pending"}
+                  {m.status === "pending" && " — hasn't accepted yet"}
+                </div>
+              </div>
+              <button
+                onClick={() => revoke(m.id)}
+                className="btn btn-sm btn-danger"
+                style={{flexShrink:0}}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
   const [editModal, setEditModal] = useState(false); // unified edit modal
   const [editTab, setEditTab]     = useState("property"); // "property" | "insurance"
   const [modal, setModal]         = useState(false); // kept for setup banner compat
@@ -7808,6 +7940,16 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           </div>
         </div>
       )}
+
+      {/* ── Shared Access ── */}
+      <SharedAccessPanel
+        profile={profile}
+        userId={userId}
+        userEmail={userEmail}
+        planData={planData}
+        onUpgrade={onUpgrade}
+        toast={toast}
+      />
 
       {/* ── Home Toolbox ── */}
       <div className="sh" style={{marginTop:".25rem"}}>
@@ -9476,7 +9618,10 @@ function PropertySwitcher({ allProfiles, activePropertyId, onSwitch, onAdd, plan
               </svg>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:p.id===activePropertyId?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{shortAddr(p)}</div>
-                {p.nickname && p.address && <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address.split(",")[0]}</div>}
+                {p._shared
+                  ? <div style={{fontSize:".68rem",color:"var(--pine)",marginTop:1}}>Shared with you</div>
+                  : p.nickname && p.address && <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address.split(",")[0]}</div>
+                }
               </div>
               {p.id === activePropertyId && <span style={{color:"var(--rust)",fontSize:".75rem",fontWeight:700,flexShrink:0}}>✓</span>}
             </button>
@@ -9849,28 +9994,57 @@ export default function App() {
     const uid = session.user.id;
     async function loadData() {
       setDataLoading(true);
-      // Load all profiles first to determine active property
-      const pResult = await supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true });
-      const profiles = pResult.data || [];
-      setAllProfiles(profiles);
+      const userEmail = session.user.email;
+
+      // Load owned profiles + shared profiles in parallel
+      const [pResult, sharedResult] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true }),
+        supabase.from("home_members")
+          .select("property_id, role, status, profiles!property_id(*)")
+          .eq("member_email", userEmail)
+          .eq("status", "accepted"),
+      ]);
+
+      const ownedProfiles = pResult.data || [];
+      // Shared profiles come from home_members join — mark them as shared
+      const sharedProfiles = (sharedResult.data || [])
+        .filter(m => m.profiles)
+        .map(m => ({ ...m.profiles, _shared: true, _role: m.role }));
+
+      // Merge — avoid duplicates if user owns and is also a member
+      const allP = [...ownedProfiles];
+      sharedProfiles.forEach(sp => {
+        if (!allP.find(p => p.id === sp.id)) allP.push(sp);
+      });
+
+      setAllProfiles(allP);
 
       // Determine active property
       let storedId = null;
       try { storedId = localStorage.getItem(`sw_prop_${uid}`); } catch {}
-      const activePid = (storedId && profiles.find(p => p.id === storedId))
+      const activePid = (storedId && allP.find(p => p.id === storedId))
         ? storedId
-        : profiles[0]?.id || null;
+        : allP[0]?.id || null;
 
       setActivePropertyIdRaw(activePid);
-      const activeP = profiles.find(p => p.id === activePid) || profiles[0] || null;
+      const activeP = allP.find(p => p.id === activePid) || allP[0] || null;
       if (activeP) setProfile(activeP);
 
-      // Load data scoped to active property
+      // For shared properties, load data by property_id (not user_id)
+      const activeIsShared = activeP?._shared;
       const [t, w, e, sl, c] = await Promise.all([
-        supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", activePid).order("created_at", { ascending: false }),
-        supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", activePid).order("expiry_date", { ascending: true }),
-        supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", activePid).order("date", { ascending: false }),
-        supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", activePid).order("service_date", { ascending: false }),
+        activeIsShared
+          ? supabase.from("tasks").select("*").eq("property_id", activePid).order("created_at", { ascending: false })
+          : supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", activePid).order("created_at", { ascending: false }),
+        activeIsShared
+          ? supabase.from("warranties").select("*").eq("property_id", activePid).order("expiry_date", { ascending: true })
+          : supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", activePid).order("expiry_date", { ascending: true }),
+        activeIsShared
+          ? supabase.from("expenses").select("*").eq("property_id", activePid).order("date", { ascending: false })
+          : supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", activePid).order("date", { ascending: false }),
+        activeIsShared
+          ? supabase.from("asset_service_log").select("*").eq("property_id", activePid).order("service_date", { ascending: false })
+          : supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", activePid).order("service_date", { ascending: false }),
         supabase.from("contractors").select("*").eq("user_id", uid).order("name", { ascending: true }),
       ]);
       if(t.data) setTasks(t.data);
@@ -9881,6 +10055,21 @@ export default function App() {
       setDataLoading(false);
     }
     loadData();
+
+    // ── Handle shared invite accept from email link
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedInvite = urlParams.get("shared_invite");
+    const inviteEmail  = urlParams.get("email");
+    if (sharedInvite && inviteEmail && session.user.email?.toLowerCase() === inviteEmail.toLowerCase()) {
+      supabase.from("home_members")
+        .update({ member_id: uid, status: "accepted", accepted_at: new Date().toISOString() })
+        .eq("property_id", sharedInvite)
+        .eq("member_email", inviteEmail.toLowerCase())
+        .then(() => {
+          // Clean URL
+          window.history.replaceState({}, "", "/");
+        });
+    }
   }, [session]);
 
   // ── Switch active property and reload all scoped data
@@ -10071,7 +10260,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/></div>
             </>
           )}
         </main>
