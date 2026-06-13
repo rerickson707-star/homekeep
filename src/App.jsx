@@ -4629,74 +4629,23 @@ function DayDetail({ date, tasks, onClose, onEdit }) {
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 // ─── PRODUCT RECALL CHECK ───────────────────────────────────────────────────
-const CPSC_API = "https://www.saferproducts.gov/RestWebServices/Recall";
+const CPSC_EDGE_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/cpsc-recall-check";
 
 async function checkCPSCRecall(brand, productType, model, serialNumber) {
-  // Search CPSC by manufacturer name — free public API, no key needed
-  const searchTerm = encodeURIComponent(brand.split(" ")[0]);
-  const url = `${CPSC_API}?format=json&Manufacturer=${searchTerm}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const data = await res.json();
-  if (!Array.isArray(data)) return [];
-
-  // Build full text of each recall for matching
-  const getFullText = r => [
-    r.Title || "",
-    (r.Products || []).map(p => p.Description || "").join(" "),
-    r.Description || "",
-    (r.Hazards || []).map(h => h.Name || h.Description || "").join(" "),
-  ].join(" ").toLowerCase();
-
-  // Category keywords to filter by product type
-  const typeWords = (productType || "").toLowerCase()
-    .replace(/hvac/gi, "air conditioner heating furnace")
-    .split(/\s+/).filter(w => w.length > 3);
-
-  const modelClean = (model || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const serialClean = (serialNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
-  return data.filter(r => {
-    const fullText = getFullText(r);
-
-    // Must match product category (if we have one) to reduce false positives
-    if (typeWords.length > 0 && !typeWords.some(w => fullText.includes(w))) return false;
-
-    // If we have a model number, check if it appears in the recall description
-    // This catches specific model number mentions like "model number XYZ123"
-    if (modelClean.length >= 4) {
-      const modelInText = fullText.replace(/[^a-z0-9]/g, "").includes(modelClean);
-      if (!modelInText) {
-        // Also check individual products array for model match
-        const modelInProducts = (r.Products || []).some(p =>
-          (p.Model || "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(modelClean) ||
-          (p.Description || "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(modelClean)
-        );
-        if (!modelInProducts) return false;
-      }
-    }
-
-    return true;
-  }).map(r => {
-    // Determine confidence level based on what matched
-    const fullText = getFullText(r);
-    const modelMatch = modelClean.length >= 4 &&
-      fullText.replace(/[^a-z0-9]/g, "").includes(modelClean);
-    const serialMatch = serialClean.length >= 4 &&
-      fullText.replace(/[^a-z0-9]/g, "").includes(serialClean);
-
-    return {
-      recallNumber: r.RecallID || r.RecallNumber || "",
-      title: r.Title || "",
-      date: r.RecallDate ? r.RecallDate.slice(0, 10) : "",
-      hazard: (r.Hazards || []).map(h => h.Name || h.Description || "").filter(Boolean).join(", "),
-      remedy: (r.Remedies || []).map(rem => rem.Name || "").filter(Boolean).join(", "),
-      url: r.URL || `https://www.cpsc.gov/Recalls/${r.RecallID || ""}`,
-      products: (r.Products || []).map(p => p.Description || "").filter(Boolean).join(", "),
-      confidence: serialMatch ? "high" : modelMatch ? "high" : "low",
-      matchNote: serialMatch ? "Serial number match" : modelMatch ? "Model number match" : "Brand & category match",
-    };
+  // Call our Supabase edge function which proxies the CPSC API server-side
+  // (Direct browser calls to saferproducts.gov are blocked by CORS)
+  const res = await fetch(CPSC_EDGE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${ANON_KEY}`,
+    },
+    body: JSON.stringify({ brand, productType, model, serialNumber }),
   });
+  if (!res.ok) return [];
+  const json = await res.json();
+  if (!json.ok) return [];
+  return json.recalls || [];
 }
 
 function useRecallAlerts(assets) {
