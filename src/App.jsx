@@ -5853,68 +5853,117 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               }}
             />
 
-            {/* ── Service History ── */}
-            <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".7rem .9rem",borderBottom:assetLogs.length>0?"1px solid var(--stone)":"none",background:"var(--cream)"}}>
-                <div>
-                  <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Service History</span>
-                  {assetLogs.length>0 && <span style={{fontSize:".68rem",color:"#A8A09A",marginLeft:".5rem"}}>{assetLogs.length} records · {fmt$(totalServiceCost)}</span>}
-                </div>
-                <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>+ Log</button>
-              </div>
-              {assetLogs.length===0 ? (
-                <div style={{padding:"1.25rem",textAlign:"center"}}>
-                  <div style={{fontSize:".8rem",color:"#A8A09A",marginBottom:".5rem"}}>No service history yet</div>
-                  <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>Log first service</button>
-                </div>
-              ) : assetLogs.map((s,i)=>(
-                <div key={s.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".75rem .9rem",borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none"}}>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)"}}>{s.description}</div>
-                    <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2,display:"flex",gap:".4rem",flexWrap:"wrap"}}>
-                      <span>{fmtD(s.service_date)}</span>
-                      {s.vendor&&<span>· {s.vendor}</span>}
-                      {s.notes&&<span>· {s.notes}</span>}
-                    </div>
-                  </div>
-                  <div style={{flexShrink:0,textAlign:"right"}}>
-                    <div style={{fontSize:".83rem",fontWeight:700,color:s.cost>0?"var(--dark)":"#C8C0B8"}}>{s.cost>0?fmt$(s.cost):"—"}</div>
-                    <div style={{display:"flex",gap:3,marginTop:3,justifyContent:"flex-end"}}>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)} style={{fontSize:".65rem"}}>Edit</button>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>setServiceConfirm(s.id)} style={{fontSize:".65rem",color:"var(--red)"}}>✕</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* ── Service History (includes scheduled tasks as future entries) ── */}
+            {(() => {
+              // Build unified timeline: scheduled/pending tasks as future entries + completed logs
+              const scheduledTasks = assetTasks.filter(t => t.status !== "Completed");
+              const completedTasks = assetTasks.filter(t => t.status === "Completed");
+              const totalEntries = assetLogs.length + scheduledTasks.length + completedTasks.length;
+              const hasUpcoming = scheduledTasks.length > 0;
 
-            {/* ── Related Tasks ── */}
-            {assetTasks.length>0 && (
-              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
-                <div style={{padding:".7rem .9rem",borderBottom:"1px solid var(--stone)",background:"var(--cream)",display:"flex",alignItems:"center",gap:".5rem"}}>
-                  <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Related Tasks</span>
-                  <span style={{fontSize:".65rem",color:"#A8A09A"}}>{assetTasks.length}</span>
-                </div>
-                {assetTasks.map((t,i)=>{
-                  const d=daysTo(t.due_date);
-                  const isOverdue=t.status!=="Completed"&&d!==null&&d<0;
-                  const isDone=t.status==="Completed";
-                  return (
-                    <div key={t.id} style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",borderBottom:i<assetTasks.length-1?"1px solid var(--stone)":"none",opacity:isDone?.65:1}}>
-                      <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,background:isOverdue?"var(--red)":isDone?"#C8C0B8":"var(--sage)"}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                        {t.due_date&&<div style={{fontSize:".7rem",color:isOverdue?"var(--red)":"#A8A09A",marginTop:1}}>{d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}</div>}
-                      </div>
-                      <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:10,flexShrink:0,
-                        background:isDone?"var(--cream2)":isOverdue?"var(--red-light)":"var(--sage-light)",
-                        color:isDone?"#A8A09A":isOverdue?"var(--red)":"var(--sage)",whiteSpace:"nowrap"}}>{t.status}</span>
+              return (
+                <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
+                  {/* Header */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".7rem .9rem",borderBottom:totalEntries>0?"1px solid var(--stone)":"none",background:"var(--cream)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Service History</span>
+                      {assetLogs.length>0 && <span style={{fontSize:".68rem",color:"#A8A09A"}}>{assetLogs.length} completed · {fmt$(totalServiceCost)}</span>}
+                      {hasUpcoming && <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:"rgba(35,74,61,.1)",color:"var(--pine)"}}>{scheduledTasks.length} upcoming</span>}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>+ Log</button>
+                  </div>
+
+                  {totalEntries === 0 && (
+                    <div style={{padding:"1.25rem",textAlign:"center"}}>
+                      <div style={{fontSize:".8rem",color:"#A8A09A",marginBottom:".5rem"}}>No service history yet</div>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>Log first service</button>
+                    </div>
+                  )}
+
+                  {/* Upcoming scheduled tasks — shown first as future entries */}
+                  {scheduledTasks.length > 0 && (
+                    <>
+                      <div style={{padding:".4rem .9rem",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"var(--pine)",background:"rgba(35,74,61,.04)",borderBottom:"1px solid rgba(35,74,61,.08)"}}>
+                        Upcoming
+                      </div>
+                      {scheduledTasks
+                        .sort((a,b) => (a.due_date||"") < (b.due_date||"") ? -1 : 1)
+                        .map((t, i) => {
+                          const d = daysTo(t.due_date);
+                          const isOverdue = d !== null && d < 0;
+                          const dueTxt = d === 0 ? "Today" : d === 1 ? "Tomorrow" : isOverdue ? `${Math.abs(d)}d overdue` : t.due_date ? fmtD(t.due_date) : "No date";
+                          return (
+                            <div key={t.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".7rem .9rem",
+                              borderBottom:i<scheduledTasks.length-1?"1px solid var(--stone)":"1px solid rgba(35,74,61,.08)",
+                              background:"rgba(35,74,61,.02)"}}>
+                              {/* Calendar icon dot */}
+                              <div style={{width:20,height:20,borderRadius:6,background:isOverdue?"var(--red-light)":"rgba(35,74,61,.1)",border:`1.5px solid ${isOverdue?"var(--red)":"rgba(35,74,61,.2)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,fontSize:".65rem"}}>
+                                📅
+                              </div>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:".83rem",fontWeight:600,color:isOverdue?"var(--red)":"var(--dark)"}}>{t.title}</div>
+                                <div style={{fontSize:".7rem",marginTop:2,display:"flex",gap:".4rem",flexWrap:"wrap",alignItems:"center"}}>
+                                  <span style={{color:isOverdue?"var(--red)":"var(--pine)",fontWeight:600}}>{dueTxt}</span>
+                                  <span style={{fontSize:".62rem",padding:"1px 6px",borderRadius:6,
+                                    background:isOverdue?"var(--red-light)":t.status==="In Progress"?"#FFF8E6":"rgba(35,74,61,.08)",
+                                    color:isOverdue?"var(--red)":t.status==="In Progress"?"#92610A":"var(--pine)",
+                                    fontWeight:700}}>{t.status}</span>
+                                  {t.notes && !t.notes.startsWith("[") && <span style={{color:"#A8A09A"}}>· {t.notes.slice(0,40)}{t.notes.length>40?"…":""}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </>
+                  )}
+
+                  {/* Completed service logs */}
+                  {assetLogs.length > 0 && (
+                    <>
+                      {scheduledTasks.length > 0 && (
+                        <div style={{padding:".4rem .9rem",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"#A8A09A",background:"var(--cream)",borderBottom:"1px solid var(--stone)"}}>
+                          Completed
+                        </div>
+                      )}
+                      {assetLogs.map((s,i)=>(
+                        <div key={s.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".75rem .9rem",borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none"}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:6}}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)"}}>{s.description}</div>
+                            <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2,display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+                              <span>{fmtD(s.service_date)}</span>
+                              {s.vendor&&<span>· {s.vendor}</span>}
+                              {s.notes&&!s.notes.startsWith("[")&&<span>· {s.notes}</span>}
+                            </div>
+                          </div>
+                          <div style={{flexShrink:0,textAlign:"right"}}>
+                            <div style={{fontSize:".83rem",fontWeight:700,color:s.cost>0?"var(--dark)":"#C8C0B8"}}>{s.cost>0?fmt$(s.cost):"—"}</div>
+                            <div style={{display:"flex",gap:3,marginTop:3,justifyContent:"flex-end"}}>
+                              <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)} style={{fontSize:".65rem"}}>Edit</button>
+                              <button className="btn btn-ghost btn-sm" onClick={()=>setServiceConfirm(s.id)} style={{fontSize:".65rem",color:"var(--red)"}}>✕</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Completed tasks in history (dimmed) */}
+                  {completedTasks.length > 0 && assetLogs.length === 0 && (
+                    completedTasks.map((t,i) => (
+                      <div key={t.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".7rem .9rem",borderBottom:i<completedTasks.length-1?"1px solid var(--stone)":"none",opacity:.6}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:"#C8C0B8",flexShrink:0,marginTop:6}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)",textDecoration:"line-through"}}>{t.title}</div>
+                          <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2}}>{t.due_date?fmtD(t.due_date):""}</div>
+                        </div>
+                        <span style={{fontSize:".65rem",padding:"1px 6px",borderRadius:6,background:"var(--cream2)",color:"#A8A09A",fontWeight:700,flexShrink:0}}>Done</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })()}
 
             {/* ── Notes ── */}
             {asset.notes && (
