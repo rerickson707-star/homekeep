@@ -2994,24 +2994,30 @@ function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
     if (!result) return;
     const u = {...data};
     // Fill every empty field — never overwrite existing data
-    if (result.item         && !u.item)              u.item              = result.item;
-    if (result.brand        && !u.brand)             u.brand             = result.brand;
-    if (result.model        && !u.model)             u.model             = result.model;
-    if (result.category     && !u.category)          u.category          = result.category;
-    if (result.condition    && !u.condition)         u.condition         = result.condition;
-    if (result.lifespan_years && !u.lifespan_years)  u.lifespan_years    = result.lifespan_years;
-    if (result.warranty_expiry && !u.expiry_date)    u.expiry_date       = result.warranty_expiry;
+    if (result.item              && !u.item)              u.item              = result.item;
+    if (result.brand             && !u.brand)             u.brand             = result.brand;
+    if (result.model             && !u.model)             u.model             = result.model;
+    if (result.category          && !u.category)          u.category          = result.category;
+    if (result.condition         && !u.condition)         u.condition         = result.condition;
+    if (result.lifespan_years    && !u.lifespan_years)    u.lifespan_years    = result.lifespan_years;
+    if (result.warranty_expiry   && !u.expiry_date)       u.expiry_date       = result.warranty_expiry;
+    if (result.maintenance_tip   && !u.maintenance_tip)   u.maintenance_tip   = result.maintenance_tip;
+    // Store PM schedule
+    if (result.pm_schedule?.length > 0 && !u.pm_schedule?.length)
+      u.pm_schedule = result.pm_schedule;
+    // Costs
     if (result.replacement_cost_low && !u.replacement_cost)
       u.replacement_cost = Math.round((result.replacement_cost_low + (result.replacement_cost_high || result.replacement_cost_low)) / 2);
-    // O&M manual — prefer om_manual_url, fall back to manual_url
+    if (result.contractor_cost_low && !u.contractor_cost_low) {
+      u.contractor_cost_low  = result.contractor_cost_low;
+      u.contractor_cost_high = result.contractor_cost_high;
+    }
+    // O&M manual — prefer om_manual_url, fall back to manual_url — store in document_ref
     const manualLink = result.om_manual_url || result.manual_url;
-    if (manualLink && !u.document_ref)               u.document_ref      = manualLink;
-    // Build notes with support URL and maintenance tip if notes empty
-    if (!u.notes) {
-      const noteParts = [];
-      if (result.support_url)      noteParts.push(`Support: ${result.support_url}`);
-      if (result.maintenance_tip)  noteParts.push(`Tip: ${result.maintenance_tip}`);
-      if (noteParts.length)        u.notes = noteParts.join("\n");
+    if (manualLink && !u.document_ref) u.document_ref = manualLink;
+    // Support URL in notes field (legacy — still needed for display parsing)
+    if (result.support_url && !u.notes?.includes("Support:")) {
+      u.notes = [u.notes, `Support: ${result.support_url}`].filter(Boolean).join("\n");
     }
     onChange(u);
     setApplied(true);
@@ -5510,21 +5516,27 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const save = async () => {
     if(!editData.item?.trim()) return;
     const payload = {
-      item:             editData.item||"",
-      category:         editData.category||"",
-      model:            editData.model||"",
-      vendor:           editData.vendor||"",
-      purchase_date:    editData.purchase_date||null,
-      install_date:     editData.install_date||null,
-      expiry_date:      editData.expiry_date||null,
-      cost:             editData.cost ? Number(editData.cost) : null,
-      replacement_cost: editData.replacement_cost ? Number(editData.replacement_cost) : null,
-      lifespan_years:   editData.lifespan_years ? Number(editData.lifespan_years) : null,
-      last_serviced:    editData.last_serviced||null,
-      condition:        editData.condition||"Good",
-      asset_photo_url:  editData.asset_photo_url||"",
-      document_ref:     editData.document_ref||"",
-      notes:            editData.notes||"",
+      item:                 editData.item||"",
+      category:             editData.category||"",
+      brand:                editData.brand||"",
+      model:                editData.model||"",
+      serial_number:        editData.serial_number||"",
+      vendor:               editData.vendor||"",
+      purchase_date:        editData.purchase_date||null,
+      install_date:         editData.install_date||null,
+      expiry_date:          editData.expiry_date||null,
+      cost:                 editData.cost ? Number(editData.cost) : null,
+      replacement_cost:     editData.replacement_cost ? Number(editData.replacement_cost) : null,
+      contractor_cost_low:  editData.contractor_cost_low ? Number(editData.contractor_cost_low) : null,
+      contractor_cost_high: editData.contractor_cost_high ? Number(editData.contractor_cost_high) : null,
+      lifespan_years:       editData.lifespan_years ? Number(editData.lifespan_years) : null,
+      last_serviced:        editData.last_serviced||null,
+      condition:            editData.condition||"Good",
+      asset_photo_url:      editData.asset_photo_url||"",
+      document_ref:         editData.document_ref||"",
+      notes:                editData.notes||"",
+      pm_schedule:          editData.pm_schedule ? (typeof editData.pm_schedule === "string" ? editData.pm_schedule : JSON.stringify(editData.pm_schedule)) : "[]",
+      maintenance_tip:      editData.maintenance_tip||"",
     };
     if(editId) {
       const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
@@ -5784,6 +5796,62 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 )}
               </div>
             )}
+
+            {/* ── Smart Fill inline ── */}
+            <AssetSmartFillPanel
+              asset={asset}
+              planData={planData}
+              onUpgrade={onUpgrade}
+              onApply={async (updated) => {
+                const payload = {
+                  brand: updated.brand||"", model: updated.model||"", serial_number: updated.serial_number||"",
+                  category: updated.category||"", condition: updated.condition||"Good",
+                  lifespan_years: updated.lifespan_years ? Number(updated.lifespan_years) : null,
+                  expiry_date: updated.expiry_date||null, replacement_cost: updated.replacement_cost ? Number(updated.replacement_cost) : null,
+                  contractor_cost_low: updated.contractor_cost_low ? Number(updated.contractor_cost_low) : null,
+                  contractor_cost_high: updated.contractor_cost_high ? Number(updated.contractor_cost_high) : null,
+                  document_ref: updated.document_ref||"", notes: updated.notes||"",
+                  pm_schedule: updated.pm_schedule ? JSON.stringify(updated.pm_schedule) : "[]",
+                  maintenance_tip: updated.maintenance_tip||"",
+                };
+                const {error} = await supabase.from("warranties").update(payload).eq("id", asset.id).eq("user_id", userId);
+                if (!error) {
+                  setAssets(prev => prev.map(a => a.id===asset.id ? {...a,...updated,...payload} : a));
+                  toast("Smart Fill applied ✓");
+                } else { toast("Could not save — try again","error"); }
+              }}
+            />
+
+            {/* ── Recommended PM Schedule ── */}
+            <AssetPMSchedule
+              asset={asset}
+              onSchedule={(pm) => {
+                const due = new Date();
+                due.setMonth(due.getMonth() + 1);
+                openNewService(asset.id);
+                setTimeout(()=>{
+                  setServiceEditData(d=>({...d,
+                    description: pm.title,
+                    notes: pm.diy ? "DIY task" : "Schedule with contractor",
+                  }));
+                }, 100);
+              }}
+              onCreateTask={async (pm) => {
+                const due = new Date();
+                due.setMonth(due.getMonth() + (pm.interval_months || 3));
+                const taskPayload = {
+                  user_id: userId, property_id: propertyId,
+                  title: pm.title, status: "Scheduled", priority: "Medium",
+                  due_date: due.toISOString().slice(0,10),
+                  category: asset.category || "Other",
+                  asset_id: asset.id,
+                  notes: `Recommended by manufacturer · Every ${pm.interval_months < 12 ? pm.interval_months + " months" : (pm.interval_months/12) + " year(s)"} · ${pm.diy ? "DIY" : "Hire contractor"}`,
+                };
+                const {data:td,error} = await supabase.from("tasks").insert([taskPayload]).select();
+                if (!error && td) { setTasks(prev=>[td[0],...prev]); toast(`Task scheduled: ${pm.title} ✓`); }
+                else toast("Could not create task","error");
+              }}
+            />
 
             {/* ── Service History ── */}
             <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
@@ -7906,6 +7974,283 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
   );
 }
 
+
+// ─── ASSET SMART FILL PANEL (inline on asset detail) ─────────────────────────
+function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
+  const [open, setOpen]       = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState(null);
+  const [error, setError]     = useState("");
+  const [applied, setApplied] = useState(false);
+
+  const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
+  const isPro  = planData?.plan === "pro";
+  const hasBrand = asset.brand || asset.model;
+  const hasResult = result && !applied;
+
+  const run = async () => {
+    if (!isPlus) { onUpgrade(); return; }
+    if (!hasBrand) return;
+    setLoading(true); setError(""); setResult(null); setApplied(false);
+    try {
+      const resp = await fetch(ASSET_INTEL_URL, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},
+        body:JSON.stringify({ brand:asset.brand, model:asset.model, category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free" }),
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error||"Lookup failed");
+      setResult(json.data);
+      setOpen(true);
+    } catch(e) { setError(e.message||"Could not reach Smart Fill — try again"); }
+    setLoading(false);
+  };
+
+  const fmt$ = n => n ? `$${Number(n).toLocaleString()}` : null;
+
+  const apply = async () => {
+    if (!result) return;
+    const u = {...asset};
+    if (result.brand         && !u.brand)            u.brand            = result.brand;
+    if (result.model         && !u.model)            u.model            = result.model;
+    if (result.category      && !u.category)         u.category         = result.category;
+    if (result.condition     && !u.condition)        u.condition        = result.condition;
+    if (result.lifespan_years && !u.lifespan_years)  u.lifespan_years   = result.lifespan_years;
+    if (result.warranty_expiry && !u.expiry_date)    u.expiry_date      = result.warranty_expiry;
+    if (result.maintenance_tip && !u.maintenance_tip) u.maintenance_tip = result.maintenance_tip;
+    if (result.pm_schedule?.length > 0 && !asset.pm_schedule?.length)
+      u.pm_schedule = result.pm_schedule;
+    if (result.replacement_cost_low && !u.replacement_cost)
+      u.replacement_cost = Math.round((result.replacement_cost_low + (result.replacement_cost_high||result.replacement_cost_low))/2);
+    if (result.contractor_cost_low && !u.contractor_cost_low) {
+      u.contractor_cost_low  = result.contractor_cost_low;
+      u.contractor_cost_high = result.contractor_cost_high;
+    }
+    const manualLink = result.om_manual_url || result.manual_url;
+    if (manualLink && !u.document_ref) u.document_ref = manualLink;
+    if (result.support_url && !u.notes?.includes("Support:"))
+      u.notes = [u.notes, `Support: ${result.support_url}`].filter(Boolean).join("\n");
+    await onApply(u);
+    setApplied(true);
+    setOpen(false);
+  };
+
+  return (
+    <div style={{marginBottom:".75rem"}}>
+      {/* Trigger button */}
+      <button onClick={open ? ()=>setOpen(false) : (result ? ()=>setOpen(true) : run)}
+        disabled={loading || (!hasBrand && isPlus)}
+        style={{width:"100%",display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .9rem",
+          borderRadius:"var(--r-sm)",border:`1.5px solid ${applied?"rgba(35,74,61,.3)":isPlus&&hasBrand?"rgba(35,74,61,.2)":"var(--stone)"}`,
+          background:applied?"rgba(35,74,61,.06)":isPlus&&hasBrand?"var(--white)":"var(--cream)",
+          cursor:(!hasBrand&&isPlus)||loading?"default":"pointer",
+          fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left",transition:"all .2s"}}>
+        <div style={{width:34,height:34,borderRadius:9,background:applied?"rgba(35,74,61,.12)":isPlus&&hasBrand?"rgba(35,74,61,.08)":"var(--stone)",
+          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"1rem"}}>
+          {loading?"⏳":applied?"✓":result?"✨":"✨"}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,fontSize:".85rem",color:isPlus&&hasBrand?"var(--pine)":"var(--dark)",display:"flex",alignItems:"center",gap:6}}>
+            Smart Fill
+            {!isPlus && <span style={{fontSize:".6rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:6}}>Plus</span>}
+          </div>
+          <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>
+            {loading?"Looking up manufacturer data…":applied?"Applied — PM schedule & manual loaded":result&&!open?"Results ready — tap to review":!hasBrand?"Add brand or model number first":isPlus?"Pull PM schedule, manual, costs & lifespan":"Upgrade to unlock manufacturer data"}
+          </div>
+        </div>
+        {!loading && hasBrand && isPlus && <span style={{color:"#C2B8AE",fontSize:".8rem",flexShrink:0}}>{open?"▲":"▼"}</span>}
+      </button>
+
+      {error && <div style={{margin:".4rem 0",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:8,fontSize:".75rem",color:"var(--red)"}}>⚠ {error}</div>}
+
+      {/* Results panel */}
+      {open && result && !applied && (
+        <div style={{background:"var(--white)",border:"1.5px solid rgba(35,74,61,.2)",borderRadius:"var(--r-sm)",overflow:"hidden",marginTop:".4rem"}}>
+          <div style={{background:"rgba(35,74,61,.07)",padding:".65rem .9rem",borderBottom:"1px solid rgba(35,74,61,.1)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontWeight:700,fontSize:".8rem",color:"var(--pine)"}}>✨ Smart Fill — {asset.brand} {asset.model}</div>
+            <div style={{fontSize:".65rem",color:"#9E9690"}}>Manufacturer data</div>
+          </div>
+          <div style={{padding:".8rem .9rem",display:"flex",flexDirection:"column",gap:".65rem"}}>
+
+            {/* Condition assessment */}
+            {result.condition_assessment && (
+              <div style={{fontSize:".78rem",color:"var(--dark)",lineHeight:1.5,fontStyle:"italic",padding:".55rem .7rem",background:"rgba(167,191,168,.1)",borderRadius:8,border:"1px solid rgba(167,191,168,.25)"}}>
+                "{result.condition_assessment}"
+              </div>
+            )}
+
+            {/* Key stats grid */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:".45rem"}}>
+              {result.lifespan_years && (
+                <div style={{background:"var(--cream)",borderRadius:8,padding:".5rem .65rem"}}>
+                  <div style={{fontSize:".58rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Lifespan</div>
+                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>{result.lifespan_years} yrs</div>
+                  {result.years_remaining != null && (
+                    <div style={{fontSize:".68rem",color:result.years_remaining<3?"var(--red)":result.years_remaining<6?"var(--gold)":"#3B6D11",marginTop:1}}>
+                      ~{Math.max(0,result.years_remaining)} yrs remaining
+                    </div>
+                  )}
+                </div>
+              )}
+              {result.warranty_years && (
+                <div style={{background:"var(--cream)",borderRadius:8,padding:".5rem .65rem"}}>
+                  <div style={{fontSize:".58rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Warranty</div>
+                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>{result.warranty_years} yr{result.warranty_years>1?"s":""}</div>
+                  {result.warranty_expiry && <div style={{fontSize:".68rem",color:"#9E9690",marginTop:1}}>Expires {new Date(result.warranty_expiry).toLocaleDateString("en-US",{month:"short",year:"numeric"})}</div>}
+                </div>
+              )}
+              {result.replacement_cost_low && (
+                <div style={{background:"var(--cream)",borderRadius:8,padding:".5rem .65rem"}}>
+                  <div style={{fontSize:".58rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Replacement</div>
+                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>{fmt$(result.replacement_cost_low)}–{fmt$(result.replacement_cost_high)}</div>
+                </div>
+              )}
+              {isPro && result.contractor_cost_low && (
+                <div style={{background:"rgba(35,74,61,.05)",borderRadius:8,padding:".5rem .65rem",border:"1px solid rgba(35,74,61,.12)"}}>
+                  <div style={{fontSize:".58rem",fontWeight:700,color:"var(--pine)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Installed cost</div>
+                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--pine)"}}>{fmt$(result.contractor_cost_low)}–{fmt$(result.contractor_cost_high)}</div>
+                </div>
+              )}
+            </div>
+
+            {/* PM Schedule from manufacturer */}
+            {result.pm_schedule?.length > 0 && (
+              <div>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>
+                  Manufacturer-recommended maintenance
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
+                  {result.pm_schedule.map((pm,i) => (
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".45rem .65rem",background:"var(--cream)",borderRadius:8,border:"1px solid var(--stone)"}}>
+                      <span style={{fontSize:".85rem",flexShrink:0}}>{pm.diy?"🔧":"👷"}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:".8rem",fontWeight:600,color:"var(--dark)"}}>{pm.title}</div>
+                        <div style={{fontSize:".67rem",color:"#9E9690"}}>
+                          Every {pm.interval_months<12?`${pm.interval_months} mo`:`${pm.interval_months/12} yr`} · {pm.diy?"DIY":"Contractor"}
+                          {pm.description && ` · ${pm.description}`}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Manual & support links */}
+            {(result.om_manual_url || result.manual_url || result.support_url) && (
+              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
+                {(result.om_manual_url || result.manual_url) && (
+                  <a href={result.om_manual_url||result.manual_url} target="_blank" rel="noopener noreferrer"
+                    style={{display:"flex",alignItems:"center",gap:".55rem",padding:".5rem .65rem",background:"rgba(35,74,61,.06)",borderRadius:8,border:"1px solid rgba(35,74,61,.15)",textDecoration:"none"}}>
+                    <span style={{fontSize:".95rem"}}>📋</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".75rem",fontWeight:700,color:"var(--pine)"}}>Owner's Manual</div>
+                      <div style={{fontSize:".65rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(result.om_manual_url||result.manual_url).replace(/^https?:\/\//,"")}</div>
+                    </div>
+                    <span style={{fontSize:".7rem",fontWeight:600,color:"var(--pine)",flexShrink:0}}>Open →</span>
+                  </a>
+                )}
+                {result.support_url && (
+                  <a href={result.support_url} target="_blank" rel="noopener noreferrer"
+                    style={{display:"flex",alignItems:"center",gap:".55rem",padding:".5rem .65rem",background:"var(--white)",borderRadius:8,border:"1px solid var(--stone)",textDecoration:"none"}}>
+                    <span style={{fontSize:".95rem"}}>🔗</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".75rem",fontWeight:600,color:"var(--dark)"}}>Manufacturer Support</div>
+                      <div style={{fontSize:".65rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{result.support_url.replace(/^https?:\/\//,"")}</div>
+                    </div>
+                    <span style={{fontSize:".7rem",fontWeight:600,color:"#9E9690",flexShrink:0}}>Open →</span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {result.maintenance_tip && (
+              <div style={{padding:".5rem .7rem",background:"rgba(167,191,168,.12)",borderRadius:8,fontSize:".76rem",color:"var(--pine)",lineHeight:1.5,border:"1px solid rgba(167,191,168,.3)"}}>
+                💡 {result.maintenance_tip}
+              </div>
+            )}
+
+            <div style={{fontSize:".62rem",color:"#B0A8A0",lineHeight:1.5,paddingTop:".5rem",borderTop:"1px solid var(--stone)"}}>
+              Based on typical US manufacturer specs. Verify with your specific unit documentation.
+            </div>
+          </div>
+
+          <div style={{padding:".65rem .9rem",borderTop:"1px solid var(--stone)",display:"flex",gap:".5rem"}}>
+            <button onClick={apply} style={{flex:1,padding:".6rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".83rem",fontWeight:700,cursor:"pointer"}}>
+              Apply to this asset ✓
+            </button>
+            <button onClick={()=>setOpen(false)} style={{padding:".6rem .85rem",background:"none",border:"1px solid var(--stone)",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",color:"#9E9690",cursor:"pointer"}}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ASSET PM SCHEDULE PANEL (recommended service on asset detail) ─────────────
+function AssetPMSchedule({ asset, onSchedule, onCreateTask }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const pmSchedule = (() => {
+    try {
+      const raw = asset.pm_schedule;
+      if (!raw || raw === "[]") return [];
+      return typeof raw === "string" ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+    } catch { return []; }
+  })();
+
+  if (!pmSchedule.length) return null;
+
+  return (
+    <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
+      <button
+        onClick={()=>setExpanded(e=>!e)}
+        style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:".7rem .9rem",background:"var(--cream)",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+          <span style={{fontSize:".95rem"}}>📋</span>
+          <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Recommended Service</span>
+          <span style={{fontSize:".65rem",color:"#A8A09A"}}>{pmSchedule.length} tasks</span>
+        </div>
+        <span style={{color:"#C2B8AE",fontSize:".8rem"}}>{expanded?"▲":"▼"}</span>
+      </button>
+
+      {expanded && (
+        <div style={{borderTop:"1px solid var(--stone)"}}>
+          <div style={{padding:".6rem .9rem .3rem",fontSize:".67rem",color:"#A8A09A"}}>
+            Manufacturer-recommended maintenance for this asset. Tap to schedule as a task.
+          </div>
+          {pmSchedule.map((pm, i) => (
+            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".65rem .9rem",borderBottom:i<pmSchedule.length-1?"1px solid var(--stone)":"none"}}>
+              <span style={{fontSize:"1rem",flexShrink:0,marginTop:1}}>{pm.diy?"🔧":"👷"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)"}}>{pm.title}</div>
+                <div style={{fontSize:".7rem",color:"#9E9690",marginTop:2,lineHeight:1.4}}>
+                  Every {pm.interval_months < 12 ? `${pm.interval_months} months` : `${pm.interval_months/12} year${pm.interval_months>12?"s":""}`}
+                  {" · "}{pm.diy ? "DIY" : "Hire a contractor"}
+                  {pm.description ? ` — ${pm.description}` : ""}
+                </div>
+              </div>
+              <button
+                onClick={()=>onCreateTask(pm)}
+                style={{flexShrink:0,background:"var(--pine)",color:"#fff",border:"none",borderRadius:8,padding:".35rem .7rem",fontSize:".7rem",fontWeight:700,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}>
+                + Schedule
+              </button>
+            </div>
+          ))}
+          <div style={{padding:".6rem .9rem",borderTop:"1px solid var(--stone)",background:"var(--cream)",display:"flex",alignItems:"center",gap:".5rem"}}>
+            <span style={{fontSize:".7rem",color:"#A8A09A",flex:1}}>Or log completed service now</span>
+            <button onClick={()=>onSchedule(pmSchedule[0])}
+              style={{fontSize:".72rem",fontWeight:600,color:"var(--pine)",background:"none",border:"1px solid rgba(35,74,61,.2)",borderRadius:7,padding:".3rem .7rem",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+              + Log service
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── RECALL CHECK PANEL (used in Profile toolbox) ────────────────────────────
 function RecallCheckPanel({ warranties }) {
