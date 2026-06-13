@@ -2,24 +2,40 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  try {
-    const { brand, productType, model, serialNumber } = await req.json();
+  // Handle GET health check
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({ ok: true, service: "cpsc-recall-check", status: "ready" }), {
+      headers: { ...CORS, "Content-Type": "application/json" },
+    });
+  }
 
-    if (!brand) {
-      return new Response(JSON.stringify({ ok: false, error: "brand required" }), {
+  try {
+    const body = await req.text();
+    if (!body) {
+      return new Response(JSON.stringify({ ok: false, error: "Request body required" }), {
         headers: { ...CORS, "Content-Type": "application/json" },
         status: 400,
       });
     }
 
-    // Search CPSC by manufacturer name — first word is most reliable
+    const { brand, productType, model, serialNumber } = JSON.parse(body);
+
+    if (!brand) {
+      return new Response(JSON.stringify({ ok: false, error: "brand is required" }), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    // Search CPSC by manufacturer — use first word only for best results
     const searchTerm = encodeURIComponent(brand.split(" ")[0]);
     const cpscUrl = `https://www.saferproducts.gov/RestWebServices/Recall?format=json&Manufacturer=${searchTerm}`;
 
@@ -28,19 +44,25 @@ serve(async (req) => {
     });
 
     if (!cpscRes.ok) {
-      return new Response(JSON.stringify({ ok: true, recalls: [], note: "CPSC unavailable" }), {
+      return new Response(JSON.stringify({ ok: true, recalls: [], note: "CPSC API unavailable" }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
-    const data = await cpscRes.json();
+    const text = await cpscRes.text();
+    if (!text || text.trim() === "") {
+      return new Response(JSON.stringify({ ok: true, recalls: [] }), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    const data = JSON.parse(text);
     if (!Array.isArray(data)) {
       return new Response(JSON.stringify({ ok: true, recalls: [] }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
-    // Build full text of each recall for matching
     const getFullText = (r: any): string => [
       r.Title || "",
       (r.Products || []).map((p: any) => p.Description || "").join(" "),
@@ -48,7 +70,6 @@ serve(async (req) => {
       (r.Hazards || []).map((h: any) => h.Name || h.Description || "").join(" "),
     ].join(" ").toLowerCase();
 
-    // Category keywords
     const typeWords = (productType || "")
       .toLowerCase()
       .replace(/hvac/gi, "air conditioner heating furnace")
@@ -57,21 +78,12 @@ serve(async (req) => {
 
     const modelClean = (model || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     const serialClean = (serialNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
-    // Determine if we should use strict model matching
-    // If we have a model number (6+ chars), require it to appear in the recall
     const requireModelMatch = modelClean.length >= 6;
 
     const recalls = data
       .filter((r: any) => {
         const fullText = getFullText(r);
-
-        // Category filter — must match product type
-        if (typeWords.length > 0 && !typeWords.some((w: string) => fullText.includes(w))) {
-          return false;
-        }
-
-        // If we have a model number, require it to appear in the recall text
+        if (typeWords.length > 0 && !typeWords.some((w: string) => fullText.includes(w))) return false;
         if (requireModelMatch) {
           const textFlat = fullText.replace(/[^a-z0-9]/g, "");
           const modelInText = textFlat.includes(modelClean);
@@ -81,7 +93,6 @@ serve(async (req) => {
           );
           if (!modelInText && !modelInProducts) return false;
         }
-
         return true;
       })
       .map((r: any) => {
@@ -89,7 +100,6 @@ serve(async (req) => {
         const textFlat = fullText.replace(/[^a-z0-9]/g, "");
         const modelMatch = modelClean.length >= 4 && textFlat.includes(modelClean);
         const serialMatch = serialClean.length >= 4 && textFlat.includes(serialClean);
-
         return {
           recallNumber: r.RecallID || r.RecallNumber || "",
           title: r.Title || "",

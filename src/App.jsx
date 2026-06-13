@@ -4649,17 +4649,18 @@ async function checkCPSCRecall(brand, productType, model, serialNumber) {
 }
 
 function useRecallAlerts(assets) {
-  const [recalls, setRecalls] = useState([]);   // [{asset, recall}]
+  const [recalls, setRecalls]   = useState([]);
   const [checking, setChecking] = useState(false);
-  const [lastChecked, setLastChecked] = useState(null);
+  const [checked, setChecked]   = useState(false); // true once run completes
+  const [recallError, setRecallError] = useState("");
 
-  const runCheck = async () => {
-    // Only check assets with a brand — those are the ones we can match
-    const checkable = assets.filter(a => a.brand && a.category !== "Insurance" && a.category !== "Other");
-    if (!checkable.length) return;
+  const runCheck = async (assetList) => {
+    const list = assetList || assets;
+    const checkable = list.filter(a => a.brand && a.category !== "Insurance" && a.category !== "Other");
+    if (!checkable.length) { setChecked(true); return; }
     setChecking(true);
+    setRecallError("");
     const found = [];
-    // Deduplicate by brand to avoid hammering the API
     const brandsDone = new Set();
     for (const asset of checkable) {
       const brandKey = asset.brand.split(" ")[0].toLowerCase();
@@ -4668,27 +4669,29 @@ function useRecallAlerts(assets) {
       try {
         const results = await checkCPSCRecall(asset.brand, asset.category, asset.model, asset.serial_number);
         results.forEach(r => found.push({ asset, recall: r }));
-      } catch(e) { /* fail silently */ }
-      // Small delay between requests to be a polite API citizen
-      await new Promise(res => setTimeout(res, 300));
+      } catch(e) {
+        setRecallError("Could not reach recall database — try again later.");
+      }
+      await new Promise(res => setTimeout(res, 250));
     }
     setRecalls(found);
-    setLastChecked(new Date());
+    setChecked(true);
     setChecking(false);
   };
 
-  // Run once on mount when we have assets, then cache for session
+  // Fire when assets first populate — handles the case where assets load after mount
+  const hasAssets = assets.length > 0;
   useEffect(() => {
-    if (assets.length > 0 && !lastChecked && !checking) {
-      runCheck();
+    if (hasAssets && !checked && !checking) {
+      runCheck(assets);
     }
-  }, [assets.length]);
+  }, [hasAssets]);
 
-  return { recalls, checking, lastChecked, runCheck };
+  return { recalls, checking, checked, recallError, runCheck: () => runCheck(assets) };
 }
 
 function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId }) {
-  const { recalls, checking, runCheck } = useRecallAlerts(warranties);
+  const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -4781,10 +4784,22 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           </div>
         </div>
       )}
+      {/* Recall status — checking / no recalls found / error */}
       {checking && (
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".72rem",color:"var(--mid)",marginBottom:".5rem",padding:"0 .25rem"}}>
-          <span className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".75rem",color:"var(--mid)",marginBottom:".65rem",padding:".6rem .85rem",background:"var(--white)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
+          <span className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)",flexShrink:0}}/>
           Checking CPSC recall database for your appliances…
+        </div>
+      )}
+      {!checking && checked && recalls.length === 0 && !recallError && warranties.some(a => a.brand) && (
+        <div style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".75rem",color:"#3B6D11",marginBottom:".65rem",padding:".6rem .85rem",background:"#EAF3DE",borderRadius:"var(--r-sm)",border:"1px solid #97C459"}}>
+          🛡️ No active CPSC recalls found for your logged appliances
+        </div>
+      )}
+      {!checking && recallError && (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",fontSize:".75rem",color:"#92400E",marginBottom:".65rem",padding:".6rem .85rem",background:"#FEF9C3",borderRadius:"var(--r-sm)",border:"1px solid #FDE68A"}}>
+          <span>⚠ {recallError}</span>
+          <button onClick={runCheck} style={{fontSize:".72rem",fontWeight:700,color:"#92400E",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"'Hanken Grotesk',sans-serif"}}>Retry</button>
         </div>
       )}
 
