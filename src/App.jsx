@@ -691,14 +691,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .home-hero-no-photo .home-hero-address{color:rgba(255,255,255,.5)}
 
 /* value hero */
-.value-hero{background:var(--dark);border-radius:var(--r);padding:1.2rem 1.3rem;margin-bottom:1rem;position:relative;overflow:hidden}
+.value-hero{background:var(--dark);border-radius:var(--r);padding:1.1rem 1.2rem;margin-bottom:1rem;position:relative;overflow:hidden;text-align:left}
 .value-hero::before{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(78,114,96,.2) 0%,transparent 70%);top:-80px;right:-60px;pointer-events:none}
-.value-hero-label{font-size:.63rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:.25rem}
-.value-hero-amount{font-family:'Fraunces',serif;font-size:2.2rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.6rem}
+.value-hero-label{font-size:.6rem;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:.2rem;text-align:left}
+.value-hero-amount{font-family:'Fraunces',serif;font-size:2rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.5rem;text-align:left}
 .value-hero-row{display:flex;gap:1.2rem;flex-wrap:wrap;align-items:flex-start}
 .value-hero-stat{display:flex;flex-direction:column}
-.value-hero-stat-val{font-family:'Fraunces',serif;font-size:.95rem;font-weight:600;color:#fff;line-height:1}
-.value-hero-stat-label{font-size:.62rem;color:rgba(255,255,255,.4);margin-top:2px}
+.value-hero-stat-val{font-family:'Fraunces',serif;font-size:.92rem;font-weight:600;color:#fff;line-height:1}
+.value-hero-stat-label{font-size:.6rem;color:rgba(255,255,255,.38);margin-top:2px}
 .value-appreciation{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:10px;margin-top:.5rem}
 .appreciation-pos{background:rgba(78,114,96,.3);color:#7DCBA1}
 .appreciation-neg{background:rgba(192,90,40,.25);color:#F0B08A}
@@ -7856,27 +7856,27 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           </div>
 
           {/* Key stats row */}
-          <div style={{display:"grid",gridTemplateColumns:`repeat(${[lastSalePrice>0, profile.rent_zestimate>0, profile.sqft>0].filter(Boolean).length + 1},1fr)`,gap:".5rem",marginBottom: taxHistory.length>0 || priceHistory.length>0 ? ".85rem" : 0}}>
+          <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",marginBottom: taxHistory.length>0 || priceHistory.length>0 ? ".8rem" : 0}}>
             {lastSalePrice > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
                 <div className="value-hero-stat-val">{fmt$(lastSalePrice)}</div>
-                <div className="value-hero-stat-label">Purchase{profile.last_sale_date?` · ${fmtD(profile.last_sale_date)}`:""}</div>
+                <div className="value-hero-stat-label">Purchased{profile.last_sale_date?` ${fmtD(profile.last_sale_date)}`:""}</div>
               </div>
             )}
             {profile.rent_zestimate > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
                 <div className="value-hero-stat-val">{fmt$(profile.rent_zestimate)}/mo</div>
                 <div className="value-hero-stat-label">Rent estimate</div>
               </div>
             )}
-            {profile.sqft > 0 && zestimate > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
-                <div className="value-hero-stat-val">{fmt$(Math.round(zestimate/Number(profile.sqft)))}</div>
-                <div className="value-hero-stat-label">Per sq ft</div>
+            {Number(profile.sqft) > 0 && zestimate > 0 && (
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
+                <div className="value-hero-stat-val">{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div>
+                <div className="value-hero-stat-label">Price per sq ft</div>
               </div>
             )}
-            {profile.hoa_fee > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".5rem .6rem"}}>
+            {Number(profile.hoa_fee) > 0 && (
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
                 <div className="value-hero-stat-val">{fmt$(profile.hoa_fee)}/mo</div>
                 <div className="value-hero-stat-label">HOA fee</div>
               </div>
