@@ -2009,7 +2009,6 @@ function LandingPage({ onSignIn, onSignUp }) {
             <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">Free to get started</div></div>
             <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="10">10</span><span className="suf"> min</span></div><div className="stat-l">To set up your home</div></div>
             <div className="stat-cell"><div className="stat-n">1<span className="suf"> scan</span></div><div className="stat-l">To log any appliance</div></div>
-            <div className="stat-cell"><div className="stat-n">1<span className="suf"> scan</span></div><div className="stat-l">To log any appliance</div></div>
           </div>
         </div>
       </section>
