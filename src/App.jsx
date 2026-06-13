@@ -966,13 +966,15 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .hero h1 em{font-style:italic;font-weight:400;color:var(--terracotta-soft)}
 .lp-root .hero-p{font-size:clamp(1.05rem,1.5vw,1.22rem);line-height:1.62;color:rgba(244,237,223,.74);max-width:30rem;margin:0 0 2rem}
 /* faux address bar */
-.lp-root .hero-addr{display:flex;align-items:center;gap:12px;background:rgba(251,247,238,.96);border-radius:16px;padding:.7rem .7rem .7rem 1.1rem;max-width:30rem;box-shadow:0 24px 50px -22px rgba(0,0,0,.55);margin-bottom:1.6rem}
+.lp-root .hero-addr{display:flex;align-items:center;gap:12px;background:rgba(251,247,238,.96);border-radius:16px;padding:.7rem .7rem .7rem 1.1rem;max-width:30rem;box-shadow:0 24px 50px -22px rgba(0,0,0,.55);margin-bottom:1.6rem;cursor:pointer;border:none;width:100%;text-align:left;transition:box-shadow .2s,transform .18s}
 .lp-root .hero-addr .pin{color:var(--terracotta);flex-shrink:0;display:flex}
 .lp-root .hero-addr .pin svg{width:20px;height:20px}
 .lp-root .hero-addr .typed{flex:1;font-size:.98rem;color:var(--ink);font-weight:500;min-width:0;overflow:hidden;white-space:nowrap}
 .lp-root .hero-addr .typed .caret{display:inline-block;width:2px;height:1.05em;background:var(--terracotta);margin-left:1px;vertical-align:-2px;animation:lp-blink 1.1s steps(1) infinite}
 @keyframes lp-blink{50%{opacity:0}}
 .lp-root .hero-addr .go{background:var(--pine);color:#fff;border-radius:11px;padding:.6rem .95rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.lp-root .hero-addr:hover{box-shadow:0 30px 60px -22px rgba(0,0,0,.65);transform:translateY(-1px)}
+.lp-root .hero-addr:hover .go{background:var(--pine-deep)}
 .lp-root .hero-btns{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.3rem}
 .lp-root .hero-micro{font-size:.86rem;color:rgba(244,237,223,.55)}
 .lp-root .hero-micro b{color:rgba(244,237,223,.85);font-weight:600}
@@ -1117,6 +1119,18 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .final p{font-size:1.1rem;color:rgba(244,237,223,.72);max-width:34rem;margin:0 auto 2.4rem;line-height:1.6}
 
 /* ---------- FOOTER ---------- */
+.lp-root .lp-hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:38px;height:38px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:10px;cursor:pointer;padding:8px;flex-shrink:0}
+.lp-root .lp-hamburger span{display:block;height:2px;background:rgba(244,237,223,.85);border-radius:2px;transition:all .2s}
+.lp-root .lp-mobile-menu{position:absolute;top:100%;left:0;right:0;background:var(--pine-deep);border-bottom:1px solid rgba(167,191,168,.15);padding:1rem 20px 1.5rem;display:flex;flex-direction:column;gap:0;box-shadow:0 16px 40px -12px rgba(0,0,0,.4)}
+.lp-root .lp-mobile-menu a{font-size:1rem;font-weight:500;color:rgba(244,237,223,.85);cursor:pointer;padding:.85rem 0;border-bottom:1px solid rgba(167,191,168,.1);text-decoration:none;display:block}
+.lp-root .lp-mobile-menu a:last-of-type{border-bottom:none}
+.lp-root .lp-mobile-menu-btns{display:flex;gap:12px;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(167,191,168,.1)}
+.lp-root .lp-mobile-menu-btns .btn{flex:1;justify-content:center}
+.lp-root .lp-mobile-menu-btns .lp-signin{flex:0 auto;font-size:.92rem;font-weight:600;color:rgba(244,237,223,.85);cursor:pointer;background:none;border:none;font-family:var(--body);padding:.82rem 1rem}
+@media(max-width:860px){
+  .lp-root .lp-hamburger{display:flex}
+  .lp-root .lp-nav{position:fixed}
+}
 .lp-root .foot{background:var(--pine-deep);color:rgba(244,237,223,.7);padding:40px 0;border-top:1px solid rgba(167,191,168,.12)}
 .lp-root .foot-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
 .lp-root .foot-brand{display:flex;align-items:center;gap:11px}
@@ -1145,8 +1159,11 @@ img,.lp-root img{max-width:100%;height:auto}
 @media(max-width:680px){
   .lp-root .wrap{padding:0 20px}
   .lp-root .hero{padding:116px 0 64px}
-  .lp-root .hero-grid{gap:40px}
-  .lp-root .hero-vis{margin:0 auto;max-width:100%;width:100%}
+  .lp-root .hero-grid{grid-template-columns:1fr;gap:32px}
+  .lp-root .hero-vis{margin:0 auto;max-width:480px;width:100%}
+  .lp-root .hero-addr{max-width:100%}
+  .lp-root .hero-p{max-width:100%}
+  .lp-root .feat.spot{grid-template-columns:1fr}
   .lp-root .hero-p{font-size:1.05rem}
   .lp-root .stats-in{grid-template-columns:1fr 1fr;gap:34px 0;padding:34px 0}
   .lp-root .stat-cell:nth-child(2){border-right:none}
@@ -1795,6 +1812,7 @@ function useSEO({ title, description, canonical, jsonLd } = {}) {
 function LandingPage({ onSignIn, onSignUp }) {
   const [scrolled, setScrolled] = useState(false);
   const [typed, setTyped] = useState("1420 Maple Grove Dr");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
@@ -1912,7 +1930,22 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="lp-nav-cta">
             <button className="lp-signin" onClick={onSignIn}>Sign in</button>
             <button className="btn btn-pine" onClick={onSignUp}>Get started free</button>
+            <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Toggle menu" aria-expanded={mobileMenuOpen}>
+              <span/><span/><span/>
+            </button>
           </div>
+          {mobileMenuOpen && (
+            <div className="lp-mobile-menu" role="navigation" aria-label="Mobile menu">
+              <a onClick={() => { scrollTo("features"); setMobileMenuOpen(false); }}>Features</a>
+              <a onClick={() => { scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
+              <a onClick={() => { scrollTo("pricing"); setMobileMenuOpen(false); }}>Pricing</a>
+              <a href="/blog" onClick={() => setMobileMenuOpen(false)}>Blog</a>
+              <div className="lp-mobile-menu-btns">
+                <button className="lp-signin" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>Sign in</button>
+                <button className="btn btn-pine" onClick={() => { onSignUp(); setMobileMenuOpen(false); }}>Get started free</button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -1935,11 +1968,11 @@ function LandingPage({ onSignIn, onSignUp }) {
             <span className="hero-badge"><span className="pdot"/> Free to join — no credit card</span>
             <h1>Your home,<br/><em>kept well.</em></h1>
             <p className="hero-p">The average homeowner spends over $13,000 a year on their home — and tracks almost none of it. Steadwell changes that. Type your address and we fill in the rest.</p>
-            <div className="hero-addr" role="presentation">
+            <button className="hero-addr" onClick={onSignUp} aria-label="Get started free — enter your address">
               <span className="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
               <span className="typed">{typed}<span className="caret"/></span>
-              <span className="go">Look up <span aria-hidden="true">→</span></span>
-            </div>
+              <span className="go">Get started <span aria-hidden="true">→</span></span>
+            </button>
             <div className="hero-btns">
               <button className="btn btn-terra" onClick={onSignUp}>Start for free <span aria-hidden="true">→</span></button>
               <button className="btn btn-ghost" onClick={() => scrollTo("features")}>See how it works</button>
