@@ -1005,7 +1005,7 @@ img,.lp-root img{max-width:100%;height:auto}
 
 /* ---------- STATS BAND ---------- */
 .lp-root .stats{display:block;background:var(--linen);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.lp-root .stats-in{display:grid;grid-template-columns:repeat(4,1fr);padding:44px 0;align-items:start}
+.lp-root .stats-in{display:grid;grid-template-columns:repeat(4,1fr);padding:44px 0;align-items:start;gap:0}
 .lp-root .stat-cell{text-align:center;padding:0 18px;border-right:1px solid var(--line)}
 .lp-root .stat-cell:last-child{border-right:none}
 .lp-root .stat-n{font-family:var(--display);font-weight:600;font-size:clamp(2rem,3.5vw,2.8rem);color:var(--pine);line-height:1;letter-spacing:-.02em;white-space:nowrap}
@@ -1167,6 +1167,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .hero-p{font-size:1.05rem}
   .lp-root .stats-in{grid-template-columns:1fr 1fr;gap:34px 0;padding:34px 0}
   .lp-root .stat-cell:nth-child(2){border-right:none}
+  .lp-root .stat-cell:nth-child(4){border-right:none}
   .lp-root .stat-cell{padding:0 10px}
   .lp-root .bento{grid-template-columns:1fr;gap:16px}
   .lp-root .feat{padding:26px 24px}
@@ -2004,10 +2005,11 @@ function LandingPage({ onSignIn, onSignUp }) {
       <section className="stats">
         <div className="wrap">
           <div className="stats-in rv">
-            <div className="stat-cell"><div className="stat-n">$<span className="cnt" data-to="13000">13000</span><span className="suf">+</span></div><div className="stat-l">Avg. annual home spend</div></div>
-            <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">To get started, free forever</div></div>
-            
+            <div className="stat-cell"><div className="stat-n">$13,000<span className="suf">+</span></div><div className="stat-l">Avg. annual home spend</div></div>
+            <div className="stat-cell"><div className="stat-n">$0</div><div className="stat-l">Free to get started</div></div>
             <div className="stat-cell"><div className="stat-n"><span className="cnt" data-to="10">10</span><span className="suf"> min</span></div><div className="stat-l">To set up your home</div></div>
+            <div className="stat-cell"><div className="stat-n">1<span className="suf"> scan</span></div><div className="stat-l">To log any appliance</div></div>
+            <div className="stat-cell"><div className="stat-n">1<span className="suf"> scan</span></div><div className="stat-l">To log any appliance</div></div>
           </div>
         </div>
       </section>
@@ -2165,21 +2167,16 @@ function LandingPage({ onSignIn, onSignUp }) {
               { title:"How to tell how old your water heater is — and when to replace it", tag:"Appliances", time:"4 min read", slug:"how-old-is-my-water-heater" },
               { title:"The real cost of deferred home maintenance", tag:"Finance", time:"6 min read", slug:"cost-of-deferred-maintenance" },
             ].map((post, i) => (
-              <a key={i} href={`/blog/${post.slug}`} style={{textDecoration:"none",display:"flex",flexDirection:"column",background:"var(--card)",border:"1px solid var(--lp-line)",borderRadius:14,overflow:"hidden",transition:"box-shadow .2s,transform .2s"}}
+              <a key={i} href={`/blog/${post.slug}`} style={{textDecoration:"none",display:"flex",flexDirection:"column",background:"var(--card)",border:"1px solid var(--lp-line)",borderRadius:16,padding:"1.5rem 1.4rem",transition:"box-shadow .2s,transform .2s",gap:".75rem"}}
                 onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 24px rgba(35,74,61,.1)";e.currentTarget.style.transform="translateY(-2px)"}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform=""}}
               >
-                <div style={{background:"linear-gradient(135deg,#234A3D,#2E5A4A)",height:80,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <svg viewBox="0 0 48 48" fill="none" width="32" height="32"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/></svg>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{fontSize:".7rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"var(--pine)",padding:"3px 10px",borderRadius:20}}>{post.tag}</span>
+                  <span style={{fontSize:".72rem",color:"var(--ink-soft)"}}>{post.time}</span>
                 </div>
-                <div style={{padding:"1rem 1.1rem",flex:1,display:"flex",flexDirection:"column",gap:".5rem"}}>
-                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                    <span style={{fontSize:".68rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"var(--pine)",padding:"2px 8px",borderRadius:8}}>{post.tag}</span>
-                    <span style={{fontSize:".68rem",color:"var(--ink-soft)"}}>{post.time}</span>
-                  </div>
-                  <div style={{fontWeight:600,fontSize:".9rem",color:"var(--ink)",lineHeight:1.4}}>{post.title}</div>
-                  <div style={{marginTop:"auto",paddingTop:".5rem",fontSize:".8rem",color:"var(--terracotta)",fontWeight:600}}>Read more →</div>
-                </div>
+                <div style={{fontFamily:"var(--display)",fontWeight:500,fontSize:"1.1rem",color:"var(--ink)",lineHeight:1.3,flex:1}}>{post.title}</div>
+                <div style={{fontSize:".85rem",color:"var(--terracotta)",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>Read article <span aria-hidden="true">→</span></div>
               </a>
             ))}
           </div>
