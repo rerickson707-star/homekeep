@@ -367,7 +367,8 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .field.s2{grid-column:span 2}
 @media(max-width:480px){.field.s2{grid-column:span 1}}
 label{font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
-input,select,textarea{width:100%;padding:.65rem .95rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none}
+input,textarea{width:100%;padding:.65rem .95rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none}
+select{width:100%;padding:.65rem 2.2rem .65rem .95rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7370' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right .85rem center;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;appearance:none;cursor:pointer}
 input:focus,select:focus,textarea:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(193,97,64,.12)}
 textarea{resize:vertical;min-height:70px;line-height:1.5}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23A8A09A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
@@ -5477,6 +5478,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [serviceAssetId, setServiceAssetId] = useState(null);
   const [serviceConfirm, setServiceConfirm] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);    // task object being edited
+  const [taskEditData, setTaskEditData] = useState({});
 
   // Asset CRUD
   const draftKey = (id) => `sw_asset_draft_${userId}_${id || "new"}`;
@@ -5639,6 +5642,28 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const {error} = await supabase.from("asset_service_log").delete().eq("id",serviceConfirm).eq("user_id",userId);
     if(!error) { setServiceLogs(serviceLogs.filter(s=>s.id!==serviceConfirm)); toast("Service log deleted","error"); }
     setServiceConfirm(null);
+  };
+
+  const openTaskEdit = (task) => {
+    setTaskEditData({...task});
+    setEditingTask(task);
+  };
+  const saveTaskEdit = async () => {
+    if (!editingTask) return;
+    const payload = {
+      title:    taskEditData.title||"",
+      status:   taskEditData.status||"Scheduled",
+      priority: taskEditData.priority||"Medium",
+      due_date: taskEditData.due_date||null,
+      notes:    taskEditData.notes||"",
+      cost:     taskEditData.cost ? Number(taskEditData.cost) : null,
+    };
+    const {error} = await supabase.from("tasks").update(payload).eq("id",editingTask.id).eq("user_id",userId);
+    if (!error) {
+      setTasks(tasks.map(t => t.id===editingTask.id ? {...t,...payload} : t));
+      toast("Task updated ✓");
+      setEditingTask(null);
+    } else { toast("Could not update task","error"); }
   };
 
   // Filter list
@@ -5893,10 +5918,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                           const isOverdue = d !== null && d < 0;
                           const dueTxt = d === 0 ? "Today" : d === 1 ? "Tomorrow" : isOverdue ? `${Math.abs(d)}d overdue` : t.due_date ? fmtD(t.due_date) : "No date";
                           return (
-                            <div key={t.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".7rem .9rem",
+                            <div key={t.id}
+                              onClick={()=>openTaskEdit(t)}
+                              style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".7rem .9rem",
                               borderBottom:i<scheduledTasks.length-1?"1px solid var(--stone)":"1px solid rgba(35,74,61,.08)",
-                              background:"rgba(35,74,61,.02)"}}>
-                              {/* Calendar icon dot */}
+                              background:"rgba(35,74,61,.02)",cursor:"pointer",transition:"background .15s"}}
+                              onMouseEnter={e=>e.currentTarget.style.background="rgba(35,74,61,.05)"}
+                              onMouseLeave={e=>e.currentTarget.style.background="rgba(35,74,61,.02)"}>
+                              {/* Calendar icon */}
                               <div style={{width:20,height:20,borderRadius:6,background:isOverdue?"var(--red-light)":"rgba(35,74,61,.1)",border:`1.5px solid ${isOverdue?"var(--red)":"rgba(35,74,61,.2)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,fontSize:".65rem"}}>
                                 📅
                               </div>
@@ -5911,6 +5940,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                                   {t.notes && !t.notes.startsWith("[") && <span style={{color:"#A8A09A"}}>· {t.notes.slice(0,40)}{t.notes.length>40?"…":""}</span>}
                                 </div>
                               </div>
+                              <span style={{color:"#C2B8AE",fontSize:".8rem",flexShrink:0,marginTop:2}}>›</span>
                             </div>
                           );
                         })}
@@ -6007,6 +6037,27 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
         {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
+        {/* Inline task edit modal */}
+        {editingTask && (
+          <Modal title="Edit Scheduled Task" onClose={()=>setEditingTask(null)} onSave={saveTaskEdit}>
+            <div className="fg">
+              <div className="field s2"><label>Task</label><input value={taskEditData.title||""} onChange={e=>setTaskEditData(d=>({...d,title:e.target.value}))}/></div>
+              <div className="field"><label>Status</label>
+                <select value={taskEditData.status||"Scheduled"} onChange={e=>setTaskEditData(d=>({...d,status:e.target.value}))}>
+                  {["Scheduled","In Progress","Completed","Overdue"].map(s=><option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="field"><label>Due Date</label><input type="date" value={taskEditData.due_date||""} onChange={e=>setTaskEditData(d=>({...d,due_date:e.target.value}))}/></div>
+              <div className="field"><label>Priority</label>
+                <select value={taskEditData.priority||"Medium"} onChange={e=>setTaskEditData(d=>({...d,priority:e.target.value}))}>
+                  {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
+                </select>
+              </div>
+              <div className="field"><label>Est. Cost ($)</label><input type="number" value={taskEditData.cost||""} onChange={e=>setTaskEditData(d=>({...d,cost:e.target.value}))} placeholder="0"/></div>
+              <div className="field s2"><label>Notes</label><textarea value={taskEditData.notes||""} onChange={e=>setTaskEditData(d=>({...d,notes:e.target.value}))} placeholder="Details, technician, parts needed…"/></div>
+            </div>
+          </Modal>
+        )}
       </div>
     );
   }
@@ -8088,29 +8139,45 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
 
   return (
     <div style={{marginBottom:".75rem"}}>
-      {/* Trigger button */}
-      <button onClick={open ? ()=>setOpen(false) : (result ? ()=>setOpen(true) : run)}
-        disabled={loading || (!hasBrand && isPlus)}
-        style={{width:"100%",display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .9rem",
-          borderRadius:"var(--r-sm)",border:`1.5px solid ${applied?"rgba(35,74,61,.3)":isPlus&&hasBrand?"rgba(35,74,61,.2)":"var(--stone)"}`,
-          background:applied?"rgba(35,74,61,.06)":isPlus&&hasBrand?"var(--white)":"var(--cream)",
-          cursor:(!hasBrand&&isPlus)||loading?"default":"pointer",
-          fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left",transition:"all .2s"}}>
-        <div style={{width:34,height:34,borderRadius:9,background:applied?"rgba(35,74,61,.12)":isPlus&&hasBrand?"rgba(35,74,61,.08)":"var(--stone)",
-          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"1rem"}}>
-          {loading?"⏳":applied?"✓":result?"✨":"✨"}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:".85rem",color:isPlus&&hasBrand?"var(--pine)":"var(--dark)",display:"flex",alignItems:"center",gap:6}}>
-            Smart Fill
-            {!isPlus && <span style={{fontSize:".6rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:6}}>Plus</span>}
+      {/* After applied — collapse to small unobtrusive link */}
+      {applied ? (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".45rem .75rem",
+          borderRadius:"var(--r-sm)",background:"rgba(35,74,61,.05)",border:"1px solid rgba(35,74,61,.12)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
+            <span style={{fontSize:".8rem"}}>✓</span>
+            <span style={{fontSize:".75rem",fontWeight:600,color:"var(--pine)"}}>Smart Fill applied</span>
+            <span style={{fontSize:".68rem",color:"#9E9690"}}>PM schedule & manual loaded</span>
           </div>
-          <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>
-            {loading?"Looking up manufacturer data…":applied?"Applied — PM schedule & manual loaded":result&&!open?"Results ready — tap to review":!hasBrand?"Add brand or model number first":isPlus?"Pull PM schedule, manual, costs & lifespan":"Upgrade to unlock manufacturer data"}
-          </div>
+          <button onClick={()=>{ setApplied(false); setResult(null); run(); }}
+            style={{fontSize:".68rem",color:"#9E9690",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:"2px 6px",borderRadius:4,textDecoration:"underline"}}>
+            Re-run
+          </button>
         </div>
-        {!loading && hasBrand && isPlus && <span style={{color:"#C2B8AE",fontSize:".8rem",flexShrink:0}}>{open?"▲":"▼"}</span>}
-      </button>
+      ) : (
+        <button onClick={open ? ()=>setOpen(false) : (result ? ()=>setOpen(true) : run)}
+          disabled={loading || (!hasBrand && isPlus)}
+          style={{width:"100%",display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .9rem",
+            borderRadius:"var(--r-sm)",border:`1.5px solid ${isPlus&&hasBrand?"rgba(35,74,61,.2)":"var(--stone)"}`,
+            background:isPlus&&hasBrand?"var(--white)":"var(--cream)",
+            cursor:(!hasBrand&&isPlus)||loading?"default":"pointer",
+            fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left",transition:"all .2s"}}>
+          <div style={{width:34,height:34,borderRadius:9,
+            background:isPlus&&hasBrand?"rgba(35,74,61,.08)":"var(--stone)",
+            display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"1rem"}}>
+            {loading?"⏳":"✨"}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:".85rem",color:isPlus&&hasBrand?"var(--pine)":"var(--dark)",display:"flex",alignItems:"center",gap:6}}>
+              Smart Fill
+              {!isPlus && <span style={{fontSize:".6rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:6}}>Plus</span>}
+            </div>
+            <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>
+              {loading?"Looking up manufacturer data…":result&&!open?"Results ready — tap to review":!hasBrand?"Add brand or model number first":isPlus?"Pull PM schedule, manual, costs & lifespan":"Upgrade to unlock manufacturer data"}
+            </div>
+          </div>
+          {!loading && hasBrand && isPlus && <span style={{color:"#C2B8AE",fontSize:".8rem",flexShrink:0}}>{open?"▲":"▼"}</span>}
+        </button>
+      )}
 
       {error && <div style={{margin:".4rem 0",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:8,fontSize:".75rem",color:"var(--red)"}}>⚠ {error}</div>}
 
