@@ -5526,6 +5526,38 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             )}
 
             {asset.notes && <div style={{marginTop:".65rem",fontSize:".78rem",color:"#7A7370",lineHeight:1.55}}>{asset.notes}</div>}
+
+            {/* Manual / Support links — surfaced from document_ref and notes */}
+            {(asset.document_ref && (asset.document_ref.startsWith("http://") || asset.document_ref.startsWith("https://"))) && (
+              <div style={{marginTop:".65rem",display:"flex",flexDirection:"column",gap:".4rem"}}>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".1rem"}}>Resources</div>
+                <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
+                  style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .75rem",background:"rgba(35,74,61,.06)",borderRadius:10,border:"1px solid rgba(35,74,61,.15)",textDecoration:"none"}}>
+                  <span style={{fontSize:"1rem",flexShrink:0}}>📋</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>Owner's Manual</div>
+                    <div style={{fontSize:".68rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref.replace(/^https?:\/\//,"")}</div>
+                  </div>
+                  <span style={{fontSize:".75rem",fontWeight:600,color:"var(--pine)",flexShrink:0}}>Open →</span>
+                </a>
+                {/* Parse support URL out of notes if stored there */}
+                {asset.notes && asset.notes.includes("Support: http") && (() => {
+                  const match = asset.notes.match(/Support: (https?:\/\/\S+)/);
+                  if (!match) return null;
+                  return (
+                    <a href={match[1]} target="_blank" rel="noopener noreferrer"
+                      style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .75rem",background:"var(--white)",borderRadius:10,border:"1px solid var(--stone)",textDecoration:"none"}}>
+                      <span style={{fontSize:"1rem",flexShrink:0}}>🔗</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)"}}>Manufacturer Support</div>
+                        <div style={{fontSize:".68rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{match[1].replace(/^https?:\/\//,"")}</div>
+                      </div>
+                      <span style={{fontSize:".75rem",fontWeight:600,color:"#9E9690",flexShrink:0}}>Open →</span>
+                    </a>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Service history */}
@@ -5702,6 +5734,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   {warrantyExpired && <span style={{color:"var(--red)",fontWeight:600}}>Warranty expired</span>}
                 </div>
               </div>
+              {a.document_ref && (a.document_ref.startsWith("http://") || a.document_ref.startsWith("https://")) && (
+                <a href={a.document_ref} target="_blank" rel="noopener noreferrer"
+                  onClick={e=>e.stopPropagation()}
+                  title="Open manual"
+                  style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:8,background:"rgba(35,74,61,.08)",border:"1px solid rgba(35,74,61,.15)",color:"var(--pine)",textDecoration:"none",fontSize:".7rem",fontWeight:700,flexShrink:0,marginRight:2}}>
+                  📋
+                </a>
+              )}
               <span style={{color:"#C2B8AE",fontSize:".9rem",flexShrink:0}}>›</span>
             </div>
             {/* Thin lifespan bar */}
@@ -7778,8 +7818,27 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {/* ── Home Value Hero ── */}
       {zestimate > 0 && (
         <div className="value-hero">
-          <div className="value-hero-label">Estimated home value</div>
-          <div className="value-hero-amount">{fmt$(zestimate)}</div>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem"}}>
+            <div>
+              <div className="value-hero-label">Estimated home value</div>
+              <div className="value-hero-amount">{fmt$(zestimate)}</div>
+            </div>
+            <button
+              onClick={async () => {
+                if (!profile?.address) return;
+                try {
+                  const result = await lookupProperty(profile.address);
+                  if (result?.zestimate) {
+                    const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || profile.rent_zestimate };
+                    await supabase.from("home_profiles").update(updated).eq("id", profile.id);
+                    setProfile(p => ({...p, ...updated}));
+                  }
+                } catch(e) {}
+              }}
+              style={{background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)",borderRadius:8,color:"rgba(244,237,223,.75)",fontSize:".68rem",fontWeight:600,padding:".3rem .6rem",cursor:"pointer",flexShrink:0,marginTop:4,fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}>
+              ↻ Refresh
+            </button>
+          </div>
           <div className="value-hero-row">
             {lastSalePrice > 0 && (
               <div className="value-hero-stat">
@@ -7799,6 +7858,30 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               {appreciation >= 0 ? "↑" : "↓"} {fmt$(Math.abs(appreciation))} ({appreciationPct}%) estimated appreciation
             </div>
           )}
+        </div>
+      )}
+
+      {!zestimate && profile?.address && (
+        <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem",display:"flex",alignItems:"center",gap:".75rem"}}>
+          <span style={{fontSize:"1.3rem",flexShrink:0}}>🏠</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600,fontSize:".88rem",color:"var(--dark)"}}>Home value not loaded</div>
+            <div style={{fontSize:".75rem",color:"#7A7370",marginTop:2}}>Tap to pull your estimated value from public records</div>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const result = await lookupProperty(profile.address);
+                if (result?.zestimate) {
+                  const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || "" };
+                  await supabase.from("home_profiles").update(updated).eq("id", profile.id);
+                  setProfile(p => ({...p, ...updated}));
+                }
+              } catch(e) {}
+            }}
+            style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontSize:".78rem",fontWeight:600,padding:".5rem .9rem",cursor:"pointer",flexShrink:0,fontFamily:"'Hanken Grotesk',sans-serif"}}>
+            Load value
+          </button>
         </div>
       )}
 
