@@ -7475,7 +7475,7 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
 
   useEffect(() => {
     if (!profile?.id) return;
-    supabase.from("home_members").select("*").eq("property_id", profile.id).eq("owner_id", userId)
+    supabase.from("home_members").select("*").eq("property_id", profile.id)
       .then(({ data }) => { setMembers(data || []); setLoading(false); });
   }, [profile?.id]);
 
@@ -7502,7 +7502,7 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
         toast("Invite sent ✓");
         setInviteEmail("");
         // Refresh members list
-        const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id).eq("owner_id", userId);
+        const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id);
         setMembers(updated || []);
       }
     } catch { toast("Could not send invite", "error"); }
@@ -10169,20 +10169,26 @@ export default function App() {
       setDataLoading(true);
       const userEmail = session.user.email;
 
-      // Load owned profiles + shared profiles in parallel
-      const [pResult, sharedResult] = await Promise.all([
-        supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true }),
-        supabase.from("home_members")
-          .select("property_id, role, status, profiles!property_id(*)")
-          .eq("member_email", userEmail)
-          .eq("status", "accepted"),
-      ]);
-
+      // Load owned profiles first, then shared memberships, then fetch shared profiles
+      const pResult = await supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true });
       const ownedProfiles = pResult.data || [];
-      // Shared profiles come from home_members join — mark them as shared
-      const sharedProfiles = (sharedResult.data || [])
-        .filter(m => m.profiles)
-        .map(m => ({ ...m.profiles, _shared: true, _role: m.role }));
+
+      // Load shared memberships — simple select without the problematic join
+      const sharedMembersResult = await supabase.from("home_members")
+        .select("property_id, role, status")
+        .eq("member_email", userEmail)
+        .eq("status", "accepted");
+
+      // For each shared membership, fetch the profile separately
+      const sharedMemberRows = sharedMembersResult.data || [];
+      const sharedProfiles = [];
+      for (const m of sharedMemberRows) {
+        if (!m.property_id) continue;
+        // Skip if we already own this property
+        if (ownedProfiles.find(p => p.id === m.property_id)) continue;
+        const { data: sp } = await supabase.from("profiles").select("*").eq("id", m.property_id).single();
+        if (sp) sharedProfiles.push({ ...sp, _shared: true, _role: m.role });
+      }
 
       // Merge — avoid duplicates if user owns and is also a member
       const allP = [...ownedProfiles];
@@ -10195,9 +10201,12 @@ export default function App() {
       // Determine active property
       let storedId = null;
       try { storedId = localStorage.getItem(`sw_prop_${uid}`); } catch {}
-      const activePid = (storedId && allP.find(p => p.id === storedId))
-        ? storedId
-        : allP[0]?.id || null;
+      // If stored ID doesn't match any profile, clear it to avoid stale 404s
+      if (storedId && !allP.find(p => p.id === storedId)) {
+        try { localStorage.removeItem(`sw_prop_${uid}`); } catch {}
+        storedId = null;
+      }
+      const activePid = storedId || allP[0]?.id || null;
 
       setActivePropertyIdRaw(activePid);
       const activeP = allP.find(p => p.id === activePid) || allP[0] || null;
