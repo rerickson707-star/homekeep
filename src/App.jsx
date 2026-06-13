@@ -691,17 +691,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .home-hero-no-photo .home-hero-address{color:rgba(255,255,255,.5)}
 
 /* value hero */
-.value-hero{background:var(--dark);border-radius:var(--r);padding:1.1rem 1.2rem;margin-bottom:1rem;position:relative;overflow:hidden;text-align:left}
-.value-hero::before{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(78,114,96,.2) 0%,transparent 70%);top:-80px;right:-60px;pointer-events:none}
-.value-hero-label{font-size:.6rem;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:.2rem;text-align:left}
-.value-hero-amount{font-family:'Fraunces',serif;font-size:2rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.5rem;text-align:left}
-.value-hero-row{display:flex;gap:1.2rem;flex-wrap:wrap;align-items:flex-start}
-.value-hero-stat{display:flex;flex-direction:column}
-.value-hero-stat-val{font-family:'Fraunces',serif;font-size:.92rem;font-weight:600;color:#fff;line-height:1}
-.value-hero-stat-label{font-size:.6rem;color:rgba(255,255,255,.38);margin-top:2px}
-.value-appreciation{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:10px;margin-top:.5rem}
-.appreciation-pos{background:rgba(78,114,96,.3);color:#7DCBA1}
-.appreciation-neg{background:rgba(192,90,40,.25);color:#F0B08A}
+.value-hero{background:var(--pine-deep);border-radius:var(--r);padding:1rem 1.2rem;margin-bottom:1rem;position:relative;overflow:hidden}
+.value-hero-label{font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(167,191,168,.7);margin-bottom:.15rem}
+.value-hero-amount{font-family:'Fraunces',serif;font-size:1.8rem;font-weight:700;color:#fff;line-height:1.05;letter-spacing:-.02em}
+.value-hero-row{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.55rem}
+.value-hero-stat{display:flex;flex-direction:column;background:rgba(255,255,255,.07);border-radius:8px;padding:.35rem .65rem;border:1px solid rgba(255,255,255,.06)}
+.value-hero-stat-val{font-size:.85rem;font-weight:700;color:#fff;line-height:1.2}
+.value-hero-stat-label{font-size:.58rem;color:rgba(255,255,255,.38);margin-top:1px;white-space:nowrap}
+.value-appreciation{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px}
+.appreciation-pos{background:rgba(78,160,100,.2);color:#7DD4A0}
+.appreciation-neg{background:rgba(193,97,64,.2);color:#F0A070}
 
 /* home sections */
 .home-section{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);margin-bottom:1rem;overflow:hidden}
@@ -7817,13 +7816,79 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── Home Value Hero ── */}
       {zestimate > 0 && (
-        <div className="value-hero" style={{position:"relative"}}>
-          {/* Refresh button */}
+        <div className="value-hero">
+          {/* Two-column: value left, stats right */}
+          <div style={{display:"flex",alignItems:"stretch",gap:"1rem"}}>
+
+            {/* Left — main value */}
+            <div style={{flex:"0 0 auto",display:"flex",flexDirection:"column",justifyContent:"center",minWidth:0}}>
+              <div className="value-hero-label">Est. home value</div>
+              <div className="value-hero-amount">{fmt$(zestimate)}</div>
+              {appreciation !== null && (
+                <div className={`value-appreciation ${appreciation>=0?"appreciation-pos":"appreciation-neg"}`} style={{marginTop:".3rem",alignSelf:"flex-start"}}>
+                  {appreciation>=0?"↑":"↓"} {fmt$(Math.abs(appreciation))} ({appreciationPct}%)
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div style={{width:"1px",background:"rgba(255,255,255,.08)",flexShrink:0,margin:".1rem 0"}}/>
+
+            {/* Right — stat grid */}
+            <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:".4rem",alignContent:"center"}}>
+              {lastSalePrice > 0 && (
+                <div className="value-hero-stat">
+                  <div className="value-hero-stat-val">{fmt$(lastSalePrice)}</div>
+                  <div className="value-hero-stat-label">Purchase price</div>
+                </div>
+              )}
+              {Number(profile.rent_zestimate) > 0 && (
+                <div className="value-hero-stat">
+                  <div className="value-hero-stat-val">{fmt$(profile.rent_zestimate)}/mo</div>
+                  <div className="value-hero-stat-label">Rent estimate</div>
+                </div>
+              )}
+              {Number(profile.sqft) > 0 && (
+                <div className="value-hero-stat">
+                  <div className="value-hero-stat-val">{fmt$(Math.round(zestimate/Number(profile.sqft)))}</div>
+                  <div className="value-hero-stat-label">Per sq ft</div>
+                </div>
+              )}
+              {Number(profile.hoa_fee) > 0 && (
+                <div className="value-hero-stat">
+                  <div className="value-hero-stat-val">{fmt$(profile.hoa_fee)}/mo</div>
+                  <div className="value-hero-stat-label">HOA fee</div>
+                </div>
+              )}
+              {taxHistory.length > 0 && (()=>{
+                const t = taxHistory[0];
+                const val = t.taxPaid||t.tax_paid||t.value;
+                return val ? (
+                  <div className="value-hero-stat">
+                    <div className="value-hero-stat-val">{fmt$(val)}</div>
+                    <div className="value-hero-stat-label">Tax {t.year||t.time||"last yr"}</div>
+                  </div>
+                ) : null;
+              })()}
+              {priceHistory.length > 1 && (()=>{
+                const prev = priceHistory[1];
+                const val = prev.price||prev.value;
+                return val ? (
+                  <div className="value-hero-stat">
+                    <div className="value-hero-stat-val">{fmt$(val)}</div>
+                    <div className="value-hero-stat-label">Prev sale {prev.date||prev.year||""}</div>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          </div>
+
+          {/* Refresh button — bottom right, unobtrusive */}
           <button
             onClick={async (e) => {
               if (!profile?.address) return;
               const btn = e.currentTarget;
-              btn.textContent = "…";
+              btn.textContent = "Updating…";
               btn.disabled = true;
               try {
                 const result = await lookupProperty(profile.address);
@@ -7834,84 +7899,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                   else toast("Could not save — try again", "error");
                 } else { toast("No updated value found", "error"); }
               } catch(err) { toast("Refresh failed — try again", "error"); }
-              btn.textContent = "↻";
+              btn.textContent = "↻ Refresh value";
               btn.disabled = false;
             }}
-            title="Refresh home value"
-            style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:8,color:"rgba(244,237,223,.6)",fontSize:".82rem",width:28,height:28,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
-            ↻
+            style={{marginTop:".75rem",background:"none",border:"none",color:"rgba(255,255,255,.28)",fontSize:".68rem",fontWeight:600,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0,display:"block",textAlign:"left"}}>
+            ↻ Refresh value
           </button>
-
-          {/* Value headline */}
-          <div className="value-hero-label">Estimated home value</div>
-          <div style={{display:"flex",alignItems:"baseline",gap:".75rem",flexWrap:"wrap",marginBottom:".75rem"}}>
-            <div className="value-hero-amount" style={{marginBottom:0}}>{fmt$(zestimate)}</div>
-            {appreciation !== null && (
-              <div style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:".75rem",fontWeight:700,
-                background:appreciation>=0?"rgba(78,160,100,.2)":"rgba(193,97,64,.2)",
-                color:appreciation>=0?"#7DD4A0":"#F0A070"}}>
-                {appreciation >= 0 ? "↑" : "↓"} {fmt$(Math.abs(appreciation))} ({appreciationPct}%)
-              </div>
-            )}
-          </div>
-
-          {/* Key stats row */}
-          <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",marginBottom: taxHistory.length>0 || priceHistory.length>0 ? ".8rem" : 0}}>
-            {lastSalePrice > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
-                <div className="value-hero-stat-val">{fmt$(lastSalePrice)}</div>
-                <div className="value-hero-stat-label">Purchased{profile.last_sale_date?` ${fmtD(profile.last_sale_date)}`:""}</div>
-              </div>
-            )}
-            {profile.rent_zestimate > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
-                <div className="value-hero-stat-val">{fmt$(profile.rent_zestimate)}/mo</div>
-                <div className="value-hero-stat-label">Rent estimate</div>
-              </div>
-            )}
-            {Number(profile.sqft) > 0 && zestimate > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
-                <div className="value-hero-stat-val">{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div>
-                <div className="value-hero-stat-label">Price per sq ft</div>
-              </div>
-            )}
-            {Number(profile.hoa_fee) > 0 && (
-              <div style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .7rem",minWidth:0}}>
-                <div className="value-hero-stat-val">{fmt$(profile.hoa_fee)}/mo</div>
-                <div className="value-hero-stat-label">HOA fee</div>
-              </div>
-            )}
-          </div>
-
-          {/* Tax history */}
-          {taxHistory.length > 0 && (
-            <div style={{marginBottom:".75rem"}}>
-              <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"rgba(255,255,255,.35)",marginBottom:".4rem"}}>Property tax history</div>
-              <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
-                {taxHistory.slice(0,4).map((t,i) => (
-                  <div key={i} style={{background:"rgba(255,255,255,.07)",borderRadius:8,padding:".4rem .65rem",textAlign:"center"}}>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:600,color:"#fff"}}>{t.taxPaid||t.tax_paid?fmt$(t.taxPaid||t.tax_paid):"—"}</div>
-                    <div style={{fontSize:".6rem",color:"rgba(255,255,255,.4)",marginTop:1}}>{t.year||t.time}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sale history */}
-          {priceHistory.length > 0 && (
-            <div>
-              <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"rgba(255,255,255,.35)",marginBottom:".4rem"}}>Sale history</div>
-              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                {priceHistory.slice(0,3).map((p2,i) => (
-                  <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".4rem .1rem",borderBottom:i<Math.min(priceHistory.length,3)-1?"1px solid rgba(255,255,255,.07)":"none"}}>
-                    <div style={{fontSize:".78rem",color:"rgba(255,255,255,.55)"}}>{p2.date||p2.time||p2.year}</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:600,color:"#fff"}}>{p2.price||p2.value?fmt$(p2.price||p2.value):"—"}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
