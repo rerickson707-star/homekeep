@@ -7817,28 +7817,37 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── Home Value Hero ── */}
       {zestimate > 0 && (
-        <div className="value-hero">
-          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem"}}>
-            <div>
-              <div className="value-hero-label">Estimated home value</div>
-              <div className="value-hero-amount">{fmt$(zestimate)}</div>
-            </div>
-            <button
-              onClick={async () => {
-                if (!profile?.address) return;
-                try {
-                  const result = await lookupProperty(profile.address);
-                  if (result?.zestimate) {
-                    const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || profile.rent_zestimate };
-                    await supabase.from("home_profiles").update(updated).eq("id", profile.id);
+        <div className="value-hero" style={{position:"relative"}}>
+          <button
+            onClick={async (e) => {
+              if (!profile?.address) return;
+              const btn = e.currentTarget;
+              btn.textContent = "…";
+              btn.disabled = true;
+              try {
+                const result = await lookupProperty(profile.address);
+                if (result?.zestimate) {
+                  const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || profile.rent_zestimate };
+                  const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
+                  if (!error) {
                     setProfile(p => ({...p, ...updated}));
+                    toast("Home value updated ✓");
+                  } else {
+                    toast("Could not save — try again", "error");
                   }
-                } catch(e) {}
-              }}
-              style={{background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)",borderRadius:8,color:"rgba(244,237,223,.75)",fontSize:".68rem",fontWeight:600,padding:".3rem .6rem",cursor:"pointer",flexShrink:0,marginTop:4,fontFamily:"'Hanken Grotesk',sans-serif",whiteSpace:"nowrap"}}>
-              ↻ Refresh
-            </button>
-          </div>
+                } else {
+                  toast("No updated value found", "error");
+                }
+              } catch(err) { toast("Refresh failed — try again", "error"); }
+              btn.textContent = "↻";
+              btn.disabled = false;
+            }}
+            title="Refresh home value"
+            style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)",borderRadius:8,color:"rgba(244,237,223,.75)",fontSize:".82rem",fontWeight:600,width:28,height:28,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
+            ↻
+          </button>
+          <div className="value-hero-label">Estimated home value</div>
+          <div className="value-hero-amount">{fmt$(zestimate)}</div>
           <div className="value-hero-row">
             {lastSalePrice > 0 && (
               <div className="value-hero-stat">
@@ -7869,15 +7878,27 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             <div style={{fontSize:".75rem",color:"#7A7370",marginTop:2}}>Tap to pull your estimated value from public records</div>
           </div>
           <button
-            onClick={async () => {
+            onClick={async (e) => {
+              const btn = e.currentTarget;
+              btn.textContent = "Loading…";
+              btn.disabled = true;
               try {
                 const result = await lookupProperty(profile.address);
                 if (result?.zestimate) {
                   const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || "" };
-                  await supabase.from("home_profiles").update(updated).eq("id", profile.id);
-                  setProfile(p => ({...p, ...updated}));
+                  const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
+                  if (!error) {
+                    setProfile(p => ({...p, ...updated}));
+                    toast("Home value loaded ✓");
+                  } else {
+                    toast("Could not save — try again", "error");
+                  }
+                } else {
+                  toast("No value found for this address", "error");
                 }
-              } catch(e) {}
+              } catch(e) { toast("Could not load — try again", "error"); }
+              btn.textContent = "Load value";
+              btn.disabled = false;
             }}
             style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontSize:".78rem",fontWeight:600,padding:".5rem .9rem",cursor:"pointer",flexShrink:0,fontFamily:"'Hanken Grotesk',sans-serif"}}>
             Load value
