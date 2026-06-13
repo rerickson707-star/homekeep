@@ -643,14 +643,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lookup-not-found strong{color:var(--dark);display:block;margin-bottom:3px}
 
 /* ══ ASSETS ══ */
-.asset-card{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);margin-bottom:.75rem;overflow:hidden;transition:box-shadow .18s}
-.asset-card:hover{box-shadow:var(--shadow-md)}
-.asset-card-header{display:flex;align-items:flex-start;gap:.85rem;padding:1rem 1.1rem}
-.asset-card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.asset-card{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);box-shadow:var(--shadow);margin-bottom:.55rem;overflow:hidden;transition:box-shadow .18s,transform .15s}
+.asset-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.asset-card:active{transform:translateY(0)}
+.asset-card-header{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem}
+.asset-card-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
 .asset-card-body{flex:1;min-width:0}
-.asset-card-title{font-weight:700;font-size:.95rem;color:var(--dark);margin-bottom:3px}
-.asset-card-meta{font-size:.73rem;color:#A8A09A;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.asset-card-title{font-weight:700;font-size:.92rem;color:var(--dark);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset-card-meta{font-size:.7rem;color:#A8A09A;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
 .asset-card-actions{display:flex;gap:4px;flex-shrink:0}
+.asset-group-header{display:flex;align-items:center;gap:.6rem;padding:".4rem 0 .5rem";margin-bottom:.4rem;margin-top:.85rem}
+.asset-group-header:first-child{margin-top:0}
+.asset-group-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mid)}
+.asset-group-count{font-size:.65rem;fontWeight:600;padding:"1px 7px";borderRadius:10px;background:var(--stone);color:var(--mid)}
+.asset-recall-badge{display:inline-flex;align-items:center;gap:3px;font-size:.62rem;font-weight:700;padding:1px 6px;border-radius:6px;flex-shrink:0}
+.asset-pm-prompt{font-size:.68rem;color:"#92610A";font-style:italic}
 .asset-condition{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:700;border:1px solid;white-space:nowrap}
 .asset-lifespan-row{padding:.7rem 1.1rem;border-top:1px solid var(--stone);display:flex;flex-direction:column;gap:5px}
 .asset-lifespan-label{display:flex;justify-content:space-between;font-size:.68rem;color:#A8A09A;font-weight:500}
@@ -2932,6 +2939,18 @@ const DEFAULT_LIFESPAN = {
 const ASSET_ICONS = {
   HVAC:"🌡️", Appliance:"🍳", Roofing:"🏚️", Plumbing:"🚿",
   Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
+};
+const CATEGORY_ORDER = ["HVAC","Appliance","Plumbing","Electrical","Roofing","Structure","Safety","Landscaping","Other"];
+const CATEGORY_COLORS = {
+  HVAC:      {bg:"rgba(58,122,175,.1)", border:"rgba(58,122,175,.2)", icon:"rgba(58,122,175,.8)"},
+  Appliance: {bg:"rgba(193,97,64,.08)", border:"rgba(193,97,64,.18)", icon:"var(--rust)"},
+  Roofing:   {bg:"rgba(42,39,35,.07)", border:"rgba(42,39,35,.15)", icon:"var(--dark)"},
+  Plumbing:  {bg:"rgba(35,74,61,.08)", border:"rgba(35,74,61,.18)", icon:"var(--pine)"},
+  Electrical:{bg:"rgba(184,134,30,.1)", border:"rgba(184,134,30,.2)", icon:"var(--gold)"},
+  Structure: {bg:"rgba(122,83,62,.1)", border:"rgba(122,83,62,.2)", icon:"var(--brown)"},
+  Safety:    {bg:"rgba(193,97,64,.1)", border:"rgba(193,97,64,.2)", icon:"var(--rust)"},
+  Landscaping:{bg:"rgba(167,191,168,.2)", border:"rgba(167,191,168,.4)", icon:"var(--sage)"},
+  Other:     {bg:"rgba(122,115,112,.08)", border:"rgba(122,115,112,.15)", icon:"var(--mid)"},
 };
 
 const ASSET_INTEL_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/asset-intelligence";
@@ -5641,171 +5660,202 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
     const totalServiceCost = assetLogs.reduce((s,l)=>s+Number(l.cost||0),0);
 
+    const catColor = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Other;
+    const supportUrl = (() => { const m = (asset.notes||"").match(/Support: (https?:\/\/\S+)/); return m?m[1]:null; })();
+
     return (
       <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
         {/* Header */}
-        <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setSelectedAsset(null)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
-          <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".75rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setSelectedAsset(null)} style={{padding:".3rem .65rem",fontSize:".82rem",fontWeight:600}}>←</button>
+          <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
           <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(asset)} style={{fontSize:".78rem"}}>Edit</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(asset.id)} style={{fontSize:".78rem",color:"var(--red)"}}>Delete</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(asset.id)} style={{fontSize:".78rem",color:"var(--red)"}}>✕</button>
         </div>
 
-        {/* Scrollable body */}
-        <div style={{flex:1,overflowY:"auto",padding:"1rem",background:"var(--linen)"}}>
+        <div style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
 
-          {/* Recall check for this specific asset */}
-          {asset.brand && (
-            <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} />
-          )}
-
-          {/* Overview card */}
-          <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
+          {/* ── HERO CARD ── */}
+          <div style={{background:`linear-gradient(135deg, var(--pine-deep), var(--pine))`,padding:"1.25rem 1.1rem 1rem",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",right:-20,top:-20,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
             {asset.asset_photo_url && (
-              <img src={asset.asset_photo_url} alt={asset.item} style={{width:"100%",height:160,objectFit:"cover",borderRadius:"8px",marginBottom:".85rem",cursor:"pointer"}} onClick={()=>setLightbox(asset.asset_photo_url)}/>
+              <img src={asset.asset_photo_url} alt={asset.item}
+                style={{width:"100%",height:140,objectFit:"cover",borderRadius:12,marginBottom:".85rem",cursor:"pointer",border:"2px solid rgba(255,255,255,.1)"}}
+                onClick={()=>setLightbox(asset.asset_photo_url)}/>
             )}
-            <div style={{display:"flex",alignItems:"flex-start",gap:".6rem",marginBottom:".75rem"}}>
-              <span style={{fontSize:"1.5rem",flexShrink:0}}>{icon}</span>
+            <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
+              <div style={{width:48,height:48,borderRadius:14,background:catColor.bg,border:`1.5px solid ${catColor.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>
+                {icon}
+              </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{asset.item}</div>
-                <div style={{fontSize:".75rem",color:"#7A7370",marginTop:2,lineHeight:1.5}}>
-                  {[asset.category, asset.model&&`Model: ${asset.model}`, asset.serial_number&&`S/N: ${asset.serial_number}`, asset.vendor].filter(Boolean).join(" · ")}
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:500,color:"#fff",lineHeight:1.2,marginBottom:3}}>{asset.item}</div>
+                <div style={{fontSize:".72rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>
+                  {[asset.brand, asset.model&&`Model ${asset.model}`, asset.serial_number&&`S/N ${asset.serial_number}`, asset.vendor].filter(Boolean).join(" · ") || asset.category || "No details yet"}
                 </div>
               </div>
-              <span style={{padding:"3px 10px",borderRadius:"20px",fontSize:".72rem",fontWeight:700,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{asset.condition||"Good"}</span>
+              <span style={{padding:"3px 10px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0}}>{asset.condition||"Good"}</span>
             </div>
 
-            {/* Stats */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".5rem",marginBottom:".75rem"}}>
+            {/* Key stats row */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".5rem",marginTop:".9rem"}}>
               {[
                 {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
-                {label:"Replacement",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
-                {label:"Service total",val:assetLogs.length>0?fmt$(totalServiceCost):"—"},
+                {label:"Replace",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
+                {label:"Serviced",val:assetLogs.length>0?fmt$(totalServiceCost):"—"},
               ].map(s=>(
-                <div key={s.label} style={{textAlign:"center",background:"var(--cream)",borderRadius:"8px",padding:".5rem .25rem"}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:"var(--dark)"}}>{s.val}</div>
-                  <div style={{fontSize:".63rem",color:"#A8A09A",marginTop:1}}>{s.label}</div>
+                <div key={s.label} style={{textAlign:"center",background:"rgba(255,255,255,.08)",borderRadius:10,padding:".5rem .25rem",border:"1px solid rgba(255,255,255,.08)"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#fff"}}>{s.val}</div>
+                  <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:2}}>{s.label}</div>
                 </div>
               ))}
             </div>
 
-            {/* Lifespan */}
+            {/* Lifespan bar */}
             {lifespanPct !== null && (
-              <div style={{marginBottom:".6rem"}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#7A7370",marginBottom:".3rem"}}>
-                  <span>{ageYears}yr old · expected ~{lifespanYears}yr lifespan</span>
-                  <span style={{fontWeight:700,color:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"#92610A":"var(--sage)"}}>
-                    {lifespanStatus==="alert"?"Past expected life":lifespanStatus==="warn"?"Aging":"Good shape"}
+              <div style={{marginTop:".85rem"}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"rgba(244,237,223,.55)",marginBottom:".3rem"}}>
+                  <span>{ageYears} yr old · expected {lifespanYears} yr lifespan</span>
+                  <span style={{color:lifespanStatus==="alert"?"#FC9A8A":lifespanStatus==="warn"?"#FCD77A":"#7DCBA1",fontWeight:700}}>
+                    {lifespanStatus==="alert"?"⚠ Past expected life":lifespanStatus==="warn"?"Aging":"Good shape"}
                   </span>
                 </div>
-                <div style={{height:6,background:"var(--stone)",borderRadius:3,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:3,background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)"}}/>
+                <div style={{height:5,background:"rgba(255,255,255,.12)",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:4,
+                    background:lifespanStatus==="alert"?"#F87171":lifespanStatus==="warn"?"#FCD34D":"#6EE7B7"}}/>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Warranty */}
+          <div style={{padding:"1rem"}}>
+
+            {/* ── No brand/model prompt ── */}
+            {!asset.brand && !asset.model && (
+              <div style={{background:"#FEF9C3",border:"1px solid #FDE68A",borderRadius:"var(--r-sm)",padding:".75rem .9rem",marginBottom:".75rem",display:"flex",alignItems:"center",gap:".6rem"}}>
+                <span style={{fontSize:"1.1rem",flexShrink:0}}>💡</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:".82rem",fontWeight:700,color:"#92400E"}}>Add brand & model for full features</div>
+                  <div style={{fontSize:".72rem",color:"#92400E",marginTop:1}}>Enables recall checks, Smart Fill, PM schedule, and owner's manual</div>
+                </div>
+                <button onClick={()=>openEdit(asset)} style={{fontSize:".75rem",fontWeight:700,color:"#92400E",background:"rgba(193,97,64,.1)",border:"1px solid rgba(193,97,64,.25)",borderRadius:8,padding:".35rem .7rem",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",flexShrink:0}}>Edit</button>
+              </div>
+            )}
+
+            {/* ── Recall status ── */}
+            {asset.brand && (
+              <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} />
+            )}
+
+            {/* ── Warranty ── */}
             {asset.expiry_date && (
-              <div style={{padding:".5rem .75rem",borderRadius:"8px",fontSize:".78rem",fontWeight:500,background:warrantyExpired?"var(--cream)":warrantySoon?"#FFF8E6":"var(--sage-light)",color:warrantyExpired?"#A8A09A":warrantySoon?"#92610A":"var(--sage)"}}>
-                {warrantyExpired?`Warranty expired ${fmtD(asset.expiry_date)}`:warrantySoon?`Warranty expires in ${warrantyDays} days — ${fmtD(asset.expiry_date)}`:`Warranty active — expires ${fmtD(asset.expiry_date)}`}
+              <div style={{padding:".6rem .85rem",borderRadius:"var(--r-sm)",fontSize:".78rem",fontWeight:600,marginBottom:".75rem",
+                background:warrantyExpired?"var(--cream)":warrantySoon?"#FFF8E6":"#EAF3DE",
+                color:warrantyExpired?"#A8A09A":warrantySoon?"#92610A":"#2D6A3D",
+                border:`1px solid ${warrantyExpired?"var(--stone)":warrantySoon?"#F5CC76":"#97C459"}`}}>
+                🔖 {warrantyExpired?`Warranty expired ${fmtD(asset.expiry_date)}`:warrantySoon?`Warranty expires in ${warrantyDays} days (${fmtD(asset.expiry_date)})`:`Warranty active · expires ${fmtD(asset.expiry_date)}`}
               </div>
             )}
 
-            {asset.notes && <div style={{marginTop:".65rem",fontSize:".78rem",color:"#7A7370",lineHeight:1.55}}>{asset.notes}</div>}
-
-            {/* Manual / Support links — surfaced from document_ref and notes */}
-            {(asset.document_ref && (asset.document_ref.startsWith("http://") || asset.document_ref.startsWith("https://"))) && (
-              <div style={{marginTop:".65rem",display:"flex",flexDirection:"column",gap:".4rem"}}>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".1rem"}}>Resources</div>
-                <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
-                  style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .75rem",background:"rgba(35,74,61,.06)",borderRadius:10,border:"1px solid rgba(35,74,61,.15)",textDecoration:"none"}}>
-                  <span style={{fontSize:"1rem",flexShrink:0}}>📋</span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>Owner's Manual</div>
-                    <div style={{fontSize:".68rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref.replace(/^https?:\/\//,"")}</div>
-                  </div>
-                  <span style={{fontSize:".75rem",fontWeight:600,color:"var(--pine)",flexShrink:0}}>Open →</span>
-                </a>
-                {/* Parse support URL out of notes if stored there */}
-                {asset.notes && asset.notes.includes("Support: http") && (() => {
-                  const match = asset.notes.match(/Support: (https?:\/\/\S+)/);
-                  if (!match) return null;
-                  return (
-                    <a href={match[1]} target="_blank" rel="noopener noreferrer"
-                      style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .75rem",background:"var(--white)",borderRadius:10,border:"1px solid var(--stone)",textDecoration:"none"}}>
-                      <span style={{fontSize:"1rem",flexShrink:0}}>🔗</span>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)"}}>Manufacturer Support</div>
-                        <div style={{fontSize:".68rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{match[1].replace(/^https?:\/\//,"")}</div>
-                      </div>
-                      <span style={{fontSize:".75rem",fontWeight:600,color:"#9E9690",flexShrink:0}}>Open →</span>
-                    </a>
-                  );
-                })()}
-              </div>
-            )}
-          </div>
-
-          {/* Service history */}
-          <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",marginBottom:".75rem",overflow:"hidden"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem",borderBottom:assetLogs.length>0?"1px solid var(--stone)":"none"}}>
-              <div>
-                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>Service History</span>
-                {assetLogs.length>0 && <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{assetLogs.length} entries · {fmt$(totalServiceCost)} total</span>}
-              </div>
-              <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)}>+ Log service</button>
-            </div>
-            {assetLogs.length===0 ? (
-              <div style={{padding:"1.5rem",textAlign:"center",fontSize:".82rem",color:"#A8A09A"}}>
-                No service history yet
-                <br/>
-                <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(asset.id)} style={{marginTop:".5rem"}}>Log first service</button>
-              </div>
-            ) : assetLogs.map((s,i)=>(
-              <div key={s.id} style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".8rem 1rem",borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{s.description}</div>
-                  <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2,display:"flex",gap:".5rem",flexWrap:"wrap"}}>
-                    <span>{fmtD(s.service_date)}</span>
-                    {s.notes&&<span>{s.notes}</span>}
-                  </div>
-                </div>
-                <div style={{flexShrink:0,textAlign:"right"}}>
-                  <div style={{fontSize:".85rem",fontWeight:600,color:s.cost>0?"var(--dark)":"#C8C0B8"}}>{s.cost>0?fmt$(s.cost):"—"}</div>
-                  <div style={{display:"flex",gap:3,marginTop:3,justifyContent:"flex-end"}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)} style={{fontSize:".68rem"}}>Edit</button>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>setServiceConfirm(s.id)} style={{fontSize:".68rem",color:"var(--red)"}}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Related tasks */}
-          {assetTasks.length>0 && (
-            <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
-              <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--stone)"}}>
-                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>Related Tasks</span>
-                <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{assetTasks.length}</span>
-              </div>
-              {assetTasks.map((t,i)=>{
-                const d=daysTo(t.due_date);
-                const isOverdue=t.status!=="Completed"&&d!==null&&d<0;
-                const isDone=t.status==="Completed";
-                return (
-                  <div key={t.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",borderBottom:i<assetTasks.length-1?"1px solid var(--stone)":"none",opacity:isDone?.6:1}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:isOverdue?"var(--red)":isDone?"#C8C0B8":"var(--sage)"}}/>
+            {/* ── Resources (manual + support) ── */}
+            {(asset.document_ref?.startsWith("http") || supportUrl) && (
+              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
+                <div style={{padding:".55rem .85rem",borderBottom:"1px solid var(--stone)",fontSize:".65rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".07em"}}>Resources</div>
+                {asset.document_ref?.startsWith("http") && (
+                  <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
+                    style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .85rem",borderBottom:supportUrl?"1px solid var(--stone)":"none",textDecoration:"none",background:"rgba(35,74,61,.03)"}}>
+                    <span style={{fontSize:"1.1rem"}}>📋</span>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                      {t.due_date&&<div style={{fontSize:".72rem",color:isOverdue?"var(--red)":"#A8A09A",marginTop:1}}>{d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}</div>}
+                      <div style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)"}}>Owner's Manual</div>
+                      <div style={{fontSize:".67rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref.replace(/^https?:\/\//,"")}</div>
                     </div>
-                    <span style={{fontSize:".72rem",fontWeight:600,padding:"2px 8px",borderRadius:"10px",flexShrink:0,background:isDone?"var(--cream2)":isOverdue?"var(--red-light)":"var(--sage-light)",color:isDone?"#A8A09A":isOverdue?"var(--red)":"var(--sage)",whiteSpace:"nowrap"}}>{t.status}</span>
+                    <span style={{fontSize:".72rem",fontWeight:600,color:"var(--pine)",flexShrink:0}}>Open →</span>
+                  </a>
+                )}
+                {supportUrl && (
+                  <a href={supportUrl} target="_blank" rel="noopener noreferrer"
+                    style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .85rem",textDecoration:"none"}}>
+                    <span style={{fontSize:"1.1rem"}}>🔗</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".8rem",fontWeight:700,color:"var(--dark)"}}>Manufacturer Support</div>
+                      <div style={{fontSize:".67rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supportUrl.replace(/^https?:\/\//,"")}</div>
+                    </div>
+                    <span style={{fontSize:".72rem",fontWeight:600,color:"#9E9690",flexShrink:0}}>Open →</span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* ── Service History ── */}
+            <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".7rem .9rem",borderBottom:assetLogs.length>0?"1px solid var(--stone)":"none",background:"var(--cream)"}}>
+                <div>
+                  <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Service History</span>
+                  {assetLogs.length>0 && <span style={{fontSize:".68rem",color:"#A8A09A",marginLeft:".5rem"}}>{assetLogs.length} records · {fmt$(totalServiceCost)}</span>}
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>+ Log</button>
+              </div>
+              {assetLogs.length===0 ? (
+                <div style={{padding:"1.25rem",textAlign:"center"}}>
+                  <div style={{fontSize:".8rem",color:"#A8A09A",marginBottom:".5rem"}}>No service history yet</div>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>Log first service</button>
+                </div>
+              ) : assetLogs.map((s,i)=>(
+                <div key={s.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".75rem .9rem",borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none"}}>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)"}}>{s.description}</div>
+                    <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2,display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+                      <span>{fmtD(s.service_date)}</span>
+                      {s.vendor&&<span>· {s.vendor}</span>}
+                      {s.notes&&<span>· {s.notes}</span>}
+                    </div>
                   </div>
-                );
-              })}
+                  <div style={{flexShrink:0,textAlign:"right"}}>
+                    <div style={{fontSize:".83rem",fontWeight:700,color:s.cost>0?"var(--dark)":"#C8C0B8"}}>{s.cost>0?fmt$(s.cost):"—"}</div>
+                    <div style={{display:"flex",gap:3,marginTop:3,justifyContent:"flex-end"}}>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)} style={{fontSize:".65rem"}}>Edit</button>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>setServiceConfirm(s.id)} style={{fontSize:".65rem",color:"var(--red)"}}>✕</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+
+            {/* ── Related Tasks ── */}
+            {assetTasks.length>0 && (
+              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
+                <div style={{padding:".7rem .9rem",borderBottom:"1px solid var(--stone)",background:"var(--cream)",display:"flex",alignItems:"center",gap:".5rem"}}>
+                  <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Related Tasks</span>
+                  <span style={{fontSize:".65rem",color:"#A8A09A"}}>{assetTasks.length}</span>
+                </div>
+                {assetTasks.map((t,i)=>{
+                  const d=daysTo(t.due_date);
+                  const isOverdue=t.status!=="Completed"&&d!==null&&d<0;
+                  const isDone=t.status==="Completed";
+                  return (
+                    <div key={t.id} style={{display:"flex",alignItems:"center",gap:".65rem",padding:".65rem .9rem",borderBottom:i<assetTasks.length-1?"1px solid var(--stone)":"none",opacity:isDone?.65:1}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,background:isOverdue?"var(--red)":isDone?"#C8C0B8":"var(--sage)"}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
+                        {t.due_date&&<div style={{fontSize:".7rem",color:isOverdue?"var(--red)":"#A8A09A",marginTop:1}}>{d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}</div>}
+                      </div>
+                      <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:10,flexShrink:0,
+                        background:isDone?"var(--cream2)":isOverdue?"var(--red-light)":"var(--sage-light)",
+                        color:isDone?"#A8A09A":isOverdue?"var(--red)":"var(--sage)",whiteSpace:"nowrap"}}>{t.status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Notes ── */}
+            {asset.notes && (
+              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem .9rem",marginBottom:".75rem"}}>
+                <div style={{fontSize:".65rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".35rem"}}>Notes</div>
+                <div style={{fontSize:".8rem",color:"var(--dark)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{asset.notes.replace(/Support: https?:\/\/\S+/g,"").trim()}</div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Modals */}
@@ -5844,36 +5894,43 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     );
   }
 
+  // Group assets by category
+  const grouped = {};
+  list.forEach(a => {
+    const cat = a.category || "Other";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(a);
+  });
+  const groupKeys = CATEGORY_ORDER.filter(c => grouped[c]).concat(
+    Object.keys(grouped).filter(c => !CATEGORY_ORDER.includes(c))
+  );
+
   return (
     <div>
       <div className="sh">
         <span className="sh-title">Assets</span>
-        <button className="btn btn-primary" onClick={openNew}>+ Add Asset</button>
+        <button className="btn btn-primary" onClick={openNew}>+ Add</button>
       </div>
 
-      {/* Summary stats */}
+      {/* Summary stats strip */}
       {assets.length > 0 && (
-        <div className="stats" style={{marginBottom:"1rem"}}>
-          <div className="stat c-rust">
-            <div className="stat-label">Total Assets</div>
-            <div className="stat-val">{assets.length}</div>
-            <div className="stat-sub">tracked items</div>
-          </div>
-          <div className="stat c-sage">
-            <div className="stat-label">Original Value</div>
-            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(assets.reduce((s,a)=>s+Number(a.cost||0),0))}</div>
-            <div className="stat-sub">purchase price</div>
-          </div>
-          <div className="stat c-gold">
-            <div className="stat-label">Replacement</div>
-            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0))}</div>
-            <div className="stat-sub">today's estimate</div>
-          </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:".5rem",marginBottom:"1rem"}}>
+          {[
+            {label:"Tracked",val:assets.length,sub:"systems"},
+            {label:"Paid",val:fmt$(assets.reduce((s,a)=>s+Number(a.cost||0),0)),sub:"purchase"},
+            {label:"Replace",val:fmt$(assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0)),sub:"estimate"},
+            {label:"Attention",val:assets.filter(a=>a.condition==="Needs Attention"||a.condition==="Failed").length,sub:"need work",alert:true},
+          ].map(s=>(
+            <div key={s.label} style={{background:"var(--white)",border:`1px solid ${s.alert&&Number(s.val)>0?"rgba(193,97,64,.3)":"var(--stone)"}`,borderRadius:"var(--r-sm)",padding:".55rem .6rem",textAlign:"center"}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,color:s.alert&&Number(s.val)>0?"var(--rust)":"var(--dark)",lineHeight:1}}>{s.val}</div>
+              <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".07em",color:"#A8A09A",marginTop:2,fontWeight:700}}>{s.label}</div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Filter chips */}
-      <div className="toolbar">
+      <div className="toolbar" style={{marginBottom:".65rem"}}>
         {["All","Good","Fair","Needs Attention","Failed","Warranty Active","Warranty Expiring"].map(f=>(
           <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{f}</button>
         ))}
@@ -5884,58 +5941,127 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         <div className="empty">
           <span className="ei">🏠</span>
           <strong>{assets.length===0?"No assets yet":"No matching assets"}</strong>
-          <p>{assets.length===0?"Track your home's major systems and appliances — HVAC, roof, water heater, electrical. Know their age, condition, and service history.":"Try a different filter"}</p>
+          <p>{assets.length===0?"Track your home's major systems and appliances. Know their age, condition, and service history.":"Try a different filter"}</p>
           {assets.length===0 && <button className="btn btn-primary" onClick={openNew}>Add your first asset</button>}
         </div>
       )}
 
-      {/* Compact asset list — tap to open detail */}
-      {list.map(a => {
-        const sc = CONDITION_STYLE[a.condition||"Good"]||CONDITION_STYLE.Good;
-        const icon = ASSET_ICONS[a.category]||"🔧";
-        const installDate = a.install_date || a.purchase_date;
-        const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
-        const lifespanYears = Number(a.lifespan_years || DEFAULT_LIFESPAN[a.category] || 15);
-        const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
-        const lifespanStatus = lifespanPct === null ? "ok" : lifespanPct >= 100 ? "alert" : lifespanPct >= 75 ? "warn" : "ok";
-        const assetLogs = serviceLogs.filter(s => s.asset_id === a.id);
-        const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
-        const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
-        const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
-
+      {/* Grouped asset list */}
+      {groupKeys.map(cat => {
+        const catAssets = grouped[cat];
+        const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other;
+        const catIcon = ASSET_ICONS[cat] || "🔧";
         return (
-          <div key={a.id} className="asset-card" style={{cursor:"pointer"}} onClick={()=>setSelectedAsset(a.id)}>
-            <div className="asset-card-header">
-              <div className="asset-card-icon" style={{background:sc.bg}}>{icon}</div>
-              <div className="asset-card-body">
-                <div className="asset-card-title">{a.item}</div>
-                <div className="asset-card-meta">
-                  <span className="asset-condition" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{a.condition||"Good"}</span>
-                  {a.category && <span>{a.category}</span>}
-                  {a.model && <span>Model: {a.model}</span>}
-                  {a.serial_number && <span>S/N: {a.serial_number}</span>}
-                  {ageYears !== null && <span>{ageYears}yr old</span>}
-                  {assetLogs.length > 0 && <span>Last serviced {fmtD(assetLogs.sort((a,b)=>new Date(b.service_date)-new Date(a.service_date))[0].service_date)}</span>}
-                  {warrantySoon && <span style={{color:"#92610A",fontWeight:600}}>Warranty expiring</span>}
-                  {warrantyExpired && <span style={{color:"var(--red)",fontWeight:600}}>Warranty expired</span>}
-                </div>
-              </div>
-              {a.document_ref && (a.document_ref.startsWith("http://") || a.document_ref.startsWith("https://")) && (
-                <a href={a.document_ref} target="_blank" rel="noopener noreferrer"
-                  onClick={e=>e.stopPropagation()}
-                  title="Open manual"
-                  style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:8,background:"rgba(35,74,61,.08)",border:"1px solid rgba(35,74,61,.15)",color:"var(--pine)",textDecoration:"none",fontSize:".7rem",fontWeight:700,flexShrink:0,marginRight:2}}>
-                  📋
-                </a>
-              )}
-              <span style={{color:"#C2B8AE",fontSize:".9rem",flexShrink:0}}>›</span>
+          <div key={cat}>
+            {/* Category header */}
+            <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".3rem 0 .45rem",marginTop:groupKeys.indexOf(cat)===0?0:".9rem",borderBottom:"1px solid var(--stone)",marginBottom:".5rem"}}>
+              <span style={{fontSize:".95rem"}}>{catIcon}</span>
+              <span style={{fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"var(--dark)",flex:1}}>{cat}</span>
+              <span style={{fontSize:".65rem",fontWeight:600,padding:"1px 8px",borderRadius:10,background:"var(--stone)",color:"var(--mid)"}}>{catAssets.length}</span>
             </div>
-            {/* Thin lifespan bar */}
-            {lifespanPct !== null && (
-              <div style={{margin:"0 1rem .75rem",height:3,background:"var(--stone)",borderRadius:2,overflow:"hidden"}}>
-                <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:2,background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)"}}/>
-              </div>
-            )}
+
+            {/* Cards in this category */}
+            {catAssets.map(a => {
+              const sc = CONDITION_STYLE[a.condition||"Good"]||CONDITION_STYLE.Good;
+              const installDate = a.install_date || a.purchase_date;
+              const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
+              const lifespanYears = Number(a.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
+              const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
+              const lifespanStatus = lifespanPct===null?"ok":lifespanPct>=100?"alert":lifespanPct>=75?"warn":"ok";
+              const assetLogs = serviceLogs.filter(s => s.asset_id === a.id).sort((x,y)=>new Date(y.service_date)-new Date(x.service_date));
+              const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
+              const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
+              const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
+              const hasBrand = !!(a.brand || a.model);
+              const hasManual = a.document_ref?.startsWith("http");
+              const lastService = assetLogs[0];
+              const nextPM = (() => {
+                try {
+                  const notes = a.notes || "";
+                  const pmMatch = notes.match(/PM:\s*every\s*(\d+)\s*(mo|month|yr|year)/i);
+                  if (!pmMatch || !lastService?.service_date) return null;
+                  const months = pmMatch[2].startsWith("yr") ? Number(pmMatch[1])*12 : Number(pmMatch[1]);
+                  const d = new Date(lastService.service_date + "T00:00:00");
+                  d.setMonth(d.getMonth() + months);
+                  return daysTo(d.toISOString().slice(0,10));
+                } catch { return null; }
+              })();
+
+              return (
+                <div key={a.id} className="asset-card" style={{cursor:"pointer"}} onClick={()=>setSelectedAsset(a.id)}>
+                  <div className="asset-card-header">
+                    {/* Icon */}
+                    <div className="asset-card-icon" style={{background:catColor.bg,border:`1px solid ${catColor.border}`}}>
+                      <span style={{fontSize:"1.15rem"}}>{ASSET_ICONS[cat]||"🔧"}</span>
+                    </div>
+
+                    {/* Main content */}
+                    <div className="asset-card-body">
+                      <div style={{display:"flex",alignItems:"center",gap:".4rem",marginBottom:3,flexWrap:"wrap"}}>
+                        <div className="asset-card-title" style={{flex:"0 1 auto"}}>{a.item}</div>
+                        {/* Condition badge */}
+                        <span style={{fontSize:".6rem",fontWeight:700,padding:"1px 7px",borderRadius:6,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{a.condition||"Good"}</span>
+                        {/* Recall status badge */}
+                        {hasBrand && (
+                          <span style={{fontSize:".6rem",fontWeight:700,padding:"1px 6px",borderRadius:6,background:"rgba(167,191,168,.25)",color:"var(--pine)",border:"1px solid rgba(167,191,168,.4)",flexShrink:0}} title="Recall checked">🛡️</span>
+                        )}
+                        {!hasBrand && (
+                          <span style={{fontSize:".6rem",fontWeight:600,padding:"1px 6px",borderRadius:6,background:"#FEF9C3",color:"#92400E",border:"1px solid #FDE68A",flexShrink:0}} title="Add brand to enable recall check">! recall</span>
+                        )}
+                      </div>
+
+                      {/* Meta row */}
+                      <div className="asset-card-meta">
+                        {a.brand && <span style={{fontWeight:600,color:"var(--dark)"}}>{a.brand}{a.model?` · ${a.model}`:""}</span>}
+                        {!a.brand && a.model && <span style={{fontWeight:600,color:"var(--dark)"}}>Model: {a.model}</span>}
+                        {ageYears !== null && <span>{ageYears}yr old</span>}
+                        {lastService && <span>Serviced {fmtD(lastService.service_date)}</span>}
+                        {!lastService && <span style={{color:"#C16140",fontStyle:"italic"}}>No service logged</span>}
+                        {warrantySoon && <span style={{color:"#92610A",fontWeight:600}}>Warranty expiring</span>}
+                        {warrantyExpired && <span style={{color:"var(--red)",fontWeight:600}}>Warranty expired</span>}
+                        {nextPM !== null && nextPM <= 30 && <span style={{color:nextPM<=0?"var(--red)":"#92610A",fontWeight:600}}>{nextPM<=0?"PM overdue":`PM in ${nextPM}d`}</span>}
+                      </div>
+                    </div>
+
+                    {/* Right side actions */}
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                      {hasManual && (
+                        <a href={a.document_ref} target="_blank" rel="noopener noreferrer"
+                          onClick={e=>e.stopPropagation()}
+                          title="Open manual"
+                          style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:7,background:"rgba(35,74,61,.08)",border:"1px solid rgba(35,74,61,.15)",textDecoration:"none",fontSize:".75rem"}}>
+                          📋
+                        </a>
+                      )}
+                      <span style={{color:"#C2B8AE",fontSize:".9rem"}}>›</span>
+                    </div>
+                  </div>
+
+                  {/* Lifespan bar — only if age known */}
+                  {lifespanPct !== null && (
+                    <div style={{margin:"0 .9rem .65rem",display:"flex",alignItems:"center",gap:".5rem"}}>
+                      <div style={{flex:1,height:4,background:"var(--stone)",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:3,
+                          background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)",
+                          transition:"width .4s"}}/>
+                      </div>
+                      <span style={{fontSize:".6rem",color:"#A8A09A",flexShrink:0,width:28,textAlign:"right"}}>
+                        {lifespanPct}%
+                      </span>
+                    </div>
+                  )}
+
+                  {/* No brand/model prompt — inline nudge */}
+                  {!hasBrand && (
+                    <div style={{margin:"0 .9rem .65rem",padding:".4rem .65rem",background:"#FEF9C3",borderRadius:7,border:"1px solid #FDE68A",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem"}}
+                      onClick={e=>{e.stopPropagation();openEdit(a);}}>
+                      <span style={{fontSize:".7rem",color:"#92400E"}}>Add brand + model to enable recall checks & Smart Fill</span>
+                      <span style={{fontSize:".7rem",fontWeight:700,color:"#92400E",flexShrink:0}}>Edit →</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })}
