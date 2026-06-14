@@ -3237,13 +3237,16 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
             </div>
             <BarcodeScanButton
               onResult={(upc, upcData) => {
-                // Pre-populate data then go to manual form
+                // Only navigate when we have a result (including null = not found)
                 const prefilled = { upc };
                 if (upcData?.brand) prefilled.brand = upcData.brand;
                 if (upcData?.model) prefilled.model = upcData.model;
                 if (upcData?.title) prefilled.item  = upcData.title;
-                setBarcodeActive(false);
-                onChoose("manual", prefilled);
+                // Small delay so user sees the found state briefly before transitioning
+                setTimeout(() => {
+                  setBarcodeActive(false);
+                  onChoose("manual", prefilled);
+                }, upcData ? 800 : 200);
               }}
             />
             <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)",textAlign:"center",marginTop:".75rem",lineHeight:1.5}}>
@@ -3417,8 +3420,9 @@ function BarcodeScanButton({ onResult }) {
   // Lookup converges here — UPCitemdb first, Tavily fallback if no result
   const lookupAndReturn = async (code) => {
     setUpc(code);
-    setMode("found");
-    setProduct({ title: "Looking up product…", brand: "", model: "" }); // show loading state
+    // Show searching state — do NOT call onResult yet
+    setMode("searching");
+    setProduct({ title: "Searching…", brand: "", model: "" });
 
     // Step 1 — UPCitemdb (free, fast, ~495M products)
     try {
@@ -3427,13 +3431,14 @@ function BarcodeScanButton({ onResult }) {
       const item = json?.items?.[0];
       if (item && item.title) {
         setProduct(item);
+        setMode("found");
         onResult(code, { brand:item.brand||"", model:item.model||"", title:item.title||"", description:item.description||"" });
-        return; // found — done
+        return;
       }
-    } catch { /* fall through to Tavily */ }
+    } catch { /* fall through */ }
 
-    // Step 2 — Tavily fallback: search the barcode number like a Google search
-    // Routes through asset-intelligence edge function which has the Tavily key
+    // Step 2 — Tavily fallback via edge function
+    setProduct({ title: "Not in barcode database — searching web…", brand: "", model: "" });
     try {
       const resp = await fetch(ASSET_INTEL_URL, {
         method: "POST",
@@ -3444,13 +3449,15 @@ function BarcodeScanButton({ onResult }) {
       if (json.ok && json.data?.item) {
         const d = json.data;
         setProduct({ title: d.item, brand: d.brand||"", model: d.model||"" });
+        setMode("found");
         onResult(code, { brand: d.brand||"", model: d.model||"", title: d.item||"", description: d.description||"" });
         return;
       }
     } catch { /* fall through */ }
 
-    // Step 3 — Nothing found — still useful, UPC is stored for Smart Fill
+    // Step 3 — Nothing found anywhere — still pass UPC so Smart Fill can use it
     setProduct(null);
+    setMode("found");
     onResult(code, null);
   };
 
@@ -3580,6 +3587,21 @@ function BarcodeScanButton({ onResult }) {
             style={{fontSize:".7rem",color:"rgba(244,237,223,.35)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
             Cancel
           </button>
+        </div>
+      </div>
+    </>
+  );
+
+  if (mode === "searching") return (
+    <>
+      {fileInput}
+      <div style={{padding:"1rem",background:"rgba(35,74,61,.1)",border:"1px solid rgba(35,74,61,.2)",borderRadius:12,display:"flex",alignItems:"center",gap:".75rem"}}>
+        <span className="spinner" style={{width:16,height:16,borderWidth:2,borderColor:"rgba(167,191,168,.2)",borderTopColor:"var(--sage)",flexShrink:0}}/>
+        <div>
+          <div style={{fontSize:".82rem",fontWeight:700,color:"rgba(244,237,223,.85)"}}>
+            {product?.title || "Looking up product…"}
+          </div>
+          <div style={{fontSize:".7rem",color:"rgba(244,237,223,.4)",marginTop:2}}>UPC: {upc}</div>
         </div>
       </div>
     </>
