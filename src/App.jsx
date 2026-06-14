@@ -5946,9 +5946,29 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           tier: planData?.plan||"free",
         }),
       });
-      const json = await resp.json();
-      if (!json.ok || !json.data) return;
-      const d = json.data;
+      if (!resp.ok) return;
+
+      // Consume the stream and accumulate the full response
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk.includes("###DONE###")) { buffer += chunk.replace("###DONE###", ""); break; }
+        buffer += chunk;
+      }
+
+      // Parse the complete JSON
+      const cleaned = buffer.replace(/```json\n?|```\n?/g, "").trim();
+      let d = null;
+      try { d = JSON.parse(cleaned); } catch {
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) try { d = JSON.parse(match[0]); } catch { /**/ }
+      }
+      if (!d) return;
+
       // Build the enriched update — never overwrite fields the user already filled
       const enriched = {};
       if (d.lifespan_years && !assetData.lifespan_years)   enriched.lifespan_years   = d.lifespan_years;
@@ -5960,17 +5980,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         enriched.contractor_cost_high = d.contractor_cost_high;
       }
       const pmArray = Array.isArray(d.pm_schedule) ? d.pm_schedule : [];
-      if (pmArray.length > 0) enriched.pm_schedule = JSON.stringify(pmArray); // stringified for Supabase
+      if (pmArray.length > 0) enriched.pm_schedule = JSON.stringify(pmArray);
       if (d.maintenance_tip && !assetData.maintenance_tip) enriched.maintenance_tip = d.maintenance_tip;
       const manualLink = d.om_manual_url || d.manual_url;
       if (manualLink && !assetData.document_ref) enriched.document_ref = manualLink;
       if (d.support_url && !assetData.notes?.includes("Support:"))
         enriched.notes = [assetData.notes, `Support: ${d.support_url}`].filter(Boolean).join("\n");
       if (Object.keys(enriched).length === 0) return;
-      // Patch Supabase
+
       const { error } = await supabase.from("warranties").update(enriched).eq("id", assetId).eq("user_id", userId);
       if (!error) {
-        // Store pm_schedule as ARRAY in React state (not the JSON string we sent to Supabase)
         const stateEnriched = {...enriched};
         if (pmArray.length > 0) stateEnriched.pm_schedule = pmArray;
         setAssets(prev => prev.map(a => a.id === assetId ? {...a, ...stateEnriched} : a));
@@ -8601,32 +8620,78 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
 
 // ─── ASSET SMART FILL PANEL (inline on asset detail) ─────────────────────────
 function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
-  const [open, setOpen]       = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult]   = useState(null);
-  const [error, setError]     = useState("");
-  const [applied, setApplied] = useState(false);
+  const [open, setOpen]           = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [result, setResult]       = useState(null);
+  const [error, setError]         = useState("");
+  const [applied, setApplied]     = useState(false);
+  const [streamText, setStreamText] = useState(""); // live streaming text
+  const [streamPhase, setStreamPhase] = useState(""); // what we're doing right now
 
   const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
   const isPro  = planData?.plan === "pro";
   const hasBrand = asset.brand || asset.model;
-  const hasResult = result && !applied;
 
   const run = async () => {
     if (!isPlus) { onUpgrade(); return; }
     if (!hasBrand) return;
     setLoading(true); setError(""); setResult(null); setApplied(false);
+    setStreamText(""); setStreamPhase("Searching manufacturer docs…");
     try {
       const resp = await fetch(ASSET_INTEL_URL, {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},
         body:JSON.stringify({ brand:asset.brand, model:asset.model, item:asset.item, upc:asset.upc||"", category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free" }),
       });
-      const json = await resp.json();
-      if (!json.ok) throw new Error(json.error||"Lookup failed");
-      setResult(json.data);
+
+      if (!resp.ok) throw new Error("Smart Fill unavailable — try again");
+
+      // Read the stream
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      setStreamPhase("Reading manufacturer data…");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+
+        if (chunk.includes("###DONE###")) {
+          // Stream complete — parse the accumulated buffer
+          buffer += chunk.replace("###DONE###", "").replace(/\n$/, "");
+          break;
+        }
+        buffer += chunk;
+
+        // Update live preview — extract readable fields as they stream in
+        setStreamText(buffer);
+
+        // Update phase hint based on what's appeared so far
+        if (buffer.includes('"pm_schedule"'))        setStreamPhase("Building maintenance schedule…");
+        else if (buffer.includes('"warranty_years"')) setStreamPhase("Checking warranty info…");
+        else if (buffer.includes('"lifespan_years"')) setStreamPhase("Calculating lifespan…");
+        else if (buffer.includes('"category"'))       setStreamPhase("Identifying product…");
+        else if (buffer.length > 50)                  setStreamPhase("Extracting product data…");
+      }
+
+      // Parse the complete JSON
+      const cleaned = buffer.replace(/```json\n?|```\n?/g, "").trim();
+      let data = null;
+      try { data = JSON.parse(cleaned); } catch {
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) try { data = JSON.parse(match[0]); } catch { /**/ }
+      }
+
+      if (!data) throw new Error("Could not parse response — try again");
+      setResult(data);
       setOpen(true);
-    } catch(e) { setError(e.message||"Could not reach Smart Fill — try again"); }
+      setStreamText("");
+      setStreamPhase("");
+    } catch(e) {
+      setError(e.message || "Could not reach Smart Fill — try again");
+      setStreamText(""); setStreamPhase("");
+    }
     setLoading(false);
   };
 
@@ -8681,12 +8746,53 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
               cursor:loading?"default":"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
             <span style={{fontSize:".8rem"}}>{loading?"⏳":"✨"}</span>
             <span style={{fontSize:".78rem",fontWeight:600,color:isPlus&&hasBrand?"var(--pine)":"#A8A09A",textDecoration:isPlus&&hasBrand?"underline":"none",textUnderlineOffset:2}}>
-              {loading?"Looking up…":result&&!open?"Smart Fill — tap to review":"Smart Fill"}
+              {loading?(streamPhase||"Looking up…"):result&&!open?"Smart Fill — tap to review":"Smart Fill"}
             </span>
             {!isPlus && <span style={{fontSize:".58rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 5px",borderRadius:4}}>Plus</span>}
             {isPlus && hasBrand && !loading && <span style={{fontSize:".68rem",color:"#A8A09A"}}>{open?"▲":"▼"}</span>}
           </button>
           {!hasBrand && isPlus && <span style={{fontSize:".68rem",color:"#C2B8AE"}}>Add brand first</span>}
+        </div>
+      )}
+
+      {/* Live streaming preview — shown while loading */}
+      {loading && streamText && (
+        <div style={{marginTop:".4rem",padding:".65rem .85rem",background:"rgba(35,74,61,.05)",border:"1px solid rgba(35,74,61,.12)",borderRadius:"var(--r-sm)"}}>
+          <div style={{fontSize:".65rem",fontWeight:700,color:"var(--pine)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem",display:"flex",alignItems:"center",gap:".4rem"}}>
+            <span className="spinner" style={{width:8,height:8,borderWidth:1.5,borderColor:"rgba(35,74,61,.2)",borderTopColor:"var(--pine)",flexShrink:0}}/>
+            {streamPhase}
+          </div>
+          {/* Show fields as they stream in */}
+          {(()=>{
+            // Extract readable fields from partial JSON as they appear
+            const fields = [];
+            const extract = (key, label, fmt) => {
+              const match = streamText.match(new RegExp('"' + key + '"\\s*:\\s*([^,}\\n]+)'));
+              if (match) {
+                let val = match[1].trim().replace(/^"|"$/g,"").replace(/,$/, "");
+                if (val && val !== "null" && val !== "0" && val !== '""') {
+                  fields.push({ label, val: fmt ? fmt(val) : val });
+                }
+              }
+            };
+            extract("item",            "Product");
+            extract("category",        "Category");
+            extract("lifespan_years",  "Lifespan",    v => v + " yrs");
+            extract("warranty_years",  "Warranty",    v => v + " yr" + (Number(v)>1?"s":""));
+            extract("replacement_cost_low", "Est. replace", v => "$" + Number(v).toLocaleString() + "+");
+            extract("confidence",      "Confidence");
+            return fields.length > 0 ? (
+              <div style={{display:"flex",flexWrap:"wrap",gap:".35rem"}}>
+                {fields.map((f,i) => (
+                  <div key={i} style={{fontSize:".7rem",padding:"2px 8px",borderRadius:6,background:"rgba(35,74,61,.08)",color:"var(--pine)"}}>
+                    <span style={{opacity:.65}}>{f.label}: </span><strong>{f.val}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{fontSize:".7rem",color:"rgba(35,74,61,.5)",fontStyle:"italic"}}>Receiving data…</div>
+            );
+          })()}
         </div>
       )}
 
