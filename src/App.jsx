@@ -2973,7 +2973,11 @@ function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
         body: JSON.stringify({
-          brand: data.brand, model: data.model, category: data.category,
+          brand: data.brand,
+          model: data.model,
+          item:  data.item,
+          upc:   data.upc || "",   // barcode scan result if available
+          category: data.category,
           install_date: data.install_date,
           zip_code: profile?.address?.match(/\b\d{5}\b/)?.[0] || "",
           tier,
@@ -3046,11 +3050,27 @@ function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
 
       {error&&<div style={{marginTop:".5rem",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:10,fontSize:".78rem",color:"var(--red)"}}>⚠ {error}</div>}
 
-      {result && !applied && (
-        <div style={{marginTop:".65rem",background:"var(--cream)",border:"1.5px solid rgba(35,74,61,.2)",borderRadius:14,overflow:"hidden"}}>
-          <div style={{background:"rgba(35,74,61,.07)",padding:".7rem 1rem",borderBottom:"1px solid rgba(35,74,61,.1)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontWeight:700,fontSize:".82rem",color:"var(--pine)"}}>✨ Smart Fill results</div>
-            <div style={{fontSize:".7rem",color:"#9E9690"}}>{data.brand} {data.model}</div>
+      {result && !applied && (()=>{
+        const sfUserWords  = (data.item||"").toLowerCase().split(/[ 	]+/).filter(w=>w.length>3);
+        const sfResultWords = (result.item||"").toLowerCase().split(/[ 	]+/).filter(w=>w.length>3);
+        const sfOverlap = sfUserWords.filter(w => sfResultWords.includes(w));
+        const sfMismatch = sfUserWords.length > 0 && sfResultWords.length > 0 && sfOverlap.length === 0
+          && (data.item||"").toLowerCase() !== (result.item||"").toLowerCase();
+        return (
+        <div style={{marginTop:".65rem",background:"var(--cream)",border:`1.5px solid ${sfMismatch?"#FCA5A5":"rgba(35,74,61,.2)"}`,borderRadius:14,overflow:"hidden"}}>
+          {sfMismatch && (
+            <div style={{padding:".65rem 1rem",background:"#FEF2F2",borderBottom:"1px solid #FCA5A5"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#991B1B",marginBottom:".25rem"}}>⚠️ Check your device — model may not match</div>
+              <div style={{fontSize:".75rem",color:"#B91C1C",lineHeight:1.5}}>
+                You entered <strong>"{data.item}"</strong> but model <strong>{data.model}</strong> looks like a <strong>{result.item}</strong>. Make sure you scanned the right nameplate — not a nearby appliance.
+              </div>
+            </div>
+          )}
+          <div style={{background:sfMismatch?"#FEF9F9":"rgba(35,74,61,.07)",padding:".7rem 1rem",borderBottom:"1px solid rgba(35,74,61,.1)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontWeight:700,fontSize:".82rem",color:sfMismatch?"#991B1B":"var(--pine)"}}>
+              {sfMismatch?"⚠️ Possible mismatch":"✨ Smart Fill results"}
+            </div>
+            <div style={{fontSize:".7rem",color:sfMismatch?"#B91C1C":"#9E9690"}}>{data.brand} {data.model}</div>
           </div>
           <div style={{padding:".85rem 1rem",display:"flex",flexDirection:"column",gap:".6rem"}}>
             {result.condition_assessment&&<div style={{fontSize:".8rem",color:"var(--dark)",lineHeight:1.5,fontStyle:"italic",paddingBottom:".6rem",borderBottom:"1px solid var(--stone)"}}>"{result.condition_assessment}"</div>}
@@ -3129,12 +3149,16 @@ function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
               Estimates based on typical US market data. Get a licensed contractor quote before budgeting for major replacements.
             </div>
           </div>
-          <div style={{padding:".75rem 1rem",borderTop:"1px solid var(--stone)",display:"flex",gap:".5rem"}}>
-            <button type="button" onClick={apply} style={{flex:1,padding:".65rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>Apply to asset ✓</button>
+          <div style={{padding:".75rem 1rem",borderTop:`1px solid ${sfMismatch?"#FCA5A5":"var(--stone)"}`,display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+            {sfMismatch && <div style={{width:"100%",fontSize:".7rem",color:"#B91C1C",fontWeight:600,marginBottom:".15rem"}}>⚠ Review carefully — confirm you're looking at the right device</div>}
+            <button type="button" onClick={apply} style={{flex:1,padding:".65rem",background:sfMismatch?"#DC2626":"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
+              {sfMismatch?"Apply anyway — correct device":"Apply to asset ✓"}
+            </button>
             <button type="button" onClick={()=>setResult(null)} style={{padding:".65rem .9rem",background:"none",border:"1px solid var(--stone)",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",color:"#9E9690",cursor:"pointer"}}>Dismiss</button>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -3255,6 +3279,153 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
   );
 }
 
+// ─── BARCODE SCANNER (UPC product box scan) ──────────────────────────────────
+// Uses the device camera + BarcodeDetector API where available,
+// falls back to a manual UPC entry field with instant UPCitemdb lookup
+function BarcodeScanButton({ onResult }) {
+  const [mode, setMode]     = useState("idle");  // idle | scanning | manual | found | error
+  const [upc, setUpc]       = useState("");
+  const [product, setProduct] = useState(null);
+  const [err, setErr]       = useState("");
+  const videoRef            = useRef(null);
+  const streamRef           = useRef(null);
+  const scannerRef          = useRef(null);
+
+  // Check if BarcodeDetector is available (Chrome/Android, not Safari)
+  const hasDetector = typeof window !== "undefined" && "BarcodeDetector" in window;
+
+  const stopCamera = () => {
+    if (scannerRef.current) { clearInterval(scannerRef.current); scannerRef.current = null; }
+    if (streamRef.current)  { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+    if (videoRef.current)   { videoRef.current.srcObject = null; }
+  };
+
+  const startCamera = async () => {
+    setMode("scanning"); setErr("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"environment" } });
+      streamRef.current = stream;
+      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      const detector = new window.BarcodeDetector({ formats:["upc_a","upc_e","ean_13","ean_8","code_128","code_39","itf","qr_code"] });
+      scannerRef.current = setInterval(async () => {
+        if (!videoRef.current) return;
+        try {
+          const codes = await detector.detect(videoRef.current);
+          if (codes.length > 0) {
+            const code = codes[0].rawValue;
+            stopCamera();
+            await lookupAndReturn(code);
+          }
+        } catch { /* keep scanning */ }
+      }, 300);
+    } catch(e) {
+      stopCamera();
+      setErr("Camera not available — enter barcode manually");
+      setMode("manual");
+    }
+  };
+
+  const lookupAndReturn = async (code) => {
+    setUpc(code);
+    setMode("found");
+    // Look up UPC in the background
+    try {
+      const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
+      const json = await res.json();
+      const item = json?.items?.[0];
+      if (item) {
+        setProduct(item);
+        onResult(code, { brand: item.brand||"", model: item.model||"", title: item.title||"", description: item.description||"" });
+      } else {
+        onResult(code, null);
+      }
+    } catch {
+      onResult(code, null);
+    }
+  };
+
+  const handleManual = async (e) => {
+    e.preventDefault();
+    if (upc.trim().length < 8) return;
+    await lookupAndReturn(upc.trim());
+  };
+
+  useEffect(() => () => stopCamera(), []);
+
+  if (mode === "idle") return (
+    <button type="button" onClick={hasDetector ? startCamera : () => setMode("manual")}
+      style={{marginTop:".5rem",width:"100%",display:"flex",alignItems:"center",gap:".65rem",
+        padding:".6rem .9rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",
+        borderRadius:10,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
+      <span style={{fontSize:"1.1rem",flexShrink:0}}>📦</span>
+      <div style={{flex:1}}>
+        <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(244,237,223,.9)"}}>Scan product barcode</div>
+        <div style={{fontSize:".67rem",color:"rgba(244,237,223,.45)",marginTop:1}}>
+          {hasDetector ? "Scan UPC on product box for instant ID" : "Enter UPC from product box"}
+        </div>
+      </div>
+      <span style={{fontSize:".75rem",color:"rgba(244,237,223,.3)",flexShrink:0}}>→</span>
+    </button>
+  );
+
+  if (mode === "scanning") return (
+    <div style={{marginTop:".5rem",background:"#000",borderRadius:12,overflow:"hidden",position:"relative"}}>
+      <video ref={videoRef} style={{width:"100%",height:180,objectFit:"cover",display:"block"}} playsInline muted/>
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+        <div style={{width:200,height:80,border:"2px solid rgba(193,97,64,.8)",borderRadius:8,boxShadow:"0 0 0 2000px rgba(0,0,0,.45)"}}/>
+        <div style={{color:"#fff",fontSize:".75rem",marginTop:".75rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Point at barcode</div>
+      </div>
+      <button type="button" onClick={()=>{stopCamera();setMode("idle");}}
+        style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.6)",border:"none",borderRadius:6,color:"#fff",fontSize:".75rem",padding:"4px 10px",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+        Cancel
+      </button>
+    </div>
+  );
+
+  if (mode === "manual") return (
+    <div style={{marginTop:".5rem",padding:".7rem .9rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",borderRadius:10}}>
+      <div style={{fontSize:".75rem",fontWeight:700,color:"rgba(244,237,223,.8)",marginBottom:".4rem"}}>📦 Enter barcode manually</div>
+      {err && <div style={{fontSize:".68rem",color:"#F0A070",marginBottom:".4rem"}}>{err}</div>}
+      <div style={{display:"flex",gap:".4rem"}}>
+        <input value={upc} onChange={e=>setUpc(e.target.value)} placeholder="e.g. 622356542145"
+          style={{flex:1,padding:".5rem .75rem",borderRadius:8,border:"1px solid rgba(255,255,255,.2)",background:"rgba(0,0,0,.3)",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem"}}/>
+        <button type="button" onClick={handleManual}
+          style={{padding:".5rem .85rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>
+          Look up
+        </button>
+      </div>
+      <button type="button" onClick={()=>setMode("idle")} style={{marginTop:".4rem",fontSize:".68rem",color:"rgba(244,237,223,.4)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>Cancel</button>
+    </div>
+  );
+
+  if (mode === "found") return (
+    <div style={{marginTop:".5rem",padding:".7rem .9rem",background:"rgba(35,74,61,.15)",border:"1px solid rgba(35,74,61,.3)",borderRadius:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+        <span style={{fontSize:".9rem"}}>✓</span>
+        <div style={{flex:1,minWidth:0}}>
+          {product ? (
+            <>
+              <div style={{fontSize:".8rem",fontWeight:700,color:"rgba(244,237,223,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{product.title}</div>
+              <div style={{fontSize:".68rem",color:"rgba(244,237,223,.5)",marginTop:1}}>{product.brand}{product.model?` · ${product.model}`:""} · UPC: {upc}</div>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:".8rem",fontWeight:700,color:"rgba(244,237,223,.9)"}}>Barcode scanned</div>
+              <div style={{fontSize:".68rem",color:"rgba(244,237,223,.5)",marginTop:1}}>UPC: {upc} · Looking up product…</div>
+            </>
+          )}
+        </div>
+        <button type="button" onClick={()=>{setMode("idle");setProduct(null);setUpc("");}}
+          style={{fontSize:".68rem",color:"rgba(244,237,223,.4)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
 function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile, initialMode }) {
   const f = (k,v) => {
     const updated = {...data,[k]:v};
@@ -3324,6 +3495,17 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
             compact={true}
           />
         </div>
+
+        {/* Barcode scanner — scan product box UPC for instant identification */}
+        <BarcodeScanButton
+          onResult={(upc, upcData) => {
+            const mapped = { upc };
+            if (upcData?.brand && !data.brand) mapped.brand = upcData.brand;
+            if (upcData?.model && !data.model) mapped.model = upcData.model;
+            if (upcData?.title && !data.item)  mapped.item  = upcData.title;
+            onChange({...data, ...mapped});
+          }}
+        />
         {initialMode === "nameplate" && (
           <div style={{marginTop:".6rem",fontSize:".7rem",color:"rgba(244,237,223,.4)",textAlign:"center",lineHeight:1.4}}>
             After scanning, review the filled fields below and tap Save
@@ -3348,6 +3530,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
       <div className="field"><label>Brand</label><input value={data.brand||""} onChange={e=>f("brand",e.target.value)} placeholder="e.g. Carrier, LG, Rheem"/></div>
       <div className="field"><label>Model Number</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} placeholder="e.g. 50XC21-048"/></div>
       <div className="field"><label>Serial Number</label><input value={data.serial_number||""} onChange={e=>f("serial_number",e.target.value)} placeholder="Found on the unit label"/></div>
+      {data.upc && <div className="field"><label>Barcode (UPC)</label><input value={data.upc||""} onChange={e=>f("upc",e.target.value)} placeholder="Scanned barcode" style={{fontFamily:"monospace",fontSize:".82rem"}}/></div>}
       <div className="field"><label>Vendor / Store</label>
         <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Where purchased or installed by"/>
       </div>
@@ -5535,6 +5718,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       notes:                editData.notes||"",
       pm_schedule:          editData.pm_schedule ? (typeof editData.pm_schedule === "string" ? editData.pm_schedule : JSON.stringify(editData.pm_schedule)) : "[]",
       maintenance_tip:      editData.maintenance_tip||"",
+      upc:                  editData.upc||"",
     };
     if(editId) {
       const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
@@ -8099,7 +8283,7 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
       const resp = await fetch(ASSET_INTEL_URL, {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},
-        body:JSON.stringify({ brand:asset.brand, model:asset.model, category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free" }),
+        body:JSON.stringify({ brand:asset.brand, model:asset.model, item:asset.item, upc:asset.upc||"", category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free" }),
       });
       const json = await resp.json();
       if (!json.ok) throw new Error(json.error||"Lookup failed");
@@ -8172,12 +8356,37 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
       {error && <div style={{margin:".4rem 0",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:8,fontSize:".75rem",color:"var(--red)"}}>⚠ {error}</div>}
 
       {/* Results panel */}
-      {open && result && !applied && (
-        <div style={{background:"var(--white)",border:"1.5px solid rgba(35,74,61,.2)",borderRadius:"var(--r-sm)",overflow:"hidden",marginTop:".4rem"}}>
-          <div style={{background:"rgba(35,74,61,.07)",padding:".65rem .9rem",borderBottom:"1px solid rgba(35,74,61,.1)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontWeight:700,fontSize:".8rem",color:"var(--pine)"}}>✨ Smart Fill — {asset.brand} {asset.model}</div>
-            <div style={{fontSize:".65rem",color:"#9E9690"}}>Manufacturer data</div>
+      {open && result && !applied && (()=>{
+        // Detect if AI returned a different product than what the user named
+        // e.g. user typed "Coffee Maker" but AI returned "Ice Cream Maker"
+        const userWords  = (asset.item||"").toLowerCase().split(/\s+/).filter(w=>w.length>3);
+        const resultWords = (result.item||"").toLowerCase().split(/\s+/).filter(w=>w.length>3);
+        const overlap = userWords.filter(w => resultWords.includes(w));
+        const hasMismatch = userWords.length > 0 && resultWords.length > 0 && overlap.length === 0
+          && (asset.item||"").toLowerCase() !== (result.item||"").toLowerCase();
+        return (
+        <div style={{background:"var(--white)",border:`1.5px solid ${hasMismatch?"#FCA5A5":"rgba(35,74,61,.2)"}`,borderRadius:"var(--r-sm)",overflow:"hidden",marginTop:".4rem"}}>
+          <div style={{background:hasMismatch?"#FEF2F2":"rgba(35,74,61,.07)",padding:".65rem .9rem",borderBottom:`1px solid ${hasMismatch?"#FCA5A5":"rgba(35,74,61,.1)"}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontWeight:700,fontSize:".8rem",color:hasMismatch?"#991B1B":"var(--pine)"}}>
+              {hasMismatch?"⚠️ Product mismatch detected":"✨ Smart Fill"} — {asset.brand} {asset.model}
+            </div>
+            <div style={{fontSize:".65rem",color:hasMismatch?"#B91C1C":"#9E9690"}}>Manufacturer data</div>
           </div>
+
+          {/* Mismatch warning — shown prominently before results */}
+          {hasMismatch && (
+            <div style={{padding:".75rem .9rem",background:"#FEF2F2",borderBottom:"1px solid #FCA5A5"}}>
+              <div style={{fontWeight:700,fontSize:".82rem",color:"#991B1B",marginBottom:".3rem"}}>
+                This model number may belong to a different product
+              </div>
+              <div style={{fontSize:".78rem",color:"#B91C1C",lineHeight:1.5,marginBottom:".5rem"}}>
+                You named this asset <strong>"{asset.item}"</strong> but the model number <strong>{asset.model}</strong> appears to match a <strong>{result.item}</strong>.
+              </div>
+              <div style={{fontSize:".73rem",color:"#7F1D1D",lineHeight:1.5}}>
+                Double-check you scanned the correct nameplate. If you have multiple appliances nearby, make sure you're looking at the right one.
+              </div>
+            </div>
+          )}
           <div style={{padding:".8rem .9rem",display:"flex",flexDirection:"column",gap:".65rem"}}>
 
             {/* Condition assessment */}
@@ -8283,16 +8492,24 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
             </div>
           </div>
 
-          <div style={{padding:".65rem .9rem",borderTop:"1px solid var(--stone)",display:"flex",gap:".5rem"}}>
-            <button onClick={apply} style={{flex:1,padding:".6rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".83rem",fontWeight:700,cursor:"pointer"}}>
-              Apply to this asset ✓
+          <div style={{padding:".65rem .9rem",borderTop:`1px solid ${hasMismatch?"#FCA5A5":"var(--stone)"}`,display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+            {hasMismatch && (
+              <div style={{width:"100%",fontSize:".7rem",color:"#B91C1C",marginBottom:".25rem",fontWeight:600}}>
+                ⚠ Review the results carefully before applying
+              </div>
+            )}
+            <button onClick={apply} style={{flex:1,padding:".6rem",
+              background:hasMismatch?"#DC2626":"var(--pine)",
+              color:"#fff",border:"none",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".83rem",fontWeight:700,cursor:"pointer"}}>
+              {hasMismatch?"Apply anyway — I scanned the right device":"Apply to this asset ✓"}
             </button>
             <button onClick={()=>setOpen(false)} style={{padding:".6rem .85rem",background:"none",border:"1px solid var(--stone)",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",color:"#9E9690",cursor:"pointer"}}>
               Close
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
