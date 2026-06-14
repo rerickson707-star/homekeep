@@ -1,156 +1,237 @@
-// supabase/functions/ai-document-scan/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
-
-const corsHeaders = {
+const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const PROMPTS: Record<string, string> = {
-  receipt: `Extract expense information from this receipt. Return ONLY valid JSON, no explanation:
-{
-  "amount": number (total paid, no currency symbol),
-  "vendor": string (business name),
-  "date": string (YYYY-MM-DD or null),
-  "category": string (one of: HVAC, Plumbing, Electrical, Appliances, Roofing, Landscaping, Structural, Safety, Other),
-  "description": string (brief description of purchase or service)
-}`,
+const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 
-  warranty: `Extract asset/warranty information from this warranty card or receipt. Return ONLY valid JSON:
-{
-  "item": string (product name),
-  "category": string (one of: HVAC, Plumbing, Electrical, Appliances, Roofing, Landscaping, Structural, Safety, Other),
-  "vendor": string (manufacturer or store),
-  "model": string or null,
-  "serial": string or null,
-  "purchase_date": string (YYYY-MM-DD or null),
-  "expiry_date": string (warranty expiry YYYY-MM-DD or null),
-  "cost": number or null
-}`,
+function getPrompt(scanType: string): { prompt: string; max_tokens: number } {
+  switch (scanType) {
 
-  invoice: `Extract service information from this contractor invoice or work order. Return ONLY valid JSON:
-{
-  "description": string (work performed),
-  "service_date": string (YYYY-MM-DD or null),
-  "cost": number or null,
-  "notes": string (technician, parts, findings — or null)
-}`,
+    case "barcode":
+      return {
+        max_tokens: 100,
+        prompt: `Look at this image and find any barcode, UPC code, EAN code, or QR code.
+Read the number encoded in the barcode carefully.
 
-  insurance: `Extract insurance policy information from this document. Return ONLY valid JSON:
-{
-  "ins_company": string (insurance company name),
-  "ins_policy_number": string or null,
-  "ins_agent_name": string or null,
-  "ins_agent_phone": string or null,
-  "ins_premium": number (annual premium or null),
-  "ins_renewal_date": string (YYYY-MM-DD or null)
-}`,
+Return ONLY a JSON object with this exact format:
+{"barcode": "THE_DIGITS_HERE"}
 
-  document: `Analyze this home document and extract key metadata. Return ONLY valid JSON:
-{
-  "name": string (descriptive document name e.g. "Home Inspection Report 2024"),
-  "category": string (one of: legal, mortgage, inspection, insurance, permits, tax, contracts, other),
-  "description": string (1-2 sentence summary of what this document contains),
-  "expiry_date": string (YYYY-MM-DD if document has an expiry or renewal date, otherwise null)
-}`,
+If you can see a barcode but cannot read it clearly, return:
+{"barcode": "", "error": "barcode unclear"}
 
-  nameplate: `You are reading a photo of an equipment nameplate, data plate, or serial tag — the sticker or metal plate attached to an appliance or home system. Extract every piece of identifying information visible. Return ONLY valid JSON:
+If there is no barcode in the image, return:
+{"barcode": "", "error": "no barcode found"}
+
+Return nothing else — no explanation, no markdown, just the JSON.`,
+      };
+
+    case "nameplate":
+      return {
+        max_tokens: 400,
+        prompt: `You are reading an appliance or equipment nameplate label. Extract all visible information.
+
+Return ONLY a JSON object:
 {
-  "item": string (product name/description e.g. "Central Air Conditioner", "Gas Water Heater", "Dishwasher"),
-  "brand": string (manufacturer name, properly capitalized e.g. "Carrier", "Rheem", "Bosch"),
-  "model": string or null (model number exactly as shown, e.g. "24ACC636A003"),
-  "serial_number": string or null (serial number exactly as shown),
-  "category": string (one of: HVAC, Heating, Plumbing, Electrical, Appliances, Roofing, Structure, Exterior, Other),
-  "manufacture_date": string (YYYY-MM-DD or YYYY-MM or YYYY if visible, otherwise null),
-  "capacity": string or null (e.g. "3 Ton", "50 Gallon", "40,000 BTU" — any capacity/rating info),
-  "voltage": string or null (electrical specs if shown, e.g. "240V / 30A"),
-  "notes": string or null (any other useful info: efficiency rating, refrigerant type, fuel type, etc.)
+  "item": "product name / description",
+  "brand": "manufacturer brand name",
+  "model": "model number",
+  "serial_number": "serial number",
+  "manufacture_date": "YYYY-MM-DD or YYYY-MM if day unknown, or null",
+  "capacity": "capacity/size if shown (e.g. 40 gal, 3 ton)",
+  "voltage": "voltage/wattage if shown",
+  "notes": "any other useful specs from the label"
 }
-If a field is not visible or legible, return null for that field. Model and serial numbers are usually labeled "Model No.", "Mod.", "Serial No.", "S/N", or similar.`,
-};
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
+    case "receipt":
+      return {
+        max_tokens: 400,
+        prompt: `You are reading a purchase receipt or invoice. Extract the purchase information.
+
+Return ONLY a JSON object:
+{
+  "vendor": "store or company name",
+  "purchase_date": "YYYY-MM-DD or null",
+  "amount": number or null,
+  "item": "product name if visible",
+  "notes": "any other relevant details"
+}
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
+    case "warranty":
+      return {
+        max_tokens: 500,
+        prompt: `You are reading a warranty card, warranty document, or product registration card.
+
+Return ONLY a JSON object:
+{
+  "item": "product name",
+  "brand": "manufacturer brand",
+  "model": "model number if shown",
+  "serial_number": "serial number if shown",
+  "purchase_date": "YYYY-MM-DD or null",
+  "expiry_date": "YYYY-MM-DD or null",
+  "warranty_years": number or null,
+  "vendor": "store purchased from if shown",
+  "amount": number or null,
+  "notes": "warranty terms or coverage details"
+}
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
+    case "invoice":
+      return {
+        max_tokens: 500,
+        prompt: `You are reading a contractor invoice, utility bill, or service receipt.
+
+Return ONLY a JSON object:
+{
+  "vendor": "company or contractor name",
+  "purchase_date": "YYYY-MM-DD or null",
+  "amount": number or null,
+  "description": "service or work description",
+  "category": "e.g. HVAC, Plumbing, Electrical, Landscaping, Other",
+  "notes": "any other relevant details like invoice number, work order"
+}
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
+    case "insurance":
+      return {
+        max_tokens: 500,
+        prompt: `You are reading a homeowner insurance policy, declaration page, or insurance document.
+
+Return ONLY a JSON object:
+{
+  "carrier": "insurance company name",
+  "policy_number": "policy number",
+  "coverage_amount": number or null,
+  "premium": number or null,
+  "start_date": "YYYY-MM-DD or null",
+  "expiry_date": "YYYY-MM-DD or null",
+  "deductible": number or null,
+  "notes": "coverage types or other key details"
+}
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
+    case "document":
+    default:
+      return {
+        max_tokens: 600,
+        prompt: `You are reading a home-related document. Extract all useful information.
+
+Return ONLY a JSON object with whatever fields are relevant:
+{
+  "title": "document title or type",
+  "date": "YYYY-MM-DD or null",
+  "vendor": "company or person name if relevant",
+  "amount": number or null,
+  "item": "product or property if relevant",
+  "notes": "key information from the document"
+}
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+  }
+}
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    const { fileBase64, mimeType, scanType } = await req.json();
-
-    if (!fileBase64 || !scanType) {
-      return new Response(
-        JSON.stringify({ error: "Missing fileBase64 or scanType" }),
-        { status: 400, headers: corsHeaders }
-      );
+    const body = await req.text();
+    if (!body) {
+      return new Response(JSON.stringify({ ok: false, error: "Body required" }), {
+        headers: { ...CORS, "Content-Type": "application/json" }, status: 400,
+      });
     }
 
-    const prompt = PROMPTS[scanType];
-    if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: `Unknown scanType: ${scanType}` }),
-        { status: 400, headers: corsHeaders }
-      );
+    const { fileBase64, mimeType, scanType } = JSON.parse(body);
+
+    if (!fileBase64) {
+      return new Response(JSON.stringify({ ok: false, error: "fileBase64 required" }), {
+        headers: { ...CORS, "Content-Type": "application/json" }, status: 400,
+      });
     }
 
-    // Build content block — images use "image" type, PDFs use "document" type
-    const isPdf = mimeType === "application/pdf";
-    const fileContent = isPdf
-      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: fileBase64 } }
-      : { type: "image",    source: { type: "base64", media_type: mimeType || "image/jpeg", data: fileBase64 } };
+    const { prompt, max_tokens } = getPrompt(scanType || "document");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResp = await fetch(ANTHROPIC_API, {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_KEY,
         "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 512,
+        model: "claude-sonnet-4-6",
+        max_tokens,
         messages: [{
           role: "user",
-          content: [fileContent, { type: "text", text: prompt }],
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mimeType || "image/jpeg",
+                data: fileBase64,
+              },
+            },
+            { type: "text", text: prompt },
+          ],
         }],
       }),
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      return new Response(
-        JSON.stringify({ error: "Anthropic API error", detail: err }),
-        { status: 500, headers: corsHeaders }
-      );
+    if (!aiResp.ok) {
+      const err = await aiResp.text();
+      return new Response(JSON.stringify({ ok: false, error: `AI error: ${err}` }), {
+        headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
+      });
     }
 
-    const data = await response.json();
-    const text = data.content?.[0]?.text || "";
+    const aiJson  = await aiResp.json();
+    const rawText = aiJson.content?.[0]?.text || "";
+    const cleaned = rawText.replace(/```json\n?|```\n?/g, "").trim();
 
-    // Extract JSON from response (strip any markdown fences)
-    const jsonMatch = text.replace(/```json|```/g, "").match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return new Response(
-        JSON.stringify({ error: "Could not parse AI response", raw: text }),
-        { status: 500, headers: corsHeaders }
-      );
+    let fields: Record<string, unknown>;
+    try {
+      fields = JSON.parse(cleaned);
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (!match) {
+        return new Response(JSON.stringify({ ok: false, error: "Could not parse response", raw: rawText.slice(0, 200) }), {
+          headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
+        });
+      }
+      try { fields = JSON.parse(match[0]); }
+      catch {
+        return new Response(JSON.stringify({ ok: false, error: "Malformed response" }), {
+          headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
+        });
+      }
     }
 
-    const fields = JSON.parse(jsonMatch[0]);
-    // Remove null values so they don't overwrite existing form data
-    Object.keys(fields).forEach(k => { if (fields[k] === null) delete fields[k]; });
-
-    return new Response(
-      JSON.stringify({ ok: true, fields }),
-      { status: 200, headers: corsHeaders }
-    );
+    return new Response(JSON.stringify({ ok: true, fields }), {
+      headers: { ...CORS, "Content-Type": "application/json" },
+    });
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: corsHeaders }
-    );
+    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
+      headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
+    });
   }
 });

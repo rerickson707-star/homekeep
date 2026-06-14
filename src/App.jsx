@@ -3376,42 +3376,39 @@ function BarcodeScanButton({ onResult }) {
   const handlePhoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ""; // reset so same file can be picked again
+    e.target.value = "";
     setMode("reading"); setErr(""); setLoading(true);
     try {
-      // Convert image to base64
+      // Convert to base64
       const base64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result.split(",")[1]);
         reader.onerror = rej;
         reader.readAsDataURL(file);
       });
-      // Ask Claude to read the barcode from the image
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const mimeType = file.type || "image/jpeg";
+
+      // Route through the existing ai-document-scan edge function
+      // using a "barcode" scan type — Claude reads the barcode server-side
+      const resp = await fetch(AI_SCAN_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 100,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: base64 } },
-              { type: "text", text: "Read the barcode or UPC number in this image. Return ONLY the numeric barcode digits, nothing else. If you cannot read a barcode, return the word NONE." }
-            ]
-          }]
-        })
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ANON_KEY}`,
+        },
+        body: JSON.stringify({ fileBase64: base64, mimeType, scanType: "barcode" }),
       });
       const json = await resp.json();
-      const code = json.content?.[0]?.text?.trim().replace(/\D/g,"") || "";
+      // Edge function returns fields.barcode or fields.upc for barcode scan type
+      const code = (json.fields?.barcode || json.fields?.upc || "").replace(/\D/g, "");
       if (!code || code.length < 6) {
-        setErr("Couldn't read the barcode — try again or enter manually");
+        setErr("Couldn't read a barcode — try again with better lighting, or enter manually");
         setMode("manual");
       } else {
         await lookupAndReturn(code);
       }
     } catch {
-      setErr("Could not process image — enter barcode manually");
+      setErr("Could not process image — enter the barcode number manually");
       setMode("manual");
     }
     setLoading(false);
