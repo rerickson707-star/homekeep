@@ -5943,12 +5943,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           brand: assetData.brand, model: assetData.model,
           item: assetData.item, upc: assetData.upc||"",
           category: assetData.category, install_date: assetData.install_date,
-          tier: planData?.plan||"free",
+          tier: planData?.plan||"free", user_id: userId||"",
         }),
       });
       if (!resp.ok) return;
       const json = await resp.json();
-      if (!json.ok || !json.data) return;
+      // 429 = rate limited — fail silently, asset is already saved
+      if (!json.ok || !json.data || json.limit_reached) return;
       const d = json.data;
 
       // Build the enriched update — never overwrite fields the user already filled
@@ -8632,9 +8633,12 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
       const resp = await fetch(ASSET_INTEL_URL, {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},
-        body:JSON.stringify({ brand:asset.brand, model:asset.model, item:asset.item, upc:asset.upc||"", category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free" }),
+        body:JSON.stringify({ brand:asset.brand, model:asset.model, item:asset.item, upc:asset.upc||"", category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free", user_id:asset.user_id||"" }),
       });
       const json = await resp.json();
+      if (resp.status === 429 || json.limit_reached) {
+        throw new Error("Daily limit reached (40 lookups/day) — resets at midnight ✓");
+      }
       if (!json.ok) throw new Error(json.error||"Lookup failed");
       setResult(json.data);
       setOpen(true);
