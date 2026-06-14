@@ -107,9 +107,50 @@ serve(async (req) => {
       headers: { ...CORS, "Content-Type": "application/json" }, status: 400,
     });
 
-    const { brand, model, item, upc, category, install_date, tier } = JSON.parse(body);
+    const { brand, model, item, upc, category, install_date, tier, barcode_search } = JSON.parse(body);
     const isPro  = tier === "pro";
     const isPlus = tier === "plus" || isPro;
+
+    // ── Barcode-only search: UPCitemdb missed it, try Tavily web search ───
+    if (barcode_search && upc) {
+      let productName = "", productBrand = "", productModel = "";
+      try {
+        const query = `${upc} appliance product "model" OR "brand"`;
+        const searchRes = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TAVILY_KEY}` },
+          body: JSON.stringify({ query, max_results: 3, search_depth: "basic",
+            include_domains: ["amazon.com","homedepot.com","walmart.com","bestbuy.com","target.com","lowes.com"] }),
+        });
+        if (searchRes.ok) {
+          const searchJson = await searchRes.json();
+          const top = searchJson.results?.[0];
+          if (top) {
+            const snippet = `${top.title || ""} ${top.content || ""}`.slice(0, 600);
+            const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: { "Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01" },
+              body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:120,
+                messages:[{ role:"user", content:`Extract product name, brand, and model from this retail listing text. Return ONLY JSON: {"item":"full product name","brand":"brand","model":"model number or empty"}\n\nText: ${snippet}` }] }),
+            });
+            if (aiResp.ok) {
+              const aiJson = await aiResp.json();
+              const raw = (aiJson.content?.[0]?.text || "").replace(/```json\n?|```\n?/g,"").trim();
+              try {
+                const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw);
+                productName  = parsed.item  || top.title || "";
+                productBrand = parsed.brand || "";
+                productModel = parsed.model || "";
+              } catch { productName = top.title || ""; }
+            }
+          }
+        }
+      } catch { /* return empty */ }
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { item:productName, brand:productBrand, model:productModel, upc_verified:false, docs_found:!!productName, confidence:"medium" },
+      }), { headers:{ ...CORS,"Content-Type":"application/json" } });
+    }
 
     // ── Phase 1: UPC lookup if barcode was scanned ────────────────────────
     let upcData: Record<string,string> | null = null;

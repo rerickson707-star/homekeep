@@ -3414,23 +3414,44 @@ function BarcodeScanButton({ onResult }) {
     setLoading(false);
   };
 
-  // PATH 3 — UPCitemdb lookup (all paths converge here)
+  // Lookup converges here — UPCitemdb first, Tavily fallback if no result
   const lookupAndReturn = async (code) => {
     setUpc(code);
     setMode("found");
+    setProduct({ title: "Looking up product…", brand: "", model: "" }); // show loading state
+
+    // Step 1 — UPCitemdb (free, fast, ~495M products)
     try {
       const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
       const json = await res.json();
       const item = json?.items?.[0];
-      if (item) {
+      if (item && item.title) {
         setProduct(item);
         onResult(code, { brand:item.brand||"", model:item.model||"", title:item.title||"", description:item.description||"" });
-      } else {
-        onResult(code, null);
+        return; // found — done
       }
-    } catch {
-      onResult(code, null);
-    }
+    } catch { /* fall through to Tavily */ }
+
+    // Step 2 — Tavily fallback: search the barcode number like a Google search
+    // Routes through asset-intelligence edge function which has the Tavily key
+    try {
+      const resp = await fetch(ASSET_INTEL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({ upc: code, item: "", brand: "", model: "", tier: "free", barcode_search: true }),
+      });
+      const json = await resp.json();
+      if (json.ok && json.data?.item) {
+        const d = json.data;
+        setProduct({ title: d.item, brand: d.brand||"", model: d.model||"" });
+        onResult(code, { brand: d.brand||"", model: d.model||"", title: d.item||"", description: d.description||"" });
+        return;
+      }
+    } catch { /* fall through */ }
+
+    // Step 3 — Nothing found — still useful, UPC is stored for Smart Fill
+    setProduct(null);
+    onResult(code, null);
   };
 
   const handleManualLookup = async () => {
