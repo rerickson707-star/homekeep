@@ -115,6 +115,8 @@ function buildPrompt(
   p += '}\n\n';
   p += "Fill in all values appropriately for " + productName + ". ";
   p += "Return 3-5 pm_schedule tasks specific to this product. ";
+  p += "CRITICAL: Return valid JSON only. No trailing commas. No comments. No text before or after the JSON object. ";
+  p += "The pm_schedule array MUST be properly closed with ] before the final }. ";
   p += "For om_manual_url and support_url: use actual URLs from the manufacturer docs above if present, otherwise leave empty string.";
   return p;
 }

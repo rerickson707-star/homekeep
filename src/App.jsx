@@ -5960,12 +5960,20 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         buffer += chunk;
       }
 
-      // Parse the complete JSON
-      const cleaned = buffer.replace(/```json\n?|```\n?/g, "").trim();
+      // Parse the complete JSON — same multi-strategy approach as the panel
+      const cleaned = buffer.replace(/###DONE###/g,"").replace(/```json\n?|```\n?/g,"").trim();
       let d = null;
-      try { d = JSON.parse(cleaned); } catch {
-        const match = cleaned.match(/\{[\s\S]*\}/);
-        if (match) try { d = JSON.parse(match[0]); } catch { /**/ }
+      try { d = JSON.parse(cleaned); } catch { /* try extraction */ }
+      if (!d) {
+        const start = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}");
+        if (start !== -1 && end !== -1) {
+          const extracted = cleaned.slice(start, end + 1);
+          try { d = JSON.parse(extracted); } catch { /* try without pm_schedule */ }
+          if (!d) {
+            const withoutPM = extracted.replace(/"pm_schedule"\s*:\s*\[[\s\S]*$/, '"pm_schedule":[]\\n}');
+            try { d = JSON.parse(withoutPM); } catch { /**/ }
+          }
+        }
       }
       if (!d) return;
 
@@ -8675,14 +8683,42 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
         else if (buffer.length > 50)                  setStreamPhase("Extracting product data…");
       }
 
-      // Parse the complete JSON
-      const cleaned = buffer.replace(/```json\n?|```\n?/g, "").trim();
-      let data = null;
-      try { data = JSON.parse(cleaned); } catch {
-        const match = cleaned.match(/\{[\s\S]*\}/);
-        if (match) try { data = JSON.parse(match[0]); } catch { /**/ }
-      }
+      // Parse the complete JSON — robust multi-strategy approach
+      // Strategy 1: clean and parse directly
+      // Strategy 2: extract outermost {...} block
+      // Strategy 3: if pm_schedule is malformed, strip it and parse the rest
+      const parseStreamedJSON = (raw) => {
+        const s = raw
+          .replace(/###DONE###/g, "")
+          .replace(/```json
+?|```
+?/g, "")
+          .trim();
 
+        // Try direct parse first
+        try { return JSON.parse(s); } catch { /* try next */ }
+
+        // Find the outermost { ... } — handles leading/trailing garbage
+        const start = s.indexOf("{");
+        const end   = s.lastIndexOf("}");
+        if (start === -1 || end === -1) return null;
+        const extracted = s.slice(start, end + 1);
+        try { return JSON.parse(extracted); } catch { /* try next */ }
+
+        // pm_schedule often has unclosed brackets if truncated — strip and recover
+        const withoutPM = extracted.replace(/"pm_schedule"\s*:\s*\[[\s\S]*$/, '"pm_schedule": []\n}');
+        try { return JSON.parse(withoutPM); } catch { /* try next */ }
+
+        // Last resort: try to close any unclosed structures
+        let attempt = extracted;
+        const opens  = (attempt.match(/\[/g)||[]).length - (attempt.match(/\]/g)||[]).length;
+        const openB  = (attempt.match(/\{/g)||[]).length - (attempt.match(/\}/g)||[]).length;
+        if (opens > 0)  attempt += "]".repeat(opens);
+        if (openB > 0)  attempt += "}".repeat(openB);
+        try { return JSON.parse(attempt); } catch { return null; }
+      };
+
+      const data = parseStreamedJSON(buffer);
       if (!data) throw new Error("Could not parse response — try again");
       setResult(data);
       setOpen(true);
