@@ -5947,35 +5947,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         }),
       });
       if (!resp.ok) return;
-
-      // Consume the stream and accumulate the full response
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        if (chunk.includes("###DONE###")) { buffer += chunk.replace("###DONE###", ""); break; }
-        buffer += chunk;
-      }
-
-      // Parse the complete JSON — same multi-strategy approach as the panel
-      const cleaned = buffer.replace(/###DONE###/g,"").replace(/```json\n?|```\n?/g,"").trim();
-      let d = null;
-      try { d = JSON.parse(cleaned); } catch { /* try extraction */ }
-      if (!d) {
-        const start = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}");
-        if (start !== -1 && end !== -1) {
-          const extracted = cleaned.slice(start, end + 1);
-          try { d = JSON.parse(extracted); } catch { /* try without pm_schedule */ }
-          if (!d) {
-            const withoutPM = extracted.replace(/"pm_schedule"\s*:\s*\[[\s\S]*$/, '"pm_schedule":[]\\n}');
-            try { d = JSON.parse(withoutPM); } catch { /**/ }
-          }
-        }
-      }
-      if (!d) return;
+      const json = await resp.json();
+      if (!json.ok || !json.data) return;
+      const d = json.data;
 
       // Build the enriched update — never overwrite fields the user already filled
       const enriched = {};
@@ -8645,89 +8619,31 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
     if (!hasBrand) return;
     setLoading(true); setError(""); setResult(null); setApplied(false);
     setStreamText(""); setStreamPhase("Searching manufacturer docs…");
+
+    // Animated phases so the wait feels active (no actual streaming)
+    const phases = ["Searching manufacturer docs…","Reading product data…","Checking warranty & lifespan…","Building maintenance schedule…"];
+    let phaseIdx = 0;
+    const phaseTimer = setInterval(() => {
+      phaseIdx = Math.min(phaseIdx + 1, phases.length - 1);
+      setStreamPhase(phases[phaseIdx]);
+    }, 2000);
+
     try {
       const resp = await fetch(ASSET_INTEL_URL, {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},
         body:JSON.stringify({ brand:asset.brand, model:asset.model, item:asset.item, upc:asset.upc||"", category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free" }),
       });
-
-      if (!resp.ok) throw new Error("Smart Fill unavailable — try again");
-
-      // Read the stream
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      setStreamPhase("Reading manufacturer data…");
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-
-        if (chunk.includes("###DONE###")) {
-          // Stream complete — parse the accumulated buffer
-          buffer += chunk.replace("###DONE###", "").replace(/\n$/, "");
-          break;
-        }
-        buffer += chunk;
-
-        // Update live preview — extract readable fields as they stream in
-        setStreamText(buffer);
-
-        // Update phase hint based on what's appeared so far
-        if (buffer.includes('"pm_schedule"'))        setStreamPhase("Building maintenance schedule…");
-        else if (buffer.includes('"warranty_years"')) setStreamPhase("Checking warranty info…");
-        else if (buffer.includes('"lifespan_years"')) setStreamPhase("Calculating lifespan…");
-        else if (buffer.includes('"category"'))       setStreamPhase("Identifying product…");
-        else if (buffer.length > 50)                  setStreamPhase("Extracting product data…");
-      }
-
-      // Parse the complete JSON — robust multi-strategy approach
-      // Strategy 1: clean and parse directly
-      // Strategy 2: extract outermost {...} block
-      // Strategy 3: if pm_schedule is malformed, strip it and parse the rest
-      const parseStreamedJSON = (raw) => {
-        const s = raw
-          .replace(/###DONE###/g, "")
-          .replace(/```json
-?|```
-?/g, "")
-          .trim();
-
-        // Try direct parse first
-        try { return JSON.parse(s); } catch { /* try next */ }
-
-        // Find the outermost { ... } — handles leading/trailing garbage
-        const start = s.indexOf("{");
-        const end   = s.lastIndexOf("}");
-        if (start === -1 || end === -1) return null;
-        const extracted = s.slice(start, end + 1);
-        try { return JSON.parse(extracted); } catch { /* try next */ }
-
-        // pm_schedule often has unclosed brackets if truncated — strip and recover
-        const withoutPM = extracted.replace(/"pm_schedule"\s*:\s*\[[\s\S]*$/, '"pm_schedule": []\n}');
-        try { return JSON.parse(withoutPM); } catch { /* try next */ }
-
-        // Last resort: try to close any unclosed structures
-        let attempt = extracted;
-        const opens  = (attempt.match(/\[/g)||[]).length - (attempt.match(/\]/g)||[]).length;
-        const openB  = (attempt.match(/\{/g)||[]).length - (attempt.match(/\}/g)||[]).length;
-        if (opens > 0)  attempt += "]".repeat(opens);
-        if (openB > 0)  attempt += "}".repeat(openB);
-        try { return JSON.parse(attempt); } catch { return null; }
-      };
-
-      const data = parseStreamedJSON(buffer);
-      if (!data) throw new Error("Could not parse response — try again");
-      setResult(data);
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error||"Lookup failed");
+      setResult(json.data);
       setOpen(true);
-      setStreamText("");
-      setStreamPhase("");
+      setStreamText(""); setStreamPhase("");
     } catch(e) {
-      setError(e.message || "Could not reach Smart Fill — try again");
+      setError(e.message||"Could not reach Smart Fill — try again");
       setStreamText(""); setStreamPhase("");
     }
+    clearInterval(phaseTimer);
     setLoading(false);
   };
 

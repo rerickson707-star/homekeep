@@ -24,16 +24,16 @@ async function lookupUPC(upc: string) {
 async function tavilySearch(brand: string, model: string, item: string): Promise<Array<{url:string,content:string}>> {
   if (!TAVILY_KEY) return [];
   const brandClean = brand.toLowerCase().replace(/\s+/g, "");
-  const q = (model || item) + " " + brand + " owner manual maintenance warranty";
+  const q = (model || item) + " " + brand + " maintenance schedule warranty manual";
   try {
     const res = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + TAVILY_KEY },
       body: JSON.stringify({
         query: q,
-        max_results: 5,
+        max_results: 3,
         search_depth: "basic",
-        include_domains: [brandClean + ".com", "support." + brandClean + ".com", "manualslib.com", "manuals.plus", "manua.ls"],
+        include_domains: [brandClean + ".com", "support." + brandClean + ".com", "manualslib.com", "manuals.plus"],
       }),
     });
     if (!res.ok) return [];
@@ -45,80 +45,30 @@ async function tavilySearch(brand: string, model: string, item: string): Promise
 }
 
 function parseJSON(text: string): Record<string,unknown> | null {
-  const cleaned = text.replace(/```json\n?|```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); } catch { /**/ }
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try { return JSON.parse(match[0]); } catch { return null; }
-}
+  // Strip any markdown fences or sentinels
+  let s = text.replace(/```json\n?|```\n?|###DONE###/g, "").trim();
 
-function buildPrompt(
-  productName: string, brand: string, model: string, category: string,
-  installDate: string, upcData: Record<string,string>|null, manufacturerContent: string,
-  sourceUrls: string[], isPlus: boolean
-): string {
-  const confidence  = upcData ? "high" : (manufacturerContent ? "high" : "medium");
-  const upcVerified = upcData ? "true" : "false";
-  const docsFound   = manufacturerContent ? "true" : "false";
-  const contrLow    = isPlus ? "number or null" : "null";
-  const contrHigh   = isPlus ? "number or null" : "null";
-  const sourcesStr  = JSON.stringify(sourceUrls.slice(0, 3));
+  // Try direct parse
+  try { return JSON.parse(s); } catch { /* fall through */ }
 
-  let p = "You are a home appliance expert. Extract maintenance data for a home management app.\n\n";
-  p += "PRODUCT: " + productName + "\n";
-  p += "Brand: " + (brand || "unknown") + "\n";
-  p += "Model: " + (model || "unknown") + "\n";
-  p += "Category: " + (category || "unknown") + "\n";
-  p += "Install date: " + (installDate || "unknown") + "\n";
+  // Extract outermost { ... }
+  const start = s.indexOf("{");
+  const end   = s.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  s = s.slice(start, end + 1);
+  try { return JSON.parse(s); } catch { /* fall through */ }
 
-  if (upcData) {
-    p += "\nUPC VERIFIED PRODUCT:\n";
-    p += "- Name: " + upcData.title + "\n";
-    p += "- Brand: " + upcData.brand + "\n";
-    p += "- Model: " + upcData.model + "\n";
-  }
-  if (manufacturerContent) {
-    p += "\nMANUFACTURER DOCS (use as primary source):\n" + manufacturerContent + "\n";
-  } else {
-    p += "\nNo manufacturer docs found - use your training knowledge for this product.\n";
-  }
+  // pm_schedule is last — if truncated, strip it and recover the rest
+  const withoutPM = s.replace(/"pm_schedule"\s*:\s*\[[\s\S]*$/, '"pm_schedule": []}');
+  try { return JSON.parse(withoutPM); } catch { /* fall through */ }
 
-  p += "\nReturn ONLY valid JSON (no markdown, no backticks, no explanation):\n";
-  p += "{\n";
-  p += '  "item": "' + productName.replace(/"/g, "'") + '",\n';
-  p += '  "brand": "' + brand.replace(/"/g, "'") + '",\n';
-  p += '  "model": "' + model.replace(/"/g, "'") + '",\n';
-  p += '  "upc_verified": ' + upcVerified + ',\n';
-  p += '  "docs_found": ' + docsFound + ',\n';
-  p += '  "category": "HVAC or Appliance or Plumbing or Electrical or Roofing or Structure or Safety or Landscaping or Other",\n';
-  p += '  "condition": "Good",\n';
-  p += '  "confidence": "' + confidence + '",\n';
-  p += '  "lifespan_years": 0,\n';
-  p += '  "warranty_years": null,\n';
-  p += '  "warranty_expiry": null,\n';
-  p += '  "years_remaining": null,\n';
-  p += '  "replacement_cost_low": 0,\n';
-  p += '  "replacement_cost_high": 0,\n';
-  p += '  "replacement_cost_note": "",\n';
-  p += '  "contractor_cost_low": ' + contrLow + ',\n';
-  p += '  "contractor_cost_high": ' + contrHigh + ',\n';
-  p += '  "contractor_note": "",\n';
-  p += '  "om_manual_url": "",\n';
-  p += '  "manual_url": "",\n';
-  p += '  "support_url": "",\n';
-  p += '  "maintenance_tip": "",\n';
-  p += '  "condition_assessment": "",\n';
-  p += '  "data_sources": ' + sourcesStr + ',\n';
-  p += '  "pm_schedule": [\n';
-  p += '    { "title": "", "interval_months": 6, "diy": true, "description": "" }\n';
-  p += '  ]\n';
-  p += '}\n\n';
-  p += "Fill in all values appropriately for " + productName + ". ";
-  p += "Return 3-5 pm_schedule tasks specific to this product. ";
-  p += "CRITICAL: Return valid JSON only. No trailing commas. No comments. No text before or after the JSON object. ";
-  p += "The pm_schedule array MUST be properly closed with ] before the final }. ";
-  p += "For om_manual_url and support_url: use actual URLs from the manufacturer docs above if present, otherwise leave empty string.";
-  return p;
+  // Try closing unclosed brackets
+  const opens = (s.match(/\[/g)||[]).length - (s.match(/\]/g)||[]).length;
+  const openB = (s.match(/\{/g)||[]).length - (s.match(/\}/g)||[]).length;
+  let fixed = s;
+  if (opens > 0) fixed += "]".repeat(Math.min(opens, 5));
+  if (openB > 0) fixed += "}".repeat(Math.min(openB, 3));
+  try { return JSON.parse(fixed); } catch { return null; }
 }
 
 serve(async (req) => {
@@ -130,18 +80,18 @@ serve(async (req) => {
       headers: { ...CORS, "Content-Type": "application/json" }, status: 400,
     });
 
-    const parsed = JSON.parse(body);
-    const brand         = parsed.brand         || "";
-    const model         = parsed.model         || "";
-    const item          = parsed.item          || "";
-    const upc           = parsed.upc           || "";
-    const category      = parsed.category      || "";
-    const installDate   = parsed.install_date  || "";
-    const tier          = parsed.tier          || "free";
+    const parsed     = JSON.parse(body);
+    const brand      = parsed.brand      || "";
+    const model      = parsed.model      || "";
+    const item       = parsed.item       || "";
+    const upc        = parsed.upc        || "";
+    const category   = parsed.category   || "";
+    const installDate = parsed.install_date || "";
+    const tier       = parsed.tier       || "free";
+    const isPlus     = tier === "plus" || tier === "pro";
     const barcodeSearch = parsed.barcode_search || false;
-    const isPlus        = tier === "plus" || tier === "pro";
 
-    // ── Barcode search path ──────────────────────────────────────────────
+    // ── Barcode web search path ───────────────────────────────────────────
     if (barcodeSearch && upc) {
       let productName = "", productBrand = "", productModel = "";
       try {
@@ -161,14 +111,14 @@ serve(async (req) => {
           if (results.length > 0) {
             const combined = results.slice(0,3)
               .map((r: Record<string,string>) => (r.title||"") + " " + (r.content||""))
-              .join("\n").slice(0, 1500);
+              .join("\n").slice(0, 1000);
             const aiRes = await fetch(ANTHROPIC_API, {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
               body: JSON.stringify({
                 model: "claude-haiku-4-5",
                 max_tokens: 256,
-                messages: [{ role: "user", content: "Extract product name, brand, and model from these retail listings for barcode " + upc + ". Return ONLY JSON: {\"item\":\"full product name\",\"brand\":\"brand\",\"model\":\"model number or empty\"}\n\nListings:\n" + combined }],
+                messages: [{ role: "user", content: "Barcode " + upc + " retail listings below. Return ONLY JSON: {\"item\":\"name\",\"brand\":\"brand\",\"model\":\"model or empty\"}\n\n" + combined }],
               }),
             });
             if (aiRes.ok) {
@@ -188,7 +138,7 @@ serve(async (req) => {
         headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
-    // ── UPC lookup ───────────────────────────────────────────────────────
+    // ── UPC lookup ────────────────────────────────────────────────────────
     let upcData: Record<string,string>|null = null;
     if (upc && upc.trim().length >= 8) upcData = await lookupUPC(upc);
 
@@ -203,31 +153,50 @@ serve(async (req) => {
       });
     }
 
-    // ── Tavily search ────────────────────────────────────────────────────
+    // ── Tavily search ─────────────────────────────────────────────────────
     let manufacturerContent = "";
     let sourceUrls: string[] = [];
+    try {
+      const results = await tavilySearch(resolvedBrand, resolvedModel, resolvedItem);
+      sourceUrls = results.map(r => r.url);
+      // Trim content aggressively — we only need key facts, not full pages
+      manufacturerContent = results
+        .map(r => "URL: " + r.url + "\n" + r.content.slice(0, 800))
+        .join("\n---\n")
+        .slice(0, 3000); // was 8000 — reduced to leave room for output
+    } catch { manufacturerContent = ""; }
 
-    if (resolvedModel || resolvedBrand) {
-      try {
-        const searchResults = await tavilySearch(resolvedBrand, resolvedModel, resolvedItem);
-        sourceUrls = searchResults.map(r => r.url);
-        manufacturerContent = searchResults
-          .map(r => "SOURCE: " + r.url + "\n" + r.content)
-          .join("\n\n---\n\n")
-          .slice(0, 8000);
-      } catch { manufacturerContent = ""; }
-    }
+    // ── Build compact prompt ──────────────────────────────────────────────
+    let prompt = "Home appliance expert. Return maintenance data as JSON.\n\n";
+    prompt += "Product: " + productName + "\n";
+    prompt += "Brand: " + (resolvedBrand || "?") + " | Model: " + (resolvedModel || "?") + " | Category: " + (category || "?") + "\n";
+    if (installDate) prompt += "Installed: " + installDate + "\n";
+    if (manufacturerContent) prompt += "\nSources:\n" + manufacturerContent + "\n";
 
-    // ── Build prompt and call Claude ─────────────────────────────────────
-    const prompt = buildPrompt(
-      productName, resolvedBrand, resolvedModel, category,
-      installDate, upcData, manufacturerContent, sourceUrls, isPlus
-    );
+    prompt += "\nReturn ONLY this JSON (fill in real values, no placeholders):\n";
+    prompt += '{"item":"' + productName.replace(/"/g,"'") + '","brand":"' + resolvedBrand.replace(/"/g,"'") + '","model":"' + resolvedModel.replace(/"/g,"'") + '",';
+    prompt += '"upc_verified":' + (upcData?"true":"false") + ',"docs_found":' + (manufacturerContent?"true":"false") + ',';
+    prompt += '"category":"Appliance","condition":"Good","confidence":"' + (upcData?"high":manufacturerContent?"high":"medium") + '",';
+    prompt += '"lifespan_years":10,"warranty_years":1,"warranty_expiry":null,"years_remaining":null,';
+    prompt += '"replacement_cost_low":0,"replacement_cost_high":0,"replacement_cost_note":"",';
+    prompt += '"contractor_cost_low":' + (isPlus?"null":"null") + ',"contractor_cost_high":null,"contractor_note":"",';
+    prompt += '"om_manual_url":"","manual_url":"","support_url":"",';
+    prompt += '"maintenance_tip":"","condition_assessment":"",';
+    prompt += '"data_sources":' + JSON.stringify(sourceUrls.slice(0,2)) + ',';
+    prompt += '"pm_schedule":[{"title":"task","interval_months":6,"diy":true,"description":"how-to"}]}';
+    prompt += "\n\nReplace ALL placeholder values with real data for " + productName + ".";
+    prompt += "\npm_schedule: 3 tasks max, keep descriptions under 60 chars.";
+    prompt += "\nNo trailing commas. Valid JSON only.";
 
+    // ── Call Claude (no streaming — simpler and more reliable) ────────────
     const aiResp = await fetch(ANTHROPIC_API, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2000, stream: true, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 3000,
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
 
     if (!aiResp.ok) {
@@ -237,56 +206,21 @@ serve(async (req) => {
       });
     }
 
-    // Stream Claude's response directly to the client as SSE
-    // The client accumulates chunks and parses JSON when complete
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = aiResp.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+    const aiJson  = await aiResp.json();
+    const rawText = aiJson.content?.[0]?.text || "";
+    const data    = parseJSON(rawText);
 
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+    if (!data) {
+      return new Response(JSON.stringify({ ok: false, error: "Could not parse AI response", raw: rawText.slice(0, 400) }), {
+        headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
+      });
+    }
 
-            // Decode SSE chunks from Anthropic and forward text deltas
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n");
+    // Ensure pm_schedule is always an array
+    if (!Array.isArray(data.pm_schedule)) data.pm_schedule = [];
 
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const data = line.slice(6).trim();
-              if (data === "[DONE]" || !data) continue;
-              try {
-                const parsed = JSON.parse(data);
-                // content_block_delta contains the actual text
-                if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
-                  const text = parsed.delta.text || "";
-                  buffer += text;
-                  // Forward as plain text chunk — client will accumulate
-                  controller.enqueue(new TextEncoder().encode(text));
-                }
-              } catch { /* skip malformed SSE lines */ }
-            }
-          }
-        } finally {
-          reader.releaseLock();
-        }
-
-        // Signal end with a sentinel so the client knows streaming is complete
-        controller.enqueue(new TextEncoder().encode("\n###DONE###"));
-        controller.close();
-      }
-    });
-
-    return new Response(stream, {
-      headers: {
-        ...CORS,
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Content-Type-Options": "nosniff",
-        "Transfer-Encoding": "chunked",
-      },
+    return new Response(JSON.stringify({ ok: true, data }), {
+      headers: { ...CORS, "Content-Type": "application/json" },
     });
 
   } catch (err) {
