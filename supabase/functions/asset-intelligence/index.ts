@@ -123,7 +123,7 @@ serve(async (req) => {
           body: JSON.stringify({
             query,
             max_results: 5,
-            search_depth: "advanced",   // deeper = more content per result
+            search_depth: "basic",   // basic is 2-3x faster than advanced; snippets are sufficient
             include_domains: ["amazon.com","homedepot.com","walmart.com","bestbuy.com","target.com","lowes.com","amazon.ca","build.com"],
           }),
         });
@@ -201,16 +201,29 @@ ${combined}`,
     }
 
     // ── Phase 2: Tavily search for real manufacturer docs ─────────────────
+    // Use ONLY search snippets (no extract) for speed — search_depth:advanced
+    // gives enough content in snippets without the extra round-trip
     let manufacturerContent = "";
     let sourceUrls: string[] = [];
 
-    if (resolvedModel && resolvedBrand) {
-      const searchResults = await tavilySearch(resolvedBrand, resolvedModel, resolvedItem);
-      sourceUrls = searchResults.map(r => r.url);
-      // Use search snippets + extract top pages for full content
-      const snippets = searchResults.map(r => `[${r.url}]\n${r.content}`).join("\n\n");
-      const extracted = await tavilyExtract(sourceUrls);
-      manufacturerContent = [snippets, extracted].filter(Boolean).join("\n\n---\n\n").slice(0, 10000);
+    if (resolvedModel || resolvedBrand) {
+      try {
+        // Race against a 5-second timeout so slow Tavily responses don't block
+        const searchPromise = tavilySearch(resolvedBrand, resolvedModel, resolvedItem);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Tavily timeout")), 5000)
+        );
+        const searchResults = await Promise.race([searchPromise, timeoutPromise]) as Awaited<ReturnType<typeof tavilySearch>>;
+        sourceUrls = searchResults.map((r: {url:string,content:string}) => r.url);
+        // Use search snippets directly — skip extract for speed
+        manufacturerContent = searchResults
+          .map((r: {url:string,content:string}) => `SOURCE: ${r.url}\n${r.content}`)
+          .join("\n\n---\n\n")
+          .slice(0, 8000);
+      } catch {
+        // Tavily timed out or failed — Claude will use training knowledge
+        manufacturerContent = "";
+      }
     }
 
     // ── Phase 3: Claude reads real docs and extracts structured data ───────
@@ -303,7 +316,7 @@ Tasks must be product-specific — not generic "clean the appliance" instruction
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1500,
+        max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
     });

@@ -6006,10 +6006,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       upc:                  editData.upc||"",
     };
 
-    const hasBrandModel = !!(payload.brand && payload.model);
-    const hasBrandOnly  = !!(payload.brand && !payload.model);
-    const hasModelOnly  = !!(!payload.brand && payload.model);
-    const hasMissing    = hasBrandOnly || hasModelOnly || (!payload.brand && !payload.model);
+    // Smart Fill needs at least brand OR model (model alone is often enough)
+    const hasBrandModel = !!(payload.brand || payload.model); // either is sufficient
+    const hasMissing    = !payload.brand && !payload.model;   // truly empty
     const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
 
     if(editId) {
@@ -6040,9 +6039,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         setAssets([...assets, newAsset]);
         if (hasBrandModel && isPlus) {
           toast("Asset saved — running Smart Fill…");
+          console.log("[SmartFill] Triggering after save:", { brand: payload.brand, model: payload.model, id: newAsset.id });
           runSmartFillAfterSave(newAsset.id, payload);
         } else {
           toast("Asset added ✓");
+          console.log("[SmartFill] Skipped:", { hasBrandModel, isPlus, plan: planData?.plan, brand: payload.brand, model: payload.model });
           if (hasMissing && isPlus) {
             setTimeout(() => toast(
               hasBrandOnly  ? "💡 Add a model number to enable Smart Fill & full PM schedule" :
