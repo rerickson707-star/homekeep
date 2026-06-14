@@ -6409,7 +6409,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           addMode === "choose" ? (
             <AssetAddChoiceModal
               onClose={closeModal}
-              onChoose={(mode) => setAddMode(mode)}
+              onChoose={(mode, prefilled) => { setAddMode(mode); if (prefilled) setEditData(d => ({...d, ...prefilled})); }}
               planData={planData}
               onUpgrade={onUpgrade}
             />
@@ -6639,7 +6639,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         addMode === "choose" ? (
           <AssetAddChoiceModal
             onClose={closeModal}
-            onChoose={(mode) => setAddMode(mode)}
+            onChoose={(mode, prefilled) => { setAddMode(mode); if (prefilled) setEditData(d => ({...d, ...prefilled})); }}
             planData={planData}
             onUpgrade={onUpgrade}
           />
