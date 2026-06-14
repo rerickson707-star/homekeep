@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 
@@ -5858,7 +5858,7 @@ function RecallBadge({ brand, category, model, serialNumber }) {
   return null;
 }
 
-class AssetDetailErrorBoundary extends React.Component {
+class AssetDetailErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
   componentDidCatch(error, info) { console.error("[AssetDetail crash]", error, info.componentStack); }
