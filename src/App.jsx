@@ -3318,19 +3318,22 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
   );
 }
 
-// ─── BARCODE SCANNER (UPC product box scan) ──────────────────────────────────
-// Uses the device camera + BarcodeDetector API where available,
-// falls back to a manual UPC entry field with instant UPCitemdb lookup
+// ─── BARCODE SCANNER — cross-platform ────────────────────────────────────────
+// Path 1: BarcodeDetector API  → Chrome 88+ / Android (live video scan)
+// Path 2: Camera photo + Claude → iOS Safari (take photo, AI reads the barcode)
+// Path 3: Manual UPC entry     → always available as fallback
 function BarcodeScanButton({ onResult }) {
-  const [mode, setMode]     = useState("idle");  // idle | scanning | manual | found | error
-  const [upc, setUpc]       = useState("");
+  const [mode, setMode]       = useState("idle"); // idle|scanning|reading|manual|found|error
+  const [upc, setUpc]         = useState("");
   const [product, setProduct] = useState(null);
-  const [err, setErr]       = useState("");
-  const videoRef            = useRef(null);
-  const streamRef           = useRef(null);
-  const scannerRef          = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState("");
+  const videoRef              = useRef(null);
+  const streamRef             = useRef(null);
+  const scannerRef            = useRef(null);
+  const fileRef               = useRef(null);
 
-  // Check if BarcodeDetector is available (Chrome/Android, not Safari)
+  // BarcodeDetector: Chrome/Android only
   const hasDetector = typeof window !== "undefined" && "BarcodeDetector" in window;
 
   const stopCamera = () => {
@@ -3339,42 +3342,92 @@ function BarcodeScanButton({ onResult }) {
     if (videoRef.current)   { videoRef.current.srcObject = null; }
   };
 
-  const startCamera = async () => {
+  // PATH 1 — BarcodeDetector live scan (Chrome/Android)
+  const startLiveScan = async () => {
     setMode("scanning"); setErr("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment", width:{ideal:1280}, height:{ideal:720} } });
       streamRef.current = stream;
       if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
-      const detector = new window.BarcodeDetector({ formats:["upc_a","upc_e","ean_13","ean_8","code_128","code_39","itf","qr_code"] });
+      const detector = new window.BarcodeDetector({ formats:["upc_a","upc_e","ean_13","ean_8","code_128","code_39","qr_code"] });
       scannerRef.current = setInterval(async () => {
         if (!videoRef.current) return;
         try {
           const codes = await detector.detect(videoRef.current);
           if (codes.length > 0) {
-            const code = codes[0].rawValue;
             stopCamera();
-            await lookupAndReturn(code);
+            await lookupAndReturn(codes[0].rawValue);
           }
         } catch { /* keep scanning */ }
       }, 300);
-    } catch(e) {
+    } catch {
       stopCamera();
-      setErr("Camera not available — enter barcode manually");
-      setMode("manual");
+      // Fall back to photo path
+      triggerPhotoPicker();
     }
   };
 
+  // PATH 2 — Photo capture (iOS Safari): user takes photo, Claude reads barcode
+  const triggerPhotoPicker = () => {
+    setMode("idle");
+    if (fileRef.current) fileRef.current.click();
+  };
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ""; // reset so same file can be picked again
+    setMode("reading"); setErr(""); setLoading(true);
+    try {
+      // Convert image to base64
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      // Ask Claude to read the barcode from the image
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 100,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: base64 } },
+              { type: "text", text: "Read the barcode or UPC number in this image. Return ONLY the numeric barcode digits, nothing else. If you cannot read a barcode, return the word NONE." }
+            ]
+          }]
+        })
+      });
+      const json = await resp.json();
+      const code = json.content?.[0]?.text?.trim().replace(/\D/g,"") || "";
+      if (!code || code.length < 6) {
+        setErr("Couldn't read the barcode — try again or enter manually");
+        setMode("manual");
+      } else {
+        await lookupAndReturn(code);
+      }
+    } catch {
+      setErr("Could not process image — enter barcode manually");
+      setMode("manual");
+    }
+    setLoading(false);
+  };
+
+  // PATH 3 — UPCitemdb lookup (all paths converge here)
   const lookupAndReturn = async (code) => {
     setUpc(code);
     setMode("found");
-    // Look up UPC in the background
     try {
       const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
       const json = await res.json();
       const item = json?.items?.[0];
       if (item) {
         setProduct(item);
-        onResult(code, { brand: item.brand||"", model: item.model||"", title: item.title||"", description: item.description||"" });
+        onResult(code, { brand:item.brand||"", model:item.model||"", title:item.title||"", description:item.description||"" });
       } else {
         onResult(code, null);
       }
@@ -3383,83 +3436,165 @@ function BarcodeScanButton({ onResult }) {
     }
   };
 
-  const handleManual = async (e) => {
-    e.preventDefault();
-    if (upc.trim().length < 8) return;
+  const handleManualLookup = async () => {
+    if (upc.trim().length < 6) return;
+    setLoading(true);
     await lookupAndReturn(upc.trim());
+    setLoading(false);
   };
 
   useEffect(() => () => stopCamera(), []);
 
+  // Hidden file input — always in DOM so ref works
+  const fileInput = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/*"
+      capture="environment"
+      style={{display:"none"}}
+      onChange={handlePhoto}
+    />
+  );
+
   if (mode === "idle") return (
-    <button type="button" onClick={hasDetector ? startCamera : () => setMode("manual")}
-      style={{marginTop:".5rem",width:"100%",display:"flex",alignItems:"center",gap:".65rem",
-        padding:".6rem .9rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",
-        borderRadius:10,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
-      <span style={{fontSize:"1.1rem",flexShrink:0}}>📦</span>
-      <div style={{flex:1}}>
-        <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(244,237,223,.9)"}}>Scan product barcode</div>
-        <div style={{fontSize:".67rem",color:"rgba(244,237,223,.45)",marginTop:1}}>
-          {hasDetector ? "Scan UPC on product box for instant ID" : "Enter UPC from product box"}
-        </div>
+    <>
+      {fileInput}
+      <div style={{marginTop:".5rem",display:"flex",flexDirection:"column",gap:".35rem"}}>
+        {/* Primary CTA — camera */}
+        <button type="button"
+          onClick={hasDetector ? startLiveScan : triggerPhotoPicker}
+          style={{width:"100%",display:"flex",alignItems:"center",gap:".65rem",
+            padding:".65rem .9rem",background:"rgba(255,255,255,.08)",
+            border:"1px solid rgba(255,255,255,.16)",borderRadius:10,
+            cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
+          <span style={{fontSize:"1.2rem",flexShrink:0}}>📷</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:".82rem",fontWeight:700,color:"rgba(244,237,223,.95)"}}>
+              {hasDetector ? "Scan barcode with camera" : "Take photo of barcode"}
+            </div>
+            <div style={{fontSize:".68rem",color:"rgba(244,237,223,.45)",marginTop:1}}>
+              {hasDetector ? "Live scan — point at UPC on product box" : "Opens your camera — point at the barcode"}
+            </div>
+          </div>
+          <span style={{fontSize:".8rem",color:"rgba(244,237,223,.25)",flexShrink:0}}>→</span>
+        </button>
+        {/* Secondary — manual entry */}
+        <button type="button" onClick={()=>setMode("manual")}
+          style={{width:"100%",display:"flex",alignItems:"center",gap:".65rem",
+            padding:".5rem .9rem",background:"none",
+            border:"1px solid rgba(255,255,255,.1)",borderRadius:10,
+            cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
+          <span style={{fontSize:"1rem",flexShrink:0}}>⌨️</span>
+          <div style={{fontSize:".75rem",color:"rgba(244,237,223,.6)"}}>Enter barcode number manually</div>
+        </button>
       </div>
-      <span style={{fontSize:".75rem",color:"rgba(244,237,223,.3)",flexShrink:0}}>→</span>
-    </button>
+    </>
   );
 
   if (mode === "scanning") return (
-    <div style={{marginTop:".5rem",background:"#000",borderRadius:12,overflow:"hidden",position:"relative"}}>
-      <video ref={videoRef} style={{width:"100%",height:180,objectFit:"cover",display:"block"}} playsInline muted/>
-      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
-        <div style={{width:200,height:80,border:"2px solid rgba(193,97,64,.8)",borderRadius:8,boxShadow:"0 0 0 2000px rgba(0,0,0,.45)"}}/>
-        <div style={{color:"#fff",fontSize:".75rem",marginTop:".75rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Point at barcode</div>
+    <>
+      {fileInput}
+      <div style={{marginTop:".5rem",background:"#000",borderRadius:12,overflow:"hidden",position:"relative"}}>
+        <video ref={videoRef} style={{width:"100%",height:200,objectFit:"cover",display:"block"}} playsInline muted/>
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+          <div style={{width:220,height:90,border:"2.5px solid rgba(193,97,64,.9)",borderRadius:10,boxShadow:"0 0 0 2000px rgba(0,0,0,.5)"}}/>
+          <div style={{color:"#fff",fontSize:".8rem",fontWeight:600,marginTop:"1rem",fontFamily:"'Hanken Grotesk',sans-serif",textShadow:"0 1px 4px rgba(0,0,0,.8)"}}>
+            Point at barcode
+          </div>
+          <div style={{color:"rgba(255,255,255,.5)",fontSize:".68rem",marginTop:".25rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+            Hold steady — scanning automatically
+          </div>
+        </div>
+        <button type="button" onClick={()=>{stopCamera();setMode("idle");}}
+          style={{position:"absolute",top:10,right:10,background:"rgba(0,0,0,.65)",border:"none",
+            borderRadius:8,color:"#fff",fontSize:".75rem",fontWeight:600,padding:"5px 12px",
+            cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+          Cancel
+        </button>
       </div>
-      <button type="button" onClick={()=>{stopCamera();setMode("idle");}}
-        style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.6)",border:"none",borderRadius:6,color:"#fff",fontSize:".75rem",padding:"4px 10px",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
-        Cancel
-      </button>
-    </div>
+    </>
+  );
+
+  if (mode === "reading") return (
+    <>
+      {fileInput}
+      <div style={{marginTop:".5rem",padding:"1.25rem",background:"rgba(35,74,61,.15)",border:"1px solid rgba(35,74,61,.3)",borderRadius:12,textAlign:"center"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".5rem",marginBottom:".35rem"}}>
+          <span className="spinner" style={{width:14,height:14,borderWidth:2,borderColor:"rgba(167,191,168,.2)",borderTopColor:"var(--sage)"}}/>
+          <span style={{fontSize:".82rem",fontWeight:600,color:"rgba(244,237,223,.8)"}}>Reading barcode…</span>
+        </div>
+        <div style={{fontSize:".7rem",color:"rgba(244,237,223,.4)"}}>AI is reading the barcode from your photo</div>
+      </div>
+    </>
   );
 
   if (mode === "manual") return (
-    <div style={{marginTop:".5rem",padding:".7rem .9rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",borderRadius:10}}>
-      <div style={{fontSize:".75rem",fontWeight:700,color:"rgba(244,237,223,.8)",marginBottom:".4rem"}}>📦 Enter barcode manually</div>
-      {err && <div style={{fontSize:".68rem",color:"#F0A070",marginBottom:".4rem"}}>{err}</div>}
-      <div style={{display:"flex",gap:".4rem"}}>
-        <input value={upc} onChange={e=>setUpc(e.target.value)} placeholder="e.g. 622356542145"
-          style={{flex:1,padding:".5rem .75rem",borderRadius:8,border:"1px solid rgba(255,255,255,.2)",background:"rgba(0,0,0,.3)",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem"}}/>
-        <button type="button" onClick={handleManual}
-          style={{padding:".5rem .85rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>
-          Look up
-        </button>
+    <>
+      {fileInput}
+      <div style={{marginTop:".5rem",padding:".75rem .9rem",background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",borderRadius:12}}>
+        <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(244,237,223,.85)",marginBottom:".5rem"}}>Enter barcode number</div>
+        {err && <div style={{fontSize:".7rem",color:"#F0A070",marginBottom:".4rem",lineHeight:1.4}}>{err}</div>}
+        <div style={{display:"flex",gap:".4rem",marginBottom:".4rem"}}>
+          <input
+            value={upc}
+            onChange={e=>setUpc(e.target.value.replace(/\D/g,""))}
+            onKeyDown={e=>e.key==="Enter"&&handleManualLookup()}
+            placeholder="e.g. 622356542145"
+            inputMode="numeric"
+            style={{flex:1,padding:".55rem .75rem",borderRadius:8,border:"1px solid rgba(255,255,255,.18)",
+              background:"rgba(0,0,0,.25)",color:"rgba(244,237,223,.9)",
+              fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".9rem",letterSpacing:1}}
+          />
+          <button type="button" onClick={handleManualLookup} disabled={loading||upc.length<6}
+            style={{padding:".55rem .9rem",background:"var(--pine)",color:"#fff",border:"none",
+              borderRadius:8,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",fontWeight:700,
+              cursor:loading?"default":"pointer",opacity:upc.length<6?0.5:1}}>
+            {loading?"…":"Look up"}
+          </button>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <button type="button" onClick={triggerPhotoPicker}
+            style={{fontSize:".7rem",color:"rgba(244,237,223,.5)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0,textDecoration:"underline",textUnderlineOffset:2}}>
+            Take photo instead
+          </button>
+          <button type="button" onClick={()=>{setMode("idle");setErr("");setUpc("");}}
+            style={{fontSize:".7rem",color:"rgba(244,237,223,.35)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
+            Cancel
+          </button>
+        </div>
       </div>
-      <button type="button" onClick={()=>setMode("idle")} style={{marginTop:".4rem",fontSize:".68rem",color:"rgba(244,237,223,.4)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>Cancel</button>
-    </div>
+    </>
   );
 
   if (mode === "found") return (
-    <div style={{marginTop:".5rem",padding:".7rem .9rem",background:"rgba(35,74,61,.15)",border:"1px solid rgba(35,74,61,.3)",borderRadius:10}}>
-      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-        <span style={{fontSize:".9rem"}}>✓</span>
-        <div style={{flex:1,minWidth:0}}>
-          {product ? (
-            <>
-              <div style={{fontSize:".8rem",fontWeight:700,color:"rgba(244,237,223,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{product.title}</div>
-              <div style={{fontSize:".68rem",color:"rgba(244,237,223,.5)",marginTop:1}}>{product.brand}{product.model?` · ${product.model}`:""} · UPC: {upc}</div>
-            </>
-          ) : (
-            <>
-              <div style={{fontSize:".8rem",fontWeight:700,color:"rgba(244,237,223,.9)"}}>Barcode scanned</div>
-              <div style={{fontSize:".68rem",color:"rgba(244,237,223,.5)",marginTop:1}}>UPC: {upc} · Looking up product…</div>
-            </>
-          )}
+    <>
+      {fileInput}
+      <div style={{marginTop:".5rem",padding:".75rem .9rem",background:"rgba(35,74,61,.12)",border:"1px solid rgba(35,74,61,.25)",borderRadius:12}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:".6rem"}}>
+          <span style={{fontSize:"1rem",marginTop:1,flexShrink:0}}>✅</span>
+          <div style={{flex:1,minWidth:0}}>
+            {product ? (
+              <>
+                <div style={{fontSize:".82rem",fontWeight:700,color:"rgba(244,237,223,.95)",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{product.title}</div>
+                <div style={{fontSize:".7rem",color:"rgba(244,237,223,.5)",lineHeight:1.4}}>
+                  {[product.brand, product.model&&`Model: ${product.model}`, `UPC: ${upc}`].filter(Boolean).join(" · ")}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{fontSize:".82rem",fontWeight:700,color:"rgba(244,237,223,.9)"}}>Barcode read: {upc}</div>
+                <div style={{fontSize:".7rem",color:"rgba(244,237,223,.45)",marginTop:2}}>Product not found in database — fields pre-filled with barcode</div>
+              </>
+            )}
+          </div>
+          <button type="button" onClick={()=>{setMode("idle");setProduct(null);setUpc("");}}
+            style={{fontSize:".68rem",color:"rgba(244,237,223,.35)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",flexShrink:0,padding:"2px 6px"}}>
+            Clear
+          </button>
         </div>
-        <button type="button" onClick={()=>{setMode("idle");setProduct(null);setUpc("");}}
-          style={{fontSize:".68rem",color:"rgba(244,237,223,.4)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif"}}>
-          Clear
-        </button>
       </div>
-    </div>
+    </>
   );
 
   return null;
