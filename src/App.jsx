@@ -1136,6 +1136,7 @@ img,.lp-root img{max-width:100%;height:auto}
 @media(max-width:860px){
   .lp-root .lp-hamburger{display:flex}
   .lp-root .lp-nav{position:fixed}
+  .lp-root .lp-nav-desktop{display:none !important}
 }
 .lp-root .foot{background:var(--pine-deep);color:rgba(244,237,223,.7);padding:40px 0;border-top:1px solid rgba(167,191,168,.12)}
 .lp-root .foot-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
@@ -1188,10 +1189,8 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root::before{display:none}
 }
 @media(max-width:430px){
-  .lp-root .lp-nav-in{padding:0 16px;height:62px}
-  .lp-root .lp-nav-cta{gap:11px}
-  .lp-root .lp-nav .btn-pine{padding:.6rem 1.05rem;font-size:.86rem}
-  .lp-root .lp-signin{font-size:.88rem}
+  .lp-root .lp-nav-in{padding:0 16px;height:60px}
+  .lp-root .lp-nav-cta{gap:0}
   .lp-root .hero{padding:104px 0 60px}
   .lp-root .hero h1{font-size:clamp(2.5rem,10vw,3.2rem)}
   .lp-root .h2{font-size:clamp(1.85rem,8vw,2.4rem)}
@@ -1214,13 +1213,10 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root::before{display:none}
 }
 @media(max-width:380px){
-  .lp-root .lp-nav-in{padding:0 13px}
+  .lp-root .lp-nav-in{padding:0 14px}
   .lp-root .lp-brand{gap:8px}
-  .lp-root .lp-brand .tile{width:34px;height:34px}
-  .lp-root .lp-brand .wm{font-size:1.16rem}
-  .lp-root .lp-nav-cta{gap:9px}
-  .lp-root .lp-signin{font-size:.82rem}
-  .lp-root .lp-nav .btn-pine{padding:.5rem .8rem;font-size:.81rem}
+  .lp-root .lp-brand .tile{width:32px;height:32px}
+  .lp-root .lp-brand .wm{font-size:1.12rem}
   .lp-root .hero h1{font-size:clamp(2.25rem,11vw,3rem)}
 }
 @media(prefers-reduced-motion:reduce){
@@ -1935,8 +1931,8 @@ function LandingPage({ onSignIn, onSignUp }) {
             <a href="/blog" style={{color:"inherit",textDecoration:"none"}}>Blog</a>
           </div>
           <div className="lp-nav-cta">
-            <button className="lp-signin" onClick={onSignIn}>Sign in</button>
-            <button className="btn btn-pine" onClick={onSignUp}>Get started free</button>
+            <button className="lp-signin lp-nav-desktop" onClick={onSignIn}>Sign in</button>
+            <button className="btn btn-pine lp-nav-desktop" onClick={onSignUp}>Get started free</button>
             <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Toggle menu" aria-expanded={mobileMenuOpen}>
               <span/><span/><span/>
             </button>
