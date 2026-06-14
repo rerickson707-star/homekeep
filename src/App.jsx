@@ -3100,7 +3100,7 @@ function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
             {result.pm_schedule?.length>0&&<div>
               <div style={{fontSize:".7rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>Maintenance schedule</div>
               <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                {result.pm_schedule.slice(0,4).map((pm,i)=>(
+                {(Array.isArray(result.pm_schedule) ? result.pm_schedule : []).slice(0,4).map((pm,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".45rem .65rem",background:"var(--white)",borderRadius:9,border:"1px solid var(--stone)"}}>
                     <span style={{fontSize:".8rem",flexShrink:0}}>{pm.diy?"🔧":"👷"}</span>
                     <div style={{flex:1,minWidth:0}}>
@@ -6160,6 +6160,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   if (selectedAsset) {
     const asset = assets.find(a => a.id === selectedAsset);
     if (!asset) { setSelectedAsset(null); return null; }
+    // Safety: normalise pm_schedule to always be a parsed array in the detail view
+    if (asset.pm_schedule && typeof asset.pm_schedule === "string") {
+      try {
+        let parsed = JSON.parse(asset.pm_schedule);
+        if (typeof parsed === "string") parsed = JSON.parse(parsed);
+        asset.pm_schedule = Array.isArray(parsed) ? parsed : [];
+      } catch { asset.pm_schedule = []; }
+    } else if (!Array.isArray(asset.pm_schedule)) {
+      asset.pm_schedule = [];
+    }
     const assetLogs = serviceLogs.filter(s => s.asset_id === asset.id).sort((a,b)=>new Date(b.service_date)-new Date(a.service_date));
     const assetTasks = (tasks||[]).filter(t => t.asset_id === asset.id);
     const sc = CONDITION_STYLE[asset.condition||"Good"]||CONDITION_STYLE.Good;
@@ -8737,7 +8747,7 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
                   Manufacturer-recommended maintenance
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                  {result.pm_schedule.map((pm,i) => (
+                  {(Array.isArray(result.pm_schedule) ? result.pm_schedule : []).map((pm,i) => (
                     <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".45rem .65rem",background:"var(--cream)",borderRadius:8,border:"1px solid var(--stone)"}}>
                       <span style={{fontSize:".85rem",flexShrink:0}}>{pm.diy?"🔧":"👷"}</span>
                       <div style={{flex:1,minWidth:0}}>
@@ -8820,9 +8830,20 @@ function AssetPMSchedule({ asset, onSchedule, onCreateTask }) {
 
   const pmSchedule = (() => {
     try {
-      const raw = asset.pm_schedule;
-      if (!raw || raw === "[]") return [];
-      return typeof raw === "string" ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+      let raw = asset.pm_schedule;
+      if (!raw || raw === "[]" || raw === "" || raw === "null") return [];
+      // Parse string — handle double-stringification
+      if (typeof raw === "string") {
+        raw = JSON.parse(raw);
+      }
+      // If still a string after first parse, parse again (double-stringified)
+      if (typeof raw === "string") {
+        raw = JSON.parse(raw);
+      }
+      // Must be an array of objects
+      if (!Array.isArray(raw)) return [];
+      // Filter out any non-object entries
+      return raw.filter(pm => pm && typeof pm === "object" && pm.title);
     } catch { return []; }
   })();
 
