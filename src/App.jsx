@@ -5959,18 +5959,21 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         enriched.contractor_cost_low  = d.contractor_cost_low;
         enriched.contractor_cost_high = d.contractor_cost_high;
       }
-      if (d.pm_schedule?.length > 0) enriched.pm_schedule = JSON.stringify(d.pm_schedule);
+      const pmArray = Array.isArray(d.pm_schedule) ? d.pm_schedule : [];
+      if (pmArray.length > 0) enriched.pm_schedule = JSON.stringify(pmArray); // stringified for Supabase
       if (d.maintenance_tip && !assetData.maintenance_tip) enriched.maintenance_tip = d.maintenance_tip;
       const manualLink = d.om_manual_url || d.manual_url;
       if (manualLink && !assetData.document_ref) enriched.document_ref = manualLink;
       if (d.support_url && !assetData.notes?.includes("Support:"))
-        enriched.notes = [assetData.notes, `Support: ${d.support_url}`].filter(Boolean).join("
-");
+        enriched.notes = [assetData.notes, `Support: ${d.support_url}`].filter(Boolean).join("\n");
       if (Object.keys(enriched).length === 0) return;
       // Patch Supabase
       const { error } = await supabase.from("warranties").update(enriched).eq("id", assetId).eq("user_id", userId);
       if (!error) {
-        setAssets(prev => prev.map(a => a.id === assetId ? {...a, ...enriched} : a));
+        // Store pm_schedule as ARRAY in React state (not the JSON string we sent to Supabase)
+        const stateEnriched = {...enriched};
+        if (pmArray.length > 0) stateEnriched.pm_schedule = pmArray;
+        setAssets(prev => prev.map(a => a.id === assetId ? {...a, ...stateEnriched} : a));
         toast("✨ Smart Fill applied — PM schedule & manual loaded");
       }
     } catch { /* fail silently — the asset is already saved */ }
