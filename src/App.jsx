@@ -368,10 +368,9 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 @media(max-width:480px){.field.s2{grid-column:span 1}}
 label{font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
 input,textarea{width:100%;padding:.65rem .95rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white);outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none}
-select{width:100%;padding:.65rem 2.2rem .65rem .95rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7370' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right .85rem center;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;appearance:none;cursor:pointer}
+select{width:100%;padding:.65rem 2.4rem .65rem .95rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;color:var(--dark);background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 5 4.5-5' stroke='%232A2723' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right .85rem center;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;appearance:none;cursor:pointer}
 input:focus,select:focus,textarea:focus{border-color:var(--rust);box-shadow:0 0 0 3px rgba(193,97,64,.12)}
 textarea{resize:vertical;min-height:70px;line-height:1.5}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23A8A09A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
 
 /* ══ DASHBOARD SPECIFIC ══ */
 .dash-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
@@ -5956,22 +5955,28 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                         </div>
                       )}
                       {assetLogs.map((s,i)=>(
-                        <div key={s.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".75rem .9rem",borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none"}}>
-                          <div style={{width:7,height:7,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:6}}/>
+                        <div key={s.id}
+                          onClick={()=>openEditService(s)}
+                          style={{display:"flex",alignItems:"center",gap:".65rem",padding:".75rem .9rem",
+                            borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none",
+                            cursor:"pointer",transition:"background .12s"}}
+                          onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
+                          onMouseLeave={e=>e.currentTarget.style.background=""}>
+                          {/* Timeline dot */}
+                          <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0}}/>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)"}}>{s.description}</div>
-                            <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2,display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+                            <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.description}</div>
+                            <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:1,display:"flex",gap:".35rem",flexWrap:"wrap"}}>
                               <span>{fmtD(s.service_date)}</span>
-                              {s.vendor&&<span>· {s.vendor}</span>}
-                              {s.notes&&!s.notes.startsWith("[")&&<span>· {s.notes}</span>}
+                              {s.vendor&&<><span>·</span><span>{s.vendor}</span></>}
+                              {s.notes&&!s.notes.startsWith("[")&&<><span>·</span><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{s.notes}</span></>}
                             </div>
                           </div>
-                          <div style={{flexShrink:0,textAlign:"right"}}>
-                            <div style={{fontSize:".83rem",fontWeight:700,color:s.cost>0?"var(--dark)":"#C8C0B8"}}>{s.cost>0?fmt$(s.cost):"—"}</div>
-                            <div style={{display:"flex",gap:3,marginTop:3,justifyContent:"flex-end"}}>
-                              <button className="btn btn-ghost btn-sm" onClick={()=>openEditService(s)} style={{fontSize:".65rem"}}>Edit</button>
-                              <button className="btn btn-ghost btn-sm" onClick={()=>setServiceConfirm(s.id)} style={{fontSize:".65rem",color:"var(--red)"}}>✕</button>
+                          <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:".5rem"}}>
+                            <div style={{fontSize:".83rem",fontWeight:700,color:s.cost>0?"var(--dark)":"#D4CCC4",textAlign:"right"}}>
+                              {s.cost>0?fmt$(s.cost):"—"}
                             </div>
+                            <span style={{color:"#C2B8AE",fontSize:".8rem"}}>›</span>
                           </div>
                         </div>
                       ))}
@@ -8138,45 +8143,34 @@ function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
   };
 
   return (
-    <div style={{marginBottom:".75rem"}}>
-      {/* After applied — collapse to small unobtrusive link */}
+    <div style={{marginBottom:".5rem"}}>
+      {/* Smart Fill — minimal text link style */}
       {applied ? (
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".45rem .75rem",
-          borderRadius:"var(--r-sm)",background:"rgba(35,74,61,.05)",border:"1px solid rgba(35,74,61,.12)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
-            <span style={{fontSize:".8rem"}}>✓</span>
-            <span style={{fontSize:".75rem",fontWeight:600,color:"var(--pine)"}}>Smart Fill applied</span>
-            <span style={{fontSize:".68rem",color:"#9E9690"}}>PM schedule & manual loaded</span>
-          </div>
-          <button onClick={()=>{ setApplied(false); setResult(null); run(); }}
-            style={{fontSize:".68rem",color:"#9E9690",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:"2px 6px",borderRadius:4,textDecoration:"underline"}}>
-            Re-run
+        /* Minimal pill — applied state, stays out of the way */
+        <div style={{display:"flex",alignItems:"center",gap:".4rem",padding:".3rem .6rem",marginBottom:"-.3rem"}}>
+          <span style={{fontSize:".7rem",color:"#3B6D11"}}>✓</span>
+          <span style={{fontSize:".7rem",color:"#7A7370"}}>Smart Fill applied</span>
+          <button onClick={()=>{ setApplied(false); setResult(null); }}
+            style={{fontSize:".68rem",color:"#B0A8A0",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0,marginLeft:2,textDecoration:"underline",textUnderlineOffset:2}}>
+            re-run
           </button>
         </div>
       ) : (
-        <button onClick={open ? ()=>setOpen(false) : (result ? ()=>setOpen(true) : run)}
-          disabled={loading || (!hasBrand && isPlus)}
-          style={{width:"100%",display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .9rem",
-            borderRadius:"var(--r-sm)",border:`1.5px solid ${isPlus&&hasBrand?"rgba(35,74,61,.2)":"var(--stone)"}`,
-            background:isPlus&&hasBrand?"var(--white)":"var(--cream)",
-            cursor:(!hasBrand&&isPlus)||loading?"default":"pointer",
-            fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left",transition:"all .2s"}}>
-          <div style={{width:34,height:34,borderRadius:9,
-            background:isPlus&&hasBrand?"rgba(35,74,61,.08)":"var(--stone)",
-            display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"1rem"}}>
-            {loading?"⏳":"✨"}
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:700,fontSize:".85rem",color:isPlus&&hasBrand?"var(--pine)":"var(--dark)",display:"flex",alignItems:"center",gap:6}}>
-              Smart Fill
-              {!isPlus && <span style={{fontSize:".6rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:6}}>Plus</span>}
-            </div>
-            <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>
-              {loading?"Looking up manufacturer data…":result&&!open?"Results ready — tap to review":!hasBrand?"Add brand or model number first":isPlus?"Pull PM schedule, manual, costs & lifespan":"Upgrade to unlock manufacturer data"}
-            </div>
-          </div>
-          {!loading && hasBrand && isPlus && <span style={{color:"#C2B8AE",fontSize:".8rem",flexShrink:0}}>{open?"▲":"▼"}</span>}
-        </button>
+        /* Compact text-link style when not yet run */
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".35rem .1rem",marginBottom:"-.2rem"}}>
+          <button onClick={open ? ()=>setOpen(false) : (result ? ()=>setOpen(true) : run)}
+            disabled={loading || (!hasBrand && !isPlus)}
+            style={{display:"inline-flex",alignItems:"center",gap:".4rem",background:"none",border:"none",
+              cursor:loading?"default":"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
+            <span style={{fontSize:".8rem"}}>{loading?"⏳":"✨"}</span>
+            <span style={{fontSize:".78rem",fontWeight:600,color:isPlus&&hasBrand?"var(--pine)":"#A8A09A",textDecoration:isPlus&&hasBrand?"underline":"none",textUnderlineOffset:2}}>
+              {loading?"Looking up…":result&&!open?"Smart Fill — tap to review":"Smart Fill"}
+            </span>
+            {!isPlus && <span style={{fontSize:".58rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 5px",borderRadius:4}}>Plus</span>}
+            {isPlus && hasBrand && !loading && <span style={{fontSize:".68rem",color:"#A8A09A"}}>{open?"▲":"▼"}</span>}
+          </button>
+          {!hasBrand && isPlus && <span style={{fontSize:".68rem",color:"#C2B8AE"}}>Add brand first</span>}
+        </div>
       )}
 
       {error && <div style={{margin:".4rem 0",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:8,fontSize:".75rem",color:"var(--red)"}}>⚠ {error}</div>}
