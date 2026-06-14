@@ -1,14 +1,10 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/blog", "destination": "/index.html" },
-    { "source": "/blog/:slug*", "destination": "/index.html" },
-    { "source": "/terms", "destination": "/index.html" },
-    { "source": "/privacy", "destination": "/index.html" },
-    { "source": "/ada", "destination": "/index.html" },
-    { "source": "/accessibility", "destination": "/index.html" },
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/blog/:slug", "destination": "/index.html" },
+    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
+    { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }
