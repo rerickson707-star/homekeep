@@ -5858,6 +5858,27 @@ function RecallBadge({ brand, category, model, serialNumber }) {
   return null;
 }
 
+class AssetDetailErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error("[AssetDetail crash]", error, info.componentStack); }
+  render() {
+    if (this.state.error) return (
+      <div style={{padding:"1.5rem",textAlign:"center",color:"var(--dark)"}}>
+        <div style={{fontSize:"1.5rem",marginBottom:".5rem"}}>⚠️</div>
+        <div style={{fontWeight:600,marginBottom:".35rem"}}>Something went wrong loading this asset</div>
+        <div style={{fontSize:".78rem",color:"var(--mid)",marginBottom:"1rem",fontFamily:"monospace",background:"var(--cream)",padding:".5rem",borderRadius:8,textAlign:"left",overflow:"auto",maxHeight:120}}>
+          {this.state.error.message}
+        </div>
+        <button onClick={()=>this.setState({error:null})} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:8,padding:".5rem 1rem",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:600}}>
+          Dismiss
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
@@ -6188,6 +6209,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const supportUrl = (() => { const m = (asset.notes||"").match(/Support: (https?:\/\/\S+)/); return m?m[1]:null; })();
 
     return (
+      <AssetDetailErrorBoundary>
       <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".75rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
@@ -6553,6 +6575,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           </Modal>
         )}
       </div>
+      </AssetDetailErrorBoundary>
     );
   }
 
