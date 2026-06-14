@@ -6341,13 +6341,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               onCreateTask={async (pm) => {
                 const due = new Date();
                 due.setMonth(due.getMonth() + (pm.interval_months || 3));
+                const months = Number(pm.interval_months) || 3;
                 const taskPayload = {
                   user_id: userId, property_id: propertyId,
-                  title: pm.title, status: "Scheduled", priority: "Medium",
+                  title: pm.title || "Scheduled service", status: "Scheduled", priority: "Medium",
                   due_date: due.toISOString().slice(0,10),
                   category: asset.category || "Other",
                   asset_id: asset.id,
-                  notes: `Recommended by manufacturer · Every ${pm.interval_months < 12 ? pm.interval_months + " months" : (pm.interval_months/12) + " year(s)"} · ${pm.diy ? "DIY" : "Hire contractor"}`,
+                  notes: `Recommended by manufacturer · Every ${months < 12 ? months + " months" : (months/12) + " year(s)"} · ${pm.diy ? "DIY" : "Hire contractor"}`,
                 };
                 const {data:td,error} = await supabase.from("tasks").insert([taskPayload]).select();
                 if (!error && td) { setTasks(prev=>[td[0],...prev]); toast(`Task scheduled: ${pm.title} ✓`); }
@@ -8441,7 +8442,8 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
   useEffect(() => {
     if (!profile?.id) return;
     supabase.from("home_members").select("*").eq("property_id", profile.id)
-      .then(({ data }) => { setMembers(data || []); setLoading(false); });
+      .then(({ data, error }) => { setMembers(error ? [] : (data || [])); setLoading(false); })
+      .catch(() => { setMembers([]); setLoading(false); });
   }, [profile?.id]);
 
   const sendInvite = async () => {
@@ -8850,7 +8852,7 @@ function AssetPMSchedule({ asset, onSchedule, onCreateTask }) {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)"}}>{pm.title}</div>
                 <div style={{fontSize:".7rem",color:"#9E9690",marginTop:2,lineHeight:1.4}}>
-                  Every {pm.interval_months < 12 ? `${pm.interval_months} months` : `${pm.interval_months/12} year${pm.interval_months>12?"s":""}`}
+                  Every {(pm.interval_months||0) < 12 ? `${pm.interval_months||"?"} months` : `${(pm.interval_months||12)/12} year${(pm.interval_months||12)>12?"s":""}`}
                   {" · "}{pm.diy ? "DIY" : "Hire a contractor"}
                   {pm.description ? ` — ${pm.description}` : ""}
                 </div>
@@ -11658,11 +11660,14 @@ export default function App() {
       const pResult = await supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true });
       const ownedProfiles = pResult.data || [];
 
-      // Load shared memberships — simple select without the problematic join
-      const sharedMembersResult = await supabase.from("home_members")
-        .select("property_id, role, status")
-        .eq("member_email", userEmail)
-        .eq("status", "accepted");
+      // Load shared memberships — wrapped in try/catch so 403 doesn't crash the app
+      let sharedMembersResult = { data: [], error: null };
+      try {
+        sharedMembersResult = await supabase.from("home_members")
+          .select("property_id, role, status")
+          .eq("member_email", userEmail)
+          .eq("status", "accepted");
+      } catch(e) { /* RLS may block this — fail silently */ }
 
       // For each shared membership, fetch the profile separately
       const sharedMemberRows = sharedMembersResult.data || [];
