@@ -3177,6 +3177,14 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
       primary: true,
     },
     {
+      mode: "barcode",
+      icon: "📦",
+      title: "Scan product barcode",
+      desc: "Scan the UPC on the product box for instant brand, model & Smart Fill",
+      badge: null,
+      primary: false,
+    },
+    {
       mode: "smartfill",
       icon: "✨",
       title: "Enter model number",
@@ -3202,8 +3210,14 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
     },
   ];
 
+  const [barcodeActive, setBarcodeActive] = useState(false);
+
   const handleChoice = (choice) => {
     if (choice.badge && !canScan) { onUpgrade(); return; }
+    if (choice.mode === "barcode") {
+      setBarcodeActive(true);
+      return;
+    }
     onChoose(choice.mode);
   };
 
@@ -3214,7 +3228,32 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
         {/* Handle */}
         <div style={{width:36,height:4,background:"rgba(244,237,223,.2)",borderRadius:2,margin:"0 auto 1.25rem"}}/>
 
-        <div style={{marginBottom:"1.25rem"}}>
+        {/* Inline barcode scan — shown when user picks barcode option */}
+        {barcodeActive && (
+          <div style={{marginBottom:"1rem"}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:"#F4EDDF",marginBottom:".75rem",display:"flex",alignItems:"center",gap:".5rem"}}>
+              <button onClick={()=>setBarcodeActive(false)} style={{background:"none",border:"none",color:"rgba(244,237,223,.5)",fontSize:"1rem",cursor:"pointer",padding:0,marginRight:4}}>←</button>
+              Scan product barcode
+            </div>
+            <BarcodeScanButton
+              onResult={(upc, upcData) => {
+                // Pre-populate data then go to manual form
+                const prefilled = { upc };
+                if (upcData?.brand) prefilled.brand = upcData.brand;
+                if (upcData?.model) prefilled.model = upcData.model;
+                if (upcData?.title) prefilled.item  = upcData.title;
+                setBarcodeActive(false);
+                onChoose("manual", prefilled);
+              }}
+            />
+            <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)",textAlign:"center",marginTop:".75rem",lineHeight:1.5}}>
+              After scanning, we'll take you to the form with brand and model pre-filled.
+              Then run Smart Fill to get the full maintenance schedule.
+            </div>
+          </div>
+        )}
+
+        <div style={{marginBottom:"1.25rem",display:barcodeActive?"none":"block"}}>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,color:"#F4EDDF",marginBottom:4}}>
             Add a home system
           </div>
@@ -3224,7 +3263,7 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
         </div>
 
         <div style={{display:"flex",flexDirection:"column",gap:".6rem",marginBottom:"1rem"}}>
-          {CHOICES.map(choice => (
+          {!barcodeActive && CHOICES.map(choice => (
             <button
               key={choice.mode}
               onClick={() => handleChoice(choice)}
