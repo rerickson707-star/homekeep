@@ -115,40 +115,71 @@ serve(async (req) => {
     if (barcode_search && upc) {
       let productName = "", productBrand = "", productModel = "";
       try {
-        const query = `${upc} appliance product "model" OR "brand"`;
+        // Search the raw UPC — retail sites index by UPC so this finds exact matches
+        const query = `${upc}`;
         const searchRes = await fetch("https://api.tavily.com/search", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TAVILY_KEY}` },
-          body: JSON.stringify({ query, max_results: 3, search_depth: "basic",
-            include_domains: ["amazon.com","homedepot.com","walmart.com","bestbuy.com","target.com","lowes.com"] }),
+          body: JSON.stringify({
+            query,
+            max_results: 5,
+            search_depth: "advanced",   // deeper = more content per result
+            include_domains: ["amazon.com","homedepot.com","walmart.com","bestbuy.com","target.com","lowes.com","amazon.ca","build.com"],
+          }),
         });
         if (searchRes.ok) {
           const searchJson = await searchRes.json();
-          const top = searchJson.results?.[0];
-          if (top) {
-            const snippet = `${top.title || ""} ${top.content || ""}`.slice(0, 600);
+          const results = searchJson.results || [];
+          if (results.length > 0) {
+            // Combine all result titles and content for better extraction
+            const combined = results
+              .map((r: Record<string,string>) => `LISTING: ${r.title || ""}\nDETAILS: ${r.content || ""}`)
+              .join("\n\n")
+              .slice(0, 1500);
+
             const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
               method: "POST",
               headers: { "Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01" },
-              body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:120,
-                messages:[{ role:"user", content:`Extract product name, brand, and model from this retail listing text. Return ONLY JSON: {"item":"full product name","brand":"brand","model":"model number or empty"}\n\nText: ${snippet}` }] }),
+              body: JSON.stringify({
+                model: "claude-sonnet-4-6",
+                max_tokens: 200,
+                messages: [{
+                  role: "user",
+                  content: `These are retail product listings for barcode/UPC ${upc}.
+Extract the exact product name, brand name, and model number.
+
+The model number is critical — it is usually:
+- A short alphanumeric code like "CFN601", "WH49D3S", "WSS20D6PAS00", "AF160"
+- Often appears in the listing title itself or in the product details
+- NOT the UPC/barcode number (${upc})
+- NOT a price, SKU, or ASIN
+
+Return ONLY valid JSON:
+{"item": "full product name", "brand": "brand name", "model": "model number — alphanumeric code only, empty string if not found"}
+
+Listings:
+${combined}`,
+                }],
+              }),
             });
             if (aiResp.ok) {
               const aiJson = await aiResp.json();
               const raw = (aiJson.content?.[0]?.text || "").replace(/```json\n?|```\n?/g,"").trim();
               try {
                 const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw);
-                productName  = parsed.item  || top.title || "";
+                productName  = parsed.item  || results[0]?.title || "";
                 productBrand = parsed.brand || "";
-                productModel = parsed.model || "";
-              } catch { productName = top.title || ""; }
+                // Validate model — must be alphanumeric, not the UPC itself
+                const m = (parsed.model || "").trim();
+                productModel = (m && m !== upc && m.length >= 3 && m.length <= 30) ? m : "";
+              } catch { productName = results[0]?.title || ""; }
             }
           }
         }
       } catch { /* return empty */ }
       return new Response(JSON.stringify({
         ok: true,
-        data: { item:productName, brand:productBrand, model:productModel, upc_verified:false, docs_found:!!productName, confidence:"medium" },
+        data: { item:productName, brand:productBrand, model:productModel, upc_verified:false, docs_found:!!productName, confidence: productModel ? "high" : "medium" },
       }), { headers:{ ...CORS,"Content-Type":"application/json" } });
     }
 

@@ -268,6 +268,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{border-left:3px solid var(--sage)}
 .toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--rust);background:var(--pine-deep)}
 
 /* ══ GREETING ══ */
 .greeting{margin-bottom:1.5rem}
@@ -5908,6 +5909,52 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     }
   }, [pendingEditId, assets.length]);
 
+  // Run Smart Fill silently after save and patch the asset in-place
+  const runSmartFillAfterSave = async (assetId, assetData) => {
+    const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
+    if (!isPlus) return;
+    if (!assetData.brand && !assetData.model) return;
+    try {
+      const resp = await fetch(ASSET_INTEL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({
+          brand: assetData.brand, model: assetData.model,
+          item: assetData.item, upc: assetData.upc||"",
+          category: assetData.category, install_date: assetData.install_date,
+          tier: planData?.plan||"free",
+        }),
+      });
+      const json = await resp.json();
+      if (!json.ok || !json.data) return;
+      const d = json.data;
+      // Build the enriched update — never overwrite fields the user already filled
+      const enriched = {};
+      if (d.lifespan_years && !assetData.lifespan_years)   enriched.lifespan_years   = d.lifespan_years;
+      if (d.warranty_expiry && !assetData.expiry_date)     enriched.expiry_date       = d.warranty_expiry;
+      if (d.replacement_cost_low && !assetData.replacement_cost)
+        enriched.replacement_cost = Math.round((d.replacement_cost_low + (d.replacement_cost_high||d.replacement_cost_low))/2);
+      if (d.contractor_cost_low && !assetData.contractor_cost_low) {
+        enriched.contractor_cost_low  = d.contractor_cost_low;
+        enriched.contractor_cost_high = d.contractor_cost_high;
+      }
+      if (d.pm_schedule?.length > 0) enriched.pm_schedule = JSON.stringify(d.pm_schedule);
+      if (d.maintenance_tip && !assetData.maintenance_tip) enriched.maintenance_tip = d.maintenance_tip;
+      const manualLink = d.om_manual_url || d.manual_url;
+      if (manualLink && !assetData.document_ref) enriched.document_ref = manualLink;
+      if (d.support_url && !assetData.notes?.includes("Support:"))
+        enriched.notes = [assetData.notes, `Support: ${d.support_url}`].filter(Boolean).join("
+");
+      if (Object.keys(enriched).length === 0) return;
+      // Patch Supabase
+      const { error } = await supabase.from("warranties").update(enriched).eq("id", assetId).eq("user_id", userId);
+      if (!error) {
+        setAssets(prev => prev.map(a => a.id === assetId ? {...a, ...enriched} : a));
+        toast("✨ Smart Fill applied — PM schedule & manual loaded");
+      }
+    } catch { /* fail silently — the asset is already saved */ }
+  };
+
   const save = async () => {
     if(!editData.item?.trim()) return;
     const payload = {
@@ -5934,22 +5981,59 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       maintenance_tip:      editData.maintenance_tip||"",
       upc:                  editData.upc||"",
     };
+
+    const hasBrandModel = !!(payload.brand && payload.model);
+    const hasBrandOnly  = !!(payload.brand && !payload.model);
+    const hasModelOnly  = !!(!payload.brand && payload.model);
+    const hasMissing    = hasBrandOnly || hasModelOnly || (!payload.brand && !payload.model);
+    const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
+
     if(editId) {
       const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
       if(!error) {
         setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a));
-        toast("Asset updated ✓");
+        if (hasBrandModel && isPlus) {
+          toast("Asset updated — running Smart Fill…");
+          runSmartFillAfterSave(editId, payload);
+        } else {
+          toast("Asset updated ✓");
+          if (hasMissing && isPlus) {
+            setTimeout(() => toast(
+              hasBrandOnly  ? "💡 Add a model number to enable Smart Fill & full PM schedule" :
+              hasModelOnly  ? "💡 Add a brand name to enable Smart Fill & full PM schedule" :
+                              "💡 Add brand + model number to unlock Smart Fill & recall checks",
+              "info"
+            ), 600);
+          }
+        }
         try { localStorage.removeItem(draftKey(editId)); } catch {}
       }
-      else { console.error("Asset update error:", error); toast("Error saving: "+error.message,"error"); }
+      else { toast("Error saving: "+error.message,"error"); }
     } else {
       const {data,error} = await supabase.from("warranties").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
       if(!error&&data) {
-        setAssets([...assets,data[0]]);
-        toast("Asset added ✓");
+        const newAsset = data[0];
+        setAssets([...assets, newAsset]);
+        if (hasBrandModel && isPlus) {
+          toast("Asset saved — running Smart Fill…");
+          runSmartFillAfterSave(newAsset.id, payload);
+        } else {
+          toast("Asset added ✓");
+          if (hasMissing && isPlus) {
+            setTimeout(() => toast(
+              hasBrandOnly  ? "💡 Add a model number to enable Smart Fill & full PM schedule" :
+              hasModelOnly  ? "💡 Add a brand name to enable Smart Fill & full PM schedule" :
+                              "💡 Add brand + model number to unlock Smart Fill & recall checks",
+              "info"
+            ), 600);
+          } else if (hasMissing && !isPlus) {
+            // Free users — hint toward Plus value
+            setTimeout(() => toast("💡 Upgrade to Plus to auto-fill PM schedule, manual & warranty from model number", "info"), 600);
+          }
+        }
         try { localStorage.removeItem(draftKey(null)); } catch {}
       }
-      else { console.error("Asset insert error:", error); toast("Error adding: "+error.message,"error"); }
+      else { toast("Error adding: "+error.message,"error"); }
     }
     closeModal();
   };
