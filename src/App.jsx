@@ -7150,6 +7150,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [projectEditId, setProjectEditId] = useState(null);
   const [projectConfirm, setProjectConfirm] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
   const [lightbox, setLightbox] = useState(null);
   const [utilities, setUtilities] = useState([]);
   const [bills, setBills] = useState([]);
@@ -7386,7 +7387,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {/* ── Page header — add button changes per view ── */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .5rem"}}>
         <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:500,letterSpacing:"-.5px"}}>Money</span>
-        <button className="btn btn-primary" onClick={view==="expenses"?openNew:view==="projects"?openNewProject:openNewUtil}>
+        <button className="btn btn-primary" onClick={view==="expenses"?openNew:view==="projects"?openNewProject:openNewUtil} style={{display:view==="projects"&&selectedProject?"none":""}}>
           {view==="expenses"?"+ Log expense":view==="projects"?"+ New project":"+ Add utility"}
         </button>
       </div>
@@ -7398,7 +7399,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           {id:"projects",  label:"Projects",  count:projects.length},
           {id:"utilities", label:"Utilities", count:utilities.length},
         ].map(t=>(
-          <button key={t.id} onClick={()=>setView(t.id)} style={{
+          <button key={t.id} onClick={()=>{setView(t.id);if(t.id!=="projects")setSelectedProject(null);}} style={{
             flex:1,padding:".75rem 0",border:"none",background:"none",
             fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:600,
             color:view===t.id?"var(--dark)":"#A8A09A",cursor:"pointer",
@@ -7561,190 +7562,382 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       )}
 
       {/* ══════════════════════════════════════════════════════════════
-          PROJECTS VIEW
+          PROJECTS VIEW — list + detail
       ══════════════════════════════════════════════════════════════ */}
       {view==="projects" && (
         <div>
-          {projects.length===0 ? (
-            <div className="empty">
-              <span className="ei">🔨</span>
-              <strong>No projects yet</strong>
-              <p>Track remodels, renovations, and major work. Group expenses under a project to see true costs and build a record for resale.</p>
-              <button className="btn btn-primary" onClick={openNewProject}>＋ Create your first project</button>
-            </div>
-          ) : (
-            <>
-              {/* Hero */}
-              {(()=>{
-                const totalBudget=projects.reduce((s,p)=>s+Number(p.budget||0),0);
-                const totalSpent=projects.reduce((s,p)=>s+expenses.filter(e=>e.project_id===p.id).reduce((a,e)=>a+Number(e.amount||0),0),0);
-                const remaining=totalBudget-totalSpent;
-                return (
-                  <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
-                    <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Total project budget</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(totalBudget)}</div>
+          {/* ── PROJECT DETAIL VIEW ── */}
+          {selectedProject && (()=>{
+            const p = projects.find(pr => pr.id === selectedProject);
+            if (!p) { setSelectedProject(null); return null; }
+            const projExpenses = expenses.filter(e => e.project_id === p.id).sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+            const spent  = projExpenses.reduce((s,e) => s + Number(e.amount||0), 0);
+            const budget = Number(p.budget||0);
+            const pct    = budget > 0 ? Math.min(100, Math.round((spent/budget)*100)) : null;
+            const isOver = budget > 0 && spent > budget;
+            const sc     = projStatusStyle(p.status||"Planning");
+            const CIRC   = 201;
+            const dashArr = pct != null ? `${Math.round((pct/100)*CIRC)} ${CIRC - Math.round((pct/100)*CIRC)}` : `0 ${CIRC}`;
+            const ringColor = isOver ? "#B0432B" : pct != null && pct > 80 ? "#D9A93E" : "#3E7D5A";
+            const photos = [
+              { url: p.photo_before || p.photo_url, label:"Before" },
+              { url: p.photo_progress, label:"During" },
+              { url: p.photo_after,    label:"After"  },
+            ].filter(ph => ph.url);
+            // Category breakdown for this project
+            const byCat = {};
+            projExpenses.forEach(e => { if(e.category) { byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0); }});
+            const catBreakdown = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+
+            return (
+              <div style={{display:"flex",flexDirection:"column",minHeight:"100%"}}>
+                {/* Top bar */}
+                <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+                  <button onClick={()=>setSelectedProject(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
+                  <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+                  <button onClick={()=>openEditProject(p)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
+                  <button onClick={()=>{setProjectConfirm(p.id); setSelectedProject(null);}} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>
+                </div>
+
+                <div style={{flex:1,overflowY:"auto",background:"var(--linen,var(--cream))"}}>
+                  {/* Hero */}
+                  <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+                    <div style={{display:"flex",alignItems:"flex-start",gap:".9rem",marginBottom:"1rem"}}>
+                      <div style={{width:56,height:56,borderRadius:15,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.7rem",flexShrink:0}}>🔨</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,lineHeight:1.15,marginBottom:".35rem"}}>{p.name}</div>
+                        <span style={{display:"inline-flex",alignItems:"center",gap:".4rem",fontSize:".88rem",fontWeight:700,background:"rgba(255,255,255,.14)",padding:".4rem .85rem",borderRadius:20}}>
+                          <span style={{width:8,height:8,borderRadius:"50%",background:sc.dot}}/>
+                          {p.status||"Planning"}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Date range */}
+                    {(p.start_date||p.end_date) && (
+                      <div style={{fontSize:".85rem",color:"rgba(244,237,223,.65)",marginBottom:"1rem"}}>
+                        {p.start_date&&`Started ${fmtD(p.start_date)}`}{p.start_date&&p.end_date&&" · "}{p.end_date&&(p.status==="Completed"?`Completed ${fmtD(p.end_date)}`:`Est. end ${fmtD(p.end_date)}`)}
+                      </div>
+                    )}
+                    {/* Budget stats */}
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
                       {[
-                        {val:fmt$(totalSpent),lbl:"Spent"},
-                        {val:fmt$(Math.max(remaining,0)),lbl:"Remaining",green:remaining>=0},
-                        {val:projects.length,lbl:"Projects"},
+                        {val:fmt$(spent),          lbl:"Spent",     alert:isOver},
+                        {val:budget>0?fmt$(budget):"—", lbl:"Budget"},
+                        {val:budget>0?(isOver?"-"+fmt$(spent-budget):fmt$(budget-spent)):"—", lbl:isOver?"Over":"Remaining", green:!isOver&&budget>0},
                       ].map((s,i)=>(
                         <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
-                          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
+                          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.alert?"#FCA38A":s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
                           <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
                         </div>
                       ))}
                     </div>
                   </div>
-                );
-              })()}
 
-              {/* Status filter chips */}
-              <div style={{display:"flex",gap:".5rem",padding:"0 1rem",marginBottom:"1rem",overflowX:"auto",scrollbarWidth:"none"}}>
-                {["All",...[...new Set(projects.map(p=>p.status||"Planning"))]].map(f=>(
-                  <button key={f} onClick={()=>setProjFilter(f)} style={{flexShrink:0,border:`1.5px solid ${projFilter===f?"var(--dark)":"var(--stone)"}`,background:projFilter===f?"var(--dark)":"var(--white)",color:projFilter===f?"#fff":"#6E665D",borderRadius:22,padding:".45rem .9rem",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-                    {f}{f!=="All"?` ${projects.filter(p=>(p.status||"Planning")===f).length}`:" "+projects.length}
-                  </button>
-                ))}
-              </div>
+                  <div style={{padding:"1rem"}}>
 
-              {/* Project cards */}
-              {filteredProjects.map(p=>{
-                const projExpenses=expenses.filter(e=>e.project_id===p.id);
-                const spent=projExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
-                const budget=Number(p.budget||0);
-                const pct=budget>0?Math.min(100,Math.round((spent/budget)*100)):null;
-                const isOver=budget>0&&spent>budget;
-                const isExpanded=expandedProject===p.id;
-                const sc=projStatusStyle(p.status||"Planning");
-                // SVG donut: circumference = 2π×32 ≈ 201
-                const CIRC=201;
-                const dashArr=pct!=null?`${Math.round((pct/100)*CIRC)} ${CIRC-Math.round((pct/100)*CIRC)}`:`0 ${CIRC}`;
-                const ringColor=isOver?"#B0432B":pct!=null&&pct>80?"#D9A93E":"#3E7D5A";
-                const projIcon=({HVAC:"❄️",Roofing:"🏠",Kitchen:"🍳",Bathroom:"🚿",Landscaping:"🌿",Electrical:"⚡",Plumbing:"💧",Garage:"🚗",Flooring:"🪵",Painting:"🎨"})[p.name?.split(" ")[0]]||"🔨";
-                return (
-                  <div key={p.id} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",borderTop:`3px solid ${sc.edge}`}}>
-                    {/* Header */}
-                    <div style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:"1rem"}}>
-                      <div style={{width:46,height:46,borderRadius:13,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",flexShrink:0,background:sc.bg}}>{projIcon}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".35rem"}}>{p.name}</div>
-                        <div style={{display:"flex",alignItems:"center",gap:".45rem",flexWrap:"wrap"}}>
-                          <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:sc.bg,color:sc.color,display:"inline-flex",alignItems:"center",gap:".3rem"}}>
-                            <span style={{width:7,height:7,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
-                            {p.status||"Planning"}
-                          </span>
-                          {p.start_date&&<span style={{fontSize:".8rem",color:"#8A8178"}}>Started {fmtD(p.start_date)}</span>}
-                          {p.status==="Completed"&&p.end_date&&<span style={{fontSize:".8rem",color:"var(--ok)"}}>✓ {fmtD(p.end_date)}</span>}
-                        </div>
-                        {p.description&&<div style={{fontSize:".8rem",color:"#7A7370",marginTop:".4rem",lineHeight:1.4}}>{p.description}</div>}
-                      </div>
-                      <div style={{display:"flex",gap:4,flexShrink:0}}>
-                        <button onClick={()=>openEditProject(p)} style={{width:32,height:32,borderRadius:9,border:"1.5px solid var(--stone)",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem"}}>✏️</button>
-                        <button onClick={()=>setProjectConfirm(p.id)} style={{width:32,height:32,borderRadius:9,border:"1.5px solid #E8C4BE",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem",color:"#B0432B"}}>✕</button>
-                      </div>
+                    {/* Action buttons */}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1.1rem"}}>
+                      <button onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}} style={{background:"var(--pine)",border:"1.5px solid var(--pine)",borderRadius:"var(--r-sm)",padding:".9rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",cursor:"pointer",fontFamily:"inherit"}}>
+                        <span style={{fontSize:"1.25rem"}}>💸</span>
+                        <span style={{fontSize:".88rem",fontWeight:700,color:"#fff"}}>Log expense</span>
+                      </button>
+                      <button onClick={()=>openEditProject(p)} style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".9rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",cursor:"pointer",fontFamily:"inherit"}}>
+                        <span style={{fontSize:"1.25rem"}}>📷</span>
+                        <span style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)"}}>Add photos</span>
+                      </button>
                     </div>
 
-                    {/* Before / During / After photo strip */}
-                    {(()=>{
-                      const photos = [
-                        { url: p.photo_before || p.photo_url, label: "Before" },
-                        { url: p.photo_progress, label: "During" },
-                        { url: p.photo_after, label: "After" },
-                      ].filter(ph => ph.url);
-                      if (photos.length === 0) return null;
-                      if (photos.length === 1) return (
-                        <div style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(photos[0].url)}>
-                          <img src={photos[0].url} alt={photos[0].label} style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
-                          <span style={{position:"absolute",bottom:8,left:10,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:6}}>{photos[0].label}</span>
+                    {/* Before / During / After photo triptych */}
+                    {photos.length > 0 && (
+                      <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                          <span style={{fontSize:"1rem"}}>📸</span>
+                          <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Project photos</span>
+                          <span style={{fontSize:".78rem",color:"var(--mid)",fontWeight:600}}>{photos.length} of 3</span>
                         </div>
-                      );
-                      return (
-                        <div style={{display:"grid",gridTemplateColumns:`repeat(${photos.length},1fr)`,gap:2}}>
+                        <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(photos.length,3)},1fr)`,gap:2}}>
                           {photos.map((ph,i) => (
-                            <div key={i} style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(ph.url)}>
-                              <img src={ph.url} alt={ph.label} style={{width:"100%",height:120,objectFit:"cover",display:"block"}}/>
-                              <span style={{position:"absolute",bottom:6,left:6,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:5}}>{ph.label}</span>
+                            <div key={i} style={{position:"relative",cursor:"pointer",aspectRatio:"1"}} onClick={()=>setLightbox(ph.url)}>
+                              <img src={ph.url} alt={ph.label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                              <span style={{position:"absolute",bottom:6,left:6,background:"rgba(0,0,0,.6)",color:"#fff",fontSize:".7rem",fontWeight:700,padding:"3px 9px",borderRadius:5}}>{ph.label}</span>
                             </div>
                           ))}
                         </div>
-                      );
-                    })()}
-
-                    {/* Budget donut + figures */}
-                    {budget>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:"1rem",padding:".9rem 1rem",borderTop:"1px solid var(--cream2)"}}>
-                        {/* SVG donut ring */}
-                        <div style={{position:"relative",flexShrink:0}}>
-                          <svg width="80" height="80" viewBox="0 0 80 80">
-                            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--cream2)" strokeWidth="8"/>
-                            <circle cx="40" cy="40" r="32" fill="none" stroke={ringColor} strokeWidth="8"
-                              strokeDasharray={dashArr} strokeDashoffset="24" strokeLinecap="round"/>
-                          </svg>
-                          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
-                            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,lineHeight:1,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
-                            <div style={{fontSize:".58rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:2}}>used</div>
-                          </div>
-                        </div>
-                        {/* Budget figures */}
-                        <div style={{flex:1,display:"flex",flexDirection:"column",gap:".5rem"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                            <span style={{fontSize:".8rem",color:"#8A8178",fontWeight:600}}>Spent</span>
-                            <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:isOver?"#B0432B":"var(--dark)"}}>{fmt$(spent)}</span>
-                          </div>
-                          <div style={{height:5,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:`${pct||0}%`,borderRadius:4,background:ringColor}}/>
-                          </div>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                            <span style={{fontSize:".8rem",color:"#8A8178",fontWeight:600}}>Budget</span>
-                            <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700}}>{fmt$(budget)}</span>
-                          </div>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                            <span style={{fontSize:".8rem",fontWeight:600,color:isOver?"#B0432B":"#3E7D5A"}}>{isOver?"Over budget":"Remaining"}</span>
-                            <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:isOver?"#B0432B":"#3E7D5A"}}>{isOver?"-"+fmt$(spent-budget):fmt$(budget-spent)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* No budget set */}
-                    {budget===0&&(
-                      <div style={{padding:".75rem 1rem",borderTop:"1px solid var(--cream2)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <span style={{fontSize:".85rem",color:"#A8A09A"}}>Total spent: <strong style={{color:"var(--dark)",fontFamily:"'Fraunces',serif"}}>{fmt$(spent)}</strong></span>
-                        <button onClick={()=>openEditProject(p)} style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Set budget →</button>
-                      </div>
-                    )}
-
-                    {/* Expense rows */}
-                    {projExpenses.length>0&&(
-                      <>
-                        <div style={{borderTop:"1px solid var(--cream2)"}}>
-                          {(isExpanded?projExpenses:projExpenses.slice(0,3)).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).map(e=>(
-                            <div key={e.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                              <div style={{width:28,height:28,borderRadius:8,background:"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{CAT_ICONS[e.category]||"🔧"}</div>
-                              <span style={{flex:1,fontSize:".9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--dark)"}}>{e.description}</span>
-                              <span style={{fontSize:".78rem",color:"#A8A09A",flexShrink:0}}>{fmtD(e.date)}</span>
-                              <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,flexShrink:0,marginLeft:".5rem"}}>{fmt$(e.amount)}</span>
-                            </div>
-                          ))}
-                        </div>
-                        {projExpenses.length>3&&(
-                          <button onClick={()=>setExpandedProject(isExpanded?null:p.id)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".65rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".82rem",fontWeight:700,color:"#8A8178",cursor:"pointer",background:"var(--cream)",border:"none",width:"100%",fontFamily:"inherit"}}>
-                            {isExpanded?`Hide expenses ▲`:`View all ${projExpenses.length} expenses ▾`}
+                        {photos.length < 3 && (
+                          <button onClick={()=>openEditProject(p)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".82rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",background:"none",border:"none",width:"100%",fontFamily:"inherit"}}>
+                            + Add {["Before","During","After"].filter(l => !photos.find(ph => ph.label===l))[0]} photo
                           </button>
                         )}
-                      </>
+                      </div>
+                    )}
+                    {photos.length === 0 && (
+                      <button onClick={()=>openEditProject(p)} style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem",background:"var(--white)",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",cursor:"pointer",marginBottom:"1rem",width:"100%",fontFamily:"inherit",textAlign:"left"}}>
+                        <span style={{fontSize:"1.5rem",flexShrink:0}}>📷</span>
+                        <div><div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>Document this project</div><div style={{fontSize:".82rem",color:"#8A8178",marginTop:2}}>Add Before, During, and After photos</div></div>
+                      </button>
                     )}
 
-                    {/* Add expense button */}
-                    <button onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".85rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",background:"none",border:"none",width:"100%",fontFamily:"inherit"}}>
-                      + Add expense
-                    </button>
+                    {/* Budget donut — only if budget set */}
+                    {budget > 0 && (
+                      <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",marginBottom:"1rem"}}>
+                        <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".9rem"}}>Budget breakdown</div>
+                        <div style={{display:"flex",alignItems:"center",gap:"1.25rem"}}>
+                          <div style={{position:"relative",flexShrink:0}}>
+                            <svg width="96" height="96" viewBox="0 0 80 80">
+                              <circle cx="40" cy="40" r="32" fill="none" stroke="var(--cream2)" strokeWidth="8"/>
+                              <circle cx="40" cy="40" r="32" fill="none" stroke={ringColor} strokeWidth="8"
+                                strokeDasharray={dashArr} strokeDashoffset="24" strokeLinecap="round"/>
+                            </svg>
+                            <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
+                              <div style={{fontSize:".58rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
+                            </div>
+                          </div>
+                          <div style={{flex:1,display:"flex",flexDirection:"column",gap:".6rem"}}>
+                            {[
+                              {lbl:"Spent",     val:fmt$(spent),                    color:isOver?"#B0432B":"var(--dark)"},
+                              {lbl:"Budget",    val:fmt$(budget),                   color:"var(--dark)"},
+                              {lbl:isOver?"Over budget":"Remaining", val:isOver?"-"+fmt$(spent-budget):fmt$(budget-spent), color:isOver?"#B0432B":"#3E7D5A"},
+                            ].map((s,i)=>(
+                              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                                <span style={{fontSize:".85rem",color:"#8A8178",fontWeight:600}}>{s.lbl}</span>
+                                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:700,color:s.color}}>{s.val}</span>
+                              </div>
+                            ))}
+                            <div style={{height:5,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:`${pct||0}%`,borderRadius:4,background:ringColor}}/>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Category breakdown */}
+                        {catBreakdown.length > 0 && (
+                          <div style={{marginTop:"1rem",paddingTop:"1rem",borderTop:"1px solid var(--cream2)"}}>
+                            <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>By category</div>
+                            {catBreakdown.map(([cat,amt])=>(
+                              <div key={cat} style={{display:"flex",alignItems:"center",gap:".75rem",marginBottom:".5rem"}}>
+                                <span style={{fontSize:".85rem",width:20,textAlign:"center",flexShrink:0}}>{CAT_ICONS[cat]||"🔧"}</span>
+                                <span style={{flex:1,fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{cat}</span>
+                                <div style={{width:80,height:5,background:"var(--cream2)",borderRadius:3,overflow:"hidden",flexShrink:0}}>
+                                  <div style={{height:"100%",borderRadius:3,background:"var(--pine)",width:`${Math.round((amt/spent)*100)}%`}}/>
+                                </div>
+                                <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,flexShrink:0,width:56,textAlign:"right"}}>{fmt$(amt)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Description / Notes */}
+                    {(p.description || p.notes || p.contractor_name) && (
+                      <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                          <span style={{fontSize:"1rem"}}>📋</span>
+                          <span style={{fontSize:"1rem",fontWeight:700}}>Details</span>
+                        </div>
+                        <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
+                          {p.contractor_name&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Contractor</div><div style={{fontSize:".95rem",fontWeight:600}}>{p.contractor_name}</div></div>}
+                          {p.description&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Description</div><div style={{fontSize:".9rem",lineHeight:1.5,color:"#5A534B"}}>{p.description}</div></div>}
+                          {p.notes&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Notes</div><div style={{fontSize:".9rem",lineHeight:1.5,color:"#5A534B",whiteSpace:"pre-wrap"}}>{p.notes}</div></div>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Full expense list */}
+                    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                        <span style={{fontSize:"1rem"}}>💸</span>
+                        <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Expenses</span>
+                        <span style={{fontSize:".82rem",color:"var(--mid)",fontWeight:600}}>{projExpenses.length} items · {fmt$(spent)}</span>
+                      </div>
+                      {projExpenses.length === 0 ? (
+                        <div style={{padding:"1.5rem",textAlign:"center",color:"#A8A09A",fontSize:".88rem"}}>No expenses logged yet</div>
+                      ) : projExpenses.map((e,idx) => {
+                        const isImage = e.file_url?.match(/\.(jpg|jpeg|png|webp|heic)/i);
+                        const isPdf   = e.file_url?.match(/\.pdf/i);
+                        return (
+                          <div key={e.id} style={{padding:".9rem 1rem",borderBottom:idx<projExpenses.length-1?"1px solid var(--cream2)":"none"}}>
+                            <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
+                              <div style={{width:38,height:38,borderRadius:10,background:"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{CAT_ICONS[e.category]||"🔧"}</div>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:".95rem",fontWeight:700,marginBottom:".2rem"}}>{e.description}</div>
+                                <div style={{fontSize:".8rem",color:"#8A8178",display:"flex",gap:".45rem",flexWrap:"wrap",alignItems:"center"}}>
+                                  {e.date&&<span>{fmtD(e.date)}</span>}
+                                  {e.category&&<span style={{background:"var(--cream2)",color:"#6E665D",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{e.category}</span>}
+                                  {e.vendor&&<span>{e.vendor}</span>}
+                                </div>
+                                {e.notes&&<div style={{fontSize:".8rem",color:"#8A8178",marginTop:".3rem",lineHeight:1.4}}>{e.notes}</div>}
+                                {e.file_url&&(
+                                  <div style={{marginTop:".5rem"}}>
+                                    {isImage ? <img src={e.file_url} alt="Receipt" style={{width:64,height:64,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/> :
+                                     isPdf   ? <a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a> : null}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
+                                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:700}}>{fmt$(e.amount)}</div>
+                                <div style={{display:"flex",gap:3}}>
+                                  <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                                  <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <button onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".75rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".85rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",background:"none",border:"none",width:"100%",fontFamily:"inherit"}}>
+                        + Log expense
+                      </button>
+                    </div>
+
                   </div>
-                );
-              })}
-            </>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── PROJECT LIST VIEW ── */}
+          {!selectedProject && (
+            <div>
+              {projects.length===0 ? (
+                <div className="empty">
+                  <span className="ei">🔨</span>
+                  <strong>No projects yet</strong>
+                  <p>Track remodels, renovations, and major work. Group expenses under a project to see true costs and build a record for resale.</p>
+                  <button className="btn btn-primary" onClick={openNewProject}>＋ Create your first project</button>
+                </div>
+              ) : (
+                <>
+                  {/* Hero */}
+                  {(()=>{
+                    const totalBudget=projects.reduce((s,p)=>s+Number(p.budget||0),0);
+                    const totalSpent=projects.reduce((s,p)=>s+expenses.filter(e=>e.project_id===p.id).reduce((a,e)=>a+Number(e.amount||0),0),0);
+                    const remaining=totalBudget-totalSpent;
+                    return (
+                      <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                        <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
+                        <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Total project budget</div>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(totalBudget)}</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
+                          {[
+                            {val:fmt$(totalSpent),lbl:"Spent"},
+                            {val:fmt$(Math.max(remaining,0)),lbl:"Remaining",green:remaining>=0},
+                            {val:projects.length,lbl:"Projects"},
+                          ].map((s,i)=>(
+                            <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
+                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Status filter chips */}
+                  <div style={{display:"flex",gap:".5rem",padding:"0 1rem",marginBottom:"1rem",overflowX:"auto",scrollbarWidth:"none"}}>
+                    {["All",...[...new Set(projects.map(p=>p.status||"Planning"))]].map(f=>(
+                      <button key={f} onClick={()=>setProjFilter(f)} style={{flexShrink:0,border:`1.5px solid ${projFilter===f?"var(--dark)":"var(--stone)"}`,background:projFilter===f?"var(--dark)":"var(--white)",color:projFilter===f?"#fff":"#6E665D",borderRadius:22,padding:".45rem .9rem",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                        {f}{f!=="All"?` ${projects.filter(p=>(p.status||"Planning")===f).length}`:" "+projects.length}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Project cards — tap to open detail */}
+                  {filteredProjects.map(p=>{
+                    const projExpenses=expenses.filter(e=>e.project_id===p.id);
+                    const spent=projExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
+                    const budget=Number(p.budget||0);
+                    const pct=budget>0?Math.min(100,Math.round((spent/budget)*100)):null;
+                    const isOver=budget>0&&spent>budget;
+                    const sc=projStatusStyle(p.status||"Planning");
+                    const CIRC=201;
+                    const dashArr=pct!=null?`${Math.round((pct/100)*CIRC)} ${CIRC-Math.round((pct/100)*CIRC)}`:`0 ${CIRC}`;
+                    const ringColor=isOver?"#B0432B":pct!=null&&pct>80?"#D9A93E":"#3E7D5A";
+                    const photos=[
+                      {url:p.photo_before||p.photo_url,label:"Before"},
+                      {url:p.photo_progress,label:"During"},
+                      {url:p.photo_after,label:"After"},
+                    ].filter(ph=>ph.url);
+
+                    return (
+                      <div key={p.id} onClick={()=>setSelectedProject(p.id)} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",borderTop:`3px solid ${sc.edge}`,cursor:"pointer",transition:"box-shadow .15s"}}
+                        onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px -8px rgba(42,39,35,.2)"}
+                        onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+
+                        {/* Header */}
+                        <div style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:"1rem"}}>
+                          <div style={{width:46,height:46,borderRadius:13,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",flexShrink:0,background:sc.bg}}>🔨</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".35rem"}}>{p.name}</div>
+                            <div style={{display:"flex",alignItems:"center",gap:".45rem",flexWrap:"wrap"}}>
+                              <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:sc.bg,color:sc.color,display:"inline-flex",alignItems:"center",gap:".3rem"}}>
+                                <span style={{width:7,height:7,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>{p.status||"Planning"}
+                              </span>
+                              {p.start_date&&<span style={{fontSize:".8rem",color:"#8A8178"}}>Started {fmtD(p.start_date)}</span>}
+                            </div>
+                          </div>
+                          {/* Chevron */}
+                          <span style={{color:"#C2B8AE",fontSize:"1.2rem",flexShrink:0,alignSelf:"center"}}>›</span>
+                        </div>
+
+                        {/* Photo strip — compact on list */}
+                        {photos.length > 0 && (
+                          <div style={{display:"grid",gridTemplateColumns:`repeat(${photos.length},1fr)`,gap:1}} onClick={e=>e.stopPropagation()}>
+                            {photos.map((ph,i)=>(
+                              <div key={i} style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(ph.url)}>
+                                <img src={ph.url} alt={ph.label} style={{width:"100%",height:80,objectFit:"cover",display:"block"}}/>
+                                <span style={{position:"absolute",bottom:4,left:5,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 6px",borderRadius:4}}>{ph.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Budget donut + figures */}
+                        {budget>0&&(
+                          <div style={{display:"flex",alignItems:"center",gap:"1rem",padding:".9rem 1rem",borderTop:"1px solid var(--cream2)"}}>
+                            <div style={{position:"relative",flexShrink:0}}>
+                              <svg width="72" height="72" viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--cream2)" strokeWidth="8"/>
+                                <circle cx="40" cy="40" r="32" fill="none" stroke={ringColor} strokeWidth="8" strokeDasharray={dashArr} strokeDashoffset="24" strokeLinecap="round"/>
+                              </svg>
+                              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:700,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
+                                <div style={{fontSize:".52rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
+                              </div>
+                            </div>
+                            <div style={{flex:1,display:"flex",flexDirection:"column",gap:".45rem"}}>
+                              <div style={{display:"flex",justifyContent:"space-between"}}>
+                                <span style={{fontSize:".8rem",color:"#8A8178",fontWeight:600}}>Spent</span>
+                                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:700,color:isOver?"#B0432B":"var(--dark)"}}>{fmt$(spent)}</span>
+                              </div>
+                              <div style={{height:4,background:"var(--cream2)",borderRadius:3,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:`${pct||0}%`,borderRadius:3,background:ringColor}}/>
+                              </div>
+                              <div style={{display:"flex",justifyContent:"space-between"}}>
+                                <span style={{fontSize:".8rem",color:"#8A8178",fontWeight:600}}>Budget</span>
+                                <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:700}}>{fmt$(budget)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {budget===0&&(
+                          <div style={{padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".85rem",color:"#A8A09A"}}>
+                            {fmt$(spent)} spent · {projExpenses.length} expense{projExpenses.length!==1?"s":""}
+                          </div>
+                        )}
+
+                        {/* Tap hint */}
+                        <div style={{padding:".6rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".8rem",fontWeight:600,color:"var(--pine)",background:"rgba(35,74,61,.03)"}}>
+                          Tap to see all expenses, photos & details →
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
           )}
         </div>
       )}
