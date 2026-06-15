@@ -8465,23 +8465,22 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 
 // ─── HOME HISTORY REPORT GENERATOR ───────────────────────────────────────────
 function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [] }) {
-  const addr    = profile?.address || "Your Home";
-  const owner   = profile?.name   || "";
-  const today   = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
-  const year    = profile?.year   ? `Built ${profile.year}` : "";
-  const sqft    = profile?.sqft   ? `${Number(profile.sqft).toLocaleString()} sqft` : "";
-  const beds    = profile?.bedrooms   ? `${profile.bedrooms} bed` : "";
-  const baths   = profile?.bathrooms  ? `${profile.bathrooms} bath` : "";
-  const lot     = profile?.lot_size   ? `${Number(profile.lot_size).toLocaleString()} sqft lot` : "";
-  const zest    = profile?.zestimate  ? `$${Number(profile.zestimate).toLocaleString()}` : "";
+  const addr     = profile?.address || "Your Home";
+  const owner    = profile?.name    || "";
+  const today    = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
+  const year     = profile?.year        ? `Built ${profile.year}` : "";
+  const sqft     = profile?.sqft        ? `${Number(profile.sqft).toLocaleString()} sqft` : "";
+  const beds     = profile?.bedrooms    ? `${profile.bedrooms} bed` : "";
+  const baths    = profile?.bathrooms   ? `${profile.bathrooms} bath` : "";
+  const lot      = profile?.lot_size    ? `${Number(profile.lot_size).toLocaleString()} sqft lot` : "";
+  const zest     = profile?.zestimate   ? `$${Number(profile.zestimate).toLocaleString()}` : "";
   const lastSale = profile?.last_sale_price ? `$${Number(profile.last_sale_price).toLocaleString()}` : "";
 
   // Assets — non-insurance items
   const assets = warranties.filter(w => w.item && w.category !== "Insurance");
   const now = new Date();
-  const ageYrs = d => d ? Math.floor((now - new Date(d+"T00:00:00")) / (365.25*86400000)) : null;
+  const ageYrs  = d => d ? Math.floor((now - new Date(d+"T00:00:00")) / (365.25*86400000)) : null;
   const fmtDate = d => d ? new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
-  const condColor = c => ({ Excellent:"#3B6D11", Good:"#3B6D11", Fair:"#854F0B", Poor:"#A32D2D" })[c] || "#5A534B";
 
   // Service logs — most recent first, cap at 20
   const logs = [...serviceLogs].sort((a,b) => (b.service_date||"") > (a.service_date||"") ? 1 : -1).slice(0, 20);
@@ -8489,22 +8488,40 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   // Expenses by category totals
   const expTotal = expenses.reduce((s,e) => s + Number(e.amount||0), 0);
   const byCat = {};
-  expenses.forEach(e => { byCat[e.category||"Other"] = (byCat[e.category||"Other"] || 0) + Number(e.amount||0); });
+  expenses.forEach(e => { byCat[e.category||"Other"] = (byCat[e.category||"Other"]||0) + Number(e.amount||0); });
   const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6);
 
   // Completed tasks
   const done = tasks.filter(t => t.status === "Completed").slice(0, 15);
 
+  // Assets with photos — for the photo gallery section
+  const assetsWithPhotos = assets.filter(a => a.asset_photo_url);
+
+  // ── Asset rows: now includes warranty expiry + photo thumbnail ──
   const assetRows = assets.map(a => {
-    const age = a.install_date ? ageYrs(a.install_date) : null;
-    const badge = age === null ? "" : age < 6 ? "Good" : age < 12 ? "Fair" : "Aging";
+    const age     = a.install_date ? ageYrs(a.install_date) : null;
+    const badge   = age === null ? "" : age < 6 ? "Good" : age < 12 ? "Fair" : "Aging";
     const badgeBg = { Good:"#EAF3DE", Fair:"#FAEEDA", Aging:"#FCEBEB" }[badge] || "#F4EDDF";
     const badgeFg = { Good:"#3B6D11", Fair:"#854F0B", Aging:"#A32D2D" }[badge] || "#5A534B";
+    const warrantyCell = a.expiry_date ? (() => {
+      const days = Math.ceil((new Date(a.expiry_date+"T00:00:00") - now) / 86400000);
+      const expired = days < 0;
+      const soon    = !expired && days <= 90;
+      const color   = expired ? "#A32D2D" : soon ? "#854F0B" : "#3B6D11";
+      const bg      = expired ? "#FCEBEB" : soon ? "#FAEEDA" : "#EAF3DE";
+      const label   = expired ? `Expired ${fmtDate(a.expiry_date)}` : `Expires ${fmtDate(a.expiry_date)}`;
+      return `<span style="background:${bg};color:${color};font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;">${label}</span>`;
+    })() : `<span style="color:#C2B8AE;font-size:11px;">—</span>`;
+    const thumb = a.asset_photo_url
+      ? `<img src="${a.asset_photo_url}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #E8E0D0;display:block;" onerror="this.style.display='none'">`
+      : `<div style="width:36px;height:36px;border-radius:6px;background:#F4EDDF;border:1px dashed #C2B8AE;"></div>`;
     return `<tr>
-      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;">${a.item}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;">${thumb}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:600;color:#2A2723;">${a.item}${a.brand?`<div style="font-size:10px;font-weight:400;color:#8A8178;margin-top:1px;">${a.brand}${a.model?" · "+a.model:""}</div>`:""}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.category||"—"}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.install_date ? fmtDate(a.install_date) : "—"}</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.last_serviced ? fmtDate(a.last_serviced) : a.install_date ? fmtDate(a.install_date) : "—"}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.last_serviced ? fmtDate(a.last_serviced) : "—"}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;">${warrantyCell}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;"><span style="background:${badgeBg};color:${badgeFg};font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;">${badge||a.condition||"—"}</span></td>
     </tr>`;
   }).join("");
@@ -8513,7 +8530,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
     <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${fmtDate(l.service_date)}</td>
     <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;">${l.description||"Service"}</td>
     <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${l.vendor||"—"}</td>
-    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#2A2723;text-align:right;">${l.cost ? `$${Number(l.cost).toLocaleString()}` : "—"}</td>
+    <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#2A2723;text-align:right;">${l.cost ? "$"+Number(l.cost).toLocaleString() : "—"}</td>
   </tr>`).join("");
 
   const taskRows = done.map(t => `<tr>
@@ -8527,6 +8544,18 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
     <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;text-align:right;">$${Number(amt).toLocaleString()}</td>
   </tr>`).join("");
 
+  // ── Photo gallery cards ──
+  const photoCards = assetsWithPhotos.map(a => `
+    <div style="break-inside:avoid;background:#fff;border:1px solid #E8E0D0;border-radius:10px;overflow:hidden;">
+      <img src="${a.asset_photo_url}" alt="${a.item}" style="width:100%;height:160px;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'">
+      <div style="padding:10px 12px;">
+        <div style="font-size:12px;font-weight:700;color:#2A2723;">${a.item}</div>
+        <div style="font-size:11px;color:#8A8178;margin-top:2px;">${[a.brand,a.model].filter(Boolean).join(" · ")||a.category||""}</div>
+        ${a.install_date?`<div style="font-size:10px;color:#A8A09A;margin-top:3px;">Installed ${fmtDate(a.install_date)}</div>`:""}
+        ${a.expiry_date?`<div style="font-size:10px;color:#A8A09A;margin-top:1px;">Warranty ${new Date(a.expiry_date+"T00:00:00")>now?"until":"expired"} ${fmtDate(a.expiry_date)}</div>`:""}
+      </div>
+    </div>`).join("");
+
   const specs = [year, profile?.type, sqft, beds, baths, lot].filter(Boolean);
 
   const html = `<!DOCTYPE html>
@@ -8538,8 +8567,8 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #F4EDDF; color: #2A2723; }
-  .print-btn { position: fixed; top: 20px; right: 20px; background: #C16140; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 999; }
-  .page { background: #fff; max-width: 760px; margin: 24px auto; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+  .print-btn { position: fixed; top: 20px; right: 20px; background: #C16140; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 999; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  .page { background: #fff; max-width: 800px; margin: 24px auto; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
   .cover { background: #234A3D; padding: 48px 40px 36px; }
   .cover-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: rgba(244,237,223,.45); margin-bottom: 10px; }
   .cover-addr { font-size: 26px; font-weight: 700; color: #F4EDDF; margin-bottom: 4px; line-height: 1.2; }
@@ -8547,20 +8576,20 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   .cover-specs { display: flex; flex-wrap: wrap; gap: 8px; }
   .spec-chip { background: rgba(244,237,223,.1); border: 1px solid rgba(244,237,223,.15); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #F4EDDF; }
   .cover-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(244,237,223,.1); }
-  .cover-val { }
   .cover-val-lbl { font-size: 11px; color: rgba(244,237,223,.4); margin-bottom: 3px; }
   .cover-val-num { font-size: 28px; font-weight: 700; color: #F4EDDF; }
   .cover-meta { text-align: right; font-size: 12px; color: rgba(244,237,223,.4); line-height: 1.6; }
   .section { padding: 28px 40px; border-bottom: 1px solid #EDE5D5; }
   .section:last-child { border-bottom: none; }
   .sec-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #A8A09A; margin-bottom: 16px; }
-  .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 4px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
   .stat-card { background: #F9F5ED; border-radius: 8px; padding: 12px 14px; }
   .stat-val { font-size: 20px; font-weight: 700; color: #234A3D; }
   .stat-lbl { font-size: 11px; color: #A8A09A; margin-top: 2px; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; font-size: 11px; font-weight: 600; color: #A8A09A; text-transform: uppercase; letter-spacing: .05em; padding: 0 6px 8px; border-bottom: 2px solid #E8E0D0; }
   th:last-child { text-align: right; }
+  .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
   .disclaimer { background: #FBF7EE; border: 1px solid #E8E0D0; border-radius: 8px; padding: 16px 18px; margin: 28px 40px; }
   .disclaimer-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #A8A09A; margin-bottom: 8px; }
   .disclaimer-text { font-size: 11px; color: #7A7370; line-height: 1.65; }
@@ -8569,52 +8598,66 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   @media print {
     .print-btn { display: none; }
     body { background: #fff; }
-    .page { margin: 0; border-radius: 0; box-shadow: none; max-width: 100%; page-break-after: avoid; }
+    .page { margin: 0; border-radius: 0; box-shadow: none; max-width: 100%; }
     .section { page-break-inside: avoid; }
+    .photo-grid { grid-template-columns: repeat(3,1fr); }
   }
 </style>
 </head>
 <body>
 <button class="print-btn" onclick="window.print()">⬇ Save as PDF</button>
-
 <div class="page">
+
   <!-- Cover -->
   <div class="cover">
     <div class="cover-label">Home History Report</div>
     <div class="cover-addr">${addr}</div>
-    <div class="cover-sub">Prepared by ${owner || "Homeowner"} · ${today}</div>
+    <div class="cover-sub">Prepared by ${owner||"Homeowner"} · ${today}</div>
     <div class="cover-specs">${specs.map(s=>`<span class="spec-chip">${s}</span>`).join("")}</div>
-    ${zest || lastSale ? `<div class="cover-foot">
-      ${zest ? `<div class="cover-val"><div class="cover-val-lbl">Estimated value</div><div class="cover-val-num">${zest}</div></div>` : ""}
-      <div class="cover-meta">
-        ${lastSale ? `Last sale price: ${lastSale}` : ""}<br>
-        Generated by Steadwell
-      </div>
+    ${zest||lastSale ? `<div class="cover-foot">
+      ${zest ? `<div><div class="cover-val-lbl">Estimated value</div><div class="cover-val-num">${zest}</div></div>` : ""}
+      <div class="cover-meta">${lastSale?`Last sale: ${lastSale}<br>`:""}Generated by Steadwell</div>
     </div>` : ""}
   </div>
 
-  <!-- Summary stats -->
+  <!-- Summary stats — now 4 across including warranty count -->
   <div class="section">
     <div class="sec-title">Summary</div>
     <div class="stats-row">
       <div class="stat-card"><div class="stat-val">${assets.length}</div><div class="stat-lbl">Systems tracked</div></div>
       <div class="stat-card"><div class="stat-val">${logs.length}</div><div class="stat-lbl">Service records</div></div>
-      <div class="stat-card"><div class="stat-val">${expTotal > 0 ? "$"+Math.round(expTotal).toLocaleString() : "—"}</div><div class="stat-lbl">Total invested</div></div>
+      <div class="stat-card"><div class="stat-val">${assets.filter(a=>a.expiry_date&&new Date(a.expiry_date+"T00:00:00")>now).length}</div><div class="stat-lbl">Active warranties</div></div>
+      <div class="stat-card"><div class="stat-val">${expTotal>0?"$"+Math.round(expTotal).toLocaleString():"—"}</div><div class="stat-lbl">Total invested</div></div>
     </div>
   </div>
 
-  <!-- Systems & Assets -->
+  <!-- Systems & Assets — with photo thumb, brand/model, and warranty column -->
   ${assets.length > 0 ? `<div class="section">
-    <div class="sec-title">Home Systems & Assets</div>
+    <div class="sec-title">Home Systems &amp; Assets</div>
     <table>
-      <thead><tr><th>System / Asset</th><th>Category</th><th>Installed</th><th>Last Serviced</th><th>Status</th></tr></thead>
+      <thead><tr>
+        <th style="width:44px;">Photo</th>
+        <th>System / Asset</th>
+        <th>Category</th>
+        <th>Installed</th>
+        <th>Last Serviced</th>
+        <th>Warranty</th>
+        <th>Condition</th>
+      </tr></thead>
       <tbody>${assetRows}</tbody>
     </table>
   </div>` : ""}
 
+  <!-- Photo Record — only renders if any asset has a photo -->
+  ${assetsWithPhotos.length > 0 ? `<div class="section">
+    <div class="sec-title">Asset Photo Record</div>
+    <p style="font-size:11px;color:#A8A09A;margin-bottom:14px;">Photos taken at time of documentation. For insurance and condition verification purposes.</p>
+    <div class="photo-grid">${photoCards}</div>
+  </div>` : ""}
+
   <!-- Service & Maintenance History -->
   ${logs.length > 0 ? `<div class="section">
-    <div class="sec-title">Service & Maintenance History</div>
+    <div class="sec-title">Service &amp; Maintenance History</div>
     <table>
       <thead><tr><th>Date</th><th>Description</th><th>Vendor</th><th style="text-align:right">Cost</th></tr></thead>
       <tbody>${logRows}</tbody>
@@ -8651,14 +8694,22 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
     <span class="footer-txt">${today}</span>
   </div>
 </div>
-
 </body>
 </html>`;
 
-  const win = window.open("", "_blank");
-  if (!win) { alert("Please allow popups to generate the report."); return; }
-  win.document.write(html);
-  win.document.close();
+  // ── Deliver via Blob URL — works on all browsers including mobile Safari
+  // without requiring popup permissions
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.target   = "_blank";
+  a.rel      = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoke after a short delay to allow the tab to load
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 // ─── SHARED ACCESS PANEL ─────────────────────────────────────────────────────
