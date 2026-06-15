@@ -4237,16 +4237,29 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
 
 function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
+
+  const handleReceiptScan = (fields) => {
+    const updates = {};
+    if (fields.vendor)        updates.vendor      = fields.vendor;
+    if (fields.amount)        updates.amount      = fields.amount;
+    if (fields.purchase_date) updates.date        = fields.purchase_date;
+    if (fields.description)   updates.description = fields.description;
+    if (fields.category)      updates.category    = fields.category;
+    if (fields.notes)         updates.notes       = fields.notes;
+    if (Object.keys(updates).length > 0) onChange({...data, ...updates});
+  };
+
   return (
     <div>
-      {/* AI Scan — Pro gate */}
+      {/* Scan leads — camera-first on mobile */}
       <AIScanButton
-        onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan Receipt with AI"
-        description="Auto-fill amount, vendor, date & category from a photo"
+        onScanComplete={handleReceiptScan}
+        label="Scan receipt or invoice"
+        description="Photo or PDF — fills vendor, amount, date & category"
         scanType="receipt"
         planData={planData}
         onUpgrade={onUpgrade}
+        useCamera={true}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -7112,8 +7125,31 @@ function UtilityForm({ data, onChange }) {
 function BillForm({ data, onChange, utility, userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const ut = UTIL_TYPES[utility?.type] || UTIL_TYPES.electric;
+
+  const handleBillScan = (fields) => {
+    const updates = {};
+    // Map all relevant fields from the utility_bill scan
+    if (fields.amount)      updates.amount     = fields.amount;
+    if (fields.bill_date)   updates.bill_date  = fields.bill_date;
+    if (fields.usage)       updates.usage      = fields.usage;
+    if (fields.usage_unit)  updates.usage_unit = fields.usage_unit;
+    if (fields.notes)       updates.notes      = fields.notes;
+    if (Object.keys(updates).length > 0) onChange({...data, ...updates});
+  };
+
   return (
     <div className="fg">
+      {/* Scan first — leads the form */}
+      <div className="field s2">
+        <AIScanButton
+          onScanComplete={handleBillScan}
+          label="Scan bill with AI"
+          description="Photo or PDF — fills amount, date & usage automatically"
+          scanType="utility_bill"
+          useCamera={true}
+        />
+        <div className="scan-divider">or fill in manually</div>
+      </div>
       <div className="field"><label>Bill Date *</label><input type="date" value={data.bill_date||""} onChange={e=>f("bill_date",e.target.value)} /></div>
       <div className="field"><label>Amount ($) *</label><input type="number" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0.00" step="0.01" /></div>
       {ut.unit && (
@@ -7122,15 +7158,7 @@ function BillForm({ data, onChange, utility, userId }) {
           <div className="field"><label>Usage Unit</label><input value={data.usage_unit||ut.unit} onChange={e=>f("usage_unit",e.target.value)} placeholder={ut.unit} /></div>
         </>
       )}
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any notes about this bill…" /></div>
-      {/* Pro gate for AI scan */}
-      <div className="field s2">
-        <AIScanButton
-          onScanComplete={fields => { if(fields.amount) onChange({...data, amount: fields.amount}); }}
-          label="Scan Utility Bill with AI"
-          description="Auto-fill amount & usage from your bill photo"
-        />
-      </div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Billing period, account notes…" /></div>
     </div>
   );
 }
@@ -7151,6 +7179,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [projectConfirm, setProjectConfirm] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [addSheet, setAddSheet] = useState(false); // unified add action sheet
   const [lightbox, setLightbox] = useState(null);
   const [utilities, setUtilities] = useState([]);
   const [bills, setBills] = useState([]);
@@ -7387,8 +7416,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {/* ── Page header — add button changes per view ── */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .5rem"}}>
         <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:500,letterSpacing:"-.5px"}}>Money</span>
-        <button className="btn btn-primary" onClick={view==="expenses"?openNew:view==="projects"?openNewProject:openNewUtil} style={{display:view==="projects"&&selectedProject?"none":""}}>
-          {view==="expenses"?"+ Log expense":view==="projects"?"+ New project":"+ Add utility"}
+        <button className="btn btn-primary" onClick={()=>setAddSheet(true)} style={{display:view==="projects"&&selectedProject?"none":""}}>
+          + Add
         </button>
       </div>
 
@@ -8096,6 +8125,37 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Unified Add action sheet ── */}
+      {addSheet && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={()=>setAddSheet(false)}>
+          <div style={{background:"var(--white)",borderRadius:"20px 20px 0 0",padding:"1.25rem 1rem 2rem",maxWidth:480,margin:"0 auto",width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <div style={{width:36,height:4,borderRadius:2,background:"var(--stone)",margin:"0 auto .85rem"}}/>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,marginBottom:"1.1rem",textAlign:"center"}}>What would you like to add?</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
+              {[
+                { icon:"💸", label:"Expense",       sub:"Receipt, invoice, or any cost",    action:()=>{setAddSheet(false);openNew();} },
+                { icon:"⚡", label:"Utility bill",   sub:"Scan or enter your monthly bill",  action:()=>{
+                  setAddSheet(false);
+                  if(utilities.length===0){openNewUtil();}
+                  else if(utilities.length===1){openNewBill(utilities[0].id);}
+                  else{setView("utilities");}
+                }},
+                { icon:"🔨", label:"Project",        sub:"New renovation or major work",     action:()=>{setAddSheet(false);openNewProject();} },
+              ].map(opt=>(
+                <button key={opt.label} onClick={opt.action} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem .75rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".45rem",cursor:"pointer",textAlign:"center",fontFamily:"inherit",transition:"all .15s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--pine)";e.currentTarget.style.background="rgba(35,74,61,.04)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--cream)";}}>
+                  <span style={{fontSize:"1.6rem"}}>{opt.icon}</span>
+                  <span style={{fontSize:".9rem",fontWeight:700,color:"var(--dark)"}}>{opt.label}</span>
+                  <span style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.3}}>{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setAddSheet(false)} style={{width:"100%",padding:".75rem",background:"var(--cream2)",border:"none",borderRadius:"var(--r-sm)",fontSize:".92rem",fontWeight:600,color:"#6E665D",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+          </div>
         </div>
       )}
 

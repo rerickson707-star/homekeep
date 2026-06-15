@@ -50,6 +50,26 @@ Return ONLY a JSON object:
 Return only the JSON. No markdown, no explanation.`,
       };
 
+    case "utility_bill":
+      return {
+        max_tokens: 400,
+        prompt: `You are reading a utility bill (electric, gas, water, internet, etc).
+
+Return ONLY a JSON object:
+{
+  "utility_name": "name of the utility company (e.g. Duke Energy, Florida City Gas)",
+  "utility_type": "electric | gas | water | internet | trash | sewer | other",
+  "bill_date": "YYYY-MM-DD — use the statement date, due date, or billing period end date. Must be a full date.",
+  "amount": total amount due as a number (not string),
+  "usage": usage amount as a number if shown (kWh, therms, gallons, etc) or null,
+  "usage_unit": "kWh | therms | gallons | Mcf | other unit shown" or null,
+  "account_number": "account number if visible" or null,
+  "notes": "billing period if shown, e.g. Apr 1 – Apr 30"
+}
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
     case "receipt":
       return {
         max_tokens: 400,
