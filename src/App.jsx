@@ -8130,31 +8130,33 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
       {/* ── Unified Add action sheet ── */}
       {addSheet && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={()=>setAddSheet(false)}>
-          <div style={{background:"var(--white)",borderRadius:"20px 20px 0 0",padding:"1.25rem 1rem 2rem",maxWidth:480,margin:"0 auto",width:"100%"}} onClick={e=>e.stopPropagation()}>
+        <div className="overlay" onClick={()=>setAddSheet(false)} style={{alignItems:"flex-end",zIndex:999}}>
+          <div style={{background:"var(--white)",borderRadius:"20px 20px 0 0",padding:"1.25rem 1rem 2rem",maxWidth:480,margin:"0 auto",width:"100%",transform:"translateZ(0)"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:36,height:4,borderRadius:2,background:"var(--stone)",margin:"0 auto .85rem"}}/>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,marginBottom:"1.1rem",textAlign:"center"}}>What would you like to add?</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
               {[
-                { icon:"💸", label:"Expense",       sub:"Receipt, invoice, or any cost",    action:()=>{setAddSheet(false);openNew();} },
-                { icon:"⚡", label:"Utility bill",   sub:"Scan or enter your monthly bill",  action:()=>{
+                { icon:"💸", label:"Expense",     sub:"Receipt, invoice, or any cost",   action:()=>{setAddSheet(false);openNew();} },
+                { icon:"⚡", label:"Utility bill", sub:"Scan or enter your monthly bill", action:()=>{
                   setAddSheet(false);
                   if(utilities.length===0){openNewUtil();}
                   else if(utilities.length===1){openNewBill(utilities[0].id);}
                   else{setView("utilities");}
                 }},
-                { icon:"🔨", label:"Project",        sub:"New renovation or major work",     action:()=>{setAddSheet(false);openNewProject();} },
+                { icon:"🔨", label:"Project",     sub:"New renovation or major work",    action:()=>{setAddSheet(false);openNewProject();} },
               ].map(opt=>(
-                <button key={opt.label} onClick={opt.action} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem .75rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".45rem",cursor:"pointer",textAlign:"center",fontFamily:"inherit",transition:"all .15s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--pine)";e.currentTarget.style.background="rgba(35,74,61,.04)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--cream)";}}>
+                <button key={opt.label} onClick={opt.action}
+                  style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem .75rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".45rem",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
                   <span style={{fontSize:"1.6rem"}}>{opt.icon}</span>
                   <span style={{fontSize:".9rem",fontWeight:700,color:"var(--dark)"}}>{opt.label}</span>
                   <span style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.3}}>{opt.sub}</span>
                 </button>
               ))}
             </div>
-            <button onClick={()=>setAddSheet(false)} style={{width:"100%",padding:".75rem",background:"var(--cream2)",border:"none",borderRadius:"var(--r-sm)",fontSize:".92rem",fontWeight:600,color:"#6E665D",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+            <button onClick={()=>setAddSheet(false)}
+              style={{width:"100%",padding:".75rem",background:"var(--cream2)",border:"none",borderRadius:"var(--r-sm)",fontSize:".92rem",fontWeight:600,color:"#6E665D",cursor:"pointer",fontFamily:"inherit"}}>
+              Cancel
+            </button>
           </div>
         </div>
       )}
