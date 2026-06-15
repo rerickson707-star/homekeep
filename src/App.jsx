@@ -4288,8 +4288,71 @@ const PROJECT_STATUS_STYLE = {
   "On Hold":     {bg:"var(--cream2)",      text:"#7A7370",      border:"var(--stone)"},
 };
 
+// ─── PROJECT PHOTO SLOT ───────────────────────────────────────────────────────
+// A compact upload slot for before/during/after project photos
+function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUrl, onUploaded }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file || !file.type.startsWith("image/")) { setError("Images only"); return; }
+    if (file.size > 20 * 1024 * 1024) { setError("Max 20MB"); return; }
+    setError("");
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${userId}/project-${projectId||"new"}-${fieldKey}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("expense-files")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) { setError("Upload failed"); setUploading(false); return; }
+    const { data } = supabase.storage.from("expense-files").getPublicUrl(path);
+    onUploaded(data.publicUrl + "?t=" + Date.now());
+    setUploading(false);
+  };
+
+  const handleRemove = async () => {
+    if (!currentUrl) return;
+    const path = currentUrl.split("/expense-files/")[1]?.split("?")[0];
+    if (path) await supabase.storage.from("expense-files").remove([path]);
+    onUploaded("");
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
+      {/* Photo preview or upload target */}
+      {currentUrl ? (
+        <div style={{position:"relative",borderRadius:10,overflow:"hidden",aspectRatio:"1",background:"var(--cream2)"}}>
+          <img src={currentUrl} alt={label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+          <button onClick={handleRemove} style={{position:"absolute",top:5,right:5,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:6,width:22,height:22,fontSize:".7rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>✕</button>
+        </div>
+      ) : (
+        <div onClick={()=>inputRef.current?.click()} style={{aspectRatio:"1",border:`2px dashed var(--stone)`,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"var(--cream)",gap:".3rem",transition:"border-color .15s"}}
+          onMouseEnter={e=>e.currentTarget.style.borderColor="var(--pine)"}
+          onMouseLeave={e=>e.currentTarget.style.borderColor="var(--stone)"}>
+          <span style={{fontSize:"1.4rem"}}>{uploading ? "⏳" : emoji}</span>
+          <span style={{fontSize:".68rem",fontWeight:600,color:"#A8A09A"}}>{uploading ? "Uploading…" : "Add photo"}</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+      {/* Label below */}
+      <div style={{textAlign:"center",fontSize:".72rem",fontWeight:700,color:"#6E665D"}}>{label}</div>
+      {error && <div style={{fontSize:".65rem",color:"var(--red)",textAlign:"center"}}>{error}</div>}
+    </div>
+  );
+}
+
 function ProjectForm({ data, onChange, userId, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
+  const status = data.status || "Planning";
+
+  // Which photo slots to show based on status
+  const slots = [
+    { key:"photo_before",   label:"Before",      emoji:"📷", always:true },
+    { key:"photo_progress", label:"In progress",  emoji:"🔨", hide: status==="Planning" },
+    { key:"photo_after",    label:"After",        emoji:"✅", hide: status==="Planning" || status==="In Progress" },
+  ].filter(s => !s.hide);
+
   return (
     <div className="fg">
       <div className="field s2"><label>Project Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Kitchen Remodel" /></div>
@@ -4302,14 +4365,30 @@ function ProjectForm({ data, onChange, userId, contractors=[] }) {
         <ContractorPicker value={data.contractor_name||""} onChange={v=>f("contractor_name",v)} contractors={contractors} placeholder="General contractor or company"/>
       </div>
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Contractors, permits, decisions…" /></div>
-      <ExpenseFileUpload
-        userId={userId}
-        expenseId={data.id ? `project-${data.id}` : undefined}
-        currentUrl={data.photo_url||""}
-        onUploaded={url=>f("photo_url", url)}
-        label="Project Photo"
-        bucket="expense-files"
-      />
+
+      {/* Before / During / After photo slots */}
+      <div className="field s2">
+        <label>Project Photos</label>
+        <div style={{display:"grid",gridTemplateColumns:`repeat(${slots.length},1fr)`,gap:".6rem",marginTop:".25rem"}}>
+          {slots.map(slot => (
+            <ProjectPhotoSlot
+              key={slot.key}
+              label={slot.label}
+              emoji={slot.emoji}
+              userId={userId}
+              projectId={data.id}
+              fieldKey={slot.key}
+              currentUrl={data[slot.key] || (slot.key === "photo_before" ? data.photo_url || "" : "")}
+              onUploaded={url => f(slot.key, url)}
+            />
+          ))}
+        </div>
+        <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".5rem"}}>
+          {status==="Planning" ? "Add a Before photo now — come back to add progress and after shots as work proceeds." :
+           status==="In Progress" ? "Document progress as work happens. Add an After photo when complete." :
+           "Before, during, and after photos tell the full story of your project."}
+        </div>
+      </div>
     </div>
   );
 }
@@ -7126,7 +7205,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   // ── Project CRUD
-  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url"];
+  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after"];
   const pickProject = (d) => Object.fromEntries(PROJECT_FIELDS.filter(f => f in d && d[f] !== undefined).map(f => [f, d[f] ?? null]));
 
   const openNewProject = () => { setProjectEditData({status:"Planning",start_date:localISO()}); setProjectEditId(null); setProjectModal(true); };
@@ -7567,8 +7646,31 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       </div>
                     </div>
 
-                    {/* Project photo */}
-                    {p.photo_url&&<img src={p.photo_url} alt={p.name} style={{width:"100%",height:150,objectFit:"cover",display:"block",cursor:"pointer"}} onClick={()=>setLightbox(p.photo_url)}/>}
+                    {/* Before / During / After photo strip */}
+                    {(()=>{
+                      const photos = [
+                        { url: p.photo_before || p.photo_url, label: "Before" },
+                        { url: p.photo_progress, label: "During" },
+                        { url: p.photo_after, label: "After" },
+                      ].filter(ph => ph.url);
+                      if (photos.length === 0) return null;
+                      if (photos.length === 1) return (
+                        <div style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(photos[0].url)}>
+                          <img src={photos[0].url} alt={photos[0].label} style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
+                          <span style={{position:"absolute",bottom:8,left:10,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:6}}>{photos[0].label}</span>
+                        </div>
+                      );
+                      return (
+                        <div style={{display:"grid",gridTemplateColumns:`repeat(${photos.length},1fr)`,gap:2}}>
+                          {photos.map((ph,i) => (
+                            <div key={i} style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(ph.url)}>
+                              <img src={ph.url} alt={ph.label} style={{width:"100%",height:120,objectFit:"cover",display:"block"}}/>
+                              <span style={{position:"absolute",bottom:6,left:6,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:5}}>{ph.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     {/* Budget donut + figures */}
                     {budget>0&&(
