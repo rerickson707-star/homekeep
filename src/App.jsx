@@ -8143,7 +8143,11 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   else if(utilities.length===1){openNewBill(utilities[0].id);}
                   else{setView("utilities");}
                 }},
-                { icon:"🔨", label:"Project",     sub:"New renovation or major work",    action:()=>{setAddSheet(false);openNewProject();} },
+                { icon:"🔨", label:"Project expense", sub:"Link a cost to a project",    action:()=>{
+                  setAddSheet(false);
+                  if(projects.length===0){openNewProject();}
+                  else{setEditData({date:localISO(),project_id:projects[0].id});setEditId(null);setModal(true);}
+                }},
               ].map(opt=>(
                 <button key={opt.label} onClick={opt.action}
                   style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem .75rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".45rem",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
