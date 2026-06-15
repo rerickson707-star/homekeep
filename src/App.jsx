@@ -2950,6 +2950,127 @@ const CATEGORY_COLORS = {
   Other:     {bg:"rgba(122,115,112,.08)", border:"rgba(122,115,112,.15)", icon:"var(--mid)"},
 };
 
+const CAT_NORMALIZE_MAP = { "Appliances":"Appliance", "Structural":"Structure" };
+
+// ─── ASSET ICON SYSTEM (inline SVG, Lucide-derived) ──────────────────────────
+const ICON_PATHS = {
+  flame:   '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  wind:    '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+  thermo:  '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
+  fan:     '<path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"/><circle cx="12" cy="12" r="2"/>',
+  droplet: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  pipe:    '<path d="M4 4v16"/><path d="M4 8h8a4 4 0 0 1 4 4v8"/><path d="M16 12h4"/>',
+  bath:    '<path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><line x1="10" x2="8" y1="5" y2="7"/><line x1="2" x2="22" y1="12" y2="12"/><line x1="7" x2="7" y1="19" y2="21"/><line x1="17" x2="17" y1="19" y2="21"/>',
+  fridge:  '<path d="M5 6a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Z"/><path d="M5 10h14"/><path d="M15 7v0"/><path d="M15 14v0"/>',
+  washer:  '<path d="M3 6h3"/><path d="M17 6h.01"/><rect width="18" height="20" x="3" y="2" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M12 18a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 1 0-5"/>',
+  microwave:'<rect width="20" height="15" x="2" y="4" rx="2"/><rect width="8" height="7" x="6" y="8" rx="1"/><path d="M18 8v7"/><path d="M6 19v2"/><path d="M18 19v2"/>',
+  oven:    '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M4 9h16"/><path d="M8 5h0"/><path d="M12 5h0"/><path d="M9 13v4"/><path d="M15 13v4"/>',
+  coffee:  '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>',
+  dishwasher:'<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 9h18"/><path d="M7 6h0"/><path d="M11 6h0"/>',
+  roof:    '<path d="m2 12 10-8 10 8"/><path d="M4 10v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V10"/>',
+  zap:     '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  plug:    '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+  panel:   '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/>',
+  wall:    '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M8 3v6"/><path d="M16 9v6"/><path d="M8 15v6"/>',
+  door:    '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>',
+  window:  '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/>',
+  smoke:   '<path d="M2 8a10.645 10.645 0 0 0 20 0"/><path d="M12 22v-3"/><path d="m17 18 1.5 1.5"/><path d="m21 14-2 1"/><path d="M7 18l-1.5 1.5"/><path d="m3 14 2 1"/>',
+  alarm:   '<circle cx="12" cy="13" r="8"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/><path d="M12 9v4l2 2"/>',
+  shield:  '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  extinguisher:'<path d="M15 6.5V3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3.5"/><path d="M9 18h8"/><path d="M18 3h-3"/><path d="M11 3a6 6 0 0 0-6 6v11"/><path d="M5 13h4"/><path d="M17 10a4 4 0 0 0-8 0v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1Z"/>',
+  sprout:  '<path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>',
+  tree:    '<path d="M12 22v-7l-2-2"/><path d="M17 8v.8A6 6 0 0 1 13.8 20v0H10v0A6.5 6.5 0 0 1 7 8h0a5 5 0 0 1 10 0Z"/><path d="m14 14-2 2"/>',
+  wrench:  '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+};
+
+const ICON_KEYWORDS = [
+  [/furnace|boiler|heat pump/i, "flame"],
+  [/\ba\/?c\b|air.?condition|cooling|condenser|hvac|mini.?split/i, "wind"],
+  [/thermostat/i, "thermo"],
+  [/\bfan\b|ventil|exhaust/i, "fan"],
+  [/water heater|hot water|tankless/i, "droplet"],
+  [/dishwasher/i, "dishwasher"],
+  [/washer|washing|dryer|laundry/i, "washer"],
+  [/microwave/i, "microwave"],
+  [/oven|range|stove|cooktop/i, "oven"],
+  [/coffee|espresso|brewer/i, "coffee"],
+  [/fridge|refriger|freezer|icemaker|ice maker/i, "fridge"],
+  [/toilet|sink|faucet|shower|tub|bath/i, "bath"],
+  [/pipe|plumb|drain|sump|well pump|softener/i, "pipe"],
+  [/roof|shingle|gutter|soffit|fascia/i, "roof"],
+  [/panel|breaker|electrical box|load center/i, "panel"],
+  [/outlet|receptacle|switch|wiring|gfci/i, "plug"],
+  [/generator|solar|inverter|\bev\b|charger/i, "zap"],
+  [/smoke|carbon|co detector/i, "smoke"],
+  [/alarm|security|camera|sensor|doorbell/i, "alarm"],
+  [/extinguisher/i, "extinguisher"],
+  [/door|garage/i, "door"],
+  [/window/i, "window"],
+  [/wall|foundation|structur|framing|drywall/i, "wall"],
+  [/lawn|grass|garden|sprinkler|irrigation|landscap|mower/i, "sprout"],
+  [/tree|shrub|hedge|plant/i, "tree"],
+];
+
+const CATEGORY_ICON = {
+  HVAC:"wind", Appliance:"oven", Plumbing:"droplet", Electrical:"zap",
+  Roofing:"roof", Structure:"wall", Safety:"shield", Landscaping:"sprout", Other:"wrench",
+};
+
+function pickIconName(asset) {
+  const text = [asset.item, asset.brand, asset.model, asset.category].filter(Boolean).join(" ");
+  for (const [re, name] of ICON_KEYWORDS) { if (re.test(text)) return name; }
+  return CATEGORY_ICON[CAT_NORMALIZE_MAP[asset.category] || asset.category] || "wrench";
+}
+
+function AssetIcon({ asset, name, size = 24 }) {
+  const iconName = name || (asset ? pickIconName(asset) : "wrench");
+  const path = ICON_PATHS[iconName] || ICON_PATHS.wrench;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+      dangerouslySetInnerHTML={{ __html: path }} />
+  );
+}
+
+// ─── ASSET HEALTH SYSTEM ─────────────────────────────────────────────────────
+const HEALTH_STATES = {
+  ok:    { key:"ok",    label:"Healthy",         color:"#3E7D5A", bg:"#E9F1EA", ring:"#C5DCC9" },
+  heads: { key:"heads", label:"Heads up",        color:"#B8861E", bg:"#FBF3DE", ring:"#EAD9A6" },
+  due:   { key:"due",   label:"Service due",     color:"#C16140", bg:"#F8E8E1", ring:"#E7C3B4" },
+  bad:   { key:"bad",   label:"Needs attention", color:"#B0432B", bg:"#F7E0DA", ring:"#E3B2A6" },
+};
+
+function getAssetHealth(asset, serviceLogs = [], tasks = []) {
+  const cat = CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other";
+  const installDate = asset.install_date || asset.purchase_date;
+  const ageYears = installDate ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000) : null;
+  const lifespan = Number(asset.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
+  const lifePct = ageYears !== null ? Math.min(100, Math.round((ageYears / lifespan) * 100)) : null;
+
+  if (asset.condition === "Failed") return { ...HEALTH_STATES.bad, reason:"Marked as failed", lifePct, ageYears, lifespan };
+  if (asset.condition === "Needs Attention") return { ...HEALTH_STATES.bad, reason:"Marked as needs attention", lifePct, ageYears, lifespan };
+
+  const assetTasks = (tasks || []).filter(t => t.asset_id === asset.id && t.status !== "Completed");
+  const overdue = assetTasks.some(t => { const d = t.due_date ? daysTo(t.due_date) : null; return d !== null && d < 0; });
+  if (overdue) return { ...HEALTH_STATES.bad, reason:"Service overdue", lifePct, ageYears, lifespan };
+
+  if (lifePct !== null && lifePct >= 100) return { ...HEALTH_STATES.bad, reason:"Past expected lifespan", lifePct, ageYears, lifespan };
+
+  const taskDueSoon = assetTasks.some(t => { const d = t.due_date ? daysTo(t.due_date) : null; return d !== null && d >= 0 && d <= 30; });
+  if (taskDueSoon) return { ...HEALTH_STATES.due, reason:"Task due soon", lifePct, ageYears, lifespan };
+
+  if (lifePct !== null && lifePct >= 75) return { ...HEALTH_STATES.due, reason:"Aging — service recommended", lifePct, ageYears, lifespan };
+
+  const logs = (serviceLogs || []).filter(s => s.asset_id === asset.id);
+  let pm = asset.pm_schedule;
+  if (typeof pm === "string") { try { pm = JSON.parse(pm); } catch { pm = []; } }
+  const hasPM = Array.isArray(pm) && pm.length > 0;
+  if (hasPM && logs.length === 0) return { ...HEALTH_STATES.heads, reason:"Maintenance recommended", lifePct, ageYears, lifespan };
+  if (asset.condition === "Fair") return { ...HEALTH_STATES.heads, reason:"Fair condition", lifePct, ageYears, lifespan };
+
+  return { ...HEALTH_STATES.ok, reason:"In good shape", lifePct, ageYears, lifespan };
+}
+
 const ASSET_INTEL_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/asset-intelligence";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk";
 
@@ -6170,18 +6291,20 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     } else { toast("Could not update task","error"); }
   };
 
-  // Filter list
-  const FILTER_OPTIONS = ["All","Good","Fair","Needs Attention","Failed","Warranty Active","Warranty Expiring"];
+  // Filter list — uses the unified health vocabulary
   let list = [...assets];
   if(filter==="Warranty Active")   list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
-  if(filter==="Warranty Expiring") list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0&&d<=90; });
-  if(ASSET_CONDITIONS.includes(filter)) list = list.filter(a=>a.condition===filter);
+  else if(filter==="Needs attention") list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="bad"||h.key==="due"; });
+  else if(filter==="Healthy")      list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="ok"; });
   list = list.sort((a,b)=>(a.item||"").localeCompare(b.item||""));
 
-  // Summary stats
-  const totalValue = assets.reduce((s,a)=>s+Number(a.cost||0),0);
-  const totalReplacement = assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0);
-  const needsAttention = assets.filter(a=>a.condition==="Needs Attention"||a.condition==="Failed").length;
+  // Health summary — counts across ALL assets (not the filtered list)
+  const healthCounts = assets.reduce((acc,a)=>{ const h=getAssetHealth(a,serviceLogs,tasks); acc[h.key]=(acc[h.key]||0)+1; return acc; },{});
+  const okCount    = healthCounts.ok    || 0;
+  const headsCount = healthCounts.heads || 0;
+  const dueCount   = healthCounts.due   || 0;
+  const badCount   = healthCounts.bad   || 0;
+  const attentionCount = dueCount + badCount;
 
   // If an asset is selected, show detail view
   if (selectedAsset) {
@@ -6199,13 +6322,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     }
     const assetLogs = serviceLogs.filter(s => s.asset_id === asset.id).sort((a,b)=>new Date(b.service_date)-new Date(a.service_date));
     const assetTasks = (tasks||[]).filter(t => t.asset_id === asset.id);
-    const sc = CONDITION_STYLE[asset.condition||"Good"]||CONDITION_STYLE.Good;
-    const icon = ASSET_ICONS[asset.category]||"🔧";
     const installDate = asset.install_date || asset.purchase_date;
     const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
     const lifespanYears = Number(asset.lifespan_years || DEFAULT_LIFESPAN[asset.category] || 15);
     const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
-    const lifespanStatus = lifespanPct === null ? "ok" : lifespanPct >= 100 ? "alert" : lifespanPct >= 75 ? "warn" : "ok";
     const warrantyDays = asset.expiry_date ? daysTo(asset.expiry_date) : null;
     const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
     const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
@@ -6213,125 +6333,204 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
     const catColor = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Other;
     const supportUrl = (() => { const m = (asset.notes||"").match(/Support: (https?:\/\/\S+)/); return m?m[1]:null; })();
+    const health = getAssetHealth(asset, serviceLogs, tasks);
+    const hasManualLink = asset.document_ref?.startsWith("http");
+    const hasUploadedDoc = asset.document_ref && !asset.document_ref.startsWith("http");
+
+    // Build the hero status line in plain language
+    let heroStatusLine = health.reason;
+    if (health.key === "due") {
+      const sd = (tasks||[]).filter(t=>t.asset_id===asset.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d>=0).sort((x,y)=>x-y)[0];
+      if (sd===0) heroStatusLine = "Service due today";
+      else if (sd===1) heroStatusLine = "Service due tomorrow";
+      else if (sd!=null) heroStatusLine = `Service due in ${sd} days`;
+      else if (health.reason.includes("Aging")) heroStatusLine = "Service recommended soon";
+    } else if (health.key === "bad") {
+      if (health.reason === "Service overdue") {
+        const od = (tasks||[]).filter(t=>t.asset_id===asset.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d<0).sort((x,y)=>x-y)[0];
+        heroStatusLine = od!=null ? `Service overdue by ${Math.abs(od)} days` : "Service overdue";
+      }
+    }
 
     return (
       <AssetDetailErrorBoundary>
       <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-        {/* Header */}
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".75rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setSelectedAsset(null)} style={{padding:".3rem .65rem",fontSize:".82rem",fontWeight:600}}>←</button>
-          <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
-          <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(asset)} style={{fontSize:".78rem"}}>Edit</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(asset.id)} style={{fontSize:".78rem",color:"var(--red)"}}>✕</button>
+        {/* Top bar */}
+        <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+          <button onClick={()=>setSelectedAsset(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
+          <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
+          <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
+          <button onClick={()=>setConfirm(asset.id)} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>
         </div>
 
         <div style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
 
-          {/* ── HERO CARD ── */}
-          <div style={{background:`linear-gradient(135deg, var(--pine-deep), var(--pine))`,padding:"1.25rem 1.1rem 1rem",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",right:-20,top:-20,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
+          {/* ── HERO ── */}
+          <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
             {asset.asset_photo_url && (
               <img src={asset.asset_photo_url} alt={asset.item}
-                style={{width:"100%",height:140,objectFit:"cover",borderRadius:12,marginBottom:".85rem",cursor:"pointer",border:"2px solid rgba(255,255,255,.1)"}}
+                style={{width:"100%",height:150,objectFit:"cover",borderRadius:14,marginBottom:"1rem",cursor:"pointer",border:"1.5px solid rgba(255,255,255,.12)",position:"relative"}}
                 onClick={()=>setLightbox(asset.asset_photo_url)}/>
             )}
-            <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
-              <div style={{width:48,height:48,borderRadius:14,background:catColor.bg,border:`1.5px solid ${catColor.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>
-                {icon}
+            <div style={{display:"flex",alignItems:"flex-start",gap:".9rem",marginBottom:"1.1rem"}}>
+              <div style={{width:60,height:60,borderRadius:16,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff"}}>
+                <AssetIcon asset={asset} size={30}/>
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:500,color:"#fff",lineHeight:1.2,marginBottom:3}}>{asset.item}</div>
-                <div style={{fontSize:".72rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>
-                  {[asset.brand, asset.model&&`Model ${asset.model}`, asset.serial_number&&`S/N ${asset.serial_number}`, asset.vendor].filter(Boolean).join(" · ") || asset.category || "No details yet"}
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,lineHeight:1.15,marginBottom:".3rem"}}>{asset.item}</div>
+                <div style={{fontSize:".9rem",color:"rgba(244,237,223,.7)",lineHeight:1.4}}>
+                  {[asset.brand, asset.model&&`Model ${asset.model}`, asset.serial_number&&`S/N ${asset.serial_number}`].filter(Boolean).join(" · ") || asset.category || "No details yet"}
                 </div>
               </div>
-              <span style={{padding:"3px 10px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0}}>{asset.condition||"Good"}</span>
             </div>
 
-            {/* Key stats row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".5rem",marginTop:".9rem"}}>
+            {/* Status line */}
+            <div style={{display:"inline-flex",alignItems:"center",gap:".5rem",padding:".5rem .9rem",borderRadius:22,fontSize:".92rem",fontWeight:700,background:"rgba(255,255,255,.14)",marginBottom:"1.1rem"}}>
+              <span style={{width:9,height:9,borderRadius:"50%",background:health.color==="#3E7D5A"?"#7DCBA1":health.color==="#B8861E"?"#F0CE7A":health.color==="#C16140"?"#F0A57F":"#F0A58E"}}/>
+              {health.label}{heroStatusLine && heroStatusLine!==health.label ? ` · ${heroStatusLine.toLowerCase()}` : ""}
+            </div>
+
+            {/* Stats */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".6rem"}}>
               {[
                 {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
                 {label:"Replace",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
-                {label:"Serviced",val:assetLogs.length>0?fmt$(totalServiceCost):"—"},
+                {label:"Age",val:ageYears!==null?`${ageYears} yr${ageYears===1?"":"s"}`:"—"},
               ].map(s=>(
-                <div key={s.label} style={{textAlign:"center",background:"rgba(255,255,255,.08)",borderRadius:10,padding:".5rem .25rem",border:"1px solid rgba(255,255,255,.08)"}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#fff"}}>{s.val}</div>
-                  <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:2}}>{s.label}</div>
+                <div key={s.label} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:".7rem .5rem",textAlign:"center"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700}}>{s.val}</div>
+                  <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.5)",marginTop:".25rem",fontWeight:700}}>{s.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Lifespan bar */}
             {lifespanPct !== null && (
-              <div style={{marginTop:".85rem"}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"rgba(244,237,223,.55)",marginBottom:".3rem"}}>
-                  <span>{ageYears} yr old · expected {lifespanYears} yr lifespan</span>
-                  <span style={{color:lifespanStatus==="alert"?"#FC9A8A":lifespanStatus==="warn"?"#FCD77A":"#7DCBA1",fontWeight:700}}>
-                    {lifespanStatus==="alert"?"⚠ Past expected life":lifespanStatus==="warn"?"Aging":"Good shape"}
-                  </span>
+              <div style={{marginTop:"1.1rem"}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"rgba(244,237,223,.7)",marginBottom:".4rem",fontWeight:600}}>
+                  <span>Expected lifespan</span><span style={{color:"#E8A87C",fontWeight:700}}>{ageYears} of {lifespanYears} years</span>
                 </div>
-                <div style={{height:5,background:"rgba(255,255,255,.12)",borderRadius:4,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:4,
-                    background:lifespanStatus==="alert"?"#F87171":lifespanStatus==="warn"?"#FCD34D":"#6EE7B7"}}/>
+                <div style={{height:8,background:"rgba(255,255,255,.14)",borderRadius:5,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.color==="#3E7D5A"?"#6EE7B7":"#E8825F"}}/>
                 </div>
               </div>
             )}
           </div>
 
-          <div style={{padding:"1rem"}}>
+          <div style={{padding:"1.1rem 1rem"}}>
+
+            {/* ── Primary actions ── */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1.2rem"}}>
+              <button onClick={()=>openNewService(asset.id)}
+                style={{background:"var(--pine)",border:"1.5px solid var(--pine)",borderRadius:"var(--r-sm)",padding:".95rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".35rem",cursor:"pointer",fontFamily:"inherit"}}>
+                <span style={{fontSize:"1.3rem"}}>🧰</span>
+                <span style={{fontSize:".88rem",fontWeight:700,color:"#fff"}}>Log service</span>
+              </button>
+              <button onClick={()=>{
+                  const due = new Date(); due.setMonth(due.getMonth()+3);
+                  openNewService(asset.id);
+                }}
+                style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".95rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".35rem",cursor:"pointer",fontFamily:"inherit"}}>
+                <span style={{fontSize:"1.3rem"}}>📅</span>
+                <span style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)"}}>Schedule task</span>
+              </button>
+            </div>
 
             {/* ── No brand/model prompt ── */}
             {!asset.brand && !asset.model && (
-              <div style={{background:"#FEF9C3",border:"1px solid #FDE68A",borderRadius:"var(--r-sm)",padding:".75rem .9rem",marginBottom:".75rem",display:"flex",alignItems:"center",gap:".6rem"}}>
-                <span style={{fontSize:"1.1rem",flexShrink:0}}>💡</span>
+              <div style={{background:"#FEF9C3",border:"1px solid #FDE68A",borderRadius:"var(--r-sm)",padding:".85rem .9rem",marginBottom:"1rem",display:"flex",alignItems:"center",gap:".6rem"}}>
+                <span style={{fontSize:"1.2rem",flexShrink:0}}>💡</span>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:".82rem",fontWeight:700,color:"#92400E"}}>Add brand & model for full features</div>
-                  <div style={{fontSize:".72rem",color:"#92400E",marginTop:1}}>Enables recall checks, Smart Fill, PM schedule, and owner's manual</div>
+                  <div style={{fontSize:".88rem",fontWeight:700,color:"#92400E"}}>Add brand &amp; model for full features</div>
+                  <div style={{fontSize:".78rem",color:"#92400E",marginTop:1}}>Enables recall checks, Smart Fill, and owner's manual</div>
                 </div>
-                <button onClick={()=>openEdit(asset)} style={{fontSize:".75rem",fontWeight:700,color:"#92400E",background:"rgba(193,97,64,.1)",border:"1px solid rgba(193,97,64,.25)",borderRadius:8,padding:".35rem .7rem",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",flexShrink:0}}>Edit</button>
+                <button onClick={()=>openEdit(asset)} style={{fontSize:".82rem",fontWeight:700,color:"#92400E",background:"rgba(193,97,64,.1)",border:"1px solid rgba(193,97,64,.25)",borderRadius:8,padding:".4rem .75rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Edit</button>
               </div>
             )}
 
-            {/* ── Recall status ── */}
+            {/* ── Recall banner ── */}
             {asset.brand && (
               <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} />
             )}
 
-            {/* ── Warranty ── */}
+            {/* ── Warranty banner ── */}
             {asset.expiry_date && (
-              <div style={{padding:".6rem .85rem",borderRadius:"var(--r-sm)",fontSize:".78rem",fontWeight:600,marginBottom:".75rem",
-                background:warrantyExpired?"var(--cream)":warrantySoon?"#FFF8E6":"#EAF3DE",
-                color:warrantyExpired?"#A8A09A":warrantySoon?"#92610A":"#2D6A3D",
-                border:`1px solid ${warrantyExpired?"var(--stone)":warrantySoon?"#F5CC76":"#97C459"}`}}>
-                🔖 {warrantyExpired?`Warranty expired ${fmtD(asset.expiry_date)}`:warrantySoon?`Warranty expires in ${warrantyDays} days (${fmtD(asset.expiry_date)})`:`Warranty active · expires ${fmtD(asset.expiry_date)}`}
+              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem",borderRadius:"var(--r-sm)",marginBottom:"1rem",
+                background:warrantyExpired?"var(--cream)":warrantySoon?"#FBF3DE":"#E9F1EA",
+                border:`1.5px solid ${warrantyExpired?"var(--stone)":warrantySoon?"#EAD9A6":"#C5DCC9"}`}}>
+                <span style={{fontSize:"1.5rem",flexShrink:0}}>📄</span>
+                <div>
+                  <div style={{fontSize:".95rem",fontWeight:700,color:warrantyExpired?"#8A8178":warrantySoon?"#B8861E":"#3E7D5A"}}>
+                    {warrantyExpired?"Warranty expired":warrantySoon?`Warranty expires in ${warrantyDays} days`:"Warranty active"}
+                  </div>
+                  <div style={{fontSize:".84rem",color:"#6E665D",marginTop:".1rem"}}>
+                    {warrantyExpired?`Ended ${fmtD(asset.expiry_date)}`:`Ends ${fmtD(asset.expiry_date)}`}
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* ── Resources (manual + support) ── */}
-            {(asset.document_ref?.startsWith("http") || supportUrl) && (
-              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
-                <div style={{padding:".55rem .85rem",borderBottom:"1px solid var(--stone)",fontSize:".65rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".07em"}}>Resources</div>
-                {asset.document_ref?.startsWith("http") && (
+            {/* ── Manuals & support ── */}
+            {(hasManualLink || supportUrl) && (
+              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
+                <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                  <span style={{fontSize:"1.1rem"}}>📚</span>
+                  <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Manuals &amp; support</span>
+                </div>
+                {hasManualLink && (
                   <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .85rem",borderBottom:supportUrl?"1px solid var(--stone)":"none",textDecoration:"none",background:"rgba(35,74,61,.03)"}}>
-                    <span style={{fontSize:"1.1rem"}}>📋</span>
+                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",textDecoration:"none",borderBottom:supportUrl?"1px solid var(--cream2)":"none"}}>
+                    <span style={{fontSize:"1.3rem"}}>📋</span>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)"}}>Owner's Manual</div>
-                      <div style={{fontSize:".67rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref.replace(/^https?:\/\//,"")}</div>
+                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--pine)"}}>Owner's manual</div>
+                      <div style={{fontSize:".78rem",color:"#9E9690",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref.replace(/^https?:\/\//,"")}</div>
                     </div>
-                    <span style={{fontSize:".72rem",fontWeight:600,color:"var(--pine)",flexShrink:0}}>Open →</span>
+                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Open →</span>
                   </a>
                 )}
                 {supportUrl && (
                   <a href={supportUrl} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem .85rem",textDecoration:"none"}}>
-                    <span style={{fontSize:"1.1rem"}}>🔗</span>
+                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",textDecoration:"none"}}>
+                    <span style={{fontSize:"1.3rem"}}>🔗</span>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".8rem",fontWeight:700,color:"var(--dark)"}}>Manufacturer Support</div>
-                      <div style={{fontSize:".67rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supportUrl.replace(/^https?:\/\//,"")}</div>
+                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--pine)"}}>Manufacturer support</div>
+                      <div style={{fontSize:".78rem",color:"#9E9690",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supportUrl.replace(/^https?:\/\//,"")}</div>
                     </div>
-                    <span style={{fontSize:".72rem",fontWeight:600,color:"#9E9690",flexShrink:0}}>Open →</span>
+                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Open →</span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* ── Your documents ── */}
+            {(asset.asset_photo_url || hasUploadedDoc) && (
+              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
+                <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                  <span style={{fontSize:"1.1rem"}}>📎</span>
+                  <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Your documents</span>
+                  <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".82rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".3rem .4rem",fontFamily:"inherit"}}>+ Add</button>
+                </div>
+                {asset.asset_photo_url && (
+                  <div onClick={()=>setLightbox(asset.asset_photo_url)}
+                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",cursor:"pointer",borderBottom:hasUploadedDoc?"1px solid var(--cream2)":"none"}}>
+                    <span style={{fontSize:"1.3rem"}}>🖼️</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Asset photo</div>
+                      <div style={{fontSize:".78rem",color:"#9E9690"}}>Tap to view</div>
+                    </div>
+                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>View →</span>
+                  </div>
+                )}
+                {hasUploadedDoc && (
+                  <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
+                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",textDecoration:"none"}}>
+                    <span style={{fontSize:"1.3rem"}}>🧾</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Attached document</div>
+                      <div style={{fontSize:".78rem",color:"#9E9690"}}>Tap to open</div>
+                    </div>
+                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>View →</span>
                   </a>
                 )}
               </div>
@@ -6605,29 +6804,45 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         <button className="btn btn-primary" onClick={openNew}>+ Add</button>
       </div>
 
-      {/* Summary stats strip */}
+      {/* Home health hero */}
       {assets.length > 0 && (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:".5rem",marginBottom:"1rem"}}>
-          {[
-            {label:"Tracked",val:assets.length,sub:"systems"},
-            {label:"Paid",val:fmt$(assets.reduce((s,a)=>s+Number(a.cost||0),0)),sub:"purchase"},
-            {label:"Replace",val:fmt$(assets.reduce((s,a)=>s+Number(a.replacement_cost||0),0)),sub:"estimate"},
-            {label:"Attention",val:assets.filter(a=>a.condition==="Needs Attention"||a.condition==="Failed").length,sub:"need work",alert:true},
-          ].map(s=>(
-            <div key={s.label} style={{background:"var(--white)",border:`1px solid ${s.alert&&Number(s.val)>0?"rgba(193,97,64,.3)":"var(--stone)"}`,borderRadius:"var(--r-sm)",padding:".55rem .6rem",textAlign:"center"}}>
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,color:s.alert&&Number(s.val)>0?"var(--rust)":"var(--dark)",lineHeight:1}}>{s.val}</div>
-              <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".07em",color:"#A8A09A",marginTop:2,fontWeight:700}}>{s.label}</div>
-            </div>
-          ))}
+        <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",borderRadius:"var(--r)",padding:"1.2rem 1.25rem",marginBottom:"1.1rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+          <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700,marginBottom:".5rem"}}>Home health</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,lineHeight:1.25,marginBottom:"1rem"}}>
+            {attentionCount===0 ? (
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {assets.length}</b> of your systems are in good shape.</>
+            ) : (
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {assets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}</>
+            )}
+          </div>
+          {/* Stacked health bar */}
+          <div style={{display:"flex",height:10,borderRadius:6,overflow:"hidden",background:"rgba(255,255,255,.12)",marginBottom:".85rem"}}>
+            {okCount>0    && <span style={{width:`${(okCount/assets.length)*100}%`,background:"#3E7D5A"}}/>}
+            {headsCount>0 && <span style={{width:`${(headsCount/assets.length)*100}%`,background:"#D9A93E"}}/>}
+            {dueCount>0   && <span style={{width:`${(dueCount/assets.length)*100}%`,background:"#C16140"}}/>}
+            {badCount>0   && <span style={{width:`${(badCount/assets.length)*100}%`,background:"#B0432B"}}/>}
+          </div>
+          {/* Legend */}
+          <div style={{display:"flex",gap:"1.1rem",flexWrap:"wrap"}}>
+            {okCount>0    && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#3E7D5A"}}/>{okCount} healthy</span>}
+            {headsCount>0 && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#D9A93E"}}/>{headsCount} heads up</span>}
+            {dueCount>0   && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#C16140"}}/>{dueCount} service due</span>}
+            {badCount>0   && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#B0432B"}}/>{badCount} needs attention</span>}
+          </div>
         </div>
       )}
 
-      {/* Filter chips */}
-      <div className="toolbar" style={{marginBottom:".65rem"}}>
-        {["All","Good","Fair","Needs Attention","Failed","Warranty Active","Warranty Expiring"].map(f=>(
-          <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{f}</button>
-        ))}
-      </div>
+      {/* Filter chips — health vocabulary */}
+      {assets.length > 0 && (
+        <div className="toolbar" style={{marginBottom:".9rem"}}>
+          {[["All",assets.length],["Needs attention",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
+            <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>
+              {f}{count!==null && count!==undefined ? ` ${count}` : ""}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Empty state */}
       {list.length===0 && (
@@ -6639,119 +6854,98 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
       )}
 
-      {/* Grouped asset list */}
+      {/* Grouped asset list — rich cards */}
       {groupKeys.map(cat => {
         const catAssets = grouped[cat];
         const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other;
-        const catIcon = ASSET_ICONS[cat] || "🔧";
+        const catLabel = ({HVAC:"Heating & cooling",Appliance:"Appliances",Plumbing:"Plumbing",Electrical:"Electrical",Roofing:"Roofing",Structure:"Structure",Safety:"Safety & security",Landscaping:"Outdoor & landscaping",Other:"Other"})[cat] || cat;
         return (
-          <div key={cat}>
+          <div key={cat} style={{marginBottom:"1.4rem"}}>
             {/* Category header */}
-            <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".3rem 0 .45rem",marginTop:groupKeys.indexOf(cat)===0?0:".9rem",borderBottom:"1px solid var(--stone)",marginBottom:".5rem"}}>
-              <span style={{fontSize:".95rem"}}>{catIcon}</span>
-              <span style={{fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"var(--dark)",flex:1}}>{cat}</span>
-              <span style={{fontSize:".65rem",fontWeight:600,padding:"1px 8px",borderRadius:10,background:"var(--stone)",color:"var(--mid)"}}>{catAssets.length}</span>
+            <div style={{display:"flex",alignItems:"center",gap:".6rem",marginBottom:".7rem",paddingLeft:".15rem"}}>
+              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{catLabel}</span>
+              <span style={{fontSize:".8rem",fontWeight:700,color:"var(--mid)",background:"var(--cream2)",borderRadius:20,padding:".1rem .6rem"}}>{catAssets.length}</span>
             </div>
 
             {/* Cards in this category */}
             {catAssets.map(a => {
-              const sc = CONDITION_STYLE[a.condition||"Good"]||CONDITION_STYLE.Good;
+              const health = getAssetHealth(a, serviceLogs, tasks);
               const installDate = a.install_date || a.purchase_date;
               const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
-              const lifespanYears = Number(a.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
-              const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
-              const lifespanStatus = lifespanPct===null?"ok":lifespanPct>=100?"alert":lifespanPct>=75?"warn":"ok";
+              const lifespanYears = health.lifespan || Number(a.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
+              const lifespanPct = health.lifePct;
               const assetLogs = serviceLogs.filter(s => s.asset_id === a.id).sort((x,y)=>new Date(y.service_date)-new Date(x.service_date));
               const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
-              const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
-              const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
-              const hasBrand = !!(a.brand || a.model);
-              const hasManual = a.document_ref?.startsWith("http");
+              const warrantyActive = warrantyDays !== null && warrantyDays >= 0;
               const lastService = assetLogs[0];
-              const nextPM = (() => {
-                try {
-                  const notes = a.notes || "";
-                  const pmMatch = notes.match(/PM:\s*every\s*(\d+)\s*(mo|month|yr|year)/i);
-                  if (!pmMatch || !lastService?.service_date) return null;
-                  const months = pmMatch[2].startsWith("yr") ? Number(pmMatch[1])*12 : Number(pmMatch[1]);
-                  const d = new Date(lastService.service_date + "T00:00:00");
-                  d.setMonth(d.getMonth() + months);
-                  return daysTo(d.toISOString().slice(0,10));
-                } catch { return null; }
-              })();
+
+              // The single most useful fact line, derived from health state
+              let factText = health.reason;
+              let factIcon = "✓";
+              if (health.key === "bad") {
+                factIcon = "!";
+                if (health.reason === "Service overdue") {
+                  const od = (tasks||[]).filter(t=>t.asset_id===a.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d<0).sort((x,y)=>x-y)[0];
+                  factText = od!=null ? `Service overdue by ${Math.abs(od)} days` : "Service overdue";
+                } else if (health.reason === "Past expected lifespan") factText = `Past expected lifespan (${lifespanYears} yrs)`;
+              } else if (health.key === "due") {
+                factIcon = "•";
+                if (health.reason === "Task due soon") {
+                  const sd = (tasks||[]).filter(t=>t.asset_id===a.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d>=0).sort((x,y)=>x-y)[0];
+                  factText = sd===0?"Service due today":sd===1?"Service due tomorrow":`Service due in ${sd} days`;
+                } else if (health.reason.includes("Aging")) factText = `${lifespanPct}% through expected lifespan`;
+              } else if (health.key === "heads") {
+                factIcon = "•";
+                factText = "Maintenance recommended";
+              } else {
+                factIcon = "✓";
+                if (warrantyActive && lastService) factText = `Serviced ${fmtD(lastService.service_date)} · warranty active`;
+                else if (warrantyActive) factText = `Warranty active${warrantyDays<=400?` · ${Math.round(warrantyDays/30)} mo left`:""}`;
+                else if (lastService) factText = `Serviced ${fmtD(lastService.service_date)}`;
+                else factText = "In good shape";
+              }
+
+              const edgeStyle = health.key==="bad" ? {borderLeft:"4px solid #B0432B"} : health.key==="due" ? {borderLeft:"4px solid #C16140"} : {};
 
               return (
-                <div key={a.id} className="asset-card" style={{cursor:"pointer"}} onClick={()=>setSelectedAsset(a.id)}>
-                  <div className="asset-card-header">
-                    {/* Icon */}
-                    <div className="asset-card-icon" style={{background:catColor.bg,border:`1px solid ${catColor.border}`}}>
-                      <span style={{fontSize:"1.15rem"}}>{ASSET_ICONS[cat]||"🔧"}</span>
+                <div key={a.id}
+                  onClick={()=>setSelectedAsset(a.id)}
+                  style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",marginBottom:".7rem",cursor:"pointer",transition:"all .15s",...edgeStyle}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--mid)";e.currentTarget.style.boxShadow="0 4px 16px -8px rgba(42,39,35,.2)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.boxShadow="none";}}>
+                  {/* Top row: icon, name+detail, status */}
+                  <div style={{display:"flex",alignItems:"flex-start",gap:".85rem"}}>
+                    <div style={{width:52,height:52,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`,color:catColor.icon}}>
+                      <AssetIcon asset={a} size={25}/>
                     </div>
-
-                    {/* Main content */}
-                    <div className="asset-card-body">
-                      <div style={{display:"flex",alignItems:"center",gap:".4rem",marginBottom:3,flexWrap:"wrap"}}>
-                        <div className="asset-card-title" style={{flex:"0 1 auto"}}>{a.item}</div>
-                        {/* Condition badge */}
-                        <span style={{fontSize:".6rem",fontWeight:700,padding:"1px 7px",borderRadius:6,background:sc.bg,color:sc.text,border:`1px solid ${sc.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{a.condition||"Good"}</span>
-                        {/* Recall status badge */}
-                        {hasBrand && (
-                          <span style={{fontSize:".6rem",fontWeight:700,padding:"1px 6px",borderRadius:6,background:"rgba(167,191,168,.25)",color:"var(--pine)",border:"1px solid rgba(167,191,168,.4)",flexShrink:0}} title="Recall checked">🛡️</span>
-                        )}
-                        {!hasBrand && (
-                          <span style={{fontSize:".6rem",fontWeight:600,padding:"1px 6px",borderRadius:6,background:"#FEF9C3",color:"#92400E",border:"1px solid #FDE68A",flexShrink:0}} title="Add brand to enable recall check">! recall</span>
-                        )}
-                      </div>
-
-                      {/* Meta row */}
-                      <div className="asset-card-meta">
-                        {a.brand && <span style={{fontWeight:600,color:"var(--dark)"}}>{a.brand}{a.model?` · ${a.model}`:""}</span>}
-                        {!a.brand && a.model && <span style={{fontWeight:600,color:"var(--dark)"}}>Model: {a.model}</span>}
-                        {ageYears !== null && <span>{ageYears}yr old</span>}
-                        {lastService && <span>Serviced {fmtD(lastService.service_date)}</span>}
-                        {!lastService && <span style={{color:"#C16140",fontStyle:"italic"}}>No service logged</span>}
-                        {warrantySoon && <span style={{color:"#92610A",fontWeight:600}}>Warranty expiring</span>}
-                        {warrantyExpired && <span style={{color:"var(--red)",fontWeight:600}}>Warranty expired</span>}
-                        {nextPM !== null && nextPM <= 30 && <span style={{color:nextPM<=0?"var(--red)":"#92610A",fontWeight:600}}>{nextPM<=0?"PM overdue":`PM in ${nextPM}d`}</span>}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
+                      <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                        {[a.brand, a.model, ageYears!==null?`${ageYears} yr${ageYears===1?"":"s"} old`:null].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
                       </div>
                     </div>
-
-                    {/* Right side actions */}
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                      {hasManual && (
-                        <a href={a.document_ref} target="_blank" rel="noopener noreferrer"
-                          onClick={e=>e.stopPropagation()}
-                          title="Open manual"
-                          style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:7,background:"rgba(35,74,61,.08)",border:"1px solid rgba(35,74,61,.15)",textDecoration:"none",fontSize:".75rem"}}>
-                          📋
-                        </a>
-                      )}
-                      <span style={{color:"#C2B8AE",fontSize:".9rem"}}>›</span>
-                    </div>
+                    <span style={{display:"inline-flex",alignItems:"center",gap:".4rem",padding:".35rem .7rem",borderRadius:20,fontSize:".82rem",fontWeight:700,flexShrink:0,whiteSpace:"nowrap",background:health.bg,color:health.color}}>
+                      <span style={{width:8,height:8,borderRadius:"50%",background:health.color}}/>{health.label}
+                    </span>
                   </div>
 
-                  {/* Lifespan bar — only if age known */}
+                  {/* Health bar — age vs lifespan */}
                   {lifespanPct !== null && (
-                    <div style={{margin:"0 .9rem .65rem",display:"flex",alignItems:"center",gap:".5rem"}}>
-                      <div style={{flex:1,height:4,background:"var(--stone)",borderRadius:3,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:3,
-                          background:lifespanStatus==="alert"?"var(--red)":lifespanStatus==="warn"?"var(--gold)":"var(--sage)",
-                          transition:"width .4s"}}/>
+                    <div style={{marginTop:".9rem"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"#8A8178",marginBottom:".35rem",fontWeight:600}}>
+                        <span>Age vs. lifespan</span><span>{ageYears} / {lifespanYears} yrs</span>
                       </div>
-                      <span style={{fontSize:".6rem",color:"#A8A09A",flexShrink:0,width:28,textAlign:"right"}}>
-                        {lifespanPct}%
-                      </span>
+                      <div style={{height:7,background:"var(--cream2)",borderRadius:5,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.color,transition:"width .4s"}}/>
+                      </div>
                     </div>
                   )}
 
-                  {/* No brand/model prompt — inline nudge */}
-                  {!hasBrand && (
-                    <div style={{margin:"0 .9rem .65rem",padding:".4rem .65rem",background:"#FEF9C3",borderRadius:7,border:"1px solid #FDE68A",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem"}}
-                      onClick={e=>{e.stopPropagation();openEdit(a);}}>
-                      <span style={{fontSize:".7rem",color:"#92400E"}}>Add brand + model to enable recall checks & Smart Fill</span>
-                      <span style={{fontSize:".7rem",fontWeight:700,color:"#92400E",flexShrink:0}}>Edit →</span>
-                    </div>
-                  )}
+                  {/* One useful fact line */}
+                  <div style={{marginTop:".75rem",paddingTop:".75rem",borderTop:"1px solid var(--cream2)",display:"flex",alignItems:"center",gap:".45rem",fontSize:".86rem",fontWeight:600,color:health.color}}>
+                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:health.bg,fontSize:".7rem",flexShrink:0}}>{factIcon}</span>
+                    {factText}
+                  </div>
                 </div>
               );
             })}
