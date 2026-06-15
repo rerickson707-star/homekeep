@@ -7290,164 +7290,127 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     bills.filter(b => b.bill_date?.startsWith(`${yr}-${thisMonthStr}`))
     .reduce((s,b) => s + Number(b.amount||0), 0);
 
+  // ── Project status helper ──────────────────────────────────────────────────
+  const projStatusStyle = s => ({
+    "In Progress": { color:"#3B5FBF", bg:"#EEF4FF", dot:"#3B5FBF", edge:"#3B5FBF" },
+    "Planning":    { color:"#6E665D", bg:"var(--cream2)", dot:"#A8A09A", edge:"var(--mid)" },
+    "Completed":   { color:"#3E7D5A", bg:"#E9F1EA", dot:"#3E7D5A", edge:"#3E7D5A" },
+    "On Hold":     { color:"#B8861E", bg:"#FBF3DE", dot:"#B8861E", edge:"#D9A93E" },
+  })[s] || { color:"#6E665D", bg:"var(--cream2)", dot:"#A8A09A", edge:"var(--mid)" };
+
+  // ── Project status filter state ────────────────────────────────────────────
+  const [projFilter, setProjFilter] = useState("All");
+  const filteredProjects = projFilter === "All" ? projects : projects.filter(p => p.status === projFilter);
+
   return (
     <div>
-      {/* Header */}
-      <div className="sh" style={{marginBottom:0}}>
-        <span className="sh-title">Money</span>
+      {/* ── Page header — add button changes per view ── */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .5rem"}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:500,letterSpacing:"-.5px"}}>Money</span>
+        <button className="btn btn-primary" onClick={view==="expenses"?openNew:view==="projects"?openNewProject:openNewUtil}>
+          {view==="expenses"?"+ Log expense":view==="projects"?"+ New project":"+ Add utility"}
+        </button>
       </div>
 
-      {/* Prominent sub-navigation tabs */}
-      <div style={{display:"flex",borderBottom:"2px solid var(--stone)",marginBottom:".85rem"}}>
+      {/* ── Sub-nav ── */}
+      <div style={{display:"flex",borderBottom:"2px solid var(--stone)",padding:"0 1rem",marginBottom:"1.1rem"}}>
         {[
           {id:"expenses",  label:"Expenses"},
           {id:"projects",  label:"Projects",  count:projects.length},
           {id:"utilities", label:"Utilities", count:utilities.length},
         ].map(t=>(
           <button key={t.id} onClick={()=>setView(t.id)} style={{
-            flex:1,padding:".7rem .5rem",border:"none",background:"none",
-            fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:600,
+            flex:1,padding:".75rem 0",border:"none",background:"none",
+            fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:600,
             color:view===t.id?"var(--dark)":"#A8A09A",cursor:"pointer",
             borderBottom:view===t.id?"2.5px solid var(--pine)":"2.5px solid transparent",
-            marginBottom:"-2px",transition:"color .15s",whiteSpace:"nowrap",
-            display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+            marginBottom:"-2px",transition:"color .15s",
           }}>
             {t.label}
-            {t.count>0 && <span style={{fontSize:".65rem",color:view===t.id?"var(--pine)":"#C2B8AE",background:view===t.id?"rgba(35,74,61,.1)":"var(--cream2)",padding:"1px 6px",borderRadius:"10px",fontWeight:700}}>{t.count}</span>}
+            {t.count>0&&<span style={{fontSize:".65rem",background:view===t.id?"rgba(35,74,61,.1)":"var(--cream2)",color:view===t.id?"var(--pine)":"var(--mid)",padding:"1px 6px",borderRadius:10,fontWeight:700,marginLeft:4}}>{t.count}</span>}
           </button>
         ))}
       </div>
 
-      {/* Context bar: summary + add button */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem",gap:".5rem"}}>
-        <div style={{fontSize:".8rem",color:"#7A7370",minWidth:0}}>
-          {view==="expenses" && thisMonthTotal > 0 && (
-            <>This month: <strong style={{color:"var(--dark)"}}>{fmt$(thisMonthTotal)}</strong>
-            {" · "}{yr}: <strong style={{color:"var(--dark)"}}>{fmt$(thisYrTotalWithService)}</strong></>
-          )}
-          {view==="expenses" && thisMonthTotal === 0 && <span>Track your home spending</span>}
-          {view==="projects" && <span>{projects.length} project{projects.length!==1?"s":""}{projects.length>0?` · ${fmt$(projects.reduce((s,p)=>s+Number(p.budget||0),0))} budgeted`:""}</span>}
-          {view==="utilities" && <span>{utilities.length} utilit{utilities.length!==1?"ies":"y"} tracked</span>}
-        </div>
-        <button className="btn btn-primary" style={{flexShrink:0}} onClick={view==="expenses"?openNew:view==="projects"?openNewProject:openNewUtil}>
-          {view==="expenses"?"+ Log expense":view==="projects"?"+ New project":"+ Add utility"}
-        </button>
-      </div>
-
-      {/* ══ EXPENSES VIEW ══ */}
+      {/* ══════════════════════════════════════════════════════════════
+          EXPENSES VIEW
+      ══════════════════════════════════════════════════════════════ */}
       {view==="expenses" && (
         <div>
-          {/* Investment hero */}
-          <div className="invest-hero">
-            <div className="invest-hero-label">All-time home spend</div>
-            <div className="invest-hero-amount">{fmt$(allTotal)}</div>
-            <div className="invest-hero-row">
-              <div className="invest-hero-stat">
-                <div className="invest-hero-stat-val">{fmt$(thisYrTotalWithService)}</div>
-                <div className="invest-hero-stat-label">{yr}</div>
-                {trend !== null && (
-                  <div className={`invest-hero-trend ${Number(trend)>0?"trend-up":Number(trend)<0?"trend-down":"trend-flat"}`}>
-                    {Number(trend)>0?"↑":"↓"} {Math.abs(Number(trend))}% vs last year
-                  </div>
-                )}
-              </div>
-              <div className="invest-hero-stat">
-                <div className="invest-hero-stat-val">{fmt$(lastYrTotal)}</div>
-                <div className="invest-hero-stat-label">{yr-1}</div>
-              </div>
-              {biggestThisYear && (
-                <div className="invest-hero-stat">
-                  <div className="invest-hero-stat-val" style={{fontSize:".85rem",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{biggestThisYear.description}</div>
-                  <div className="invest-hero-stat-label">Largest this year · {fmt$(biggestThisYear.amount)}</div>
+          {/* Hero */}
+          <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
+            <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>All-time home spend</div>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"2.4rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(allTotal)}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
+              {[
+                {val:fmt$(thisYrTotalWithService), lbl:String(yr), extra:trend!==null?<div style={{fontSize:".72rem",fontWeight:600,marginTop:".2rem",color:Number(trend)>0?"#FCA38A":"#7DCBA1"}}>{Number(trend)>0?"↑":"↓"}{Math.abs(Number(trend))}% vs {yr-1}</div>:null},
+                {val:fmt$(lastYrTotal), lbl:String(yr-1)},
+                {val:fmt$(thisMonthTotal), lbl:"This month"},
+              ].map((s,i)=>(
+                <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700}}>{s.val}</div>
+                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                  {s.extra}
                 </div>
-              )}
-              {utilThisYr > 0 && (
-                <div className="invest-hero-stat">
-                  <div className="invest-hero-stat-val">{fmt$(utilThisYr)}</div>
-                  <div className="invest-hero-stat-label">Utilities {yr}</div>
-                </div>
-              )}
+              ))}
             </div>
           </div>
-          {thisYear.length > 0 && (() => {
-            const CHART_H = 160, PAD_TOP = 28, PAD_BOT = 30, LABEL_W = 48, PAD_R = 8;
-            const SVG_W = 700, SVG_H = PAD_TOP + CHART_H + PAD_BOT;
-            const barAreaW = SVG_W - LABEL_W - PAD_R;
-            const slotW = barAreaW / 12;
-            const barW = Math.max(slotW * 0.62, 16);
-            // Round max up to a nice number
-            const mag = Math.pow(10, Math.floor(Math.log10(maxMonth)));
-            const niceMax = Math.ceil(maxMonth / (mag/2)) * (mag/2) || 1;
-            const fmtY = v => v === 0 ? "$0" : v >= 1000 ? `$${(v/1000)%1===0?(v/1000):(v/1000).toFixed(1)}k` : `$${v}`;
-            const gridPcts = [0, 0.25, 0.5, 0.75, 1];
-            const font = "'Hanken Grotesk', Arial, sans-serif";
+
+          {/* Monthly bar chart */}
+          {thisYear.length > 0 && (()=>{
+            const CHART_H=90, PAD_TOP=22, PAD_BOT=24, LABEL_W=42, PAD_R=8;
+            const SVG_W=700, SVG_H=PAD_TOP+CHART_H+PAD_BOT;
+            const barAreaW=SVG_W-LABEL_W-PAD_R;
+            const slotW=barAreaW/12;
+            const barW=Math.max(slotW*0.62,14);
+            const mag=Math.pow(10,Math.floor(Math.log10(maxMonth)));
+            const niceMax=Math.ceil(maxMonth/(mag/2))*(mag/2)||1;
+            const fmtY=v=>v===0?"$0":v>=1000?`$${(v/1000)%1===0?(v/1000):(v/1000).toFixed(1)}k`:`$${v}`;
+            const font="'Hanken Grotesk',Arial,sans-serif";
             return (
-              <div className="month-chart">
-                <div className="month-chart-title">{yr} monthly spending — all sources</div>
+              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1.1rem",padding:"1rem 1rem .7rem"}}>
+                <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".85rem"}}>{yr} monthly spending</div>
                 <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{width:"100%",height:"auto",display:"block"}}>
-                  {/* Y-axis gridlines */}
-                  {gridPcts.map(pct => {
-                    const gy = PAD_TOP + CHART_H * (1 - pct);
-                    return (
-                      <g key={pct}>
-                        <line x1={LABEL_W} y1={gy} x2={SVG_W-PAD_R} y2={gy}
-                          stroke={pct===0?"#C2B8AE":"#EDE8E1"} strokeWidth={pct===0?1.5:1}/>
-                        <text x={LABEL_W-6} y={gy+4} textAnchor="end"
-                          fontSize="10" fill="#A8A09A" fontFamily={font}>{fmtY(Math.round(niceMax*pct))}</text>
-                      </g>
-                    );
+                  {[0,.25,.5,.75,1].map(pct=>{
+                    const gy=PAD_TOP+CHART_H*(1-pct);
+                    return <g key={pct}>
+                      <line x1={LABEL_W} y1={gy} x2={SVG_W-PAD_R} y2={gy} stroke={pct===0?"#C2B8AE":"#EDE8E1"} strokeWidth={pct===0?1.5:1}/>
+                      <text x={LABEL_W-5} y={gy+4} textAnchor="end" fontSize="10" fill="#A8A09A" fontFamily={font}>{fmtY(Math.round(niceMax*pct))}</text>
+                    </g>;
                   })}
-                  {/* Bars */}
-                  {monthlyData.map((m, i) => {
-                    const barH = Math.max((m.total/niceMax)*CHART_H, m.total>0?4:0);
-                    const bx = LABEL_W + i*slotW + (slotW-barW)/2;
-                    const by = PAD_TOP + CHART_H - barH;
-                    const amtLabel = m.total>=1000 ? `$${(m.total/1000)%1===0?(m.total/1000):(m.total/1000).toFixed(1)}k` : m.total>0 ? `$${Math.round(m.total)}` : "";
-                    const color = m.isCur ? "#C16140" : "#234A3D";
-                    return (
-                      <g key={i}>
-                        <rect x={bx} y={by} width={barW} height={Math.max(barH,0)} rx="3"
-                          fill={m.total>0?color:"#E8E2D9"}/>
-                        {m.total>0 && (
-                          <text x={bx+barW/2} y={by-5} textAnchor="middle"
-                            fontSize="9.5" fill={color} fontWeight="700" fontFamily={font}>{amtLabel}</text>
-                        )}
-                        <text x={bx+barW/2} y={PAD_TOP+CHART_H+18} textAnchor="middle"
-                          fontSize="9.5" fill={m.isCur?color:"#A8A09A"} fontWeight={m.isCur?"700":"500"} fontFamily={font}>
-                          {m.month}
-                        </text>
-                      </g>
-                    );
+                  {monthlyData.map((m,i)=>{
+                    const barH=Math.max((m.total/niceMax)*CHART_H,m.total>0?4:0);
+                    const bx=LABEL_W+i*slotW+(slotW-barW)/2;
+                    const by=PAD_TOP+CHART_H-barH;
+                    const amtLabel=m.total>=1000?`$${(m.total/1000)%1===0?(m.total/1000):(m.total/1000).toFixed(1)}k`:m.total>0?`$${Math.round(m.total)}`:"";
+                    const color=m.isCur?"#C16140":"#234A3D";
+                    return <g key={i}>
+                      <rect x={bx} y={by} width={barW} height={Math.max(barH,0)} rx="3" fill={m.total>0?color:"#E8E2D9"}/>
+                      {m.total>0&&<text x={bx+barW/2} y={by-4} textAnchor="middle" fontSize="9" fill={color} fontWeight="700" fontFamily={font}>{amtLabel}</text>}
+                      <text x={bx+barW/2} y={PAD_TOP+CHART_H+16} textAnchor="middle" fontSize="9.5" fill={m.isCur?color:"#A8A09A"} fontWeight={m.isCur?"700":"500"} fontFamily={font}>{m.month}</text>
+                    </g>;
                   })}
                 </svg>
               </div>
             );
           })()}
 
-          {/* Category insight cards */}
+          {/* Category chips */}
           {catData.length > 0 && (
-            <div className="cat-cards">
-              <div
-                className={`cat-card ${catF==="All"?"active":""}`}
-                onClick={()=>setCatF("All")}
-                style={{"--cat-color":"var(--rust)"}}
-              >
-                <div className="cat-card-icon">🏠</div>
-                <div className="cat-card-name">All</div>
-                <div className="cat-card-amount">{fmt$(allTotal)}</div>
-                <div className="cat-card-count">{expenses.length} expenses</div>
+            <div style={{display:"flex",gap:".55rem",overflowX:"auto",padding:"0 1rem",marginBottom:".9rem",scrollbarWidth:"none"}}>
+              <div onClick={()=>setCatF("All")} style={{flexShrink:0,background:catF==="All"?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF==="All"?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:80}}>
+                <div style={{fontSize:"1.1rem",marginBottom:".2rem"}}>🏠</div>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)"}}>All</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(allTotal)}</div>
+                <div style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{expenses.length} items</div>
               </div>
               {catData.map(([cat,{total,count}],i)=>(
-                <div
-                  key={cat}
-                  className={`cat-card ${catF===cat?"active":""}`}
-                  onClick={()=>setCatF(catF===cat?"All":cat)}
-                  style={{"--cat-color":CHART_COLORS[i%CHART_COLORS.length]}}
-                >
-                  <div className="cat-card-icon">{CAT_ICONS[cat]||"🔧"}</div>
-                  <div className="cat-card-name">{cat}</div>
-                  <div className="cat-card-amount">{fmt$(total)}</div>
-                  <div className="cat-card-count">{count} expense{count!==1?"s":""}</div>
+                <div key={cat} onClick={()=>setCatF(catF===cat?"All":cat)} style={{flexShrink:0,background:catF===cat?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF===cat?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:90}}>
+                  <div style={{fontSize:"1.1rem",marginBottom:".2rem"}}>{CAT_ICONS[cat]||"🔧"}</div>
+                  <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:90}}>{cat}</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(total)}</div>
+                  <div style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{count} item{count!==1?"s":""}</div>
                 </div>
               ))}
             </div>
@@ -7459,72 +7422,68 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               <span className="ei">💲</span>
               <strong>{expenses.length===0?"No expenses yet":"No matching expenses"}</strong>
               <p>{expenses.length===0?"Start tracking your home costs to understand your true investment over time":"Try a different category"}</p>
-              {expenses.length===0 && <button className="btn btn-primary" onClick={openNew}>＋ Log your first expense</button>}
+              {expenses.length===0&&<button className="btn btn-primary" onClick={openNew}>＋ Log your first expense</button>}
             </div>
           ) : (
             <div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".6rem",flexWrap:"wrap",gap:".4rem"}}>
-                <span style={{fontSize:".75rem",color:"#A8A09A"}}>{filtered.length} expense{filtered.length!==1?"s":""}{catF!=="All"?` in ${catF}`:""}</span>
-                <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-                  <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)}>
-                    <option value="date_desc">Newest first</option>
-                    <option value="date_asc">Oldest first</option>
-                    <option value="amount_desc">Highest amount</option>
-                    <option value="amount_asc">Lowest amount</option>
-                    <option value="desc_az">A–Z</option>
-                  </select>
-                </div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1rem",marginBottom:".6rem"}}>
+                <span style={{fontSize:".8rem",color:"#A8A09A",fontWeight:600}}>{filtered.length} expense{filtered.length!==1?"s":""}{catF!=="All"?` · ${catF}`:""}</span>
+                <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)} style={{fontSize:".8rem",color:"var(--pine)",fontWeight:700,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="date_desc">Newest first</option>
+                  <option value="date_asc">Oldest first</option>
+                  <option value="amount_desc">Highest amount</option>
+                  <option value="amount_asc">Lowest amount</option>
+                  <option value="desc_az">A–Z</option>
+                </select>
               </div>
-              {sorted.map(e=>{
-                const proj = e.project_id ? projects.find(p=>p.id===e.project_id) : null;
-                const isImage = e.file_url && e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
-                const isPdf = e.file_url && e.file_url.match(/\.pdf/i);
-                const isServiceLog = e._isServiceLog;
-                return (
-                  <div key={e.id} className="exp-card">
-                    <div className="exp-card-icon" style={{background: isServiceLog ? "var(--rust-light)" : CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length]+"22",flexShrink:0}}>
-                      {isServiceLog ? "⚙" : CAT_ICONS[e.category]||"·"}
-                    </div>
-                    <div className="exp-card-body" style={{minWidth:0,flex:1}}>
-                      <div className="exp-card-title" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{e.description}</div>
-                      <div className="exp-card-meta">
-                        {e.date && <span>{fmtD(e.date)}</span>}
-                        {e.category && <span>{e.category}</span>}
-                        {e.vendor && <span>{e.vendor}</span>}
-                        {proj && <span className="exp-project-tag">{proj.name}</span>}
-                        {isServiceLog && <span style={{fontSize:".65rem",fontWeight:600,color:"var(--rust)",background:"var(--rust-light)",padding:"1px 7px",borderRadius:10}}>Asset service</span>}
-                        {e.file_url && <span style={{color:"var(--rust)",fontSize:".65rem",fontWeight:600}}>Receipt</span>}
+              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",margin:"0 1rem"}}>
+                {sorted.map((e,idx)=>{
+                  const proj=e.project_id?projects.find(p=>p.id===e.project_id):null;
+                  const isImage=e.file_url&&e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
+                  const isPdf=e.file_url&&e.file_url.match(/\.pdf/i);
+                  const isServiceLog=e._isServiceLog;
+                  const catColor=CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length];
+                  return (
+                    <div key={e.id} style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:".9rem 1rem",borderBottom:idx<sorted.length-1?"1px solid var(--cream2)":"none"}}>
+                      <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:isServiceLog?"var(--rust-light)":catColor+"22"}}>{isServiceLog?"⚙️":CAT_ICONS[e.category]||"🔧"}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:".2rem"}}>{e.description}</div>
+                        <div style={{fontSize:".8rem",color:"#8A8178",display:"flex",gap:".45rem",flexWrap:"wrap",alignItems:"center"}}>
+                          {e.date&&<span>{fmtD(e.date)}</span>}
+                          {e.category&&<span style={{background:"var(--cream2)",color:"#6E665D",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{e.category}</span>}
+                          {e.vendor&&<span>{e.vendor}</span>}
+                          {proj&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{proj.name}</span>}
+                          {isServiceLog&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>Asset service</span>}
+                          {e.file_url&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>📎 Receipt</span>}
+                        </div>
+                        {!isServiceLog&&e.file_url&&(
+                          <div style={{marginTop:".4rem"}}>
+                            {isImage?<img src={e.file_url} alt="Receipt" style={{width:60,height:60,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/>:
+                             isPdf?<a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a>:null}
+                          </div>
+                        )}
                       </div>
-                      {e.notes && !isServiceLog && <div style={{fontSize:".72rem",color:"#7A7370",marginTop:"3px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.notes}</div>}
-                      {/* File preview */}
-                      {!isServiceLog && e.file_url && (
-                        <div className="exp-card-file" style={{marginTop:".4rem"}}>
-                          {isImage ? (
-                            <img src={e.file_url} alt="Receipt" className="exp-file-thumb" onClick={()=>setLightbox(e.file_url)} />
-                          ) : isPdf ? (
-                            <a href={e.file_url} target="_blank" rel="noopener noreferrer" className="exp-file-pdf">View PDF receipt</a>
-                          ) : null}
-                        </div>
-                      )}
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:700,color:"var(--dark)"}}>{fmt$(e.amount)}</div>
+                        {!isServiceLog&&(
+                          <div style={{display:"flex",gap:3}}>
+                            <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Edit</button>
+                            <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Delete</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:0,marginLeft:".5rem"}}>
-                      <div className="exp-card-amount">{fmt$(e.amount)}</div>
-                      {!isServiceLog && (
-                        <div style={{display:"flex",gap:"3px"}}>
-                          <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(e)} style={{fontSize:".72rem"}}>Edit</button>
-                          <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(e.id)} style={{fontSize:".72rem",color:"var(--red)"}}>Delete</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ══ PROJECTS VIEW ══ */}
+      {/* ══════════════════════════════════════════════════════════════
+          PROJECTS VIEW
+      ══════════════════════════════════════════════════════════════ */}
       {view==="projects" && (
         <div>
           {projects.length===0 ? (
@@ -7534,100 +7493,163 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               <p>Track remodels, renovations, and major work. Group expenses under a project to see true costs and build a record for resale.</p>
               <button className="btn btn-primary" onClick={openNewProject}>＋ Create your first project</button>
             </div>
-          ) : projects.map(p=>{
-            const projExpenses = expenses.filter(e=>e.project_id===p.id);
-            const spent = projExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
-            const budget = Number(p.budget||0);
-            const pct = budget > 0 ? Math.min(100, Math.round((spent/budget)*100)) : null;
-            const isOver = budget > 0 && spent > budget;
-            const sc = PROJECT_STATUS_STYLE[p.status]||PROJECT_STATUS_STYLE.Planning;
-            const isExpanded = expandedProject===p.id;
-            return (
-              <div key={p.id} className="project-card">
-                <div className="project-card-header" onClick={()=>setExpandedProject(isExpanded?null:p.id)}>
-                  <div className="project-card-icon">🔨</div>
-                  <div className="project-card-body">
-                    <div className="project-card-title">{p.name}</div>
-                    <div className="project-card-meta">
-                      <span className="project-status" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{p.status}</span>
-                      {p.start_date && <span>Started {fmtD(p.start_date)}</span>}
-                      {p.status==="Completed" && p.end_date && <span style={{color:"var(--sage)"}}>✓ Completed {fmtD(p.end_date)}</span>}
-                      {projExpenses.length>0 && <span>{projExpenses.length} expense{projExpenses.length!==1?"s":""}</span>}
+          ) : (
+            <>
+              {/* Hero */}
+              {(()=>{
+                const totalBudget=projects.reduce((s,p)=>s+Number(p.budget||0),0);
+                const totalSpent=projects.reduce((s,p)=>s+expenses.filter(e=>e.project_id===p.id).reduce((a,e)=>a+Number(e.amount||0),0),0);
+                const remaining=totalBudget-totalSpent;
+                return (
+                  <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
+                    <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Total project budget</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(totalBudget)}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
+                      {[
+                        {val:fmt$(totalSpent),lbl:"Spent"},
+                        {val:fmt$(Math.max(remaining,0)),lbl:"Remaining",green:remaining>=0},
+                        {val:projects.length,lbl:"Projects"},
+                      ].map((s,i)=>(
+                        <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
+                          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
+                          <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                        </div>
+                      ))}
                     </div>
-                    {p.description && <div style={{fontSize:".78rem",color:"#7A7370",marginTop:"4px",lineHeight:1.4}}>{p.description}</div>}
                   </div>
-                  <div className="project-card-actions" onClick={e=>e.stopPropagation()}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>openEditProject(p)}>Edit</button>
-                    <button className="btn btn-danger btn-sm" onClick={()=>setProjectConfirm(p.id)}>✕</button>
-                  </div>
-                </div>
+                );
+              })()}
 
-                {/* Project photo */}
-                {p.photo_url && (
-                  <img
-                    src={p.photo_url}
-                    alt={p.name}
-                    className="project-photo"
-                    style={{cursor:"pointer"}}
-                    onClick={()=>setLightbox(p.photo_url)}
-                  />
-                )}
+              {/* Status filter chips */}
+              <div style={{display:"flex",gap:".5rem",padding:"0 1rem",marginBottom:"1rem",overflowX:"auto",scrollbarWidth:"none"}}>
+                {["All",...[...new Set(projects.map(p=>p.status||"Planning"))]].map(f=>(
+                  <button key={f} onClick={()=>setProjFilter(f)} style={{flexShrink:0,border:`1.5px solid ${projFilter===f?"var(--dark)":"var(--stone)"}`,background:projFilter===f?"var(--dark)":"var(--white)",color:projFilter===f?"#fff":"#6E665D",borderRadius:22,padding:".45rem .9rem",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    {f}{f!=="All"?` ${projects.filter(p=>(p.status||"Planning")===f).length}`:" "+projects.length}
+                  </button>
+                ))}
+              </div>
 
-                {/* Budget progress */}
-                <div className="project-budget-row">
-                  <div className="project-budget-stat">
-                    <div className="project-budget-val" style={{color:isOver?"var(--red)":"var(--dark)"}}>{fmt$(spent)}</div>
-                    <div className="project-budget-label">spent</div>
-                  </div>
-                  {budget > 0 && <>
-                    <div className="project-budget-stat">
-                      <div className="project-budget-val">{fmt$(budget)}</div>
-                      <div className="project-budget-label">budget</div>
-                    </div>
-                    <div className="project-progress">
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:".65rem",color:isOver?"var(--red)":"#A8A09A"}}>
-                        <span>{isOver?"Over budget":"On track"}</span>
-                        <span>{pct}%</span>
+              {/* Project cards */}
+              {filteredProjects.map(p=>{
+                const projExpenses=expenses.filter(e=>e.project_id===p.id);
+                const spent=projExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
+                const budget=Number(p.budget||0);
+                const pct=budget>0?Math.min(100,Math.round((spent/budget)*100)):null;
+                const isOver=budget>0&&spent>budget;
+                const isExpanded=expandedProject===p.id;
+                const sc=projStatusStyle(p.status||"Planning");
+                // SVG donut: circumference = 2π×32 ≈ 201
+                const CIRC=201;
+                const dashArr=pct!=null?`${Math.round((pct/100)*CIRC)} ${CIRC-Math.round((pct/100)*CIRC)}`:`0 ${CIRC}`;
+                const ringColor=isOver?"#B0432B":pct!=null&&pct>80?"#D9A93E":"#3E7D5A";
+                const projIcon=({HVAC:"❄️",Roofing:"🏠",Kitchen:"🍳",Bathroom:"🚿",Landscaping:"🌿",Electrical:"⚡",Plumbing:"💧",Garage:"🚗",Flooring:"🪵",Painting:"🎨"})[p.name?.split(" ")[0]]||"🔨";
+                return (
+                  <div key={p.id} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",borderTop:`3px solid ${sc.edge}`}}>
+                    {/* Header */}
+                    <div style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:"1rem"}}>
+                      <div style={{width:46,height:46,borderRadius:13,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",flexShrink:0,background:sc.bg}}>{projIcon}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".35rem"}}>{p.name}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:".45rem",flexWrap:"wrap"}}>
+                          <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:sc.bg,color:sc.color,display:"inline-flex",alignItems:"center",gap:".3rem"}}>
+                            <span style={{width:7,height:7,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
+                            {p.status||"Planning"}
+                          </span>
+                          {p.start_date&&<span style={{fontSize:".8rem",color:"#8A8178"}}>Started {fmtD(p.start_date)}</span>}
+                          {p.status==="Completed"&&p.end_date&&<span style={{fontSize:".8rem",color:"var(--ok)"}}>✓ {fmtD(p.end_date)}</span>}
+                        </div>
+                        {p.description&&<div style={{fontSize:".8rem",color:"#7A7370",marginTop:".4rem",lineHeight:1.4}}>{p.description}</div>}
                       </div>
-                      <div className="project-progress-bar">
-                        <div className="project-progress-fill" style={{width:`${pct}%`,background:isOver?"var(--red)":pct>80?"var(--gold)":"var(--sage)"}}/>
+                      <div style={{display:"flex",gap:4,flexShrink:0}}>
+                        <button onClick={()=>openEditProject(p)} style={{width:32,height:32,borderRadius:9,border:"1.5px solid var(--stone)",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem"}}>✏️</button>
+                        <button onClick={()=>setProjectConfirm(p.id)} style={{width:32,height:32,borderRadius:9,border:"1.5px solid #E8C4BE",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem",color:"#B0432B"}}>✕</button>
                       </div>
                     </div>
-                    {budget > 0 && !isOver && (
-                      <div className="project-budget-stat">
-                        <div className="project-budget-val" style={{color:"var(--sage)"}}>{fmt$(budget-spent)}</div>
-                        <div className="project-budget-label">remaining</div>
+
+                    {/* Project photo */}
+                    {p.photo_url&&<img src={p.photo_url} alt={p.name} style={{width:"100%",height:150,objectFit:"cover",display:"block",cursor:"pointer"}} onClick={()=>setLightbox(p.photo_url)}/>}
+
+                    {/* Budget donut + figures */}
+                    {budget>0&&(
+                      <div style={{display:"flex",alignItems:"center",gap:"1rem",padding:".9rem 1rem",borderTop:"1px solid var(--cream2)"}}>
+                        {/* SVG donut ring */}
+                        <div style={{position:"relative",flexShrink:0}}>
+                          <svg width="80" height="80" viewBox="0 0 80 80">
+                            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--cream2)" strokeWidth="8"/>
+                            <circle cx="40" cy="40" r="32" fill="none" stroke={ringColor} strokeWidth="8"
+                              strokeDasharray={dashArr} strokeDashoffset="24" strokeLinecap="round"/>
+                          </svg>
+                          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,lineHeight:1,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
+                            <div style={{fontSize:".58rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:2}}>used</div>
+                          </div>
+                        </div>
+                        {/* Budget figures */}
+                        <div style={{flex:1,display:"flex",flexDirection:"column",gap:".5rem"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{fontSize:".8rem",color:"#8A8178",fontWeight:600}}>Spent</span>
+                            <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:isOver?"#B0432B":"var(--dark)"}}>{fmt$(spent)}</span>
+                          </div>
+                          <div style={{height:5,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${pct||0}%`,borderRadius:4,background:ringColor}}/>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{fontSize:".8rem",color:"#8A8178",fontWeight:600}}>Budget</span>
+                            <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700}}>{fmt$(budget)}</span>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{fontSize:".8rem",fontWeight:600,color:isOver?"#B0432B":"#3E7D5A"}}>{isOver?"Over budget":"Remaining"}</span>
+                            <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:isOver?"#B0432B":"#3E7D5A"}}>{isOver?"-"+fmt$(spent-budget):fmt$(budget-spent)}</span>
+                          </div>
+                        </div>
                       </div>
                     )}
-                  </>}
-                  <button className="btn btn-ghost btn-sm" style={{marginLeft:"auto"}} onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}}>
-                    ＋ Add expense
-                  </button>
-                </div>
 
-                {/* Expanded expense list */}
-                {isExpanded && (
-                  <div className="project-expenses">
-                    {projExpenses.length===0
-                      ? <div style={{fontSize:".82rem",color:"#A8A09A",padding:".5rem 0",textAlign:"center"}}>No expenses logged yet</div>
-                      : projExpenses.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).map(e=>(
-                          <div key={e.id} className="project-expense-row">
-                            <span style={{fontSize:"1rem"}}>{CAT_ICONS[e.category]||"🔧"}</span>
-                            <span style={{flex:1,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.description}</span>
-                            <span style={{fontSize:".75rem",color:"#A8A09A",flexShrink:0}}>{fmtD(e.date)}</span>
-                            <span style={{fontFamily:"'Fraunces',serif",fontWeight:700,flexShrink:0,marginLeft:".5rem"}}>{fmt$(e.amount)}</span>
-                          </div>
-                        ))
-                    }
+                    {/* No budget set */}
+                    {budget===0&&(
+                      <div style={{padding:".75rem 1rem",borderTop:"1px solid var(--cream2)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <span style={{fontSize:".85rem",color:"#A8A09A"}}>Total spent: <strong style={{color:"var(--dark)",fontFamily:"'Fraunces',serif"}}>{fmt$(spent)}</strong></span>
+                        <button onClick={()=>openEditProject(p)} style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Set budget →</button>
+                      </div>
+                    )}
+
+                    {/* Expense rows */}
+                    {projExpenses.length>0&&(
+                      <>
+                        <div style={{borderTop:"1px solid var(--cream2)"}}>
+                          {(isExpanded?projExpenses:projExpenses.slice(0,3)).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).map(e=>(
+                            <div key={e.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                              <div style={{width:28,height:28,borderRadius:8,background:"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{CAT_ICONS[e.category]||"🔧"}</div>
+                              <span style={{flex:1,fontSize:".9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--dark)"}}>{e.description}</span>
+                              <span style={{fontSize:".78rem",color:"#A8A09A",flexShrink:0}}>{fmtD(e.date)}</span>
+                              <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,flexShrink:0,marginLeft:".5rem"}}>{fmt$(e.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {projExpenses.length>3&&(
+                          <button onClick={()=>setExpandedProject(isExpanded?null:p.id)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".65rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".82rem",fontWeight:700,color:"#8A8178",cursor:"pointer",background:"var(--cream)",border:"none",width:"100%",fontFamily:"inherit"}}>
+                            {isExpanded?`Hide expenses ▲`:`View all ${projExpenses.length} expenses ▾`}
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    {/* Add expense button */}
+                    <button onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".85rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",background:"none",border:"none",width:"100%",fontFamily:"inherit"}}>
+                      + Add expense
+                    </button>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 
-      {/* ══ UTILITIES VIEW ══ */}
+      {/* ══════════════════════════════════════════════════════════════
+          UTILITIES VIEW
+      ══════════════════════════════════════════════════════════════ */}
       {view==="utilities" && (
         <div>
           {utilities.length===0 ? (
@@ -7638,7 +7660,6 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                 <p>Track your electric, gas, water, and other monthly bills. See trends, spot spikes, and understand your true home running cost.</p>
                 <button className="btn btn-primary" onClick={openNewUtil}>＋ Add your first utility</button>
               </div>
-              {/* Quick-add type buttons */}
               <div style={{marginTop:"1rem"}}>
                 <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginBottom:".65rem",fontWeight:600,letterSpacing:".5px",textTransform:"uppercase"}}>Quick add</div>
                 <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",justifyContent:"center"}}>
@@ -7652,124 +7673,130 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             </div>
           ) : (
             <div>
-              {/* Utility summary bar */}
-              <div style={{display:"flex",gap:".65rem",marginBottom:"1rem",overflowX:"auto",paddingBottom:"2px"}}>
-                {[
-                  {label:"Monthly avg", val: fmt$(bills.length>0 ? bills.slice(0,12).reduce((s,b)=>s+Number(b.amount||0),0)/Math.min(bills.length,12) : 0)},
-                  {label:`${yr} utilities`, val: fmt$(utilThisYr)},
-                  {label:"Total bills logged", val: bills.length},
-                ].map(s=>(
-                  <div key={s.label} style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".65rem .9rem",flexShrink:0,boxShadow:"var(--shadow)"}}>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:"var(--dark)",lineHeight:1}}>{s.val}</div>
-                    <div style={{fontSize:".65rem",color:"#A8A09A",marginTop:"2px",textTransform:"uppercase",letterSpacing:".5px",fontWeight:600}}>{s.label}</div>
-                  </div>
-                ))}
+              {/* Utilities hero */}
+              <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
+                <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Utilities this year</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(utilThisYr)}</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
+                  {[
+                    {val:bills.length>0?fmt$(bills.slice(0,12).reduce((s,b)=>s+Number(b.amount||0),0)/Math.min(bills.length,12)):"—", lbl:"Avg/month"},
+                    {val:utilities.length, lbl:"Tracked"},
+                    {val:bills.length>0?fmt$(Number(bills[0]?.amount||0)):"—", lbl:"Last bill"},
+                  ].map((s,i)=>(
+                    <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
+                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700}}>{s.val}</div>
+                      <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Utility cards */}
-              <div className="util-grid">
+              <div>
                 {utilities.map(u=>{
-                  const ut = UTIL_TYPES[u.type]||UTIL_TYPES.other;
-                  const utilBills = bills.filter(b=>b.utility_id===u.id).sort((a,b)=>new Date(b.bill_date)-new Date(a.bill_date));
-                  const lastBill = utilBills[0];
-                  const avg = utilBills.length>0 ? utilBills.slice(0,6).reduce((s,b)=>s+Number(b.amount||0),0)/Math.min(utilBills.length,6) : 0;
-                  const ytdTotal = utilBills.filter(b=>b.bill_date?.startsWith(String(yr))).reduce((s,b)=>s+Number(b.amount||0),0);
-                  const isSpike = lastBill && avg > 0 && Number(lastBill.amount) > avg * 1.4;
-                  const isExpanded = expandedUtil===u.id;
-
-                  // Mini chart data — last 6 bills
-                  const chartBills = [...utilBills].slice(0,6).reverse();
-                  const maxBill = Math.max(...chartBills.map(b=>Number(b.amount||0)),1);
-
+                  const ut=UTIL_TYPES[u.type]||UTIL_TYPES.other;
+                  const utilBills=bills.filter(b=>b.utility_id===u.id).sort((a,b)=>new Date(b.bill_date)-new Date(a.bill_date));
+                  const lastBill=utilBills[0];
+                  const avg=utilBills.length>0?utilBills.slice(0,6).reduce((s,b)=>s+Number(b.amount||0),0)/Math.min(utilBills.length,6):0;
+                  const ytdTotal=utilBills.filter(b=>b.bill_date?.startsWith(String(yr))).reduce((s,b)=>s+Number(b.amount||0),0);
+                  const isSpike=lastBill&&avg>0&&Number(lastBill.amount)>avg*1.4;
+                  const isExpanded=expandedUtil===u.id;
+                  const chartBills=[...utilBills].slice(0,6).reverse();
+                  const maxBill=Math.max(...chartBills.map(b=>Number(b.amount||0)),1);
+                  const maxBarBill=Math.max(...utilBills.slice(0,12).map(b=>Number(b.amount||0)),1);
                   return (
-                    <div key={u.id} className="util-card">
-                      <div className="util-card-header">
-                        <div className="util-card-icon" style={{background:ut.bg}}>{ut.icon}</div>
-                        <div className="util-card-body">
-                          <div className="util-card-name">{u.name}</div>
-                          <div className="util-card-provider">{u.provider||ut.label}{u.account_number?` · ${u.account_number}`:""}</div>
-                        </div>
-                        <div className="util-card-actions">
-                          <button className="btn btn-primary btn-sm" onClick={()=>openNewBill(u.id)}>＋ Bill</button>
-                          <button className="btn btn-ghost btn-sm" onClick={()=>openEditUtil(u)}>✏️</button>
-                          <button className="btn btn-danger btn-sm" onClick={()=>setUtilConfirm(u.id)}>✕</button>
-                        </div>
-                      </div>
-
-                      {/* Stats row */}
-                      <div className="util-stats">
-                        <div className="util-stat">
-                          <div className="util-stat-val">{lastBill ? fmt$(lastBill.amount) : "—"}</div>
-                          <div className="util-stat-label">Last bill</div>
-                        </div>
-                        <div className="util-stat">
-                          <div className="util-stat-val">{avg>0 ? fmt$(avg) : "—"}</div>
-                          <div className="util-stat-label">6mo avg</div>
-                        </div>
-                        <div className="util-stat">
-                          <div className="util-stat-val">{ytdTotal>0 ? fmt$(ytdTotal) : "—"}</div>
-                          <div className="util-stat-label">{yr} total</div>
-                        </div>
-                      </div>
-
-                      {/* Spike warning */}
-                      {isSpike && (
-                        <div className="util-spike">
-                          ⚠️ Last bill is {Math.round((Number(lastBill.amount)/avg-1)*100)}% above your average
+                    <div key={u.id} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden"}}>
+                      {/* Spike banner — above card header */}
+                      {isSpike&&(
+                        <div style={{background:"#FBF3DE",borderBottom:"1px solid #EAD9A6",padding:".7rem 1rem",display:"flex",alignItems:"center",gap:".6rem",fontSize:".85rem",fontWeight:600,color:"#B8861E"}}>
+                          <span style={{flexShrink:0}}>⚠️</span>
+                          Last bill is {Math.round((Number(lastBill.amount)/avg-1)*100)}% above your 6-month average
                         </div>
                       )}
 
-                      {/* Mini trend chart */}
-                      {chartBills.length > 1 && (
-                        <div className="util-mini-chart">
-                          {chartBills.map((b,i)=>(
-                            <div
-                              key={i}
-                              className="util-mini-bar"
-                              style={{
-                                height:`${Math.max((Number(b.amount)/maxBill)*100,8)}%`,
-                                background: i===chartBills.length-1 ? ut.color : ut.color+"88",
-                              }}
-                              title={`${fmtD(b.bill_date)}: ${fmt$(b.amount)}`}
-                            />
-                          ))}
+                      {/* Header */}
+                      <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem"}}>
+                        <div style={{width:48,height:48,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0,background:ut.bg}}>{ut.icon}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:"1rem",fontWeight:700,marginBottom:".15rem"}}>{u.name}</div>
+                          <div style={{fontSize:".82rem",color:"#8A8178"}}>{u.provider||ut.label}{u.account_number?` · ${u.account_number}`:""}</div>
                         </div>
-                      )}
+                        <div style={{display:"flex",gap:4}}>
+                          <button onClick={()=>openNewBill(u.id)} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:9,padding:".4rem .75rem",fontSize:".82rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Bill</button>
+                          <button onClick={()=>openEditUtil(u)} style={{width:34,height:34,borderRadius:9,border:"1.5px solid var(--stone)",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem"}}>✏️</button>
+                          <button onClick={()=>setUtilConfirm(u.id)} style={{width:34,height:34,borderRadius:9,border:"1.5px solid #E8C4BE",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem",color:"#B0432B"}}>✕</button>
+                        </div>
+                      </div>
 
-                      {/* Bills list toggle */}
-                      {utilBills.length > 0 && (
-                        <div className="util-bills-section">
-                          <div className="util-bills-header" onClick={()=>setExpandedUtil(isExpanded?null:u.id)} style={{cursor:"pointer"}}>
-                            <span className="util-bills-title">{utilBills.length} bill{utilBills.length!==1?"s":""} logged</span>
-                            <span style={{fontSize:".75rem",color:"#A8A09A"}}>{isExpanded?"Hide ▲":"Show ▼"}</span>
+                      {/* Stats */}
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".5rem",padding:"0 1rem .9rem"}}>
+                        {[
+                          {val:lastBill?fmt$(lastBill.amount):"—",lbl:"Last bill",alert:isSpike},
+                          {val:avg>0?fmt$(avg):"—",lbl:"6mo avg"},
+                          {val:ytdTotal>0?fmt$(ytdTotal):"—",lbl:`${yr} total`},
+                        ].map((s,i)=>(
+                          <div key={i} style={{background:"var(--cream)",borderRadius:10,padding:".6rem .5rem",textAlign:"center"}}>
+                            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.alert?"#B8861E":"var(--dark)"}}>{s.val}</div>
+                            <div style={{fontSize:".65rem",color:"#A8A09A",fontWeight:600,textTransform:"uppercase",letterSpacing:".04em",marginTop:".15rem"}}>{s.lbl}</div>
                           </div>
-                          {isExpanded && utilBills.slice(0,12).map(b=>(
-                            <div key={b.id} className="util-bill-row">
-                              <span className="util-bill-date">{fmtD(b.bill_date)}</span>
-                              <span className="util-bill-usage">
-                                {b.usage ? `${Number(b.usage).toLocaleString()} ${b.usage_unit||ut.unit}` : b.notes||""}
-                              </span>
-                              {b.file_url && (
-                                <span style={{color:"var(--rust)",fontSize:".65rem",marginRight:".3rem",flexShrink:0}}>📎</span>
-                              )}
-                              <span className="util-bill-amount">{fmt$(b.amount)}</span>
-                              <div className="util-bill-actions">
-                                <button className="btn btn-ghost btn-sm" onClick={()=>openEditBill(b)}>Edit</button>
-                                <button className="btn btn-danger btn-sm" onClick={()=>setBillConfirm(b.id)}>✕</button>
+                        ))}
+                      </div>
+
+                      {/* Mini sparkline chart */}
+                      {chartBills.length>1&&(
+                        <div style={{padding:"0 1rem .9rem"}}>
+                          <div style={{fontSize:".72rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:".6rem"}}>Last {chartBills.length} months</div>
+                          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:52}}>
+                            {chartBills.map((b,i)=>{
+                              const h=Math.max((Number(b.amount)/maxBill)*100,4);
+                              const isLast=i===chartBills.length-1;
+                              const isHigher=isLast&&i>0&&Number(b.amount)>Number(chartBills[i-1]?.amount||0)*1.4;
+                              const barColor=isHigher?"#B8861E":isLast?"#C16140":"#3E7D5A";
+                              const mo=new Date(b.bill_date+"T00:00:00").toLocaleString("default",{month:"short"}).slice(0,1);
+                              return (
+                                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                                  <div style={{width:"100%",height:`${h}%`,borderRadius:"3px 3px 0 0",background:barColor,minHeight:2}}/>
+                                  <div style={{fontSize:".58rem",color:isLast?barColor:"#A8A09A",fontWeight:isLast?700:600}}>{mo}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bill history */}
+                      {utilBills.length>0&&(
+                        <div style={{borderTop:"1px solid var(--cream2)"}}>
+                          {(isExpanded?utilBills.slice(0,12):utilBills.slice(0,3)).map(b=>(
+                            <div key={b.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                              <span style={{fontSize:".82rem",color:"#8A8178",width:70,flexShrink:0}}>{fmtD(b.bill_date)}</span>
+                              <div style={{flex:1,height:6,background:"var(--cream2)",borderRadius:3,overflow:"hidden"}}>
+                                <div style={{height:"100%",borderRadius:3,background:"var(--pine)",width:`${Math.round((Number(b.amount)/maxBarBill)*100)}%`}}/>
                               </div>
+                              {b.usage&&<span style={{fontSize:".78rem",color:"#A8A09A",flexShrink:0}}>{Number(b.usage).toLocaleString()} {b.usage_unit||ut.unit}</span>}
+                              {b.file_url&&<span style={{color:"var(--rust)",fontSize:".75rem",flexShrink:0}}>📎</span>}
+                              <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,flexShrink:0,width:56,textAlign:"right"}}>{fmt$(b.amount)}</span>
+                              <button onClick={()=>openEditBill(b)} style={{fontSize:".75rem",color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Edit</button>
+                              <button onClick={()=>setBillConfirm(b.id)} style={{fontSize:".75rem",color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
                             </div>
                           ))}
+                          {utilBills.length>3&&(
+                            <button onClick={()=>setExpandedUtil(isExpanded?null:u.id)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".65rem 1rem",fontSize:".82rem",fontWeight:700,color:"#8A8178",cursor:"pointer",background:"var(--cream)",border:"none",width:"100%",fontFamily:"inherit"}}>
+                              {isExpanded?`Hide history ▲`:`View all ${utilBills.length} bills ▾`}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
                   );
                 })}
 
-                {/* Add utility card */}
-                <div className="util-setup-card" onClick={openNewUtil}>
+                {/* Add utility inline card */}
+                <div onClick={openNewUtil} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",padding:"1.5rem",display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer",color:"#A8A09A"}}>
                   <div style={{fontSize:"1.8rem",marginBottom:".5rem"}}>＋</div>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,marginBottom:".3rem"}}>Add a utility</div>
-                  <div style={{fontSize:".8rem",color:"#A8A09A"}}>Electric, gas, water, internet…</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",marginBottom:".25rem"}}>Add a utility</div>
+                  <div style={{fontSize:".8rem"}}>Electric, gas, water, internet…</div>
                 </div>
               </div>
             </div>
