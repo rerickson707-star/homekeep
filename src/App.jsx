@@ -7164,7 +7164,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects }) {
+function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -7332,18 +7332,19 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const serviceAsExpenses = serviceLogs
     .filter(s => s.cost > 0)
     .map(s => {
-      // Find linked asset name
-      const asset = projects; // placeholder — we use the description directly
+      const linkedAsset = warranties.find(a => a.id === s.asset_id);
       return {
         id: `svc-${s.id}`,
         description: s.description,
         amount: s.cost,
         date: s.service_date,
         category: "Maintenance",
-        vendor: "",
+        vendor: s.vendor || "",
         notes: s.notes || "",
         _isServiceLog: true,
         _serviceLogId: s.id,
+        _assetId: s.asset_id || null,
+        _assetName: linkedAsset?.item || null,
       };
     });
 
@@ -7552,35 +7553,61 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   const isPdf=e.file_url&&e.file_url.match(/\.pdf/i);
                   const isServiceLog=e._isServiceLog;
                   const catColor=CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length];
+
+                  // Determine where tapping this expense navigates to
+                  const getDestination = () => {
+                    if (isServiceLog && e._assetId && onOpenAsset) return { label: e._assetName||"Asset", icon:"→", action:()=>onOpenAsset(e._assetId) };
+                    if (proj && onNavigate) return { label: proj.name, icon:"→", action:()=>{setView("projects");setSelectedProject(proj.id);} };
+                    return null;
+                  };
+                  const dest = getDestination();
+
                   return (
-                    <div key={e.id} style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:".9rem 1rem",borderBottom:idx<sorted.length-1?"1px solid var(--cream2)":"none"}}>
-                      <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:isServiceLog?"var(--rust-light)":catColor+"22"}}>{isServiceLog?"⚙️":CAT_ICONS[e.category]||"🔧"}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:".2rem"}}>{e.description}</div>
-                        <div style={{fontSize:".8rem",color:"#8A8178",display:"flex",gap:".45rem",flexWrap:"wrap",alignItems:"center"}}>
-                          {e.date&&<span>{fmtD(e.date)}</span>}
-                          {e.category&&<span style={{background:"var(--cream2)",color:"#6E665D",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{e.category}</span>}
-                          {e.vendor&&<span>{e.vendor}</span>}
-                          {proj&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{proj.name}</span>}
-                          {isServiceLog&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>Asset service</span>}
-                          {e.file_url&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>📎 Receipt</span>}
+                    <div key={e.id} style={{borderBottom:idx<sorted.length-1?"1px solid var(--cream2)":"none"}}>
+                      {/* Main row */}
+                      <div style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:".9rem 1rem",cursor:dest?"pointer":"default"}}
+                        onClick={dest?dest.action:undefined}>
+                        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:isServiceLog?"var(--rust-light)":catColor+"22"}}>{isServiceLog?"⚙️":CAT_ICONS[e.category]||"🔧"}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:".2rem"}}>{e.description}</div>
+                          <div style={{fontSize:".8rem",color:"#8A8178",display:"flex",gap:".45rem",flexWrap:"wrap",alignItems:"center"}}>
+                            {e.date&&<span>{fmtD(e.date)}</span>}
+                            {e.category&&<span style={{background:"var(--cream2)",color:"#6E665D",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{e.category}</span>}
+                            {e.vendor&&<span>{e.vendor}</span>}
+                            {proj&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>🔨 {proj.name}</span>}
+                            {isServiceLog&&e._assetName&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>⚙️ {e._assetName}</span>}
+                            {isServiceLog&&!e._assetName&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>Asset service</span>}
+                            {e.file_url&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>📎 Receipt</span>}
+                          </div>
+                          {!isServiceLog&&e.file_url&&(
+                            <div style={{marginTop:".4rem"}} onClick={ev=>ev.stopPropagation()}>
+                              {isImage?<img src={e.file_url} alt="Receipt" style={{width:60,height:60,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/>:
+                               isPdf?<a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a>:null}
+                            </div>
+                          )}
                         </div>
-                        {!isServiceLog&&e.file_url&&(
-                          <div style={{marginTop:".4rem"}}>
-                            {isImage?<img src={e.file_url} alt="Receipt" style={{width:60,height:60,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/>:
-                             isPdf?<a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a>:null}
-                          </div>
-                        )}
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
+                          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:700,color:"var(--dark)"}}>{fmt$(e.amount)}</div>
+                          {/* Show chevron if navigable, else edit/delete */}
+                          {dest ? (
+                            <span style={{fontSize:".75rem",color:"var(--pine)",fontWeight:700}}>{dest.icon}</span>
+                          ) : !isServiceLog&&(
+                            <div style={{display:"flex",gap:3}} onClick={ev=>ev.stopPropagation()}>
+                              <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Edit</button>
+                              <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Delete</button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
-                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:700,color:"var(--dark)"}}>{fmt$(e.amount)}</div>
-                        {!isServiceLog&&(
-                          <div style={{display:"flex",gap:3}}>
-                            <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Edit</button>
-                            <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Delete</button>
-                          </div>
-                        )}
-                      </div>
+                      {/* Destination hint strip — only for navigable items */}
+                      {dest && (
+                        <div onClick={dest.action} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".45rem 1rem .55rem 3.7rem",background:"rgba(35,74,61,.03)",borderTop:"1px solid var(--cream2)",cursor:"pointer"}}>
+                          <span style={{fontSize:".78rem",color:"var(--pine)",fontWeight:600}}>
+                            {isServiceLog ? `View in ${dest.label} service history` : `View in project: ${dest.label}`}
+                          </span>
+                          <span style={{fontSize:".8rem",color:"var(--pine)",fontWeight:700}}>→</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -12674,7 +12701,7 @@ export default function App() {
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)}/></div>
-              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects}/></div>
+              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/></div>
             </>
           )}
