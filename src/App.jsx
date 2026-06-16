@@ -10375,7 +10375,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               <div key={p.id} onClick={()=>onSwitchProperty?.(p.id)}
                 style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem .85rem",borderRadius:12,border:`1.5px solid ${p.id===propertyId?"var(--rust)":"var(--stone)"}`,background:p.id===propertyId?"var(--rust-light)":"var(--cream)",cursor:"pointer"}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:".88rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.nickname||p.address?.split(",")[0]||"My Home"}</div>
+                  <div style={{fontWeight:600,fontSize:".88rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name||p.address?.split(",")[0]||"My Home"}</div>
                   <div style={{fontSize:".72rem",color:"#9E9690",marginTop:1}}>{p.address?.split(",").slice(1,3).join(",").trim()||""}{p.year?` · ${p.year}`:""}</div>
                 </div>
                 {p.id===propertyId&&<span style={{fontSize:".68rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>}
@@ -11933,7 +11933,7 @@ function PropertySwitcher({ allProfiles, activePropertyId, onSwitch, onAdd, plan
   const isPro = planData?.plan === "pro";
   const canAdd = isPro && allProfiles.length < 3;
   const active = allProfiles.find(p => p.id === activePropertyId) || allProfiles[0];
-  const shortAddr = (p) => p?.address?.split(",")[0] || p?.nickname || "My Home";
+  const shortAddr = (p) => p?.name || p?.address?.split(",")[0] || "My Home";
 
   useEffect(() => {
     const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -11971,7 +11971,7 @@ function PropertySwitcher({ allProfiles, activePropertyId, onSwitch, onAdd, plan
                 <div style={{fontWeight:p.id===activePropertyId?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{shortAddr(p)}</div>
                 {p._shared
                   ? <div style={{fontSize:".68rem",color:"var(--pine)",marginTop:1}}>Shared with you</div>
-                  : p.nickname && p.address && <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address.split(",")[0]}</div>
+                  : p.name && p.address && <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address.split(",")[0]}</div>
                 }
               </div>
               {p.id === activePropertyId && <span style={{color:"var(--rust)",fontSize:".75rem",fontWeight:700,flexShrink:0}}>✓</span>}
@@ -12039,19 +12039,24 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
   const save = async () => {
     setSaving(true);
     const payload = {
-      user_id: userId,
-      name: nickname.trim() || address.split(",")[0],
-      nickname: nickname.trim() || null,
-      address: propertyData?.address || address,
-      type: propertyData?.type || "",
-      year: propertyData?.year || "",
-      sqft: propertyData?.sqft || "",
-      bedrooms: propertyData?.bedrooms || "",
-      bathrooms: propertyData?.bathrooms || "",
-      lot_size: propertyData?.lot_size || "",
-      zestimate: propertyData?.zestimate || "",
-      last_sale_price: propertyData?.last_sale_price || "",
-      photo_url: propertyData?.photo_url || "",
+      user_id:            userId,
+      name:               nickname.trim() || address.split(",")[0],
+      address:            propertyData?.address || address,
+      type:               propertyData?.type || "",
+      year:               propertyData?.year || "",
+      sqft:               propertyData?.sqft || "",
+      bedrooms:           propertyData?.bedrooms || "",
+      bathrooms:          propertyData?.bathrooms || "",
+      lot_size:           propertyData?.lot_size || "",
+      zestimate:          propertyData?.zestimate || "",
+      rent_zestimate:     propertyData?.rent_zestimate || "",
+      last_sale_price:    propertyData?.last_sale_price || "",
+      last_sale_date:     propertyData?.last_sale_date || "",
+      hoa_fee:            propertyData?.hoa_fee || "",
+      photo_url:          propertyData?.photo_url || "",
+      tax_history:        propertyData?.tax_history   ? JSON.stringify(propertyData.tax_history)   : "",
+      price_history:      propertyData?.price_history ? JSON.stringify(propertyData.price_history) : "",
+      schools:            propertyData?.schools       ? JSON.stringify(propertyData.schools)       : "",
       onboarding_complete: true,
     };
     const { data, error } = await supabase.from("profiles").insert([payload]).select();
