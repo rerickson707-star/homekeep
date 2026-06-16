@@ -9956,15 +9956,11 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   }
 
   return (
-    <div>
-      <div className="sh">
-        <span className="sh-title">My Home</span>
-        <button className="btn btn-ghost" onClick={openEdit}>Edit</button>
-      </div>
+    <div style={{paddingBottom:"2rem"}}>
 
-      {/* ── Home Setup Banner (only shown if not done) ── */}
-      {showSetup ? (
-        <div className="wizard-card" style={{marginBottom:"1rem"}}>
+      {/* ── Setup wizard (when active) ── */}
+      {showSetup && (
+        <div className="wizard-card" style={{margin:"1rem"}}>
           <HomeSetupWizard
             existingAssets={warranties}
             profile={profile}
@@ -9975,494 +9971,421 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             onComplete={()=>setShowSetup(false)}
           />
         </div>
-      ) : setupDone ? null : (
-        <div className="setup-banner">
-          <div className="setup-banner-text">
-            <strong>Set up your home profile</strong>
-            <p>Tell us about your systems and we'll build a custom maintenance schedule, populate your assets, and suggest projects — all in one step.</p>
-          </div>
-          <button className="btn btn-primary" onClick={()=>setShowSetup(true)}>Get started →</button>
-        </div>
       )}
-      {(profile?.user_photo_url || profile?.photo_url) ? (
-        <div style={{marginBottom:"1rem"}}>
-          <div className="home-hero">
+
+      {/* ── HERO: home photo with address + value overlaid ── */}
+      {!showSetup && (
+        <div style={{position:"relative",height:300,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
+          {(profile?.user_photo_url||profile?.photo_url) ? (
             <img
-              className="home-hero-photo"
-              src={profile.user_photo_url || profile.photo_url}
+              src={profile.user_photo_url||profile.photo_url}
               alt="Your home"
-              style={{objectPosition:`center ${photoPos}%`}}
-              onError={e=>{ if(e.target.src!==profile.photo_url) e.target.src=profile.photo_url; else e.target.style.display="none"; }}
+              style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:`center ${photoPos}%`,opacity:.78}}
+              onError={e=>{if(e.target.src!==profile.photo_url)e.target.src=profile.photo_url;else e.target.style.display="none";}}
             />
-            <div className="home-hero-overlay">
-              <div className="home-hero-name">{profile.name || "My Home"}</div>
-              {profile.address && <div className="home-hero-address">📍 {profile.address}</div>}
-              {homeAge && <div style={{fontSize:".7rem",color:"rgba(255,255,255,.5)",marginTop:"3px"}}>Built {profile.year} · {homeAge} years old</div>}
+          ) : (
+            <div style={{width:"100%",height:"100%",background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"4rem",opacity:.25}}>🏠</div>
+          )}
+          {/* Gradient overlay */}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(23,48,38,.1) 0%,rgba(23,48,38,.88) 100%)"}}/>
+          {/* Content */}
+          <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"1.5rem 1.25rem 1.25rem"}}>
+            {profile?.address && (
+              <div style={{fontSize:".78rem",color:"rgba(244,237,223,.6)",fontWeight:600,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".35rem"}}>
+                📍 {profile.address}
+              </div>
+            )}
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"#fff",lineHeight:1.1,marginBottom:".75rem"}}>
+              {profile?.name||"My Home"}
+            </div>
+            <div style={{display:"flex",gap:".45rem",flexWrap:"wrap"}}>
+              {[
+                profile?.year&&`Built ${profile.year}`,
+                homeAge&&`${homeAge} years old`,
+                profile?.bedrooms&&`${profile.bedrooms} bed`,
+                profile?.bathrooms&&`${profile.bathrooms} bath`,
+                profile?.sqft&&`${Number(profile.sqft).toLocaleString()} sqft`,
+              ].filter(Boolean).map(c=>(
+                <span key={c} style={{background:"rgba(255,255,255,.14)",border:"1px solid rgba(255,255,255,.2)",borderRadius:20,padding:".28rem .75rem",fontSize:".76rem",color:"rgba(244,237,223,.92)",fontWeight:600}}>{c}</span>
+              ))}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="home-hero-no-photo" style={{marginBottom:"1rem"}}>
-          <div className="home-hero-name">{profile.name || "My Home"}</div>
-          {profile.address && <div className="home-hero-address">📍 {profile.address}</div>}
-          {homeAge && <div style={{fontSize:".7rem",color:"rgba(255,255,255,.4)",marginTop:"3px"}}>Built {profile.year} · {homeAge} years old</div>}
-        </div>
-      )}
-
-      {/* ── Home Value Hero ── */}
-      {zestimate > 0 && (
-        <div className="value-hero">
-          {/* Two-column: value left, stats right */}
-          <div style={{display:"flex",alignItems:"stretch",gap:"1rem"}}>
-
-            {/* Left — main value */}
-            <div style={{flex:"0 0 auto",display:"flex",flexDirection:"column",justifyContent:"center",minWidth:0}}>
-              <div className="value-hero-label">Est. home value</div>
-              <div className="value-hero-amount">{fmt$(zestimate)}</div>
-              {appreciation !== null && (
-                <div className={`value-appreciation ${appreciation>=0?"appreciation-pos":"appreciation-neg"}`} style={{marginTop:".3rem",alignSelf:"flex-start"}}>
-                  {appreciation>=0?"↑":"↓"} {fmt$(Math.abs(appreciation))} ({appreciationPct}%)
-                </div>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div style={{width:"1px",background:"rgba(255,255,255,.08)",flexShrink:0,margin:".1rem 0"}}/>
-
-            {/* Right — stat grid */}
-            <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:".4rem",alignContent:"center"}}>
-              {lastSalePrice > 0 && (
-                <div className="value-hero-stat">
-                  <div className="value-hero-stat-val">{fmt$(lastSalePrice)}</div>
-                  <div className="value-hero-stat-label">Purchase price</div>
-                </div>
-              )}
-              {Number(profile.rent_zestimate) > 0 && (
-                <div className="value-hero-stat">
-                  <div className="value-hero-stat-val">{fmt$(profile.rent_zestimate)}/mo</div>
-                  <div className="value-hero-stat-label">Rent estimate</div>
-                </div>
-              )}
-              {Number(profile.sqft) > 0 && (
-                <div className="value-hero-stat">
-                  <div className="value-hero-stat-val">{fmt$(Math.round(zestimate/Number(profile.sqft)))}</div>
-                  <div className="value-hero-stat-label">Per sq ft</div>
-                </div>
-              )}
-              {Number(profile.hoa_fee) > 0 && (
-                <div className="value-hero-stat">
-                  <div className="value-hero-stat-val">{fmt$(profile.hoa_fee)}/mo</div>
-                  <div className="value-hero-stat-label">HOA fee</div>
-                </div>
-              )}
-              {taxHistory.length > 0 && (()=>{
-                const t = taxHistory[0];
-                const val = t.taxPaid||t.tax_paid||t.value;
-                return val ? (
-                  <div className="value-hero-stat">
-                    <div className="value-hero-stat-val">{fmt$(val)}</div>
-                    <div className="value-hero-stat-label">Tax {t.year||t.time||"last yr"}</div>
-                  </div>
-                ) : null;
-              })()}
-              {priceHistory.length > 1 && (()=>{
-                const prev = priceHistory[1];
-                const val = prev.price||prev.value;
-                return val ? (
-                  <div className="value-hero-stat">
-                    <div className="value-hero-stat-val">{fmt$(val)}</div>
-                    <div className="value-hero-stat-label">Prev sale {prev.date||prev.year||""}</div>
-                  </div>
-                ) : null;
-              })()}
-            </div>
-          </div>
-
-          {/* Refresh button — bottom right, unobtrusive */}
-          <button
-            onClick={async (e) => {
-              if (!profile?.address) return;
-              const btn = e.currentTarget;
-              btn.textContent = "Updating…";
-              btn.disabled = true;
-              try {
-                const result = await lookupProperty(profile.address);
-                if (result?.zestimate) {
-                  const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || profile.rent_zestimate };
-                  const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
-                  if (!error) { setProfile(p => ({...p, ...updated})); toast("Home value updated ✓"); }
-                  else toast("Could not save — try again", "error");
-                } else { toast("No updated value found", "error"); }
-              } catch(err) { toast("Refresh failed — try again", "error"); }
-              btn.textContent = "↻ Refresh value";
-              btn.disabled = false;
-            }}
-            style={{marginTop:".75rem",background:"none",border:"none",color:"rgba(255,255,255,.28)",fontSize:".68rem",fontWeight:600,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0,display:"block",textAlign:"left"}}>
-            ↻ Refresh value
+          {/* Edit button */}
+          <button onClick={openEdit} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(0,0,0,.35)",border:"1.5px solid rgba(255,255,255,.25)",borderRadius:10,color:"#fff",fontSize:".82rem",fontWeight:700,padding:".45rem .85rem",cursor:"pointer",backdropFilter:"blur(4px)",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+            Edit
           </button>
         </div>
       )}
 
-      {!zestimate && profile?.address && (
-        <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem",display:"flex",alignItems:"center",gap:".75rem"}}>
-          <span style={{fontSize:"1.3rem",flexShrink:0}}>🏠</span>
+      {/* ── SETUP BANNER (no setup yet) ── */}
+      {!showSetup && !setupDone && (
+        <div style={{margin:"1rem 1rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",display:"flex",alignItems:"center",gap:".85rem"}}>
+          <span style={{fontSize:"1.4rem",flexShrink:0}}>🔧</span>
           <div style={{flex:1}}>
-            <div style={{fontWeight:600,fontSize:".88rem",color:"var(--dark)"}}>Home value not loaded</div>
-            <div style={{fontSize:".75rem",color:"#7A7370",marginTop:2}}>Tap to pull your estimated value from public records</div>
+            <div style={{fontWeight:700,fontSize:".92rem",marginBottom:".2rem"}}>Set up your home profile</div>
+            <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.4}}>Tell us about your systems for a custom maintenance schedule and asset list</div>
           </div>
-          <button
-            onClick={async (e) => {
-              const btn = e.currentTarget;
-              btn.textContent = "Loading…";
-              btn.disabled = true;
-              try {
-                const result = await lookupProperty(profile.address);
-                if (result?.zestimate) {
-                  const updated = { zestimate: result.zestimate, rent_zestimate: result.rent_zestimate || "" };
-                  const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
-                  if (!error) {
-                    setProfile(p => ({...p, ...updated}));
-                    toast("Home value loaded ✓");
-                  } else {
-                    toast("Could not save — try again", "error");
-                  }
-                } else {
-                  toast("No value found for this address", "error");
-                }
-              } catch(e) { toast("Could not load — try again", "error"); }
-              btn.textContent = "Load value";
-              btn.disabled = false;
-            }}
-            style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontSize:".78rem",fontWeight:600,padding:".5rem .9rem",cursor:"pointer",flexShrink:0,fontFamily:"'Hanken Grotesk',sans-serif"}}>
+          <button className="btn btn-primary" style={{flexShrink:0,fontSize:".82rem"}} onClick={()=>setShowSetup(true)}>Start →</button>
+        </div>
+      )}
+
+      {/* ── VALUE BANNER ── */}
+      {zestimate > 0 && !showSetup && (
+        <div style={{background:"var(--dark)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"flex-start",gap:"1rem"}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.4)",fontWeight:700,marginBottom:".25rem"}}>Estimated value</div>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{fmt$(zestimate)}</div>
+            {appreciation!==null&&(
+              <div style={{fontSize:".82rem",fontWeight:700,color:appreciation>=0?"#7DCBA1":"#FCA38A",marginTop:".25rem"}}>
+                {appreciation>=0?"↑":"↓"} {fmt$(Math.abs(appreciation))} · {appreciationPct}% since purchase
+              </div>
+            )}
+            <button onClick={async(e)=>{
+              if(!profile?.address)return;
+              const btn=e.currentTarget; btn.textContent="Updating…"; btn.disabled=true;
+              try{
+                const result=await lookupProperty(profile.address);
+                if(result?.zestimate){
+                  const updated={
+                    zestimate:      result.zestimate,
+                    rent_zestimate: result.rent_zestimate||profile.rent_zestimate,
+                    tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : profile.tax_history,
+                    price_history:  result.price_history  ? JSON.stringify(result.price_history)  : profile.price_history,
+                    schools:        result.schools        ? JSON.stringify(result.schools)        : profile.schools,
+                  };
+                  const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
+                  if(!error){setProfile(p=>({...p,...updated}));toast("Home data updated ✓");}
+                  else toast("Could not save — try again","error");
+                }else toast("No updated value found","error");
+              }catch{toast("Refresh failed — try again","error");}
+              btn.textContent="↻ Refresh value"; btn.disabled=false;
+            }} style={{marginTop:".35rem",background:"none",border:"none",color:"rgba(244,237,223,.25)",fontSize:".68rem",fontWeight:600,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
+              ↻ Refresh value
+            </button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",flexShrink:0}}>
+            {lastSalePrice>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(lastSalePrice)}</div><div style={{fontSize:".6rem",color:"rgba(244,237,223,.35)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Purchased</div></div>}
+            {Number(profile?.rent_zestimate)>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(profile.rent_zestimate)}/mo</div><div style={{fontSize:".6rem",color:"rgba(244,237,223,.35)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Rent est.</div></div>}
+            {Number(profile?.sqft)>0&&zestimate>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div><div style={{fontSize:".6rem",color:"rgba(244,237,223,.35)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Per sqft</div></div>}
+          </div>
+        </div>
+      )}
+      {!zestimate&&profile?.address&&!showSetup&&(
+        <div style={{margin:"1rem 1rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",display:"flex",alignItems:"center",gap:".75rem"}}>
+          <span style={{fontSize:"1.3rem",flexShrink:0}}>🏠</span>
+          <div style={{flex:1}}><div style={{fontWeight:600,fontSize:".88rem"}}>Home value not loaded</div><div style={{fontSize:".75rem",color:"#7A7370",marginTop:2}}>Tap to pull estimated value from public records</div></div>
+          <button onClick={async(e)=>{
+            const btn=e.currentTarget; btn.textContent="Loading…"; btn.disabled=true;
+            try{
+              const result=await lookupProperty(profile.address);
+              if(result?.zestimate){
+                const updated={
+                  zestimate:      result.zestimate,
+                  rent_zestimate: result.rent_zestimate||"",
+                  tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : "",
+                  price_history:  result.price_history  ? JSON.stringify(result.price_history)  : "",
+                  schools:        result.schools        ? JSON.stringify(result.schools)        : "",
+                };
+                const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
+                if(!error){setProfile(p=>({...p,...updated}));toast("Home data loaded ✓");}
+                else toast("Could not save — try again","error");
+              }else toast("No value found for this address","error");
+            }catch{toast("Could not load — try again","error");}
+            btn.textContent="Load value"; btn.disabled=false;
+          }} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontSize:".78rem",fontWeight:600,padding:".5rem .9rem",cursor:"pointer",flexShrink:0,fontFamily:"'Hanken Grotesk',sans-serif"}}>
             Load value
           </button>
         </div>
       )}
 
-      {/* ── Property Details ── */}
-      <div className="home-section">
-        <div className="home-section-header">
-          <span className="home-section-title">🏠 Property Details</span>
+      {/* ── QUICK STATS STRIP ── */}
+      {!showSetup && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1px",background:"var(--stone)",margin:"1rem 0"}}>
+          {[
+            {val:warranties.length, lbl:"Assets",   color:"var(--pine)"},
+            {val:activeW,           lbl:"Warranties",color:"#B8861E"},
+            {val:fmt$(totalCost),   lbl:"Invested",  color:"var(--rust)"},
+            {val:tasks.filter(t=>t.status==="Completed").length, lbl:"Done", color:"var(--ok)"},
+          ].map(s=>(
+            <div key={s.lbl} style={{background:"var(--white)",padding:".85rem .5rem",textAlign:"center"}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:700,color:s.color,lineHeight:1}}>{s.val}</div>
+              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginTop:".25rem"}}>{s.lbl}</div>
+            </div>
+          ))}
         </div>
-        <div className="home-section-body">
-          <div className="home-facts">
+      )}
+
+      {/* ── PROPERTY DETAILS ── */}
+      {!showSetup && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🏠</span><span style={{fontSize:"1rem",fontWeight:700}}>Property details</span></div>
+            <button onClick={openEdit} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",padding:"1rem"}}>
             {[
-              {label:"Type",         val:profile?.type},
-              {label:"Year Built",   val:profile?.year},
-              {label:"Square Feet",  val:profile?.sqft?Number(profile.sqft).toLocaleString()+" sqft":null},
-              {label:"Bedrooms",     val:profile?.bedrooms},
-              {label:"Bathrooms",    val:profile?.bathrooms},
-              {label:"Lot Size",     val:profile?.lot_size},
-              {label:"HOA Fee",      val:profile?.hoa_fee?"$"+Number(profile.hoa_fee).toLocaleString()+"/mo":null},
+              {label:"Type",       val:profile?.type},
+              {label:"Year built", val:profile?.year},
+              {label:"Square feet",val:profile?.sqft?Number(profile.sqft).toLocaleString()+" sqft":null},
+              {label:"Lot size",   val:profile?.lot_size},
+              {label:"Bedrooms",   val:profile?.bedrooms},
+              {label:"Bathrooms",  val:profile?.bathrooms},
+              {label:"HOA fee",    val:profile?.hoa_fee?"$"+Number(profile.hoa_fee).toLocaleString()+"/mo":null},
             ].filter(f=>f.val).map(f=>(
-              <div key={f.label} className="home-fact">
-                <div className="home-fact-label">{f.label}</div>
-                <div className="home-fact-val">{f.val}</div>
+              <div key={f.label} style={{background:"var(--cream)",borderRadius:10,padding:".65rem .8rem"}}>
+                <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".2rem"}}>{f.label}</div>
+                <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>{f.val}</div>
               </div>
             ))}
           </div>
-
-          {/* Home age context */}
-          {homeAge && (
-            <div className="home-age-badge">
-              🏠 Your home is <strong>{homeAge} years old</strong>
-              {homeAge >= 20 && " — some major systems may be nearing end of life"}
-              {homeAge < 10 && " — most systems should still be in good shape"}
+          {profile?.notes&&(
+            <div style={{padding:".75rem 1rem",borderTop:"1px solid var(--cream2)"}}>
+              <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".35rem"}}>Notes</div>
+              <p style={{fontSize:".88rem",lineHeight:1.55,color:"#5A534B"}}>{profile.notes}</p>
             </div>
           )}
+        </div>
+      )}
 
-          {/* System age alerts */}
-          {systemAlerts.length > 0 && homeAge >= 10 && (
-            <div className="system-age-list">
-              {systemAlerts.filter(s=>s.status!=="ok").map((s,i)=>(
-                <div
-                  key={i}
-                  className={`system-age-item ${s.status} ${onNavigate?"clickable":""}`}
-                  onClick={() => onNavigate && onNavigate("warranties")}
-                >
-                  <span className="system-age-icon">{s.icon}</span>
-                  <div style={{flex:1}}>
-                    <div className="system-age-name">
-                      {s.name}
-                      {s.fromAsset && (
-                        <span style={{fontSize:".65rem",fontWeight:400,color:"#A8A09A",marginLeft:"6px"}}>
-                          linked to asset
-                        </span>
-                      )}
-                    </div>
-                    <div className="system-age-detail">{s.detail}</div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"3px",flexShrink:0}}>
-                    <span style={{fontSize:".7rem",fontWeight:700,color:s.status==="alert"?"var(--red)":"#92610A"}}>
-                      {s.status==="alert"?"Past lifespan":"Aging"}
-                    </span>
-                    {onNavigate && (
-                      <span style={{fontSize:".65rem",color:"#A8A09A"}}>
-                        {s.fromAsset ? "Update asset →" : "Add to assets →"}
-                      </span>
-                    )}
-                  </div>
+      {/* ── SYSTEM HEALTH ── */}
+      {!showSetup && systemAlerts.length > 0 && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🔧</span><span style={{fontSize:"1rem",fontWeight:700}}>System health</span></div>
+            <button onClick={()=>onNavigate&&onNavigate("warranties")} style={{fontSize:".78rem",fontWeight:600,color:"#8A8178",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View assets →</button>
+          </div>
+          {systemAlerts.map((s,i)=>{
+            const h = s.status==="alert"?{color:"#B0432B",bg:"#F7E0DA",label:"Needs attention"}:s.status==="warn"?{color:"#C16140",bg:"#F8E8E1",label:"Service due"}:{color:"#3E7D5A",bg:"#E9F1EA",label:"Healthy"};
+            const lifespan = s.linkedAsset ? Number(s.linkedAsset.lifespan_years||s.lifespan) : s.lifespan;
+            const pct = Math.min(100, Math.round((s.ageYears/lifespan)*100));
+            return (
+              <div key={i} onClick={()=>s.linkedAsset&&onNavigate&&onNavigate("warranties")}
+                style={{padding:".85rem 1rem",borderBottom:i<systemAlerts.length-1?"1px solid var(--cream2)":"none",cursor:s.linkedAsset?"pointer":"default"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".35rem"}}>
+                  <span style={{fontSize:".92rem",fontWeight:700}}>{s.name}</span>
+                  <span style={{fontSize:".72rem",fontWeight:700,padding:"2px 9px",borderRadius:20,background:h.bg,color:h.color}}>{h.label}</span>
                 </div>
-              ))}
-              <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:".3rem",paddingLeft:".2rem"}}>
-                💡 Add these systems to your Assets tab to track their actual age and condition
-              </div>
-            </div>
-          )}
-
-          {profile?.notes && (
-            <div style={{marginTop:".85rem",padding:".75rem .9rem",background:"var(--cream)",borderRadius:"var(--r-sm)"}}>
-              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".8px",color:"#A8A09A",fontWeight:600,marginBottom:"4px"}}>Notes</div>
-              <p style={{fontSize:".85rem",lineHeight:1.6,color:"#4A4440"}}>{profile.notes}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Insurance ── */}
-      <div className="home-section">
-        <div className="home-section-header">
-          <span className="home-section-title">🛡️ Homeowners Insurance</span>
-          <button className="btn btn-ghost btn-sm" onClick={openIns}>
-            {profile?.ins_company ? "Edit" : "Add"}
-          </button>
-        </div>
-        {profile?.ins_company ? (
-          <div>
-            {/* Renewal banner */}
-            {insRenewalStatus && (
-              <div className={`ins-renewal-banner ${
-                insRenewalStatus==="expired"||insRenewalStatus==="urgent" ? "ins-renewal-urgent" :
-                insRenewalStatus==="soon" ? "ins-renewal-soon" : "ins-renewal-ok"
-              }`}>
-                {insRenewalStatus==="ok" && "✓"}
-                {insRenewalStatus==="soon" && "⚠️"}
-                {(insRenewalStatus==="urgent"||insRenewalStatus==="expired") && "🚨"}
-                {insRenewalStatus==="ok" && ` Policy renews ${fmtD(profile.ins_renewal_date)} — ${insRenewalDays} days away`}
-                {insRenewalStatus==="soon" && ` Policy renews in ${insRenewalDays} days — ${fmtD(profile.ins_renewal_date)}`}
-                {insRenewalStatus==="urgent" && ` Policy renews in ${insRenewalDays} days — contact your agent soon`}
-                {insRenewalStatus==="expired" && ` Policy renewal date has passed — verify your coverage`}
-              </div>
-            )}
-            <div className="ins-header">
-              <div className="ins-header-icon">🛡️</div>
-              <div className="ins-header-body">
-                <div className="ins-company">{profile.ins_company}</div>
-                {profile.ins_policy_number && <div className="ins-policy">Policy #{profile.ins_policy_number}</div>}
-              </div>
-            </div>
-            <div className="ins-grid">
-              {[
-                {label:"Annual Premium",    val:profile.ins_premium?"$"+Number(profile.ins_premium).toLocaleString():null},
-                {label:"Deductible",        val:profile.ins_deductible?"$"+Number(profile.ins_deductible).toLocaleString():null},
-                {label:"Dwelling Coverage", val:profile.ins_dwelling_coverage?"$"+Number(profile.ins_dwelling_coverage).toLocaleString():null},
-                {label:"Liability",         val:profile.ins_liability_coverage?"$"+Number(profile.ins_liability_coverage).toLocaleString():null},
-                {label:"Agent",             val:profile.ins_agent_name||null},
-                {label:"Agent Phone",       val:profile.ins_agent_phone||null},
-                {label:"Renewal Date",      val:profile.ins_renewal_date?fmtD(profile.ins_renewal_date):null},
-              ].filter(f=>f.val).map(f=>(
-                <div key={f.label} className="ins-field">
-                  <div className="ins-field-label">{f.label}</div>
-                  <div className="ins-field-val">{f.val}</div>
+                <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden",marginBottom:".3rem"}}>
+                  <div style={{height:"100%",width:`${pct}%`,borderRadius:4,background:h.color}}/>
                 </div>
-              ))}
-            </div>
-            {profile.ins_notes && (
-              <div style={{padding:".6rem 1.1rem",borderTop:"1px solid var(--stone)",fontSize:".8rem",color:"#7A7370",lineHeight:1.5}}>
-                {profile.ins_notes}
+                <div style={{fontSize:".75rem",color:s.fromAsset?"#8A8178":"#C2B8AE"}}>{s.detail}</div>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="home-section-body">
-            <div className="ins-empty" onClick={openIns}>
-              <div className="ins-empty-icon">🛡️</div>
-              <div className="ins-empty-title">Add your insurance policy</div>
-              <div className="ins-empty-sub">Store your policy number, agent contact, coverage amounts, and renewal date</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Home Stats ── */}
-      <div className="home-section">
-        <div className="home-section-header">
-          <span className="home-section-title">📊 Home at a Glance</span>
+            );
+          })}
         </div>
-        <div className="home-section-body">
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:".65rem"}}>
-            {[
-              {label:"Total Tasks",      val:tasks.length,                                   sub:"maintenance records",color:"var(--sky)"},
-              {label:"Completed",        val:tasks.filter(t=>t.status==="Completed").length,  sub:"tasks done",        color:"var(--sage)"},
-              {label:"Active Warranties",val:activeW,                                         sub:"assets covered",     color:"#B8861E"},
-              {label:"Lifetime Spend",   val:fmt$(totalCost),                                 sub:"tracked",           color:"var(--rust)"},
-            ].map(s=>(
-              <div key={s.label} style={{background:"var(--cream)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".8rem .9rem"}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:700,color:s.color,lineHeight:1}}>{s.val}</div>
-                <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:"3px",fontWeight:600,letterSpacing:".3px"}}>{s.label}</div>
-                <div style={{fontSize:".65rem",color:"#C2B8AE"}}>{s.sub}</div>
+      )}
+
+      {/* ── INSURANCE ── */}
+      {!showSetup && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🛡️</span><span style={{fontSize:"1rem",fontWeight:700}}>Homeowners insurance</span></div>
+            <button onClick={openIns} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{profile?.ins_company?"Edit":"Add"}</button>
+          </div>
+          {profile?.ins_company ? (
+            <>
+              {insRenewalStatus&&(
+                <div style={{margin:".75rem 1rem 0",padding:".8rem .95rem",borderRadius:10,fontSize:".88rem",fontWeight:600,display:"flex",alignItems:"center",gap:".6rem",
+                  background:insRenewalStatus==="ok"?"#E9F1EA":insRenewalStatus==="soon"?"#FBF3DE":"#F7E0DA",
+                  color:insRenewalStatus==="ok"?"#3E7D5A":insRenewalStatus==="soon"?"#B8861E":"#B0432B",
+                  border:`1px solid ${insRenewalStatus==="ok"?"#C5DCC9":insRenewalStatus==="soon"?"#EAD9A6":"#E3B2A6"}`}}>
+                  {insRenewalStatus==="ok"&&"✓ "}
+                  {insRenewalStatus==="soon"&&"⚠️ "}
+                  {(insRenewalStatus==="urgent"||insRenewalStatus==="expired")&&"🚨 "}
+                  {insRenewalStatus==="ok"&&`Policy renews ${fmtD(profile.ins_renewal_date)} · ${insRenewalDays} days away`}
+                  {insRenewalStatus==="soon"&&`Policy renews in ${insRenewalDays} days — ${fmtD(profile.ins_renewal_date)}`}
+                  {insRenewalStatus==="urgent"&&`Policy renews in ${insRenewalDays} days — contact your agent`}
+                  {insRenewalStatus==="expired"&&`Policy renewal date passed — verify your coverage`}
+                </div>
+              )}
+              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem 1rem .5rem"}}>
+                <div style={{width:42,height:42,borderRadius:12,background:"#E9F1EA",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>🛡️</div>
+                <div>
+                  <div style={{fontSize:"1rem",fontWeight:700}}>{profile.ins_company}</div>
+                  {profile.ins_policy_number&&<div style={{fontSize:".82rem",color:"#8A8178"}}>Policy #{profile.ins_policy_number}</div>}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Financial Data ── */}
-      {(taxHistory.length > 0 || priceHistory.length > 0) && (
-        <div className="home-section">
-          <div className="home-section-header">
-            <span className="home-section-title">💰 Financial History</span>
-          </div>
-          <div className="home-section-body" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
-            {taxHistory.length > 0 && (
-              <div>
-                <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".8px",textTransform:"uppercase",color:"#A8A09A",marginBottom:".6rem"}}>Property Tax History</div>
-                {taxHistory.map((t,i)=>(
-                  <div key={i} className="tax-row">
-                    <span className="tax-year">{t.year}</span>
-                    <span className="tax-val">Tax: <strong>{t.tax_paid?"$"+Number(t.tax_paid).toLocaleString():"—"}</strong></span>
-                    <span className="tax-val">Assessed: <strong>{t.assessed_value?"$"+Number(t.assessed_value).toLocaleString():"—"}</strong></span>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",padding:".5rem 1rem 1rem"}}>
+                {[
+                  {label:"Annual premium",    val:profile.ins_premium?"$"+Number(profile.ins_premium).toLocaleString():null},
+                  {label:"Deductible",        val:profile.ins_deductible?"$"+Number(profile.ins_deductible).toLocaleString():null},
+                  {label:"Dwelling coverage", val:profile.ins_dwelling_coverage?"$"+Number(profile.ins_dwelling_coverage).toLocaleString():null},
+                  {label:"Liability",         val:profile.ins_liability_coverage?"$"+Number(profile.ins_liability_coverage).toLocaleString():null},
+                  {label:"Agent",             val:profile.ins_agent_name||null},
+                  {label:"Agent phone",       val:profile.ins_agent_phone||null},
+                  {label:"Renewal date",      val:profile.ins_renewal_date?fmtD(profile.ins_renewal_date):null},
+                ].filter(f=>f.val).map(f=>(
+                  <div key={f.label} style={{background:"var(--cream)",borderRadius:10,padding:".65rem .8rem"}}>
+                    <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".2rem"}}>{f.label}</div>
+                    <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>{f.val}</div>
                   </div>
                 ))}
               </div>
-            )}
-            {priceHistory.length > 0 && (
-              <div>
-                <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".8px",textTransform:"uppercase",color:"#A8A09A",marginBottom:".6rem"}}>Price History</div>
-                {priceHistory.slice(0,8).map((h,i)=>{
-                  const isSold=h.event?.toLowerCase().includes("sold");
-                  const isListed=h.event?.toLowerCase().includes("list");
-                  return (
-                    <div key={i} className="price-event">
-                      <div className="price-event-dot" style={{background:isSold?"#1A7A44":isListed?"#4A89B8":"#C2B8AE"}}/>
-                      <span className="price-event-label">{h.event}{h.date?" · "+h.date:""}</span>
-                      <span className="price-event-val">{h.price?"$"+Number(h.price).toLocaleString():"—"}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+              {profile.ins_notes&&<div style={{padding:".6rem 1rem .9rem",fontSize:".84rem",color:"#7A7370",lineHeight:1.5,borderTop:"1px solid var(--cream2)"}}>{profile.ins_notes}</div>}
+            </>
+          ) : (
+            <div onClick={openIns} style={{padding:"1.5rem 1rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".5rem",cursor:"pointer",color:"#A8A09A",textAlign:"center"}}>
+              <span style={{fontSize:"1.8rem"}}>🛡️</span>
+              <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Add your insurance policy</div>
+              <div style={{fontSize:".82rem",color:"#8A8178",lineHeight:1.4}}>Policy number, agent contact, coverage amounts and renewal date</div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── Neighborhood ── */}
-      {schools.length > 0 && (
-        <div className="home-section">
-          <div className="home-section-header">
-            <span className="home-section-title">🎓 Nearby Schools</span>
+      {/* ── HOME TOOLBOX ── */}
+      {!showSetup && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <span style={{fontSize:"1.1rem"}}>🧰</span><span style={{fontSize:"1rem",fontWeight:700}}>Home toolbox</span>
           </div>
-          <div className="home-section-body">
-            {schools.map((s,i)=>(
-              <div key={i} className="school-item">
-                <div className="school-rating" style={{background:schoolRatingColor(s.rating)+"22",color:schoolRatingColor(s.rating)}}>{s.rating||"?"}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div className="school-name">{s.name}</div>
-                  <div className="school-meta">{[s.grades,s.distance?s.distance+" mi":null].filter(Boolean).join(" · ")}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",padding:"1rem"}}>
+            {[
+              {ico:"📄",name:"Documents",      desc:"Deeds, permits, inspection reports",     action:onShowDocs},
+              {ico:"👷",name:"Contractors",     desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
+              {ico:"📊",name:"Home report",     desc:"Generate a full PDF history",           action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks});}},
+              {ico:"🔧",name:"Setup wizard",    desc:"Update your home systems profile",      action:()=>setShowSetup(true)},
+              {ico:"🏡",name:"Refresh data",     desc:"Re-pull schools, tax history & value",  action:async()=>{
+                if(!profile?.address){toast("Add your address first","error");return;}
+                toast("Fetching property data…");
+                try{
+                  const result=await lookupProperty(profile.address);
+                  if(result){
+                    const updated={
+                      zestimate:      result.zestimate      || profile.zestimate,
+                      rent_zestimate: result.rent_zestimate || profile.rent_zestimate,
+                      tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : profile.tax_history,
+                      price_history:  result.price_history  ? JSON.stringify(result.price_history)  : profile.price_history,
+                      schools:        result.schools        ? JSON.stringify(result.schools)        : profile.schools,
+                    };
+                    const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
+                    if(!error){setProfile(p=>({...p,...updated}));toast("Property data refreshed ✓");}
+                    else toast("Could not save — try again","error");
+                  }else toast("No data found for this address","error");
+                }catch{toast("Refresh failed — try again","error");}
+              }},
+            ].map(t=>(
+              <div key={t.name} onClick={t.action} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".9rem",display:"flex",alignItems:"flex-start",gap:".75rem",cursor:"pointer",transition:"all .15s"}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--pine)";}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";}}>
+                <span style={{fontSize:"1.5rem",flexShrink:0,width:32,textAlign:"center"}}>{t.ico}</span>
+                <div><div style={{fontSize:".9rem",fontWeight:700,color:"var(--dark)",marginBottom:".15rem"}}>{t.name}</div><div style={{fontSize:".75rem",color:"#8A8178",lineHeight:1.35}}>{t.desc}</div></div>
+              </div>
+            ))}
+            <RecallCheckPanel warranties={warranties}/>
+          </div>
+          {/* Home Report plan gate badge */}
+          {planData?.plan==="free"&&(
+            <div style={{padding:".6rem 1rem .9rem",borderTop:"1px solid var(--cream2)",fontSize:".78rem",color:"#8A8178"}}>
+              💡 Home report and advanced features available on <button onClick={onUpgrade} style={{color:"var(--pine)",fontWeight:700,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:".78rem"}}>Plus</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── FINANCIAL HISTORY ── */}
+      {!showSetup && (taxHistory.length>0||priceHistory.length>0) && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <span style={{fontSize:"1.1rem"}}>💰</span><span style={{fontSize:"1rem",fontWeight:700}}>Financial history</span>
+          </div>
+          {priceHistory.length>0&&(
+            <div>
+              {priceHistory.slice(0,6).map((h,i)=>{
+                const isSold=h.event?.toLowerCase().includes("sold");
+                const isListed=h.event?.toLowerCase().includes("list");
+                const dotColor=isSold?"#1A7A44":isListed?"#4A89B8":"#C2B8AE";
+                return (
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".7rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                    <div style={{width:9,height:9,borderRadius:"50%",background:dotColor,flexShrink:0}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:".88rem",fontWeight:600}}>{h.event}</div>
+                      <div style={{fontSize:".75rem",color:"#8A8178"}}>{h.date||h.year||""}</div>
+                    </div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700}}>{h.price?"$"+Number(h.price).toLocaleString():"—"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {taxHistory.length>0&&(
+            <div style={{padding:".75rem 1rem"}}>
+              <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".5rem"}}>Property tax history</div>
+              <div style={{display:"flex",gap:".45rem",flexWrap:"wrap"}}>
+                {taxHistory.slice(0,5).map((t,i)=>{
+                  const val=t.taxPaid||t.tax_paid||t.value;
+                  return val?(
+                    <div key={i} style={{background:"var(--cream)",borderRadius:8,padding:".5rem .75rem",fontSize:".82rem"}}>
+                      <strong>{t.year||t.time}</strong> — ${Number(val).toLocaleString()}
+                    </div>
+                  ):null;
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SCHOOLS ── */}
+      {!showSetup && schools.length>0 && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <span style={{fontSize:"1.1rem"}}>🎓</span><span style={{fontSize:"1rem",fontWeight:700}}>Nearby schools</span>
+          </div>
+          {schools.map((s,i)=>{
+            const rColor=!s.rating?"#C2B8AE":s.rating>=8?"#1A7A44":s.rating>=6?"#B8861E":"#B91C1C";
+            const rBg=!s.rating?"var(--cream2)":s.rating>=8?"#EAF3DE":s.rating>=6?"#FBF3DE":"#FCEBEB";
+            return (
+              <div key={i} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",borderBottom:i<schools.length-1?"1px solid var(--cream2)":"none"}}>
+                <div style={{width:40,height:40,borderRadius:12,background:rBg,color:rColor,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:700,flexShrink:0}}>{s.rating||"?"}</div>
+                <div>
+                  <div style={{fontSize:".92rem",fontWeight:700}}>{s.name}</div>
+                  <div style={{fontSize:".78rem",color:"#8A8178",marginTop:".1rem"}}>{[s.grades,s.distance?s.distance+" mi":null].filter(Boolean).join(" · ")}</div>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── SHARED ACCESS ── */}
+      {!showSetup && (
+        <SharedAccessPanel
+          profile={profile}
+          userId={userId}
+          userEmail={userEmail}
+          planData={planData}
+          onUpgrade={onUpgrade}
+          toast={toast}
+        />
+      )}
+
+      {/* ── MY PROPERTIES (Pro) ── */}
+      {!showSetup && (allProfiles.length>1||planData?.plan==="pro") && (
+        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🏠</span><span style={{fontSize:"1rem",fontWeight:700}}>My properties</span></div>
+            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+              {planData?.plan==="pro"&&allProfiles.length<3&&<button className="btn btn-sm btn-primary" onClick={onAddProperty}>+ Add</button>}
+              {planData?.plan!=="pro"&&<button onClick={onUpgrade} style={{fontSize:".72rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Pro — up to 3</button>}
+            </div>
+          </div>
+          <div style={{padding:".75rem 1rem",display:"flex",flexDirection:"column",gap:".5rem"}}>
+            {allProfiles.map(p=>(
+              <div key={p.id} onClick={()=>onSwitchProperty?.(p.id)}
+                style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem .85rem",borderRadius:12,border:`1.5px solid ${p.id===propertyId?"var(--rust)":"var(--stone)"}`,background:p.id===propertyId?"var(--rust-light)":"var(--cream)",cursor:"pointer"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:".88rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.nickname||p.address?.split(",")[0]||"My Home"}</div>
+                  <div style={{fontSize:".72rem",color:"#9E9690",marginTop:1}}>{p.address?.split(",").slice(1,3).join(",").trim()||""}{p.year?` · ${p.year}`:""}</div>
+                </div>
+                {p.id===propertyId&&<span style={{fontSize:".68rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── Shared Access ── */}
-      <SharedAccessPanel
-        profile={profile}
-        userId={userId}
-        userEmail={userEmail}
-        planData={planData}
-        onUpgrade={onUpgrade}
-        toast={toast}
-      />
-
-      {/* ── Home Toolbox ── */}
-      <div className="sh" style={{marginTop:".25rem"}}>
-        <span className="sh-title" style={{fontSize:"1rem"}}>Home Toolbox</span>
-      </div>
-      <div className="toolbox">
-
-        {/* Documents */}
-        <div className="toolbox-card pine-tint" onClick={onShowDocs}>
-          <div className="toolbox-card-ico">📄</div>
-          <div>
-            <div className="toolbox-card-title">Documents</div>
-            <div className="toolbox-card-desc">Deeds, permits, inspection reports</div>
-          </div>
-        </div>
-
-        {/* Contractors */}
-        <div className="toolbox-card pine-tint" onClick={onShowContractors}>
-          <div className="toolbox-card-ico">👷</div>
-          <div>
-            <div className="toolbox-card-title">Contractors</div>
-            <div className="toolbox-card-desc">
-              {contractors.length > 0 ? `${contractors.length} saved pro${contractors.length > 1 ? "s" : ""}` : "Trusted pros & service history"}
-            </div>
-          </div>
-        </div>
-
-        {/* Product Recall Check — inline panel */}
-        <RecallCheckPanel warranties={warranties} />
-
-        {/* Home History Report */}
-        <div className="toolbox-card" onClick={() => {
-          const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
-          if (!isPaid) { onUpgrade(); return; }
-          generateHomeHistoryReport({ profile, warranties, serviceLogs, expenses, tasks });
-        }}>
-          {planData?.plan === "free" && <span className="toolbox-card-badge" style={{background:"#EEF4FF",color:"#3B5FBF"}}>Plus</span>}
-          <div className="toolbox-card-ico">📊</div>
-          <div>
-            <div className="toolbox-card-title">Home Report</div>
-            <div className="toolbox-card-desc">Generate a PDF of your home history</div>
-          </div>
-        </div>
-
-        {/* Setup Wizard */}
-        <div className="toolbox-card" onClick={() => setShowSetup(true)}>
-          <div className="toolbox-card-ico">🔧</div>
-          <div>
-            <div className="toolbox-card-title">Setup Wizard</div>
-            <div className="toolbox-card-desc">Update your home systems profile</div>
-          </div>
-        </div>
-
-        {/* My Properties — spans full width when Pro and has multiple */}
-        {allProfiles.length > 1 || planData?.plan === "pro" ? (
-          <div className="toolbox-card" style={{gridColumn:"1/-1"}} onClick={planData?.plan==="pro"&&allProfiles.length<3 ? onAddProperty : undefined}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".65rem"}}>
-              <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
-                <div className="toolbox-card-ico" style={{width:32,height:32,fontSize:"1rem"}}>🏠</div>
-                <div className="toolbox-card-title">My Properties</div>
-              </div>
-              {planData?.plan === "pro" && allProfiles.length < 3 && (
-                <button className="btn btn-sm btn-primary" onClick={e=>{e.stopPropagation();onAddProperty();}}>+ Add</button>
-              )}
-              {planData?.plan !== "pro" && (
-                <button className="btn btn-sm btn-ghost" onClick={e=>{e.stopPropagation();onUpgrade();}} style={{fontSize:".68rem"}}>Pro — up to 3</button>
-              )}
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
-              {allProfiles.map(p => (
-                <div key={p.id} onClick={e=>{e.stopPropagation();onSwitchProperty?.(p.id);}}
-                  style={{display:"flex",alignItems:"center",gap:".7rem",padding:".6rem .75rem",borderRadius:12,border:`1.5px solid ${p.id===propertyId?"var(--rust)":"var(--stone)"}`,background:p.id===propertyId?"var(--rust-light)":"var(--cream)",cursor:"pointer",transition:"all .15s"}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,fontSize:".83rem",color:p.id===propertyId?"var(--rust)":"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                      {p.nickname || p.address?.split(",")[0] || "My Home"}
-                    </div>
-                    <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>{p.address?.split(",").slice(1,3).join(",").trim() || ""}{p.year?` · ${p.year}`:""}</div>
-                  </div>
-                  {p.id === propertyId && <span style={{fontSize:".65rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-      </div>
-
-      {/* ── Unified Edit Modal (Property + Setup only) ── */}
+      {/* ── Edit Modal ── */}
       {editModal && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setEditModal(false)}>
           <div className="modal">
@@ -10475,13 +10398,13 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={()=>setEditModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={()=>{ save(); }}>Save changes</button>
+              <button className="btn btn-primary" onClick={()=>{save();}}>Save changes</button>
             </div>
           </div>
         </div>
       )}
-      {/* ── Insurance Modal (separate) ── */}
-      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}    </div>
+      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+    </div>
   );
 }
 
