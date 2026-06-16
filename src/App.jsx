@@ -3809,6 +3809,97 @@ function BarcodeScanButton({ onResult }) {
   return null;
 }
 
+// ─── WARRANTY-ONLY FORM ──────────────────────────────────────────────────────
+// Lightweight warranty tracker — saves to warranties table with warranty_only=true
+// Can be "upgraded" to a full asset record later by editing and removing the flag.
+function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  return (
+    <div>
+      {/* Receipt / warranty card scan */}
+      <AIScanButton
+        onScanComplete={fields => {
+          const mapped = {};
+          if (fields.item)            mapped.item          = fields.item;
+          if (fields.brand)           mapped.brand         = fields.brand;
+          if (fields.model)           mapped.model         = fields.model;
+          if (fields.serial_number)   mapped.serial_number = fields.serial_number;
+          if (fields.purchase_date)   mapped.purchase_date = fields.purchase_date;
+          if (fields.warranty_expiry) mapped.expiry_date   = fields.warranty_expiry;
+          if (fields.cost||fields.amount) mapped.cost      = fields.cost||fields.amount;
+          if (fields.vendor||fields.store) mapped.vendor   = fields.vendor||fields.store;
+          onChange({...data,...mapped});
+        }}
+        label="Scan receipt or warranty card"
+        description="Auto-fills item, serial number, purchase date & warranty expiry"
+        scanType="warranty"
+        planData={planData}
+        onUpgrade={onUpgrade}
+        useCamera={true}
+      />
+      <div className="scan-divider">or fill in manually</div>
+      <div className="fg">
+        <div className="field s2">
+          <label>Item name *</label>
+          <input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Samsung 65&quot; TV, MacBook Pro, Bosch Dishwasher"/>
+        </div>
+        <div className="field">
+          <label>Category</label>
+          <select value={data.category||""} onChange={e=>f("category",e.target.value)}>
+            <option value="">Select…</option>
+            {ASSET_CATEGORIES.map(c=><option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>Brand</label>
+          <input value={data.brand||""} onChange={e=>f("brand",e.target.value)} placeholder="e.g. Samsung, Apple, Bosch"/>
+        </div>
+        <div className="field">
+          <label>Model number</label>
+          <input value={data.model||""} onChange={e=>f("model",e.target.value)} placeholder="From box or receipt"/>
+        </div>
+        <div className="field">
+          <label>Serial number</label>
+          <input value={data.serial_number||""} onChange={e=>f("serial_number",e.target.value)} placeholder="From sticker or receipt"/>
+        </div>
+        <div className="field">
+          <label>Purchase price ($)</label>
+          <input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0"/>
+        </div>
+        <div className="field">
+          <label>Store / vendor</label>
+          <input value={data.vendor||""} onChange={e=>f("vendor",e.target.value)} placeholder="e.g. Best Buy, Home Depot"/>
+        </div>
+        <div className="field">
+          <label>Purchase date</label>
+          <input type="date" value={data.purchase_date||""} onChange={e=>f("purchase_date",e.target.value)}/>
+        </div>
+        <div className="field">
+          <label>Warranty expires *</label>
+          <input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)}/>
+        </div>
+        <div className="field s2">
+          <label>Notes</label>
+          <textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Warranty terms, claim process, extended warranty info…"/>
+        </div>
+        {/* Receipt photo */}
+        <ExpenseFileUpload
+          userId={userId}
+          expenseId={data.id ? `warranty-${data.id}` : undefined}
+          currentUrl={data.asset_photo_url||""}
+          onUploaded={url=>f("asset_photo_url",url)}
+          label="Receipt or warranty card photo"
+          planData={planData}
+          onUpgrade={onUpgrade}
+        />
+      </div>
+      <div style={{marginTop:".85rem",padding:".75rem",background:"var(--cream2)",borderRadius:10,fontSize:".78rem",color:"#6E665D",lineHeight:1.5}}>
+        💡 <strong>Tip:</strong> This creates a simple warranty record. You can add full asset details (service history, PM schedule, recall alerts) anytime by editing it later.
+      </div>
+    </div>
+  );
+}
+
 function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile, initialMode }) {
   const f = (k,v) => {
     const updated = {...data,[k]:v};
@@ -6188,7 +6279,7 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -6201,8 +6292,44 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [serviceAssetId, setServiceAssetId] = useState(null);
   const [serviceConfirm, setServiceConfirm] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [editingTask, setEditingTask] = useState(null);    // task object being edited
+  const [editingTask, setEditingTask] = useState(null);
   const [taskEditData, setTaskEditData] = useState({});
+
+  // Warranty-only modal state
+  const [warrantyModal, setWarrantyModal] = useState(false);
+  const [warrantyData, setWarrantyData] = useState({});
+  const [warrantyEditId, setWarrantyEditId] = useState(null);
+
+  const openNewWarranty = () => {
+    setWarrantyData({purchase_date: localISO()});
+    setWarrantyEditId(null);
+    setWarrantyModal(true);
+  };
+
+  const saveWarranty = async () => {
+    if (!warrantyData.item?.trim()) { toast("Item name is required","error"); return; }
+    const payload = {
+      ...warrantyData,
+      user_id:      userId,
+      property_id:  propertyId,
+      warranty_only: true,
+      condition:    "Good",
+    };
+    if (warrantyEditId) {
+      const { error } = await supabase.from("warranties").update(payload).eq("id", warrantyEditId).eq("user_id", userId);
+      if (!error) {
+        setAssets(assets.map(a => a.id === warrantyEditId ? {...payload, id:warrantyEditId} : a));
+        toast("Warranty updated ✓");
+      } else toast("Error saving","error");
+    } else {
+      const { data, error } = await supabase.from("warranties").insert([payload]).select();
+      if (!error && data?.[0]) {
+        setAssets([...assets, data[0]]);
+        toast("Warranty saved ✓");
+      } else toast("Error saving","error");
+    }
+    setWarrantyModal(false);
+  };
 
   // Asset CRUD
   const draftKey = (id) => `sw_asset_draft_${userId}_${id || "new"}`;
@@ -6238,6 +6365,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       if (asset) { openEdit(asset); onClearPendingEdit?.(); }
     }
   }, [pendingEditId, assets.length]);
+
+  // Deep-link: open warranty tracker modal from toolbox
+  useEffect(() => {
+    if (pendingWarrantyTracker) {
+      openNewWarranty();
+      onClearPendingWarranty?.();
+    }
+  }, [pendingWarrantyTracker]);
 
   // Run Smart Fill silently after save and patch the asset in-place
   const runSmartFillAfterSave = async (assetId, assetData) => {
@@ -7046,7 +7181,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       {groupKeys.map(cat => {
         const catAssets = grouped[cat];
         const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other;
-        const catLabel = ({HVAC:"Heating & cooling",Appliance:"Appliances",Plumbing:"Plumbing",Electrical:"Electrical",Roofing:"Roofing",Structure:"Structure",Safety:"Safety & security",Landscaping:"Outdoor & landscaping",Other:"Other"})[cat] || cat;
+        const catLabel = ({
+          HVAC:"Heating & cooling", Appliance:"Appliances",
+          Electronics:"Electronics", Vehicle:"Vehicles",
+          Tools:"Tools & equipment", Plumbing:"Plumbing",
+          Electrical:"Electrical", Roofing:"Roofing",
+          Structure:"Structure", Safety:"Safety & security",
+          Landscaping:"Outdoor & landscaping",
+          "Jewelry & Valuables":"Jewelry & valuables",
+          Outdoor:"Outdoor structures", Other:"Other"
+        })[cat] || cat;
         return (
           <div key={cat} style={{marginBottom:"1.4rem"}}>
             {/* Category header */}
@@ -7057,6 +7201,46 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
             {/* Cards in this category */}
             {catAssets.map(a => {
+              // ── Warranty-only simplified card ──────────────────────────────
+              if (a.warranty_only) {
+                const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
+                const expired = warrantyDays !== null && warrantyDays < 0;
+                const expiringSoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 30;
+                const statusColor = expired ? "#B0432B" : expiringSoon ? "#B8861E" : "#3E7D5A";
+                const statusBg    = expired ? "#F7E0DA" : expiringSoon ? "#FBF3DE" : "#E9F1EA";
+                const statusLabel = expired ? "Expired" : expiringSoon ? `${warrantyDays}d left` : warrantyDays !== null ? `${Math.round(warrantyDays/30)}mo left` : "Tracking";
+                return (
+                  <div key={a.id}
+                    onClick={()=>setSelectedAsset(a.id)}
+                    style={{background:"var(--white)",border:`1.5px solid ${expired?"#E3B2A6":expiringSoon?"#EAD9A6":"var(--stone)"}`,borderRadius:"var(--r-sm)",padding:".85rem 1rem",marginBottom:".7rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".85rem"}}
+                    onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 2px 12px -4px rgba(42,39,35,.15)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";}}>
+                    <div style={{width:44,height:44,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`,color:catColor.icon}}>
+                      <AssetIcon asset={a} size={22}/>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",marginBottom:".15rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
+                      <div style={{fontSize:".78rem",color:"#8A8178"}}>
+                        {[a.brand,a.model,a.serial_number?"S/N "+a.serial_number:null].filter(Boolean).join(" · ")||"Warranty only"}
+                      </div>
+                      {a.expiry_date && (
+                        <div style={{fontSize:".75rem",color:statusColor,fontWeight:600,marginTop:".15rem"}}>
+                          {expired ? "Warranty expired " : "Warranty expires "}{fmtD(a.expiry_date)}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".4rem",flexShrink:0}}>
+                      <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:20,background:statusBg,color:statusColor}}>{statusLabel}</span>
+                      <span style={{fontSize:".7rem",color:"var(--pine)",fontWeight:600,cursor:"pointer"}}
+                        onClick={e=>{e.stopPropagation();setWarrantyData({...a});setWarrantyEditId(a.id);setWarrantyModal(true);}}>
+                        Edit →
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // ── Full asset card ────────────────────────────────────────────
               const health = getAssetHealth(a, serviceLogs, tasks);
               const installDate = a.install_date || a.purchase_date;
               const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
@@ -7171,6 +7355,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
+      {warrantyModal && <Modal title={warrantyEditId?"Edit Warranty":"Track a Warranty"} onClose={()=>setWarrantyModal(false)} onSave={saveWarranty}><WarrantyOnlyForm data={warrantyData} onChange={setWarrantyData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
   );
@@ -9899,7 +10084,7 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker }) {
   const [editModal, setEditModal] = useState(false);
   const [editTab, setEditTab]     = useState("property");
   const [modal, setModal]         = useState(false);
@@ -10865,6 +11050,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               {ico:"📄",name:"Documents",      desc:"Deeds, permits, inspection reports",     action:onShowDocs},
               {ico:"👷",name:"Contractors",     desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
               {ico:"📊",name:"Home report",     desc:"Generate a full PDF history",           action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks});}},
+              {ico:"🔖",name:"Track a warranty",desc:`${warranties.filter(w=>w.warranty_only&&daysTo(w.expiry_date)>=0).length||""}${warranties.filter(w=>w.warranty_only).length>0?" active — tap to add more":"Scan a receipt to track any warranty"}`,action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧",name:"Setup wizard",    desc:"Update your home systems profile",      action:()=>setShowSetup(true)},
               {ico:"🏡",name:"Refresh data",     desc:"Re-pull schools, tax history & value",  action:async()=>{
                 if(!profile?.address){toast("Add your address first","error");return;}
@@ -12923,6 +13109,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showExport,   setShowExport]   = useState(false);
   const [pendingAssetEdit, setPendingAssetEdit] = useState(null); // asset ID to open on Assets tab
+  const [pendingWarrantyTracker, setPendingWarrantyTracker] = useState(false); // open warranty-only modal
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
@@ -13259,9 +13446,9 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>{setPendingWarrantyTracker(true);setTab("warranties");}}/></div>
             </>
           )}
         </main>
