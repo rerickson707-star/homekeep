@@ -7201,9 +7201,23 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     supabase.from("projects").select("*").eq("user_id", userId).eq("property_id", propertyId)
       .then(({data, error}) => { if(error) console.error("Projects load error:", error.message, error.code); if(data) setProjects(data); });
     supabase.from("utilities").select("*").eq("user_id", userId).eq("property_id", propertyId)
-      .then(({data, error}) => { if(error) console.error("Utilities load error:", error.message, error.code); if(data) setUtilities(data); });
-    supabase.from("utility_bills").select("*").eq("user_id", userId).order("bill_date", {ascending:false})
-      .then(({data, error}) => { if(error) console.error("Utility bills load error:", error.message, error.code); if(data) setBills(data); });
+      .then(({data, error}) => {
+        if(error) console.error("Utilities load error:", error.message, error.code);
+        if(data) {
+          setUtilities(data);
+          // Load bills only for utilities belonging to this property
+          const utilIds = data.map(u => u.id);
+          if(utilIds.length > 0) {
+            supabase.from("utility_bills").select("*").in("utility_id", utilIds).order("bill_date", {ascending:false})
+              .then(({data: billData, error: billError}) => {
+                if(billError) console.error("Utility bills load error:", billError.message);
+                if(billData) setBills(billData);
+              });
+          } else {
+            setBills([]);
+          }
+        }
+      });
   }, [userId, propertyId]);
 
   // ── Expense CRUD
@@ -12455,22 +12469,30 @@ export default function App() {
     setTasks([]); setWarranties([]); setExpenses([]); setServiceLogs([]);
     setProjects([]); setUtilities([]); setBills([]);
     setDataLoading(true);
-    const [t, w, e, sl, proj, util, bills] = await Promise.all([
+    const [t, w, e, sl, proj, util] = await Promise.all([
       supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", propertyId).order("created_at", { ascending: false }),
       supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", propertyId).order("expiry_date", { ascending: true }),
       supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", propertyId).order("date", { ascending: false }),
       supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", propertyId).order("service_date", { ascending: false }),
       supabase.from("projects").select("*").eq("user_id", uid).eq("property_id", propertyId),
       supabase.from("utilities").select("*").eq("user_id", uid).eq("property_id", propertyId),
-      supabase.from("utility_bills").select("*").eq("user_id", uid).order("bill_date", { ascending: false }),
     ]);
     if(t.data)     setTasks(t.data);
     if(w.data)     setWarranties(w.data);
     if(e.data)     setExpenses(e.data);
     if(sl.data)    setServiceLogs(sl.data);
     if(proj.data)  setProjects(proj.data);
-    if(util.data)  setUtilities(util.data);
-    if(bills.data) setBills(bills.data);
+    if(util.data)  {
+      setUtilities(util.data);
+      // Load bills scoped to this property's utilities only
+      const utilIds = util.data.map(u => u.id);
+      if(utilIds.length > 0) {
+        const { data: billData } = await supabase.from("utility_bills").select("*").in("utility_id", utilIds).order("bill_date", { ascending: false });
+        if(billData) setBills(billData);
+      } else {
+        setBills([]);
+      }
+    }
     setDataLoading(false);
   };
 
