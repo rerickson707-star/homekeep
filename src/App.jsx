@@ -4788,11 +4788,12 @@ function InsuranceForm({ data, onChange, planData, onUpgrade }) {
     <div>
       <AIScanButton
         onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan Policy Document"
+        label="Scan policy document"
         description="Auto-fill company, policy number, premium, coverage & renewal date"
         scanType="insurance"
         planData={planData}
         onUpgrade={onUpgrade}
+        useCamera={true}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -4803,10 +4804,57 @@ function InsuranceForm({ data, onChange, planData, onUpgrade }) {
         <div className="field"><label>Annual Premium ($)</label><input type="number" value={data.ins_premium||""} onChange={e=>f("ins_premium",e.target.value)} placeholder="e.g. 1800" /></div>
         <div className="field"><label>Deductible ($)</label><input type="number" value={data.ins_deductible||""} onChange={e=>f("ins_deductible",e.target.value)} placeholder="e.g. 1000" /></div>
         <div className="field"><label>Dwelling Coverage ($)</label><input type="number" value={data.ins_dwelling_coverage||""} onChange={e=>f("ins_dwelling_coverage",e.target.value)} placeholder="e.g. 350000" /></div>
+        <div className="field"><label>Personal Property ($)</label><input type="number" value={data.ins_personal_property||""} onChange={e=>f("ins_personal_property",e.target.value)} placeholder="e.g. 150000" /></div>
         <div className="field"><label>Liability Coverage ($)</label><input type="number" value={data.ins_liability_coverage||""} onChange={e=>f("ins_liability_coverage",e.target.value)} placeholder="e.g. 100000" /></div>
-        <div className="field s2"><label>Policy Renewal Date</label><input type="date" value={data.ins_renewal_date||""} onChange={e=>f("ins_renewal_date",e.target.value)} /></div>
-        <div className="field s2"><label>Notes</label><textarea value={data.ins_notes||""} onChange={e=>f("ins_notes",e.target.value)} placeholder="Special riders, flood/earthquake coverage, claim history…" /></div>
+        <div className="field"><label>Loss of Use ($)</label><input type="number" value={data.ins_loss_of_use||""} onChange={e=>f("ins_loss_of_use",e.target.value)} placeholder="e.g. 50000" /></div>
+        <div className="field s2"><label>Renewal Date</label><input type="date" value={data.ins_renewal_date||""} onChange={e=>f("ins_renewal_date",e.target.value)} /></div>
+        <div className="field s2"><label>Notes</label><textarea value={data.ins_notes||""} onChange={e=>f("ins_notes",e.target.value)} placeholder="Special riders, exclusions, claim history…" /></div>
       </div>
+    </div>
+  );
+}
+
+// ─── ADDITIONAL POLICY FORM ───────────────────────────────────────────────────
+const POLICY_TYPES = [
+  { key:"flood",       label:"Flood",                icon:"🌊", hint:"Usually NFIP — separate from homeowners" },
+  { key:"wind",        label:"Wind / Hurricane",     icon:"🌪️", hint:"Often required in coastal states" },
+  { key:"umbrella",    label:"Umbrella",             icon:"☂️",  hint:"Extra liability above homeowners limits" },
+  { key:"earthquake",  label:"Earthquake",           icon:"🏔️", hint:"Not covered by standard homeowners" },
+  { key:"jewelry",     label:"Jewelry / Valuables",  icon:"💎", hint:"Standard policies cap jewelry at $1,500–$2,500" },
+  { key:"home_warranty",label:"Home Warranty",       icon:"🔧", hint:"Covers appliance and system breakdowns" },
+  { key:"other",       label:"Other",                icon:"📋", hint:"" },
+];
+
+function AdditionalPolicyForm({ data, onChange }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  const pt = POLICY_TYPES.find(t => t.key === data.type) || POLICY_TYPES[0];
+  return (
+    <div className="fg">
+      <div className="field s2"><label>Policy Type</label>
+        <select value={data.type||"flood"} onChange={e=>f("type",e.target.value)}>
+          {POLICY_TYPES.map(t=><option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
+        </select>
+      </div>
+      {pt.hint&&<div className="field s2"><div style={{fontSize:".78rem",color:"#8A8178",padding:".5rem .75rem",background:"var(--cream)",borderRadius:8,lineHeight:1.4}}>💡 {pt.hint}</div></div>}
+      <div className="field s2"><label>Insurance Company</label><input value={data.company||""} onChange={e=>f("company",e.target.value)} placeholder="e.g. NFIP, Nationwide…"/></div>
+      <div className="field"><label>Policy Number</label><input value={data.policy_number||""} onChange={e=>f("policy_number",e.target.value)} placeholder="Policy #"/></div>
+      <div className="field"><label>Annual Premium ($)</label><input type="number" value={data.premium||""} onChange={e=>f("premium",e.target.value)} placeholder="0"/></div>
+      <div className="field"><label>Coverage Amount ($)</label><input type="number" value={data.coverage||""} onChange={e=>f("coverage",e.target.value)} placeholder="0"/></div>
+      <div className="field"><label>Renewal Date</label><input type="date" value={data.renewal_date||""} onChange={e=>f("renewal_date",e.target.value)}/></div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Deductible, agent name, special terms…"/></div>
+    </div>
+  );
+}
+
+// ─── CLAIM LOG FORM ───────────────────────────────────────────────────────────
+function ClaimEntryForm({ data, onChange }) {
+  const f = (k,v) => onChange({...data,[k]:v});
+  return (
+    <div className="fg">
+      <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. Called claims line — status update"/></div>
+      <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)}/></div>
+      <div className="field"><label>Contact / Rep</label><input value={data.contact||""} onChange={e=>f("contact",e.target.value)} placeholder="Name, phone, or email"/></div>
+      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="What was discussed, agreed, or decided…"/></div>
     </div>
   );
 }
@@ -9805,12 +9853,134 @@ function RecallCheckPanel({ warranties }) {
 }
 
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty }) {
-  const [editModal, setEditModal] = useState(false); // unified edit modal
-  const [editTab, setEditTab]     = useState("property"); // "property" | "insurance"
-  const [modal, setModal]         = useState(false); // kept for setup banner compat
-  const [insModal, setInsModal]   = useState(false); // kept for ins-empty click
-  const [editData, setEditData] = useState({});
-  const [insData, setInsData] = useState({});
+  const [editModal, setEditModal] = useState(false);
+  const [editTab, setEditTab]     = useState("property");
+  const [modal, setModal]         = useState(false);
+  const [insModal, setInsModal]   = useState(false);
+  const [editData, setEditData]   = useState({});
+  const [insData, setInsData]     = useState({});
+
+  // Insurance module state
+  const [showInsurance, setShowInsurance]         = useState(false);
+  const [addPolicyModal, setAddPolicyModal]       = useState(false);
+  const [editPolicyModal, setEditPolicyModal]     = useState(false);
+  const [editPolicyIdx, setEditPolicyIdx]         = useState(null);
+  const [policyData, setPolicyData]               = useState({type:"flood"});
+  const [addClaimModal, setAddClaimModal]         = useState(false);
+  const [claimData, setClaimData]                 = useState({});
+  const [showCheckin, setShowCheckin]             = useState(false);
+  const [checkinPhoto, setCheckinPhoto]           = useState({}); // {task_key: url}
+  const [checkinUploading, setCheckinUploading]   = useState({});
+  const checkinInputRefs                          = useRef({});
+
+  // Parse additional_policies and claim_log from profile
+  const additionalPolicies = (() => { try { const v = profile?.additional_policies; return Array.isArray(v)?v:typeof v==="string"?JSON.parse(v):[]; } catch { return []; } })();
+  const claimLog           = (() => { try { const v = profile?.claim_log;           return Array.isArray(v)?v:typeof v==="string"?JSON.parse(v):[]; } catch { return []; } })();
+  const checkinData        = (() => { try { const v = profile?.checkin_data;        return v&&typeof v==="object"&&!Array.isArray(v)?v:typeof v==="string"?JSON.parse(v):{}; } catch { return {}; } })();
+
+  // Save helpers for new insurance fields
+  const saveAdditionalPolicies = async (policies) => {
+    const { error } = await supabase.from("profiles").update({ additional_policies: policies }).eq("id", profile.id);
+    if (!error) setProfile(p => ({...p, additional_policies: policies}));
+    return !error;
+  };
+
+  const saveClaimLog = async (log) => {
+    const { error } = await supabase.from("profiles").update({ claim_log: log }).eq("id", profile.id);
+    if (!error) setProfile(p => ({...p, claim_log: log}));
+    return !error;
+  };
+
+  const saveCheckinData = async (data) => {
+    const { error } = await supabase.from("profiles").update({ checkin_data: data }).eq("id", profile.id);
+    if (!error) setProfile(p => ({...p, checkin_data: data}));
+    return !error;
+  };
+
+  // Add / edit / delete additional policy
+  const openAddPolicy   = ()    => { setPolicyData({type:"flood"}); setAddPolicyModal(true); };
+  const openEditPolicy  = (i)   => { setPolicyData({...additionalPolicies[i]}); setEditPolicyIdx(i); setEditPolicyModal(true); };
+  const saveAddPolicy   = async () => {
+    if (!policyData.company && !policyData.type) return;
+    const updated = [...additionalPolicies, {...policyData, id: Date.now()}];
+    if (await saveAdditionalPolicies(updated)) { toast("Policy added ✓"); setAddPolicyModal(false); }
+    else toast("Error saving","error");
+  };
+  const saveEditPolicy  = async () => {
+    const updated = additionalPolicies.map((p,i) => i===editPolicyIdx ? {...policyData} : p);
+    if (await saveAdditionalPolicies(updated)) { toast("Policy updated ✓"); setEditPolicyModal(false); }
+    else toast("Error saving","error");
+  };
+  const deletePolicy    = async (i) => {
+    const updated = additionalPolicies.filter((_,idx) => idx!==i);
+    if (await saveAdditionalPolicies(updated)) toast("Policy removed","error");
+  };
+
+  // Add claim entry
+  const saveClaimEntry = async () => {
+    if (!claimData.description?.trim()) return;
+    const entry = {...claimData, id: Date.now(), created_at: new Date().toISOString()};
+    const updated = [entry, ...claimLog];
+    if (await saveClaimLog(updated)) { toast("Entry logged ✓"); setAddClaimModal(false); setClaimData({}); }
+    else toast("Error saving","error");
+  };
+  const deleteClaimEntry = async (id) => {
+    const updated = claimLog.filter(e => e.id !== id);
+    await saveClaimLog(updated);
+  };
+
+  // Check-in photo upload
+  const CHECKIN_TASKS = [
+    { key:"front_exterior",    label:"Front exterior",           hint:"Condition, roof line, driveway, front door" },
+    { key:"back_exterior",     label:"Back yard & structures",   hint:"Fence, patio, shed, pool — anything a claim might cover" },
+    { key:"roof",              label:"Roof (from ground)",       hint:"All sides — shingle condition, gutters, flashing" },
+    { key:"electrical_panel",  label:"Electrical panel",         hint:"Open the panel door, capture breaker labels" },
+    { key:"valuables",         label:"Valuables not in assets",  hint:"Jewelry, art, collectibles — anything you'd claim if stolen" },
+    { key:"recent_changes",    label:"Recent changes to home",   hint:"Renovation completed, new structure added, anything new since last check-in" },
+  ];
+
+  const checkinYear = new Date().getFullYear();
+  const checkinKey  = `year_${checkinYear}`;
+  const thisYearCheckin = checkinData[checkinKey] || {};
+  const checkinDone = CHECKIN_TASKS.filter(t => thisYearCheckin[t.key]?.url).length;
+  const lastCheckinYear = Object.keys(checkinData).filter(k=>k.startsWith("year_")).map(k=>parseInt(k.replace("year_",""))).filter(y=>y<checkinYear).sort((a,b)=>b-a)[0];
+
+  const uploadCheckinPhoto = async (taskKey, file) => {
+    if (!file || !file.type.startsWith("image/")) { toast("Images only","error"); return; }
+    setCheckinUploading(u => ({...u, [taskKey]:true}));
+    const ext  = file.name.split(".").pop();
+    const path = `${userId}/checkin-${checkinYear}-${taskKey}.${ext}`;
+    const { error } = await supabase.storage.from("expense-files").upload(path, file, { upsert:true, contentType:file.type });
+    if (error) { toast("Upload failed","error"); setCheckinUploading(u=>({...u,[taskKey]:false})); return; }
+    const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
+    const url = urlData.publicUrl + "?t=" + Date.now();
+    const updated = { ...checkinData, [checkinKey]: { ...thisYearCheckin, [taskKey]: { url, taken_at: new Date().toISOString() } } };
+    await saveCheckinData(updated);
+    setCheckinUploading(u => ({...u, [taskKey]:false}));
+    toast("Photo saved ✓");
+  };
+
+  // Asset completeness scoring for check-in
+  const assetGaps = warranties.filter(w => w.category !== "Insurance").map(w => {
+    const gaps = [];
+    if (!w.asset_photo_url) gaps.push("No photo");
+    if (!w.serial_number && !w.model) gaps.push("No serial #");
+    if (!w.cost && !w.replacement_cost) gaps.push("No value");
+    return { ...w, gaps };
+  });
+  const assetsWithGaps    = assetGaps.filter(a => a.gaps.length > 0);
+  const assetsFully       = assetGaps.filter(a => a.gaps.length === 0);
+  const totalCheckinItems = assetGaps.length + CHECKIN_TASKS.length;
+  const doneCheckinItems  = assetsFully.length + checkinDone;
+  const checkinScore      = totalCheckinItems > 0 ? Math.round((doneCheckinItems / totalCheckinItems) * 100) : 0;
+
+  // Coverage gap calculation — rebuild cost estimate
+  const dwellingCoverage = Number(profile?.ins_dwelling_coverage || 0);
+  const sqft = Number(profile?.sqft || 0);
+  const EST_REBUILD_PER_SQFT = 243; // avg US rebuild cost/sqft 2026
+  const estimatedRebuild = sqft > 0 ? sqft * EST_REBUILD_PER_SQFT : 0;
+  const coverageGap = dwellingCoverage > 0 && estimatedRebuild > 0 ? estimatedRebuild - dwellingCoverage : null;
+  const coveragePct = dwellingCoverage > 0 && estimatedRebuild > 0 ? Math.round((dwellingCoverage / estimatedRebuild) * 100) : null;
 
   // Auto-open setup wizard when coming directly from onboarding
   useEffect(() => {
@@ -9857,16 +10027,18 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
   const saveIns = async () => {
     const insFields = {
-      ins_company:          insData.ins_company||"",
-      ins_policy_number:    insData.ins_policy_number||"",
-      ins_agent_name:       insData.ins_agent_name||"",
-      ins_agent_phone:      insData.ins_agent_phone||"",
-      ins_premium:          insData.ins_premium||"",
-      ins_deductible:       insData.ins_deductible||"",
-      ins_dwelling_coverage:insData.ins_dwelling_coverage||"",
-      ins_liability_coverage:insData.ins_liability_coverage||"",
-      ins_renewal_date:     insData.ins_renewal_date||"",
-      ins_notes:            insData.ins_notes||"",
+      ins_company:            insData.ins_company||"",
+      ins_policy_number:      insData.ins_policy_number||"",
+      ins_agent_name:         insData.ins_agent_name||"",
+      ins_agent_phone:        insData.ins_agent_phone||"",
+      ins_premium:            insData.ins_premium||"",
+      ins_deductible:         insData.ins_deductible||"",
+      ins_dwelling_coverage:  insData.ins_dwelling_coverage||"",
+      ins_personal_property:  insData.ins_personal_property||"",
+      ins_liability_coverage: insData.ins_liability_coverage||"",
+      ins_loss_of_use:        insData.ins_loss_of_use||"",
+      ins_renewal_date:       insData.ins_renewal_date||"",
+      ins_notes:              insData.ins_notes||"",
     };
     if(profile?.id) {
       const {error} = await supabase.from("profiles").update(insFields).eq("id",profile.id).eq("user_id",userId);
@@ -10190,63 +10362,450 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
-      {/* ── INSURANCE ── */}
+      {/* ── INSURANCE MODULE ── */}
       {!showSetup && (
         <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-            <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🛡️</span><span style={{fontSize:"1rem",fontWeight:700}}>Homeowners insurance</span></div>
-            <button onClick={openIns} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{profile?.ins_company?"Edit":"Add"}</button>
+            <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🛡️</span><span style={{fontSize:"1rem",fontWeight:700}}>Insurance</span></div>
+            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+              {checkinScore > 0 && <span style={{fontSize:".72rem",fontWeight:700,color:checkinScore>=80?"var(--ok)":"var(--warn)",background:checkinScore>=80?"var(--ok-bg)":"var(--warn-bg)",padding:"2px 8px",borderRadius:10}}>{checkinScore}% claim-ready</span>}
+              <button onClick={()=>setShowInsurance(true)} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View all →</button>
+            </div>
           </div>
+
+          {/* Annual check-in CTA */}
+          <div onClick={()=>{setShowInsurance(true);setTimeout(()=>setShowCheckin(true),50);}}
+            style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem",borderBottom:"1px solid var(--cream2)",cursor:"pointer",background:"linear-gradient(135deg,var(--pine-deep),var(--pine-soft))"}}>
+            <div style={{width:44,height:44,borderRadius:12,background:"rgba(255,255,255,.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>📷</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:".95rem",fontWeight:700,color:"#fff",marginBottom:".2rem"}}>
+                {checkinDone === CHECKIN_TASKS.length && assetsWithGaps.length === 0
+                  ? `${checkinYear} check-in complete ✓`
+                  : `${checkinYear} annual check-in`}
+              </div>
+              <div style={{fontSize:".78rem",color:"rgba(244,237,223,.6)"}}>
+                {checkinDone === CHECKIN_TASKS.length && assetsWithGaps.length === 0
+                  ? "Your home is fully documented for any claim"
+                  : `${checkinDone} of ${CHECKIN_TASKS.length} dwelling photos · ${assetsWithGaps.length} asset gaps`}
+              </div>
+            </div>
+            <span style={{color:"rgba(244,237,223,.4)",fontSize:"1.2rem"}}>›</span>
+          </div>
+
+          {/* Primary policy summary */}
           {profile?.ins_company ? (
-            <>
-              {insRenewalStatus&&(
-                <div style={{margin:".75rem 1rem 0",padding:".8rem .95rem",borderRadius:10,fontSize:".88rem",fontWeight:600,display:"flex",alignItems:"center",gap:".6rem",
-                  background:insRenewalStatus==="ok"?"#E9F1EA":insRenewalStatus==="soon"?"#FBF3DE":"#F7E0DA",
-                  color:insRenewalStatus==="ok"?"#3E7D5A":insRenewalStatus==="soon"?"#B8861E":"#B0432B",
-                  border:`1px solid ${insRenewalStatus==="ok"?"#C5DCC9":insRenewalStatus==="soon"?"#EAD9A6":"#E3B2A6"}`}}>
-                  {insRenewalStatus==="ok"&&"✓ "}
-                  {insRenewalStatus==="soon"&&"⚠️ "}
-                  {(insRenewalStatus==="urgent"||insRenewalStatus==="expired")&&"🚨 "}
-                  {insRenewalStatus==="ok"&&`Policy renews ${fmtD(profile.ins_renewal_date)} · ${insRenewalDays} days away`}
-                  {insRenewalStatus==="soon"&&`Policy renews in ${insRenewalDays} days — ${fmtD(profile.ins_renewal_date)}`}
-                  {insRenewalStatus==="urgent"&&`Policy renews in ${insRenewalDays} days — contact your agent`}
-                  {insRenewalStatus==="expired"&&`Policy renewal date passed — verify your coverage`}
+            <div onClick={()=>setShowInsurance(true)} style={{padding:".9rem 1rem",cursor:"pointer"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".75rem"}}>
+                <div style={{width:38,height:38,borderRadius:10,background:"var(--ok-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>🛡️</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:".92rem",fontWeight:700}}>{profile.ins_company}</div>
+                  <div style={{fontSize:".78rem",color:"#8A8178"}}>
+                    {[profile.ins_dwelling_coverage&&`Dwelling $${Number(profile.ins_dwelling_coverage).toLocaleString()}`,
+                      profile.ins_renewal_date&&`Renews ${fmtD(profile.ins_renewal_date)}`
+                    ].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                {insRenewalStatus==="soon"&&<span style={{fontSize:".7rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 7px",borderRadius:8}}>⚠ {insRenewalDays}d</span>}
+                {insRenewalStatus==="urgent"&&<span style={{fontSize:".7rem",fontWeight:700,color:"#B0432B",background:"#F7E0DA",padding:"2px 7px",borderRadius:8}}>🚨 {insRenewalDays}d</span>}
+                <span style={{color:"#C2B8AE",fontSize:"1.1rem"}}>›</span>
+              </div>
+              {coverageGap!==null&&coverageGap>10000&&(
+                <div style={{marginTop:".65rem",padding:".6rem .75rem",borderRadius:8,background:"var(--warn-bg)",border:"1px solid #EAD9A6",fontSize:".78rem",color:"var(--warn)",fontWeight:600}}>
+                  ⚠️ Dwelling coverage may be short by {fmt$(coverageGap)} vs. estimated rebuild cost
                 </div>
               )}
-              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem 1rem .5rem"}}>
-                <div style={{width:42,height:42,borderRadius:12,background:"#E9F1EA",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>🛡️</div>
-                <div>
-                  <div style={{fontSize:"1rem",fontWeight:700}}>{profile.ins_company}</div>
-                  {profile.ins_policy_number&&<div style={{fontSize:".82rem",color:"#8A8178"}}>Policy #{profile.ins_policy_number}</div>}
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",padding:".5rem 1rem 1rem"}}>
-                {[
-                  {label:"Annual premium",    val:profile.ins_premium?"$"+Number(profile.ins_premium).toLocaleString():null},
-                  {label:"Deductible",        val:profile.ins_deductible?"$"+Number(profile.ins_deductible).toLocaleString():null},
-                  {label:"Dwelling coverage", val:profile.ins_dwelling_coverage?"$"+Number(profile.ins_dwelling_coverage).toLocaleString():null},
-                  {label:"Liability",         val:profile.ins_liability_coverage?"$"+Number(profile.ins_liability_coverage).toLocaleString():null},
-                  {label:"Agent",             val:profile.ins_agent_name||null},
-                  {label:"Agent phone",       val:profile.ins_agent_phone||null},
-                  {label:"Renewal date",      val:profile.ins_renewal_date?fmtD(profile.ins_renewal_date):null},
-                ].filter(f=>f.val).map(f=>(
-                  <div key={f.label} style={{background:"var(--cream)",borderRadius:10,padding:".65rem .8rem"}}>
-                    <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".2rem"}}>{f.label}</div>
-                    <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>{f.val}</div>
-                  </div>
-                ))}
-              </div>
-              {profile.ins_notes&&<div style={{padding:".6rem 1rem .9rem",fontSize:".84rem",color:"#7A7370",lineHeight:1.5,borderTop:"1px solid var(--cream2)"}}>{profile.ins_notes}</div>}
-            </>
+            </div>
           ) : (
-            <div onClick={openIns} style={{padding:"1.5rem 1rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".5rem",cursor:"pointer",color:"#A8A09A",textAlign:"center"}}>
-              <span style={{fontSize:"1.8rem"}}>🛡️</span>
-              <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Add your insurance policy</div>
-              <div style={{fontSize:".82rem",color:"#8A8178",lineHeight:1.4}}>Policy number, agent contact, coverage amounts and renewal date</div>
+            <div onClick={()=>setShowInsurance(true)} style={{padding:"1.25rem 1rem",display:"flex",alignItems:"center",gap:".75rem",cursor:"pointer"}}>
+              <span style={{fontSize:"1.5rem"}}>🛡️</span>
+              <div><div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Add your insurance policy</div><div style={{fontSize:".8rem",color:"#8A8178",marginTop:2}}>Policy number, coverage amounts, agent contact</div></div>
+              <span style={{color:"#C2B8AE",fontSize:"1.1rem",marginLeft:"auto"}}>›</span>
             </div>
           )}
         </div>
       )}
+
+      {/* ── INSURANCE FULL-SCREEN VIEW ── */}
+      {showInsurance && (
+        <div style={{position:"fixed",inset:0,background:"var(--cream)",zIndex:300,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+          {/* Header */}
+          <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
+            <button onClick={()=>{setShowInsurance(false);setShowCheckin(false);}} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>←</button>
+            <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,flex:1}}>Insurance</span>
+            <button onClick={()=>{setInsData({...profile});setInsModal(true);}} style={{background:"none",border:"none",fontSize:".9rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem",fontFamily:"inherit"}}>{profile?.ins_company?"Edit policy":"Add policy"}</button>
+          </div>
+
+          <div style={{flex:1,padding:"0 0 3rem"}}>
+
+            {/* ── ANNUAL CHECK-IN ── */}
+            {!showCheckin ? (
+              // Check-in summary card
+              <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.5rem 1.25rem",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+                <div style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"rgba(193,97,64,.35)",border:"1px solid rgba(193,97,64,.5)",borderRadius:20,padding:".3rem .8rem",fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:".85rem"}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:"#E8A57F"}}/>
+                  {checkinYear} annual check-in
+                </div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#fff",lineHeight:1.2,marginBottom:".5rem"}}>
+                  Your home is {checkinScore}% claim-ready
+                </div>
+                <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",marginBottom:"1rem",lineHeight:1.5}}>
+                  {checkinScore===100
+                    ? "Everything is documented. If you ever need to file a claim, you're prepared."
+                    : "We only flag what's actually missing — no need to re-photograph things already in your asset records."}
+                </div>
+                {/* Score ring */}
+                <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"1rem",alignItems:"center",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:14,padding:".85rem 1rem",marginBottom:"1rem"}}>
+                  <div style={{position:"relative",width:72,height:72}}>
+                    <svg width="72" height="72" viewBox="0 0 72 72">
+                      <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="8"/>
+                      <circle cx="36" cy="36" r="28" fill="none" stroke={checkinScore>=80?"#7DCBA1":"#E8A57F"} strokeWidth="8"
+                        strokeDasharray={`${Math.round((checkinScore/100)*176)} 176`} strokeDashoffset="44" strokeLinecap="round"/>
+                    </svg>
+                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,color:"#fff",lineHeight:1}}>{checkinScore}%</div>
+                      <div style={{fontSize:".52rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",fontWeight:700,marginTop:2}}>ready</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".92rem",fontWeight:700,color:"#fff",marginBottom:".3rem"}}>
+                      {assetsWithGaps.length===0&&checkinDone===CHECKIN_TASKS.length ? "Everything documented ✓" : `${assetsWithGaps.length + (CHECKIN_TASKS.length - checkinDone)} things need attention`}
+                    </div>
+                    <div style={{fontSize:".8rem",color:"rgba(244,237,223,.6)",lineHeight:1.45}}>
+                      {assetsWithGaps.length>0&&`${assetsWithGaps.length} asset${assetsWithGaps.length!==1?"s":""} missing info`}
+                      {assetsWithGaps.length>0&&checkinDone<CHECKIN_TASKS.length&&" · "}
+                      {checkinDone<CHECKIN_TASKS.length&&`${CHECKIN_TASKS.length-checkinDone} dwelling photo${CHECKIN_TASKS.length-checkinDone!==1?"s":""} remaining`}
+                    </div>
+                    {lastCheckinYear&&<div style={{fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".35rem"}}>Last completed: {lastCheckinYear}</div>}
+                  </div>
+                </div>
+                <button onClick={()=>setShowCheckin(true)} style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".95rem",width:"100%",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem",fontWeight:700,cursor:"pointer"}}>
+                  {checkinScore===100 ? "Review your check-in →" : "Complete check-in →"}
+                </button>
+              </div>
+            ) : (
+              // Check-in detail view
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem .5rem"}}>
+                  <button onClick={()=>setShowCheckin(false)} style={{background:"none",border:"none",fontSize:".9rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                  <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500}}>{checkinYear} check-in</span>
+                </div>
+
+                {/* Asset gaps section */}
+                {assetsWithGaps.length > 0 && (
+                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}><span>🔧</span><span style={{fontSize:".95rem",fontWeight:700}}>Assets needing info</span></div>
+                      <span style={{fontSize:".75rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 8px",borderRadius:10}}>{assetsWithGaps.length} gaps</span>
+                    </div>
+                    <div style={{padding:".6rem 1rem",background:"var(--cream)",borderBottom:"1px solid var(--cream2)",fontSize:".78rem",color:"#8A8178"}}>
+                      Tap to add what's missing — no need to re-photograph assets already documented.
+                    </div>
+                    {assetsWithGaps.map(a => (
+                      <div key={a.id} onClick={()=>onNavigate&&onNavigate("warranties")} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",cursor:"pointer"}}>
+                        {a.asset_photo_url
+                          ? <img src={a.asset_photo_url} alt={a.item} style={{width:44,height:44,borderRadius:11,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0}}/>
+                          : <div style={{width:44,height:44,borderRadius:11,background:"var(--cream2)",border:"1.5px dashed var(--mid)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem"}}>📦</div>}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".95rem",fontWeight:700,marginBottom:".2rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
+                          <div style={{display:"flex",gap:".35rem",flexWrap:"wrap"}}>
+                            {a.gaps.map(g=><span key={g} style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:6,background:"var(--warn-bg)",color:"var(--warn)",border:"1px solid #EAD9A6"}}>{g}</span>)}
+                          </div>
+                        </div>
+                        <span style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Fix →</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Fully documented assets */}
+                {assetsFully.length > 0 && (
+                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}><span>✅</span><span style={{fontSize:".95rem",fontWeight:700}}>Fully documented</span></div>
+                      <span style={{fontSize:".75rem",fontWeight:700,color:"var(--ok)",background:"var(--ok-bg)",padding:"2px 8px",borderRadius:10}}>{assetsFully.length} assets</span>
+                    </div>
+                    <div style={{padding:".6rem 1rem",background:"var(--cream)",fontSize:".78rem",color:"#8A8178"}}>Photo, serial number, and value on file — no action needed.</div>
+                    {assetsFully.slice(0,3).map(a => (
+                      <div key={a.id} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".75rem 1rem",borderTop:"1px solid var(--cream2)",opacity:.7}}>
+                        {a.asset_photo_url
+                          ? <img src={a.asset_photo_url} alt={a.item} style={{width:40,height:40,borderRadius:10,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0}}/>
+                          : <div style={{width:40,height:40,borderRadius:10,background:"var(--cream2)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem"}}>📦</div>}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".9rem",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
+                          <div style={{fontSize:".75rem",color:"#A8A09A"}}>Photo · {a.serial_number||a.model||"Model on file"} · {a.cost?fmt$(a.cost):"Value on file"}</div>
+                        </div>
+                        <span style={{color:"var(--ok)",fontSize:".9rem"}}>✓</span>
+                      </div>
+                    ))}
+                    {assetsFully.length > 3 && <div style={{padding:".65rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".8rem",color:"var(--pine)",fontWeight:600}}>+ {assetsFully.length-3} more assets fully documented</div>}
+                  </div>
+                )}
+
+                {/* Dwelling photo tasks */}
+                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".5rem"}}><span>🏠</span><span style={{fontSize:".95rem",fontWeight:700}}>Dwelling photos</span></div>
+                    <span style={{fontSize:".75rem",fontWeight:700,color:checkinDone===CHECKIN_TASKS.length?"var(--ok)":"var(--warn)",background:checkinDone===CHECKIN_TASKS.length?"var(--ok-bg)":"var(--warn-bg)",padding:"2px 8px",borderRadius:10}}>{checkinDone} of {CHECKIN_TASKS.length} done</span>
+                  </div>
+                  <div style={{padding:".6rem 1rem",background:"var(--cream)",borderBottom:"1px solid var(--cream2)",fontSize:".78rem",color:"#8A8178",lineHeight:1.4}}>
+                    These can't come from asset records. One photo a year shows overall condition and anything that's changed. <strong>Always free — no paywall here.</strong>
+                  </div>
+                  {CHECKIN_TASKS.map(task => {
+                    const done = thisYearCheckin[task.key];
+                    const uploading = checkinUploading[task.key];
+                    return (
+                      <div key={task.key} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                        <div style={{width:28,height:28,borderRadius:8,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:".85rem",border:`2px solid ${done?"var(--ok)":"var(--stone)"}`,background:done?"var(--ok)":"transparent",color:done?"#fff":"transparent"}}>
+                          {done?"✓":""}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".92rem",fontWeight:700,marginBottom:".15rem"}}>{task.label}</div>
+                          <div style={{fontSize:".75rem",color:"#8A8178",lineHeight:1.35}}>{task.hint}</div>
+                          {done?.taken_at&&<div style={{fontSize:".7rem",color:"#A8A09A",marginTop:".2rem"}}>Taken {fmtD(done.taken_at.slice(0,10))}</div>}
+                        </div>
+                        {done?.url ? (
+                          <img src={done.url} alt={task.label} style={{width:52,height:52,borderRadius:10,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0,cursor:"pointer"}} onClick={()=>{}}/>
+                        ) : (
+                          <div onClick={()=>checkinInputRefs.current[task.key]?.click()} style={{width:52,height:52,borderRadius:10,background:uploading?"var(--cream2)":"var(--cream)",border:"2px dashed var(--stone)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",cursor:"pointer"}}>
+                            {uploading?"⏳":"📷"}
+                          </div>
+                        )}
+                        <input ref={el=>checkinInputRefs.current[task.key]=el} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>uploadCheckinPhoto(task.key, e.target.files[0])}/>
+                      </div>
+                    );
+                  })}
+                  {lastCheckinYear&&(
+                    <div style={{padding:".7rem 1rem",background:"var(--cream)",borderTop:"1px solid var(--cream2)",display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"#A8A09A"}}>
+                      <span>Last check-in: {lastCheckinYear}</span>
+                      <span>Photos stored in your vault</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── CLAIM-READY EXPORT ── */}
+            {!showCheckin && (
+              <div onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks})}
+                style={{margin:"0 1rem 1rem",background:"linear-gradient(135deg,#1a3a2e,var(--pine-soft))",borderRadius:"var(--r-sm)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"center",gap:"1rem",cursor:"pointer"}}>
+                <div style={{width:50,height:50,borderRadius:13,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>📋</div>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"#fff",marginBottom:".25rem"}}>Claim-ready package</div>
+                  <div style={{fontSize:".78rem",color:"rgba(244,237,223,.55)",lineHeight:1.4}}>Assets, photos, receipts, service records — everything an adjuster needs. Always free.</div>
+                </div>
+                <span style={{color:"rgba(244,237,223,.4)",fontSize:"1.3rem"}}>›</span>
+              </div>
+            )}
+
+            {/* ── PRIMARY POLICY ── (only when not in check-in) */}
+            {!showCheckin && (
+              <>
+                {/* Coverage gap alert */}
+                {coverageGap!==null&&coverageGap>10000&&(
+                  <div style={{margin:"0 1rem .75rem",padding:".85rem .95rem",borderRadius:10,background:"var(--warn-bg)",border:"1px solid #EAD9A6",display:"flex",alignItems:"flex-start",gap:".65rem"}}>
+                    <span style={{fontSize:"1.2rem",flexShrink:0}}>⚠️</span>
+                    <div>
+                      <div style={{fontSize:".88rem",fontWeight:700,color:"var(--warn)",marginBottom:".25rem"}}>Possible coverage gap</div>
+                      <div style={{fontSize:".8rem",color:"#92610A",lineHeight:1.45}}>
+                        Your dwelling coverage is <strong>{fmt$(dwellingCoverage)}</strong> but your estimated rebuild cost is <strong>~{fmt$(estimatedRebuild)}</strong> ({sqft.toLocaleString()} sqft at ${EST_REBUILD_PER_SQFT}/sqft). You may be underinsured by {fmt$(coverageGap)}.
+                      </div>
+                      <div style={{fontSize:".78rem",fontWeight:700,color:"var(--warn)",marginTop:".4rem"}}>Review dwelling coverage at renewal →</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Primary policy card */}
+                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🛡️</span><span style={{fontSize:"1rem",fontWeight:700}}>Homeowners policy</span></div>
+                    <button onClick={()=>{setInsData({...profile});setInsModal(true);}} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{profile?.ins_company?"Edit":"Add"}</button>
+                  </div>
+
+                  {profile?.ins_company ? (
+                    <>
+                      {insRenewalStatus&&(
+                        <div style={{margin:".75rem 1rem 0",padding:".75rem .95rem",borderRadius:10,fontSize:".88rem",fontWeight:600,display:"flex",alignItems:"center",gap:".6rem",
+                          background:insRenewalStatus==="ok"?"var(--ok-bg)":insRenewalStatus==="soon"?"var(--warn-bg)":"#F7E0DA",
+                          color:insRenewalStatus==="ok"?"var(--ok)":insRenewalStatus==="soon"?"var(--warn)":"#B0432B",
+                          border:`1px solid ${insRenewalStatus==="ok"?"#C5DCC9":insRenewalStatus==="soon"?"#EAD9A6":"#E3B2A6"}`}}>
+                          {insRenewalStatus==="ok"?"✓":insRenewalStatus==="soon"?"⚠️":"🚨"}
+                          {" "}{insRenewalStatus==="ok"?`Renews ${fmtD(profile.ins_renewal_date)} · ${insRenewalDays} days away`:insRenewalStatus==="soon"?`Renews in ${insRenewalDays} days — ${fmtD(profile.ins_renewal_date)}`:insRenewalStatus==="urgent"?`Renews in ${insRenewalDays} days — contact your agent`:`Renewal date passed — verify your coverage`}
+                        </div>
+                      )}
+                      <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem 1rem .5rem"}}>
+                        <div style={{width:42,height:42,borderRadius:12,background:"var(--ok-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>🛡️</div>
+                        <div>
+                          <div style={{fontSize:"1rem",fontWeight:700}}>{profile.ins_company}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap",marginTop:".15rem"}}>
+                            {profile.ins_policy_number&&<span style={{fontSize:".78rem",color:"#8A8178"}}>#{profile.ins_policy_number}</span>}
+                            {profile.ins_agent_name&&<span style={{fontSize:".78rem",color:"#8A8178"}}>· {profile.ins_agent_name}</span>}
+                            {profile.ins_agent_phone&&<a href={`tel:${profile.ins_agent_phone}`} style={{fontSize:".78rem",color:"var(--pine)",fontWeight:700,textDecoration:"none"}} onClick={e=>e.stopPropagation()}>📞 {profile.ins_agent_phone}</a>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Coverage grid */}
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",padding:".5rem 1rem"}}>
+                        {[
+                          {label:"Annual premium",    val:profile.ins_premium?"$"+Number(profile.ins_premium).toLocaleString():null},
+                          {label:"Deductible",        val:profile.ins_deductible?"$"+Number(profile.ins_deductible).toLocaleString():null},
+                          {label:"Dwelling",          val:profile.ins_dwelling_coverage?"$"+Number(profile.ins_dwelling_coverage).toLocaleString():null},
+                          {label:"Personal property", val:profile.ins_personal_property?"$"+Number(profile.ins_personal_property).toLocaleString():null},
+                          {label:"Liability",         val:profile.ins_liability_coverage?"$"+Number(profile.ins_liability_coverage).toLocaleString():null},
+                          {label:"Loss of use",       val:profile.ins_loss_of_use?"$"+Number(profile.ins_loss_of_use).toLocaleString():null},
+                        ].filter(f=>f.val).map(f=>(
+                          <div key={f.label} style={{background:"var(--cream)",borderRadius:10,padding:".65rem .8rem"}}>
+                            <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".2rem"}}>{f.label}</div>
+                            <div style={{fontSize:".92rem",fontWeight:700}}>{f.val}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Coverage vs rebuild meter */}
+                      {coveragePct!==null&&(
+                        <div style={{padding:"0 1rem .9rem"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".75rem",color:"#A8A09A",fontWeight:600,marginBottom:".4rem"}}>
+                            <span>Dwelling vs. estimated rebuild cost</span>
+                            <span style={{color:coveragePct>=95?"var(--ok)":"var(--warn)",fontWeight:700}}>{coveragePct}% covered</span>
+                          </div>
+                          <div style={{height:8,background:"var(--cream2)",borderRadius:5,overflow:"hidden",position:"relative"}}>
+                            <div style={{height:"100%",width:`${Math.min(coveragePct,100)}%`,borderRadius:5,background:coveragePct>=95?"var(--ok)":"var(--warn)"}}/>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#A8A09A",marginTop:".3rem"}}>
+                            <span>Your coverage: {fmt$(dwellingCoverage)}</span>
+                            <span>Est. rebuild: ~{fmt$(estimatedRebuild)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {profile.ins_notes&&<div style={{padding:".6rem 1rem .9rem",fontSize:".84rem",color:"#7A7370",lineHeight:1.5,borderTop:"1px solid var(--cream2)"}}>{profile.ins_notes}</div>}
+                    </>
+                  ) : (
+                    <div onClick={()=>{setInsData({...profile});setInsModal(true);}} style={{padding:"1.5rem 1rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".5rem",cursor:"pointer",textAlign:"center"}}>
+                      <span style={{fontSize:"1.8rem"}}>🛡️</span>
+                      <div style={{fontSize:".92rem",fontWeight:700}}>Add your homeowners policy</div>
+                      <div style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.4}}>Company, agent phone, coverage amounts, renewal date</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── ADDITIONAL POLICIES ── */}
+                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📋</span><span style={{fontSize:"1rem",fontWeight:700}}>Additional coverage</span></div>
+                    <button onClick={openAddPolicy} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>+ Add</button>
+                  </div>
+
+                  {additionalPolicies.length === 0 ? (
+                    <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:".5rem"}}>
+                      {[{icon:"🌊",label:"Flood insurance",hint:"Required for many FL properties — separate from homeowners"},
+                        {icon:"☂️",label:"Umbrella policy",hint:"Extra liability above your homeowners limits"},
+                        {icon:"💎",label:"Jewelry / valuables rider",hint:"Standard policies cap jewelry at $1,500–$2,500"},
+                      ].map(s=>(
+                        <div key={s.label} onClick={()=>{setPolicyData({type:s.label.toLowerCase().split(" ")[0]});setAddPolicyModal(true);}} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem .85rem",borderRadius:10,border:"1.5px dashed var(--stone)",cursor:"pointer",background:"var(--cream)"}}>
+                          <span style={{fontSize:"1.3rem",flexShrink:0}}>{s.icon}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)"}}>{s.label}</div>
+                            <div style={{fontSize:".75rem",color:"#8A8178"}}>{s.hint}</div>
+                          </div>
+                          <span style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Add →</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      {additionalPolicies.map((pol,i) => {
+                        const pt = POLICY_TYPES.find(t=>t.key===pol.type)||{icon:"📋",label:pol.type||"Policy"};
+                        const renewal = pol.renewal_date ? daysTo(pol.renewal_date) : null;
+                        const rStatus = renewal===null?null:renewal<0?"expired":renewal<=30?"urgent":renewal<=90?"soon":"ok";
+                        return (
+                          <div key={pol.id||i} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                            <div style={{width:42,height:42,borderRadius:12,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>{pt.icon}</div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:".95rem",fontWeight:700,marginBottom:".15rem"}}>{pt.label}</div>
+                              <div style={{fontSize:".78rem",color:"#8A8178"}}>
+                                {[pol.company,pol.coverage&&"$"+Number(pol.coverage).toLocaleString(),pol.renewal_date&&`Renews ${fmtD(pol.renewal_date)}`].filter(Boolean).join(" · ")}
+                              </div>
+                            </div>
+                            {rStatus==="soon"&&<span style={{fontSize:".68rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 6px",borderRadius:7}}>⚠ {renewal}d</span>}
+                            {rStatus==="urgent"&&<span style={{fontSize:".68rem",fontWeight:700,color:"#B0432B",background:"#F7E0DA",padding:"2px 6px",borderRadius:7}}>🚨</span>}
+                            <button onClick={()=>openEditPolicy(i)} style={{background:"none",border:"none",fontSize:".8rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",fontFamily:"inherit",flexShrink:0,padding:"0 .25rem"}}>Edit</button>
+                            <button onClick={()=>deletePolicy(i)} style={{background:"none",border:"none",fontSize:".8rem",fontWeight:700,color:"#B0432B",cursor:"pointer",fontFamily:"inherit",flexShrink:0,padding:"0 .25rem"}}>✕</button>
+                          </div>
+                        );
+                      })}
+                      <div onClick={openAddPolicy} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1rem",cursor:"pointer"}}>
+                        <div style={{width:42,height:42,borderRadius:12,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",flexShrink:0}}>＋</div>
+                        <div>
+                          <div style={{fontSize:".9rem",fontWeight:700}}>Add another policy</div>
+                          <div style={{fontSize:".78rem",color:"#8A8178"}}>Wind, earthquake, home warranty…</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── CLAIM LOG ── */}
+                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📁</span><span style={{fontSize:"1rem",fontWeight:700}}>Claim log</span></div>
+                    <button onClick={()=>{setClaimData({date:localISO()});setAddClaimModal(true);}} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>+ Log entry</button>
+                  </div>
+
+                  {claimLog.length === 0 ? (
+                    <div style={{padding:"1.25rem 1rem",textAlign:"center"}}>
+                      <div style={{fontSize:"1.5rem",marginBottom:".5rem"}}>📁</div>
+                      <div style={{fontSize:".9rem",fontWeight:700,marginBottom:".35rem"}}>No claim history</div>
+                      <div style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.4,marginBottom:".85rem"}}>If you ever file a claim, log every call, email, and decision here. Good records are your strongest tool.</div>
+                      <button onClick={()=>{setClaimData({date:localISO()});setAddClaimModal(true);}} className="btn btn-ghost" style={{fontSize:".85rem"}}>+ Log first entry</button>
+                    </div>
+                  ) : claimLog.map((entry,i) => (
+                    <div key={entry.id||i} style={{display:"flex",gap:".85rem",padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:4}}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:".72rem",color:"#A8A09A",fontWeight:600,marginBottom:".2rem"}}>{fmtD(entry.date)}{entry.contact&&` · ${entry.contact}`}</div>
+                        <div style={{fontSize:".9rem",fontWeight:700,marginBottom:".15rem"}}>{entry.description}</div>
+                        {entry.notes&&<div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.4}}>{entry.notes}</div>}
+                      </div>
+                      <button onClick={()=>deleteClaimEntry(entry.id||i)} style={{background:"none",border:"none",fontSize:".75rem",color:"#B0432B",cursor:"pointer",fontFamily:"inherit",flexShrink:0,alignSelf:"flex-start",padding:".2rem 0"}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Renewal checklist — Plus gate */}
+                {insRenewalDays!==null&&insRenewalDays<=90&&insRenewalDays>=0&&profile?.ins_company&&(
+                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📅</span><span style={{fontSize:"1rem",fontWeight:700}}>Renewal checklist</span></div>
+                      <span style={{fontSize:".78rem",fontWeight:600,color:insRenewalDays<=30?"#B0432B":"var(--warn)"}}>{insRenewalDays} days away</span>
+                    </div>
+                    {[
+                      coverageGap!==null&&coverageGap>10000&&{icon:"🏗️",bg:"#EAF1F6",color:"#3A6E92",title:"Update dwelling coverage",body:`Your estimated rebuild cost is ${fmt$(estimatedRebuild)}. Your current coverage of ${fmt$(dwellingCoverage)} may leave a ${fmt$(coverageGap)} gap.`,action:"Review with agent"},
+                      checkinScore<100&&{icon:"📷",bg:"var(--ok-bg)",color:"var(--ok)",title:"Complete your annual check-in",body:`${checkinScore}% complete. A documented home record strengthens any future claim.`,action:"Complete check-in",onClick:()=>setShowCheckin(true)},
+                      {icon:"💬",bg:"var(--rust-light)",color:"var(--rust)",title:"Ask about discounts",body:"New systems, security upgrades, or loyalty discounts may lower your premium. Always worth asking at renewal.",action:"Call your agent"},
+                    ].filter(Boolean).map((item,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".85rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                        <div style={{width:36,height:36,borderRadius:10,background:item.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0,color:item.color}}>{item.icon}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:".92rem",fontWeight:700,marginBottom:".2rem"}}>{item.title}</div>
+                          <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.4,marginBottom:".35rem"}}>{item.body}</div>
+                          <button onClick={item.onClick||undefined} style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>{item.action} →</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modals for insurance module ── */}
+      {addPolicyModal && <Modal title="Add Policy" onClose={()=>setAddPolicyModal(false)} onSave={saveAddPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData}/></Modal>}
+      {editPolicyModal && <Modal title="Edit Policy" onClose={()=>setEditPolicyModal(false)} onSave={saveEditPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData}/></Modal>}
+      {addClaimModal && <Modal title="Log Claim Entry" onClose={()=>setAddClaimModal(false)} onSave={saveClaimEntry}><ClaimEntryForm data={claimData} onChange={setClaimData}/></Modal>}
 
       {/* ── HOME TOOLBOX ── */}
       {!showSetup && (
