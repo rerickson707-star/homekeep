@@ -7194,16 +7194,16 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [activeUtil, setActiveUtil] = useState(null);
   const [expandedUtil, setExpandedUtil] = useState(null);
 
-  // Load projects
+  // Load projects, utilities, bills — scoped to current property
   useEffect(() => {
-    if(!userId) return;
-    supabase.from("projects").select("*").eq("user_id", userId)
+    if(!userId || !propertyId) return;
+    supabase.from("projects").select("*").eq("user_id", userId).eq("property_id", propertyId)
       .then(({data, error}) => { if(error) console.error("Projects load error:", error.message, error.code); if(data) setProjects(data); });
-    supabase.from("utilities").select("*").eq("user_id", userId)
+    supabase.from("utilities").select("*").eq("user_id", userId).eq("property_id", propertyId)
       .then(({data, error}) => { if(error) console.error("Utilities load error:", error.message, error.code); if(data) setUtilities(data); });
     supabase.from("utility_bills").select("*").eq("user_id", userId).order("bill_date", {ascending:false})
       .then(({data, error}) => { if(error) console.error("Utility bills load error:", error.message, error.code); if(data) setBills(data); });
-  }, [userId]);
+  }, [userId, propertyId]);
 
   // ── Expense CRUD
   const EXPENSE_FIELDS = ["description","amount","date","category","vendor","notes","project_id","file_url","file_type"];
@@ -7273,7 +7273,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       if(!error) { setUtilities(utilities.map(u=>u.id===utilEditId?{...utilEditData,id:utilEditId}:u)); toast("Utility updated ✓"); }
       else toast("Error saving","error");
     } else {
-      const {data,error} = await supabase.from("utilities").insert([{...utilEditData,user_id:userId}]).select();
+      const {data,error} = await supabase.from("utilities").insert([{...utilEditData,user_id:userId,property_id:propertyId}]).select();
       if(!error&&data) { setUtilities([...utilities,data[0]]); toast("Utility added ✓"); }
       else toast("Error adding","error");
     }
@@ -12326,8 +12326,11 @@ export default function App() {
     try { localStorage.setItem(`sw_prop_${uid || session?.user?.id}`, id); } catch {}
   };
 
-  // Plan derived from profile — re-computes whenever profile loads
-  const planData = usePlan(profile);
+  // Plan is a user-level attribute — always read from the primary (oldest) owned profile,
+  // not the currently active property, so switching to a secondary property doesn't
+  // incorrectly reset the plan to "free".
+  const primaryProfile = allProfiles.find(p => !p._shared) || profile;
+  const planData = usePlan(primaryProfile);
 
   // ── Listen for auth state changes
   useEffect(() => {
@@ -12449,17 +12452,24 @@ export default function App() {
     const newProfile = allProfiles.find(p => p.id === propertyId);
     if (newProfile) setProfile(newProfile);
     setTasks([]); setWarranties([]); setExpenses([]); setServiceLogs([]);
+    setProjects([]); setUtilities([]); setBills([]);
     setDataLoading(true);
-    const [t, w, e, sl] = await Promise.all([
+    const [t, w, e, sl, proj, util, bills] = await Promise.all([
       supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", propertyId).order("created_at", { ascending: false }),
       supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", propertyId).order("expiry_date", { ascending: true }),
       supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", propertyId).order("date", { ascending: false }),
       supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", propertyId).order("service_date", { ascending: false }),
+      supabase.from("projects").select("*").eq("user_id", uid).eq("property_id", propertyId),
+      supabase.from("utilities").select("*").eq("user_id", uid).eq("property_id", propertyId),
+      supabase.from("utility_bills").select("*").eq("user_id", uid).order("bill_date", { ascending: false }),
     ]);
-    if(t.data) setTasks(t.data);
-    if(w.data) setWarranties(w.data);
-    if(e.data) setExpenses(e.data);
-    if(sl.data) setServiceLogs(sl.data);
+    if(t.data)     setTasks(t.data);
+    if(w.data)     setWarranties(w.data);
+    if(e.data)     setExpenses(e.data);
+    if(sl.data)    setServiceLogs(sl.data);
+    if(proj.data)  setProjects(proj.data);
+    if(util.data)  setUtilities(util.data);
+    if(bills.data) setBills(bills.data);
     setDataLoading(false);
   };
 
