@@ -5778,6 +5778,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
       if(s === "Completed" && t.asset_id && !isServiceTask) {
         await supabase.from("asset_service_log").insert([{
           user_id:      userId,
+          property_id:  propertyId,
           asset_id:     t.asset_id,
           service_date: localISO(),
           description:  t.title,
@@ -5785,7 +5786,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           notes:        `Auto-logged from task completion${t.vendor ? ` · ${t.vendor}` : ""}`,
         }]);
         await supabase.from("warranties").update({last_serviced: localISO()}).eq("id",t.asset_id).eq("user_id",userId);
-        const {data: sl} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false});
+        const {data: sl} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).eq("property_id",propertyId).order("service_date",{ascending:false});
         if(sl) setServiceLogs(sl);
       }
     }
@@ -6299,7 +6300,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
 
   const reloadServiceLogs = async () => {
-    const {data} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).order("service_date",{ascending:false});
+    const {data} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).eq("property_id",propertyId).order("service_date",{ascending:false});
     if(data) setServiceLogs(data);
   };
 
