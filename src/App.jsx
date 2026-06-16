@@ -2920,7 +2920,11 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
   );
 }
 
-const ASSET_CATEGORIES = ["HVAC","Appliance","Roofing","Plumbing","Electrical","Structure","Safety","Landscaping","Other"];
+const ASSET_CATEGORIES = [
+  "HVAC","Appliance","Electronics","Vehicle","Tools",
+  "Roofing","Plumbing","Electrical","Structure","Safety",
+  "Landscaping","Jewelry & Valuables","Outdoor","Other"
+];
 const ASSET_CONDITIONS = ["Good","Fair","Needs Attention","Failed"];
 const CONDITION_STYLE = {
   "Good":            {bg:"var(--sage-light)",  text:"var(--sage)",  border:"#B8D9CC"},
@@ -2930,31 +2934,55 @@ const CONDITION_STYLE = {
 };
 // Default lifespans by category (years)
 const DEFAULT_LIFESPAN = {
-  HVAC:20, Appliance:12, Roofing:25, Plumbing:50,
-  Electrical:40, Structure:50, Safety:10, Landscaping:15, Other:15,
+  HVAC:20, Appliance:12, Electronics:5, Vehicle:12, Tools:15,
+  Roofing:25, Plumbing:50, Electrical:40, Structure:50,
+  Safety:10, Landscaping:15, "Jewelry & Valuables":50, Outdoor:15, Other:15,
 };
 const ASSET_ICONS = {
-  HVAC:"🌡️", Appliance:"🍳", Roofing:"🏚️", Plumbing:"🚿",
-  Electrical:"⚡", Structure:"🧱", Safety:"🔒", Landscaping:"🌿", Other:"🔧",
+  HVAC:"🌡️", Appliance:"🍳", Electronics:"💻", Vehicle:"🚗", Tools:"🔧",
+  Roofing:"🏚️", Plumbing:"🚿", Electrical:"⚡", Structure:"🧱",
+  Safety:"🔒", Landscaping:"🌿", "Jewelry & Valuables":"💎", Outdoor:"🌳", Other:"🔧",
 };
-const CATEGORY_ORDER = ["HVAC","Appliance","Plumbing","Electrical","Roofing","Structure","Safety","Landscaping","Other"];
+const CATEGORY_ORDER = [
+  "HVAC","Appliance","Electronics","Vehicle","Tools",
+  "Plumbing","Electrical","Roofing","Structure","Safety",
+  "Landscaping","Outdoor","Jewelry & Valuables","Other"
+];
 const CATEGORY_COLORS = {
-  HVAC:      {bg:"rgba(58,122,175,.1)", border:"rgba(58,122,175,.2)", icon:"rgba(58,122,175,.8)"},
-  Appliance: {bg:"rgba(193,97,64,.08)", border:"rgba(193,97,64,.18)", icon:"var(--rust)"},
-  Roofing:   {bg:"rgba(42,39,35,.07)", border:"rgba(42,39,35,.15)", icon:"var(--dark)"},
-  Plumbing:  {bg:"rgba(35,74,61,.08)", border:"rgba(35,74,61,.18)", icon:"var(--pine)"},
-  Electrical:{bg:"rgba(184,134,30,.1)", border:"rgba(184,134,30,.2)", icon:"var(--gold)"},
-  Structure: {bg:"rgba(122,83,62,.1)", border:"rgba(122,83,62,.2)", icon:"var(--brown)"},
-  Safety:    {bg:"rgba(193,97,64,.1)", border:"rgba(193,97,64,.2)", icon:"var(--rust)"},
-  Landscaping:{bg:"rgba(167,191,168,.2)", border:"rgba(167,191,168,.4)", icon:"var(--sage)"},
-  Other:     {bg:"rgba(122,115,112,.08)", border:"rgba(122,115,112,.15)", icon:"var(--mid)"},
+  HVAC:        {bg:"rgba(58,122,175,.1)",  border:"rgba(58,122,175,.2)",  icon:"rgba(58,122,175,.8)"},
+  Appliance:   {bg:"rgba(193,97,64,.08)", border:"rgba(193,97,64,.18)", icon:"var(--rust)"},
+  Electronics: {bg:"rgba(88,86,214,.1)",  border:"rgba(88,86,214,.2)",  icon:"#5856D6"},
+  Vehicle:     {bg:"rgba(42,39,35,.07)",  border:"rgba(42,39,35,.15)",  icon:"var(--dark)"},
+  Tools:       {bg:"rgba(122,83,62,.1)",  border:"rgba(122,83,62,.2)",  icon:"var(--brown)"},
+  Roofing:     {bg:"rgba(42,39,35,.07)",  border:"rgba(42,39,35,.15)",  icon:"var(--dark)"},
+  Plumbing:    {bg:"rgba(35,74,61,.08)",  border:"rgba(35,74,61,.18)",  icon:"var(--pine)"},
+  Electrical:  {bg:"rgba(184,134,30,.1)", border:"rgba(184,134,30,.2)", icon:"var(--gold)"},
+  Structure:   {bg:"rgba(122,83,62,.1)",  border:"rgba(122,83,62,.2)",  icon:"var(--brown)"},
+  Safety:      {bg:"rgba(193,97,64,.1)",  border:"rgba(193,97,64,.2)",  icon:"var(--rust)"},
+  Landscaping: {bg:"rgba(167,191,168,.2)",border:"rgba(167,191,168,.4)",icon:"var(--sage)"},
+  "Jewelry & Valuables":{bg:"rgba(184,134,30,.1)",border:"rgba(184,134,30,.2)",icon:"var(--gold)"},
+  Outdoor:     {bg:"rgba(35,74,61,.08)",  border:"rgba(35,74,61,.18)",  icon:"var(--pine)"},
+  Other:       {bg:"rgba(122,115,112,.08)",border:"rgba(122,115,112,.15)",icon:"var(--mid)"},
 };
 
-const CAT_NORMALIZE_MAP = { "Appliances":"Appliance", "Structural":"Structure" };
+const CAT_NORMALIZE_MAP = {
+  "Appliances":"Appliance", "Structural":"Structure",
+  "Electronics":"Electronics", "Vehicles":"Vehicle",
+  "Tools & Equipment":"Tools", "Jewelry":"Jewelry & Valuables",
+  "Outdoor & Garden":"Outdoor",
+};
 
 // ─── ASSET ICON SYSTEM (inline SVG, Lucide-derived) ──────────────────────────
 const ICON_PATHS = {
   flame:   '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  laptop:  '<rect width="14" height="8" x="5" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M9.5 18h5"/>',
+  phone:   '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',
+  tv:      '<rect width="20" height="15" x="2" y="3" rx="2"/><polyline points="8 21 12 17 16 21"/>',
+  headphones:'<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
+  car:     '<path d="M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2l2-4h10l2 4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2z"/><circle cx="8.5" cy="17.5" r="2.5"/><circle cx="15.5" cy="17.5" r="2.5"/>',
+  gem:     '<polygon points="6 3 18 3 22 9 12 22 2 9"/><polyline points="2 9 12 12 22 9"/><line x1="12" y1="3" x2="12" y2="22"/>',
+  drill:   '<path d="m10 2 4 4-6.5 6.5a5 5 0 0 0 7.07 7.07L21 13l-4-4-1.5 1.5-2.5-2.5 1.5-1.5L10 2z"/><path d="m13 15 2 2"/><circle cx="6.5" cy="17.5" r="2.5"/>',
+  outdoor: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
   wind:    '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
   thermo:  '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
   fan:     '<path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"/><circle cx="12" cy="12" r="2"/>',
@@ -2984,36 +3012,55 @@ const ICON_PATHS = {
 };
 
 const ICON_KEYWORDS = [
+  // HVAC
   [/furnace|boiler|heat pump/i, "flame"],
   [/\ba\/?c\b|air.?condition|cooling|condenser|hvac|mini.?split/i, "wind"],
   [/thermostat/i, "thermo"],
   [/\bfan\b|ventil|exhaust/i, "fan"],
+  // Plumbing
   [/water heater|hot water|tankless/i, "droplet"],
+  [/toilet|sink|faucet|shower|tub|bath/i, "bath"],
+  [/pipe|plumb|drain|sump|well pump|softener/i, "pipe"],
+  // Appliances
   [/dishwasher/i, "dishwasher"],
   [/washer|washing|dryer|laundry/i, "washer"],
   [/microwave/i, "microwave"],
   [/oven|range|stove|cooktop/i, "oven"],
   [/coffee|espresso|brewer/i, "coffee"],
   [/fridge|refriger|freezer|icemaker|ice maker/i, "fridge"],
-  [/toilet|sink|faucet|shower|tub|bath/i, "bath"],
-  [/pipe|plumb|drain|sump|well pump|softener/i, "pipe"],
+  // Electronics
+  [/laptop|macbook|computer|notebook/i, "laptop"],
+  [/phone|iphone|android|smartphone/i, "phone"],
+  [/tv|television|monitor|display/i, "tv"],
+  [/headphone|earbud|airpod|speaker|audio/i, "headphones"],
+  // Vehicle
+  [/car|truck|suv|vehicle|automobile|tesla|honda|toyota|ford|chevy|bmw/i, "car"],
+  // Tools
+  [/drill|saw|mower|blower|trimmer|tool|nailer|compressor|generator/i, "drill"],
+  // Jewelry
+  [/ring|necklace|bracelet|watch|earring|jewelry|diamond|gold|silver/i, "gem"],
+  // Structural
   [/roof|shingle|gutter|soffit|fascia/i, "roof"],
   [/panel|breaker|electrical box|load center/i, "panel"],
   [/outlet|receptacle|switch|wiring|gfci/i, "plug"],
-  [/generator|solar|inverter|\bev\b|charger/i, "zap"],
+  [/solar|inverter|\bev\b|charger/i, "zap"],
   [/smoke|carbon|co detector/i, "smoke"],
   [/alarm|security|camera|sensor|doorbell/i, "alarm"],
   [/extinguisher/i, "extinguisher"],
   [/door|garage/i, "door"],
   [/window/i, "window"],
   [/wall|foundation|structur|framing|drywall/i, "wall"],
+  // Outdoor / Landscaping
   [/lawn|grass|garden|sprinkler|irrigation|landscap|mower/i, "sprout"],
   [/tree|shrub|hedge|plant/i, "tree"],
+  [/patio|deck|fence|shed|pergola|pool|spa|grill|bbq/i, "outdoor"],
 ];
 
 const CATEGORY_ICON = {
-  HVAC:"wind", Appliance:"oven", Plumbing:"droplet", Electrical:"zap",
-  Roofing:"roof", Structure:"wall", Safety:"shield", Landscaping:"sprout", Other:"wrench",
+  HVAC:"wind", Appliance:"oven", Electronics:"laptop", Vehicle:"car",
+  Tools:"drill", Plumbing:"droplet", Electrical:"zap",
+  Roofing:"roof", Structure:"wall", Safety:"shield",
+  Landscaping:"sprout", "Jewelry & Valuables":"gem", Outdoor:"outdoor", Other:"wrench",
 };
 
 function pickIconName(asset) {
