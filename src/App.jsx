@@ -12466,33 +12466,25 @@ export default function App() {
     setActivePropertyId(propertyId, uid);
     const newProfile = allProfiles.find(p => p.id === propertyId);
     if (newProfile) setProfile(newProfile);
-    setTasks([]); setWarranties([]); setExpenses([]); setServiceLogs([]);
-    setProjects([]); setUtilities([]); setBills([]);
     setDataLoading(true);
-    const [t, w, e, sl, proj, util] = await Promise.all([
+
+    // Fetch everything in parallel, then set state all at once
+    const [t, w, e, sl, proj] = await Promise.all([
       supabase.from("tasks").select("*").eq("user_id", uid).eq("property_id", propertyId).order("created_at", { ascending: false }),
       supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", propertyId).order("expiry_date", { ascending: true }),
       supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", propertyId).order("date", { ascending: false }),
       supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", propertyId).order("service_date", { ascending: false }),
       supabase.from("projects").select("*").eq("user_id", uid).eq("property_id", propertyId),
-      supabase.from("utilities").select("*").eq("user_id", uid).eq("property_id", propertyId),
     ]);
-    if(t.data)     setTasks(t.data);
-    if(w.data)     setWarranties(w.data);
-    if(e.data)     setExpenses(e.data);
-    if(sl.data)    setServiceLogs(sl.data);
-    if(proj.data)  setProjects(proj.data);
-    if(util.data)  {
-      setUtilities(util.data);
-      // Load bills scoped to this property's utilities only
-      const utilIds = util.data.map(u => u.id);
-      if(utilIds.length > 0) {
-        const { data: billData } = await supabase.from("utility_bills").select("*").in("utility_id", utilIds).order("bill_date", { ascending: false });
-        if(billData) setBills(billData);
-      } else {
-        setBills([]);
-      }
-    }
+
+    // Set all state at once so components mount with complete data
+    setTasks(t.data       || []);
+    setWarranties(w.data  || []);
+    setExpenses(e.data    || []);
+    setServiceLogs(sl.data || []);
+    setProjects(proj.data || []);
+    // Note: utilities and bills are managed inside Expenses component
+    // and reload automatically via key={activePropertyId} remount
     setDataLoading(false);
   };
 
