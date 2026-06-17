@@ -6644,7 +6644,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   useEffect(() => {
     if (pendingEditId && assets.length > 0) {
       const asset = assets.find(a => a.id === pendingEditId);
-      if (asset) { openEdit(asset); onClearPendingEdit?.(); }
+      if (asset) {
+        // If the asset is retired, switch to retired view first so it's visible
+        if (asset.retired_at) setShowRetired(true);
+        setSelectedAsset(asset.id);
+        onClearPendingEdit?.();
+      }
     }
   }, [pendingEditId, assets.length]);
 
@@ -6992,8 +6997,29 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           <button onClick={()=>setSelectedAsset(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
           <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
           <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
-          <button onClick={()=>setRetirePrompt(asset.id)} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>
+          {!asset.retired_at && <button onClick={()=>setRetirePrompt(asset.id)} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>}
         </div>
+
+        {/* Retired banner */}
+        {asset.retired_at && (
+          <div style={{background:"#F4F0E8",borderBottom:"1px solid var(--stone)",padding:".75rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
+              <span style={{fontSize:"1rem"}}>🏚️</span>
+              <div>
+                <div style={{fontSize:".82rem",fontWeight:700,color:"#7A7370"}}>Retired {fmtD(asset.retired_at)}</div>
+                <div style={{fontSize:".72rem",color:"#A8A09A"}}>History preserved — not in active list</div>
+              </div>
+            </div>
+            <button onClick={async()=>{
+                const{error}=await supabase.from("warranties").update({retired_at:null,retired_reason:""}).eq("id",asset.id).eq("user_id",userId);
+                if(!error){setAssets(assets.map(a=>a.id===asset.id?{...a,retired_at:null,retired_reason:""}:a));setShowRetired(false);toast("Asset restored ✓");}
+                else toast("Error restoring","error");
+              }}
+              style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".4rem .85rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+              Restore
+            </button>
+          </div>
+        )}
 
         <div style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
 
@@ -7716,7 +7742,17 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         );
       })}
 
-      {modal && (
+      {/* Retired assets discovery prompt — shown at bottom of active list */}
+      {!showRetired && retiredAssets.length > 0 && (
+        <div onClick={()=>setShowRetired(true)}
+          style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1.25rem",margin:"1rem 0 .5rem",cursor:"pointer",opacity:.65}}>
+          <span style={{fontSize:"1rem"}}>🏚️</span>
+          <span style={{fontSize:".82rem",color:"#8A8178",fontWeight:600}}>
+            {retiredAssets.length} retired asset{retiredAssets.length!==1?"s":""} — tap to view
+          </span>
+          <span style={{fontSize:".8rem",color:"#C2B8AE",marginLeft:"auto"}}>→</span>
+        </div>
+      )}
         addMode === "choose" ? (
           <AssetAddChoiceModal
             onClose={closeModal}
