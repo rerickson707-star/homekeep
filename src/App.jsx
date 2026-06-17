@@ -4163,8 +4163,8 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
 
   return (
     <div>
-      {/* ── AI Scan Hero — only shown in manual mode or when editing ── */}
-      {(!initialMode || initialMode === "manual" || initialMode === "barcode") && (
+      {/* ── AI Scan Hero — only shown when no mode chosen or barcode (not when manually filling) ── */}
+      {(!initialMode || initialMode === "barcode") && (
         <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.1rem 1.1rem .9rem",marginBottom:"1rem"}}>
           <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".5rem"}}>
             <span style={{fontSize:"1rem"}}>✨</span>
