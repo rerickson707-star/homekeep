@@ -4163,57 +4163,53 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
 
   return (
     <div>
-      {/* ── AI Scan Hero ── */}
-      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.1rem 1.1rem .9rem",marginBottom:"1rem"}}>
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".5rem"}}>
-          <span style={{fontSize:"1rem"}}>✨</span>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Fill with AI</div>
-          {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
-        </div>
-        <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
-          Scan the nameplate tag or upload a receipt to fill fields automatically.
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",alignItems:"start"}}>
-          <AIScanButton
-            onScanComplete={handleScanComplete}
-            label="Scan Nameplate"
-            description="Point camera at equipment tag"
-            scanType="nameplate"
-            planData={planData}
-            onUpgrade={onUpgrade}
-            useCamera={true}
-            compact={true}
-            triggerRef={nameplateRef}
-          />
-          <AIScanButton
-            onScanComplete={handleScanComplete}
-            label="Upload Receipt"
-            description="Warranty card or receipt"
-            scanType="warranty"
-            planData={planData}
-            onUpgrade={onUpgrade}
-            useCamera={false}
-            compact={true}
-          />
-        </div>
-
-        {/* Barcode scanner — scan product box UPC for instant identification */}
-        <BarcodeScanButton
-          onResult={(upc, upcData) => {
-            const mapped = { upc };
-            if (upcData?.brand && !data.brand) mapped.brand = upcData.brand;
-            if (upcData?.model && !data.model) mapped.model = upcData.model;
-            if (upcData?.title && !data.item)  mapped.item  = upcData.title;
-            onChange({...data, ...mapped});
-          }}
-        />
-        {initialMode === "nameplate" && (
-          <div style={{marginTop:".6rem",fontSize:".7rem",color:"rgba(244,237,223,.4)",textAlign:"center",lineHeight:1.4}}>
-            After scanning, review the filled fields below and tap Save
+      {/* ── AI Scan Hero — only shown in manual mode or when editing ── */}
+      {(!initialMode || initialMode === "manual" || initialMode === "barcode") && (
+        <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.1rem 1.1rem .9rem",marginBottom:"1rem"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".5rem"}}>
+            <span style={{fontSize:"1rem"}}>✨</span>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Fill with AI</div>
+            {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
           </div>
-        )}
-      </div>
+          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
+            Scan the nameplate tag or upload a receipt to fill fields automatically.
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",alignItems:"start"}}>
+            <AIScanButton
+              onScanComplete={handleScanComplete}
+              label="Scan Nameplate"
+              description="Point camera at equipment tag"
+              scanType="nameplate"
+              planData={planData}
+              onUpgrade={onUpgrade}
+              useCamera={true}
+              compact={true}
+              triggerRef={nameplateRef}
+            />
+            <AIScanButton
+              onScanComplete={handleScanComplete}
+              label="Upload Receipt"
+              description="Warranty card or receipt"
+              scanType="warranty"
+              planData={planData}
+              onUpgrade={onUpgrade}
+              useCamera={false}
+              compact={true}
+            />
+          </div>
+          <BarcodeScanButton
+            onResult={(upc, upcData) => {
+              const mapped = { upc };
+              if (upcData?.brand && !data.brand) mapped.brand = upcData.brand;
+              if (upcData?.model && !data.model) mapped.model = upcData.model;
+              if (upcData?.title && !data.item)  mapped.item  = upcData.title;
+              onChange({...data, ...mapped});
+            }}
+          />
+        </div>
+      )}
 
+      {/* SmartFill — always visible, locked to Plus/Pro tier */}
       <SmartFillButton data={data} onChange={(d)=>{onChange(d);if(draftKey){try{localStorage.setItem(draftKey,JSON.stringify(d));}catch{}}}} planData={planData} onUpgrade={onUpgrade} profile={profile}/>
       <div className="fg">
       <div className="field s2"><label>Asset Name *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Carrier HVAC System, Samsung Fridge" /></div>
