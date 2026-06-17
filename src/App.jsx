@@ -4120,24 +4120,13 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           />
         </div>
         <SmartFillButton
-          brand={data.brand||""} model={data.model||""} item={data.item||""}
-          onApply={result=>{
-            const enriched={...data};
-            if(result.item&&!data.item)           enriched.item=result.item;
-            if(result.category&&!data.category)   enriched.category=result.category;
-            if(result.lifespan_years)             enriched.lifespan_years=result.lifespan_years;
-            if(result.replacement_cost)           enriched.replacement_cost=result.replacement_cost;
-            const manualLink=result.om_manual_url||result.manual_url;
-            if(manualLink&&!data.document_ref)    enriched.document_ref=manualLink;
-            if(result.support_url&&!data.notes?.includes("Support:"))
-              enriched.notes=[data.notes,`Support: ${result.support_url}`].filter(Boolean).join("\n");
-            if(result.pm_schedule?.length)        enriched.pm_schedule=result.pm_schedule;
-            onChange(enriched);
+          data={data}
+          onChange={result=>{
+            onChange({...data,...result});
             setScanned(true);
           }}
           planData={planData}
           onUpgrade={onUpgrade}
-          autoTrigger={false}
         />
       </div>
       <button type="button" onClick={()=>setScanned(true)}
