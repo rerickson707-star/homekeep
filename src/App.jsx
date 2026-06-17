@@ -3933,6 +3933,44 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
+        {assets.filter(a=>!a.warranty_only).length > 0 && (
+          <div className="field s2">
+            <label>Link to existing asset <span style={{fontWeight:400,color:"#A8A09A"}}>(optional)</span></label>
+            <AssetPicker
+              assetId={data.asset_id||null}
+              assetName={data.linked_asset_name||""}
+              onChange={({asset_id, linked_asset_name, _asset})=>{
+                if (_asset) {
+                  onChange({
+                    ...data,
+                    asset_id,
+                    linked_asset_name,
+                    item:          data.item          || _asset.item          || "",
+                    brand:         data.brand         || _asset.brand         || "",
+                    model:         data.model         || _asset.model         || "",
+                    serial_number: data.serial_number || _asset.serial_number || "",
+                    category:      data.category      || _asset.category      || "",
+                    cost:          data.cost          || _asset.cost          || "",
+                    expiry_date:   data.expiry_date   || _asset.expiry_date   || "",
+                  });
+                } else {
+                  onChange({...data, asset_id, linked_asset_name});
+                }
+              }}
+              assets={assets}
+            />
+            {data.asset_id && (
+              <div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,marginTop:".3rem"}}>
+                ✓ Fields pre-filled from asset — edit anything that differs
+              </div>
+            )}
+            {!data.asset_id && (
+              <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".3rem"}}>
+                Select an asset to auto-fill details, or fill in manually below
+              </div>
+            )}
+          </div>
+        )}
         <div className="field s2">
           <label>Item name *</label>
           <input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Samsung 65&quot; TV, MacBook Pro, Bosch Dishwasher"/>
@@ -3956,46 +3994,6 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
           <label>Serial number</label>
           <input value={data.serial_number||""} onChange={e=>f("serial_number",e.target.value)} placeholder="From sticker or receipt"/>
         </div>
-        {assets.filter(a=>!a.warranty_only).length > 0 && (
-          <div className="field s2">
-            <label>Link to existing asset <span style={{fontWeight:400,color:"#A8A09A"}}>(optional)</span></label>
-            <AssetPicker
-              assetId={data.asset_id||null}
-              assetName={data.linked_asset_name||""}
-              onChange={({asset_id, linked_asset_name, _asset})=>{
-                if (_asset) {
-                  // Auto-fill blank fields from the linked asset
-                  onChange({
-                    ...data,
-                    asset_id,
-                    linked_asset_name,
-                    // Only fill if not already set by the user
-                    item:          data.item          || _asset.item          || "",
-                    brand:         data.brand         || _asset.brand         || "",
-                    model:         data.model         || _asset.model         || "",
-                    serial_number: data.serial_number || _asset.serial_number || "",
-                    category:      data.category      || _asset.category      || "",
-                    cost:          data.cost          || _asset.cost          || "",
-                    expiry_date:   data.expiry_date   || _asset.expiry_date   || "",
-                  });
-                } else {
-                  onChange({...data, asset_id, linked_asset_name});
-                }
-              }}
-              assets={assets}
-            />
-            {data.asset_id && (
-              <div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,marginTop:".3rem"}}>
-                ✓ Fields pre-filled from asset record — edit anything that differs
-              </div>
-            )}
-            {!data.asset_id && (
-              <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".3rem"}}>
-                Links this warranty to a full asset — service history and recall alerts included
-              </div>
-            )}
-          </div>
-        )}
         <div className="field">
           <label>Purchase price ($)</label>
           <input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0"/>
