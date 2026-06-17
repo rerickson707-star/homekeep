@@ -2876,7 +2876,7 @@ function AssetPicker({ assetId, assetName, onChange, assets=[] }) {
     : search;
 
   const handleSelect = (a) => {
-    onChange({ asset_id: a.id, linked_asset_name: a.item });
+    onChange({ asset_id: a.id, linked_asset_name: a.item, _asset: a });
     setSearch("");
     setOpen(false);
   };
@@ -3962,12 +3962,38 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
             <AssetPicker
               assetId={data.asset_id||null}
               assetName={data.linked_asset_name||""}
-              onChange={({asset_id,linked_asset_name})=>onChange({...data,asset_id,linked_asset_name})}
+              onChange={({asset_id, linked_asset_name, _asset})=>{
+                if (_asset) {
+                  // Auto-fill blank fields from the linked asset
+                  onChange({
+                    ...data,
+                    asset_id,
+                    linked_asset_name,
+                    // Only fill if not already set by the user
+                    item:          data.item          || _asset.item          || "",
+                    brand:         data.brand         || _asset.brand         || "",
+                    model:         data.model         || _asset.model         || "",
+                    serial_number: data.serial_number || _asset.serial_number || "",
+                    category:      data.category      || _asset.category      || "",
+                    cost:          data.cost          || _asset.cost          || "",
+                    expiry_date:   data.expiry_date   || _asset.expiry_date   || "",
+                  });
+                } else {
+                  onChange({...data, asset_id, linked_asset_name});
+                }
+              }}
               assets={assets}
             />
-            <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".3rem"}}>
-              Links this warranty to a full asset — service history and recall alerts included
-            </div>
+            {data.asset_id && (
+              <div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,marginTop:".3rem"}}>
+                ✓ Fields pre-filled from asset record — edit anything that differs
+              </div>
+            )}
+            {!data.asset_id && (
+              <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".3rem"}}>
+                Links this warranty to a full asset — service history and recall alerts included
+              </div>
+            )}
           </div>
         )}
         <div className="field">
@@ -6416,26 +6442,61 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
   const saveWarranty = async () => {
     if (!warrantyData.item?.trim()) { toast("Item name is required","error"); return; }
+
     const payload = {
       ...warrantyData,
-      user_id:      userId,
-      property_id:  propertyId,
+      user_id:       userId,
+      property_id:   propertyId,
       warranty_only: true,
-      condition:    "Good",
+      condition:     "Good",
     };
+
+    // Remove internal _asset helper field before saving
+    delete payload._asset;
+
+    let savedId = warrantyEditId;
+
     if (warrantyEditId) {
       const { error } = await supabase.from("warranties").update(payload).eq("id", warrantyEditId).eq("user_id", userId);
       if (!error) {
         setAssets(assets.map(a => a.id === warrantyEditId ? {...payload, id:warrantyEditId} : a));
         toast("Warranty updated ✓");
-      } else toast("Error saving","error");
+      } else { toast("Error saving","error"); return; }
     } else {
       const { data, error } = await supabase.from("warranties").insert([payload]).select();
       if (!error && data?.[0]) {
         setAssets([...assets, data[0]]);
+        savedId = data[0].id;
         toast("Warranty saved ✓");
-      } else toast("Error saving","error");
+      } else { toast("Error saving","error"); return; }
     }
+
+    // ── Direction 2: backfill linked asset with any new info ──────────────
+    if (warrantyData.asset_id) {
+      const linkedAsset = assets.find(a => a.id === warrantyData.asset_id);
+      if (linkedAsset) {
+        const updates = {};
+        // Only write fields the asset is missing and the warranty has
+        if (!linkedAsset.serial_number && warrantyData.serial_number) updates.serial_number = warrantyData.serial_number;
+        if (!linkedAsset.brand         && warrantyData.brand)         updates.brand         = warrantyData.brand;
+        if (!linkedAsset.model         && warrantyData.model)         updates.model         = warrantyData.model;
+        if (!linkedAsset.cost          && warrantyData.cost)          updates.cost          = warrantyData.cost;
+        if (!linkedAsset.expiry_date   && warrantyData.expiry_date)   updates.expiry_date   = warrantyData.expiry_date;
+        if (!linkedAsset.purchase_date && warrantyData.purchase_date) updates.purchase_date = warrantyData.purchase_date;
+
+        if (Object.keys(updates).length > 0) {
+          const { error: assetErr } = await supabase.from("warranties")
+            .update(updates)
+            .eq("id", warrantyData.asset_id)
+            .eq("user_id", userId);
+          if (!assetErr) {
+            setAssets(assets.map(a => a.id === warrantyData.asset_id ? {...a, ...updates} : a));
+            toast(`Warranty saved & ${Object.keys(updates).length} field${Object.keys(updates).length>1?"s":""} added to ${linkedAsset.item} ✓`);
+          }
+        }
+      }
+    }
+
     setWarrantyModal(false);
   };
 
