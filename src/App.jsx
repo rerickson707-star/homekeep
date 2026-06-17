@@ -3970,6 +3970,8 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
             </div>
           </div>
         )}
+        <div className="field">
+          <label>Purchase price ($)</label>
           <input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0"/>
         </div>
         <div className="field">
