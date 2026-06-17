@@ -6729,17 +6729,18 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     setEditData(base); setEditId(a.id); setModal(true);
   };
 
-  // Restore modal state after page reload (iOS killed the tab, Vite HMR, etc.)
-  // Deep-link: open a specific asset from Dashboard checklist
+  // Deep-link: open a specific asset from search, Dashboard, Expenses, or Insurance check-in
   useEffect(() => {
-    if (pendingEditId && assets.length > 0) {
-      const asset = assets.find(a => a.id === pendingEditId);
-      if (asset) {
-        // If the asset is retired, switch to retired view first so it's visible
-        if (asset.retired_at) setShowRetired(true);
+    if (!pendingEditId) return;
+    if (assets.length === 0) return;
+    const asset = assets.find(a => a.id === pendingEditId);
+    if (asset) {
+      if (asset.retired_at) setShowRetired(true);
+      // Small delay ensures the tab is visible before opening detail
+      setTimeout(() => {
         setSelectedAsset(asset.id);
         onClearPendingEdit?.();
-      }
+      }, 50);
     }
   }, [pendingEditId, assets.length]);
 
