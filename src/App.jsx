@@ -10154,10 +10154,10 @@ function RecallCheckPanel({ warranties }) {
       </div>
 
       {open && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)setOpen(false)}}>
-          <div style={{background:"var(--linen)",borderRadius:"22px 22px 0 0",width:"100%",maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,display:"flex",alignItems:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)setOpen(false)}}>
+          <div style={{background:"#FFFCF6",borderRadius:"22px 22px 0 0",width:"100%",maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -8px 40px rgba(0,0,0,.2)"}}>
             {/* Header */}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 1.25rem .75rem",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 1.25rem .75rem",borderBottom:"1px solid var(--stone)",flexShrink:0,background:"#FFFCF6"}}>
               <div>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>🛡️ CPSC Recall Check</div>
                 <div style={{fontSize:".72rem",color:"var(--mid)",marginTop:2}}>Checking your appliances against the federal recall database</div>
@@ -10166,10 +10166,10 @@ function RecallCheckPanel({ warranties }) {
             </div>
 
             {/* Body */}
-            <div style={{flex:1,overflowY:"auto",padding:"1rem 1.25rem"}}>
+            <div style={{flex:1,overflowY:"auto",padding:"1rem 1.25rem",background:"#FFFCF6"}}>
               {/* Checking state */}
               {checking && (
-                <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1rem",background:"var(--white)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1rem",background:"var(--cream)",borderRadius:"var(--r-sm)",border:"1.5px solid var(--stone)"}}>
                   <span className="spinner" style={{width:16,height:16,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)",flexShrink:0}}/>
                   <div>
                     <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>Checking CPSC database…</div>
