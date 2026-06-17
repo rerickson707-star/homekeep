@@ -1740,7 +1740,7 @@ function Confirm({ message, onConfirm, onCancel }) {
   );
 }
 
-function Modal({ title, onClose, onSave, children }) {
+function Modal({ title, onClose, onSave, children, footer }) {
   useBodyScrollLock();
   return (
     <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
@@ -1751,10 +1751,12 @@ function Modal({ title, onClose, onSave, children }) {
           <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">{children}</div>
-        <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onSave}>Save</button>
-        </div>
+        {footer ? footer : (
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={onSave}>Save</button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4209,8 +4211,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
         </div>
       )}
 
-      {/* SmartFill — always visible, locked to Plus/Pro tier */}
-      <SmartFillButton data={data} onChange={(d)=>{onChange(d);if(draftKey){try{localStorage.setItem(draftKey,JSON.stringify(d));}catch{}}}} planData={planData} onUpgrade={onUpgrade} profile={profile}/>
+      {/* SmartFill is in the modal footer — not repeated here */}
       <div className="fg">
       <div className="field s2"><label>Asset Name *</label><input value={data.item||""} onChange={e=>f("item",e.target.value)} placeholder="e.g. Carrier HVAC System, Samsung Fridge" /></div>
       <div className="field"><label>Category</label>
@@ -7311,6 +7312,43 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               title={editId ? "Edit Asset" : addMode === "nameplate" ? "Scan Nameplate" : addMode === "smartfill" ? "Smart Fill" : "Add Asset"}
               onClose={()=>closeModal()}
               onSave={addMode === "choose" ? undefined : save}
+              footer={addMode !== "choose" ? (
+                <div className="modal-footer">
+                  <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                  {(() => {
+                    const hasData  = !!(editData.brand || editData.model);
+                    const isPaid   = planData?.plan==="plus" || planData?.plan==="pro";
+                    const runSmartFill = async () => {
+                      try {
+                        const resp = await fetch(ASSET_INTEL_URL, {method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},body:JSON.stringify({brand:editData.brand,model:editData.model,item:editData.item,upc:editData.upc||"",category:editData.category,install_date:editData.install_date,tier:planData?.plan||"free",user_id:userId||""})});
+                        if(resp.ok){const json=await resp.json();if(json.ok&&json.data){const d=json.data,u={...editData};if(d.lifespan_years&&!u.lifespan_years)u.lifespan_years=d.lifespan_years;if(d.warranty_expiry&&!u.expiry_date)u.expiry_date=d.warranty_expiry;if(d.replacement_cost_low&&!u.replacement_cost)u.replacement_cost=Math.round((d.replacement_cost_low+(d.replacement_cost_high||d.replacement_cost_low))/2);if(d.pm_schedule?.length&&!u.pm_schedule?.length)u.pm_schedule=d.pm_schedule;if(d.maintenance_tip&&!u.maintenance_tip)u.maintenance_tip=d.maintenance_tip;const ml=d.om_manual_url||d.manual_url;if(ml&&!u.document_ref)u.document_ref=ml;if(d.support_url&&!u.notes?.includes("Support:"))u.notes=[u.notes,`Support: ${d.support_url}`].filter(Boolean).join("\n");setEditData(u);toast("✨ Smart Fill applied — review and save");}}
+                      }catch{toast("Smart Fill failed — save anyway","error");}
+                    };
+                    if (!hasData) return (
+                      <button disabled title="Enter a brand or model number first" className="btn btn-ghost"
+                        style={{display:"flex",alignItems:"center",gap:".4rem",opacity:.4,cursor:"not-allowed",color:"#A8A09A",border:"1.5px solid var(--stone)"}}>
+                        <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
+                      </button>
+                    );
+                    if (!isPaid) return (
+                      <button className="btn btn-ghost" title="Upgrade to Plus to use Smart Fill"
+                        style={{display:"flex",alignItems:"center",gap:".4rem",color:"#A8A09A",border:"1.5px solid var(--stone)"}}
+                        onClick={onUpgrade}>
+                        <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
+                        <span style={{fontSize:".6rem",background:"rgba(193,97,64,.2)",color:"var(--rust)",fontWeight:700,padding:"1px 6px",borderRadius:5}}>Plus</span>
+                      </button>
+                    );
+                    return (
+                      <button className="btn btn-ghost"
+                        style={{display:"flex",alignItems:"center",gap:".4rem",color:"var(--pine)",border:"1.5px solid var(--pine)"}}
+                        onClick={runSmartFill}>
+                        <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
+                      </button>
+                    );
+                  })()}
+                  <button className="btn btn-primary" onClick={save}>Save</button>
+                </div>
+              ) : undefined}
             >
               <AssetForm
                 data={editData}
@@ -7591,6 +7629,43 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             title={editId ? "Edit Asset" : addMode === "nameplate" ? "Scan Nameplate" : addMode === "smartfill" ? "Smart Fill" : "Add Asset"}
             onClose={()=>closeModal()}
             onSave={save}
+            footer={(
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                {(() => {
+                  const hasData  = !!(editData.brand || editData.model);
+                  const isPaid   = planData?.plan==="plus" || planData?.plan==="pro";
+                  const runSmartFill = async () => {
+                    try {
+                      const resp = await fetch(ASSET_INTEL_URL, {method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},body:JSON.stringify({brand:editData.brand,model:editData.model,item:editData.item,upc:editData.upc||"",category:editData.category,install_date:editData.install_date,tier:planData?.plan||"free",user_id:userId||""})});
+                      if(resp.ok){const json=await resp.json();if(json.ok&&json.data){const d=json.data,u={...editData};if(d.lifespan_years&&!u.lifespan_years)u.lifespan_years=d.lifespan_years;if(d.warranty_expiry&&!u.expiry_date)u.expiry_date=d.warranty_expiry;if(d.replacement_cost_low&&!u.replacement_cost)u.replacement_cost=Math.round((d.replacement_cost_low+(d.replacement_cost_high||d.replacement_cost_low))/2);if(d.pm_schedule?.length&&!u.pm_schedule?.length)u.pm_schedule=d.pm_schedule;if(d.maintenance_tip&&!u.maintenance_tip)u.maintenance_tip=d.maintenance_tip;const ml=d.om_manual_url||d.manual_url;if(ml&&!u.document_ref)u.document_ref=ml;if(d.support_url&&!u.notes?.includes("Support:"))u.notes=[u.notes,`Support: ${d.support_url}`].filter(Boolean).join("\n");setEditData(u);toast("✨ Smart Fill applied — review and save");}}
+                    }catch{toast("Smart Fill failed — save anyway","error");}
+                  };
+                  if (!hasData) return (
+                    <button disabled title="Enter a brand or model number first" className="btn btn-ghost"
+                      style={{display:"flex",alignItems:"center",gap:".4rem",opacity:.4,cursor:"not-allowed",color:"#A8A09A",border:"1.5px solid var(--stone)"}}>
+                      <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
+                    </button>
+                  );
+                  if (!isPaid) return (
+                    <button className="btn btn-ghost" title="Upgrade to Plus to use Smart Fill"
+                      style={{display:"flex",alignItems:"center",gap:".4rem",color:"#A8A09A",border:"1.5px solid var(--stone)"}}
+                      onClick={onUpgrade}>
+                      <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
+                      <span style={{fontSize:".6rem",background:"rgba(193,97,64,.2)",color:"var(--rust)",fontWeight:700,padding:"1px 6px",borderRadius:5}}>Plus</span>
+                    </button>
+                  );
+                  return (
+                    <button className="btn btn-ghost"
+                      style={{display:"flex",alignItems:"center",gap:".4rem",color:"var(--pine)",border:"1.5px solid var(--pine)"}}
+                      onClick={runSmartFill}>
+                      <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
+                    </button>
+                  );
+                })()}
+                <button className="btn btn-primary" onClick={save}>Save</button>
+              </div>
+            )}
           >
             <AssetForm
               data={editData}
