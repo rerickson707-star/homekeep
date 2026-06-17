@@ -4046,6 +4046,132 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
     if (draftKey) { try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {} }
   };
   const nameplateRef = useRef(null);
+  // Track whether the user has completed a scan or chosen to skip
+  const [scanned, setScanned] = useState(() => {
+    // If we already have meaningful data (editing, or barcode prefilled), skip the focus screen
+    return !!(data.item || data.brand || data.model);
+  });
+
+  const handleScanComplete = (fields) => {
+    const mapped = {};
+    if (fields.item)            mapped.item           = fields.item;
+    if (fields.brand)           mapped.brand          = fields.brand;
+    if (fields.model)           mapped.model          = fields.model;
+    if (fields.serial_number)   mapped.serial_number  = fields.serial_number;
+    if (fields.category)        mapped.category       = fields.category;
+    if (fields.manufacture_date) mapped.install_date  = fields.manufacture_date;
+    if (fields.warranty_expiry) mapped.expiry_date    = fields.warranty_expiry;
+    if (fields.cost||fields.amount) mapped.cost       = fields.cost||fields.amount;
+    if (fields.purchase_date)   mapped.purchase_date  = fields.purchase_date;
+    if (fields.notes || fields.capacity || fields.voltage) {
+      const noteParts = [fields.capacity, fields.voltage, fields.notes].filter(Boolean);
+      mapped.notes = noteParts.join(" · ");
+    }
+    onChange({...data, ...mapped});
+    setScanned(true);
+  };
+
+  // ── Focused entry screens per mode ────────────────────────────────────────
+  if (!scanned && initialMode === "nameplate") return (
+    <div>
+      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.5rem 1.25rem",marginBottom:"1rem"}}>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#F4EDDF",marginBottom:".4rem"}}>📷 Scan the nameplate</div>
+        <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.55,marginBottom:"1.25rem"}}>
+          Point your camera at the equipment tag — brand, model, serial number, and warranty fill in automatically.
+        </div>
+        <AIScanButton
+          onScanComplete={handleScanComplete}
+          label="Open camera"
+          description="Point at the nameplate tag"
+          scanType="nameplate"
+          planData={planData}
+          onUpgrade={onUpgrade}
+          useCamera={true}
+          triggerRef={nameplateRef}
+          highlighted={true}
+        />
+      </div>
+      <button type="button" onClick={()=>setScanned(true)}
+        style={{width:"100%",padding:".75rem",background:"none",border:"1.5px solid var(--stone)",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",color:"#9E9690",cursor:"pointer"}}>
+        Fill in manually instead
+      </button>
+    </div>
+  );
+
+  if (!scanned && initialMode === "smartfill") return (
+    <div>
+      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.5rem 1.25rem",marginBottom:"1rem"}}>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#F4EDDF",marginBottom:".4rem"}}>✨ Enter model number</div>
+        <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.55,marginBottom:"1.25rem"}}>
+          Type your brand and model number — AI looks up specs, warranty length, and maintenance schedule automatically.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:".65rem",marginBottom:"1rem"}}>
+          <input
+            value={data.brand||""}
+            onChange={e=>onChange({...data,brand:e.target.value})}
+            placeholder="Brand (e.g. Carrier, LG, Rheem)"
+            style={{width:"100%",padding:".75rem 1rem",borderRadius:12,border:"1.5px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.08)",color:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem"}}
+          />
+          <input
+            value={data.model||""}
+            onChange={e=>onChange({...data,model:e.target.value})}
+            placeholder="Model number (from nameplate or manual)"
+            style={{width:"100%",padding:".75rem 1rem",borderRadius:12,border:"1.5px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.08)",color:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem"}}
+          />
+        </div>
+        <SmartFillButton
+          brand={data.brand||""} model={data.model||""} item={data.item||""}
+          onApply={result=>{
+            const enriched={...data};
+            if(result.item&&!data.item)           enriched.item=result.item;
+            if(result.category&&!data.category)   enriched.category=result.category;
+            if(result.lifespan_years)             enriched.lifespan_years=result.lifespan_years;
+            if(result.replacement_cost)           enriched.replacement_cost=result.replacement_cost;
+            const manualLink=result.om_manual_url||result.manual_url;
+            if(manualLink&&!data.document_ref)    enriched.document_ref=manualLink;
+            if(result.support_url&&!data.notes?.includes("Support:"))
+              enriched.notes=[data.notes,`Support: ${result.support_url}`].filter(Boolean).join("\n");
+            if(result.pm_schedule?.length)        enriched.pm_schedule=result.pm_schedule;
+            onChange(enriched);
+            setScanned(true);
+          }}
+          planData={planData}
+          onUpgrade={onUpgrade}
+          autoTrigger={false}
+        />
+      </div>
+      <button type="button" onClick={()=>setScanned(true)}
+        style={{width:"100%",padding:".75rem",background:"none",border:"1.5px solid var(--stone)",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",color:"#9E9690",cursor:"pointer"}}>
+        Skip — fill in manually
+      </button>
+    </div>
+  );
+
+  if (!scanned && initialMode === "receipt") return (
+    <div>
+      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.5rem 1.25rem",marginBottom:"1rem"}}>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#F4EDDF",marginBottom:".4rem"}}>🔖 Scan receipt or warranty card</div>
+        <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.55,marginBottom:"1.25rem"}}>
+          Upload a photo of your receipt or warranty document — purchase date, cost, and expiry date fill in automatically.
+        </div>
+        <AIScanButton
+          onScanComplete={handleScanComplete}
+          label="Upload receipt"
+          description="Receipt or warranty card"
+          scanType="warranty"
+          planData={planData}
+          onUpgrade={onUpgrade}
+          useCamera={false}
+          highlighted={true}
+        />
+      </div>
+      <button type="button" onClick={()=>setScanned(true)}
+        style={{width:"100%",padding:".75rem",background:"none",border:"1.5px solid var(--stone)",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",color:"#9E9690",cursor:"pointer"}}>
+        Fill in manually instead
+      </button>
+    </div>
+  );
+
   return (
     <div>
       {/* ── AI Scan Hero ── */}
@@ -4055,32 +4181,13 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Fill with AI</div>
           {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
         </div>
-        {initialMode === "nameplate" ? (
-          <div style={{fontSize:".78rem",color:"rgba(244,237,223,.75)",marginBottom:".85rem",lineHeight:1.5,fontWeight:500}}>
-            Point your camera at the nameplate tag on your appliance or system — model number, serial number, and brand fill in automatically.
-          </div>
-        ) : (
-          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
-            Point your camera at the nameplate tag, or upload a receipt or warranty card.
-          </div>
-        )}
+        <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
+          Scan the nameplate tag or upload a receipt to fill fields automatically.
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem",alignItems:"start"}}>
           <AIScanButton
-            onScanComplete={fields => {
-              const mapped = {};
-              if (fields.item)            mapped.item           = fields.item;
-              if (fields.brand)           mapped.brand          = fields.brand;
-              if (fields.model)           mapped.model          = fields.model;
-              if (fields.serial_number)   mapped.serial_number  = fields.serial_number;
-              if (fields.category)        mapped.category       = fields.category;
-              if (fields.manufacture_date) mapped.install_date  = fields.manufacture_date;
-              if (fields.notes || fields.capacity || fields.voltage) {
-                const noteParts = [fields.capacity, fields.voltage, fields.notes].filter(Boolean);
-                mapped.notes = noteParts.join(" · ");
-              }
-              onChange({...data, ...mapped});
-            }}
-            label={initialMode === "nameplate" ? "Tap to scan tag" : "Scan Nameplate"}
+            onScanComplete={handleScanComplete}
+            label="Scan Nameplate"
             description="Point camera at equipment tag"
             scanType="nameplate"
             planData={planData}
@@ -4088,10 +4195,9 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
             useCamera={true}
             compact={true}
             triggerRef={nameplateRef}
-            highlighted={initialMode === "nameplate"}
           />
           <AIScanButton
-            onScanComplete={fields => onChange({...data,...fields})}
+            onScanComplete={handleScanComplete}
             label="Upload Receipt"
             description="Warranty card or receipt"
             scanType="warranty"
