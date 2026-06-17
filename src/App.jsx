@@ -2846,7 +2846,101 @@ function ContractorPicker({ value, onChange, contractors=[], label="Contractor",
   );
 }
 
-// ─── FORMS ───────────────────────────────────────────────────────────────────
+// ─── ASSET PICKER ─────────────────────────────────────────────────────────────
+// Lets the user link a warranty record to an existing full asset.
+// Stores asset_id; displays asset name + category in the input.
+function AssetPicker({ assetId, assetName, onChange, assets=[] }) {
+  const [open, setOpen]       = useState(false);
+  const [search, setSearch]   = useState("");
+  const ref                   = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  // Full assets only (exclude warranty-only records from the picker)
+  const fullAssets = assets.filter(a => !a.warranty_only);
+
+  const filtered = fullAssets.filter(a =>
+    !search ||
+    a.item?.toLowerCase().includes(search.toLowerCase()) ||
+    a.brand?.toLowerCase().includes(search.toLowerCase()) ||
+    a.category?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const displayValue = assetId
+    ? (assets.find(a => a.id === assetId)?.item || assetName || "")
+    : search;
+
+  const handleSelect = (a) => {
+    onChange({ asset_id: a.id, linked_asset_name: a.item });
+    setSearch("");
+    setOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange({ asset_id: null, linked_asset_name: null });
+    setSearch("");
+  };
+
+  return (
+    <div ref={ref} style={{position:"relative"}}>
+      <div style={{position:"relative"}}>
+        <input
+          value={assetId ? displayValue : search}
+          onChange={e => { setSearch(e.target.value); if (assetId) onChange({ asset_id: null, linked_asset_name: null }); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={fullAssets.length > 0 ? "Search your assets…" : "No full assets yet — add one in Assets tab"}
+          readOnly={!!assetId}
+          style={{cursor: assetId ? "default" : "text", paddingRight: assetId ? "2rem" : undefined}}
+        />
+        {assetId && (
+          <button onClick={handleClear}
+            style={{position:"absolute",right:".5rem",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:".9rem",color:"#A8A09A",lineHeight:1,padding:".25rem"}}>
+            ✕
+          </button>
+        )}
+      </div>
+
+      {open && !assetId && filtered.length > 0 && (
+        <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,right:0,background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",boxShadow:"0 8px 24px -8px rgba(42,39,35,.2)",zIndex:200,maxHeight:240,overflowY:"auto"}}>
+          {filtered.map((a, i) => {
+            const catColor = CATEGORY_COLORS[a.category] || CATEGORY_COLORS.Other;
+            return (
+              <div key={a.id} onClick={() => handleSelect(a)}
+                style={{padding:".6rem .85rem",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid var(--cream2)":"none",display:"flex",alignItems:"center",gap:".7rem"}}
+                onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
+                onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <div style={{width:34,height:34,borderRadius:9,background:catColor.bg,border:`1px solid ${catColor.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:catColor.icon}}>
+                  <AssetIcon asset={a} size={17}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
+                  <div style={{fontSize:".72rem",color:"#8A8178"}}>{[a.brand, a.category].filter(Boolean).join(" · ")}</div>
+                </div>
+                {a.expiry_date && (
+                  <div style={{fontSize:".68rem",color:"var(--pine)",fontWeight:700,flexShrink:0}}>
+                    {daysTo(a.expiry_date) >= 0 ? `${Math.round(daysTo(a.expiry_date)/30)}mo` : "Exp"}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {open && !assetId && fullAssets.length > 0 && filtered.length === 0 && (
+        <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,right:0,background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem",zIndex:200,fontSize:".82rem",color:"#8A8178",textAlign:"center"}}>
+          No matching assets
+        </div>
+      )}
+    </div>
+  );
+}
 function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const canRecur = planData?.recurring === "full";
@@ -3812,7 +3906,7 @@ function BarcodeScanButton({ onResult }) {
 // ─── WARRANTY-ONLY FORM ──────────────────────────────────────────────────────
 // Lightweight warranty tracker — saves to warranties table with warranty_only=true
 // Can be "upgraded" to a full asset record later by editing and removing the flag.
-function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade }) {
+function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
@@ -3862,8 +3956,20 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade }) {
           <label>Serial number</label>
           <input value={data.serial_number||""} onChange={e=>f("serial_number",e.target.value)} placeholder="From sticker or receipt"/>
         </div>
-        <div className="field">
-          <label>Purchase price ($)</label>
+        {assets.filter(a=>!a.warranty_only).length > 0 && (
+          <div className="field s2">
+            <label>Link to existing asset <span style={{fontWeight:400,color:"#A8A09A"}}>(optional)</span></label>
+            <AssetPicker
+              assetId={data.asset_id||null}
+              assetName={data.linked_asset_name||""}
+              onChange={({asset_id,linked_asset_name})=>onChange({...data,asset_id,linked_asset_name})}
+              assets={assets}
+            />
+            <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".3rem"}}>
+              Links this warranty to a full asset — service history and recall alerts included
+            </div>
+          </div>
+        )}
           <input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0"/>
         </div>
         <div className="field">
@@ -7223,6 +7329,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                       <div style={{fontSize:".78rem",color:"#8A8178"}}>
                         {[a.brand,a.model,a.serial_number?"S/N "+a.serial_number:null].filter(Boolean).join(" · ")||"Warranty only"}
                       </div>
+                      {a.linked_asset_name && (
+                        <div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,marginTop:".15rem"}}>
+                          🔗 Linked to {a.linked_asset_name}
+                        </div>
+                      )}
                       {a.expiry_date && (
                         <div style={{fontSize:".75rem",color:statusColor,fontWeight:600,marginTop:".15rem"}}>
                           {expired ? "Warranty expired " : "Warranty expires "}{fmtD(a.expiry_date)}
@@ -7355,7 +7466,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
-      {warrantyModal && <Modal title={warrantyEditId?"Edit Warranty":"Track a Warranty"} onClose={()=>setWarrantyModal(false)} onSave={saveWarranty}><WarrantyOnlyForm data={warrantyData} onChange={setWarrantyData} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {warrantyModal && <Modal title={warrantyEditId?"Edit Warranty":"Track a Warranty"} onClose={()=>setWarrantyModal(false)} onSave={saveWarranty}><WarrantyOnlyForm data={warrantyData} onChange={setWarrantyData} userId={userId} planData={planData} onUpgrade={onUpgrade} assets={assets}/></Modal>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
   );
