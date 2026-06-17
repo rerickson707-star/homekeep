@@ -6613,7 +6613,7 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -6743,6 +6743,18 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       }, 50);
     }
   }, [pendingEditId, assets.length]);
+
+  // Direct deep-link to asset detail view — used by search
+  useEffect(() => {
+    if (!pendingSelectedAsset) return;
+    if (assets.length === 0) return;
+    const asset = assets.find(a => a.id === pendingSelectedAsset);
+    if (asset) {
+      if (asset.retired_at) setShowRetired(true);
+      setSelectedAsset(asset.id);
+      onClearPendingSelected?.();
+    }
+  }, [pendingSelectedAsset]);
 
   // Deep-link: open warranty tracker modal from toolbox
   useEffect(() => {
@@ -13702,6 +13714,7 @@ export default function App() {
   const [showExport,   setShowExport]   = useState(false);
   const [pendingAssetEdit, setPendingAssetEdit] = useState(null); // asset ID to open on Assets tab
   const [pendingWarrantyTracker, setPendingWarrantyTracker] = useState(false); // open warranty-only modal
+  const [pendingSelectedAsset, setPendingSelectedAsset] = useState(null); // asset ID to show detail view
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
@@ -14007,7 +14020,10 @@ export default function App() {
             contractors={contractors}
             projects={projects}
             onNavigate={setTab}
-            onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}
+            onOpenAsset={(id)=>{
+              setPendingSelectedAsset(id);
+              setTab("warranties");
+            }}
             onNavigateToTask={()=>setTab("tasks")}
             onNavigateToExpense={()=>setTab("expenses")}
           />
@@ -14049,7 +14065,7 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>{setPendingWarrantyTracker(true);setTab("warranties");}} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
             </>
