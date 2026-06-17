@@ -1483,11 +1483,11 @@ img,.lp-root img{max-width:100%;height:auto}
 /* wizard pages */
 /* ── HOME SETUP WIZARD ──────────────────────────────────────────────────────── */
 .setup-screen{position:fixed;inset:0;background:#1C3D31;display:flex;flex-direction:column;z-index:500;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
-.setup-inner{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:5rem 2rem 9rem;max-width:540px;width:100%;margin:0 auto;box-sizing:border-box}
-@media(max-width:480px){.setup-inner{padding:5rem 1.4rem 9rem}}
-.setup-actions{position:fixed;bottom:0;left:0;right:0;padding:.85rem 2rem 2rem;background:linear-gradient(to bottom,transparent,#1C3D31 30%);z-index:501;pointer-events:none}
+.setup-inner{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:5rem 2rem 10rem;max-width:540px;width:100%;margin:0 auto;box-sizing:border-box}
+@media(max-width:480px){.setup-inner{padding:5rem 1.25rem 11rem}}
+.setup-actions{position:fixed;bottom:0;left:0;right:0;padding:.85rem 2rem calc(2rem + env(safe-area-inset-bottom));background:linear-gradient(to bottom,transparent,#1C3D31 30%);z-index:501;pointer-events:none}
 .setup-actions>*{pointer-events:auto;max-width:540px;margin:0 auto;display:block}
-@media(max-width:480px){.setup-inner{padding:5rem 1.4rem 2.5rem}}
+@media(max-width:480px){.setup-actions{padding:.85rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom))}}
 .setup-q{font-family:'Fraunces',serif;font-size:clamp(1.4rem,4.5vw,1.9rem);font-weight:400;color:#F4EDDF;line-height:1.2;margin-bottom:.45rem}
 .setup-hint{font-size:.84rem;color:rgba(244,237,223,.45);line-height:1.6;margin-bottom:1.6rem}
 .setup-label{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(244,237,223,.38);margin-bottom:.6rem;margin-top:1.2rem}
