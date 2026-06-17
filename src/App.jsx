@@ -4250,6 +4250,36 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
         planData={planData}
         onUpgrade={onUpgrade}
       />
+      {/* ── Retirement section — only shown when editing an existing asset ── */}
+      {data.id && (
+        <div className="field s2">
+          <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1rem",marginTop:".25rem"}}>
+            <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"#A8A09A",marginBottom:".6rem"}}>Retirement</div>
+            {data.retired_at ? (
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".65rem .85rem",background:"var(--cream2)",borderRadius:10}}>
+                <div>
+                  <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)"}}>Retired {data.retired_at}</div>
+                  <div style={{fontSize:".75rem",color:"#8A8178",marginTop:2}}>Asset is hidden from active list — history preserved</div>
+                </div>
+                <button type="button" onClick={()=>f("retired_at","")}
+                  style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1px solid var(--pine)",borderRadius:8,padding:".35rem .75rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+                  Restore
+                </button>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"center",gap:".75rem"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.45}}>Mark this asset as retired to hide it from your active list while preserving all service history and expenses.</div>
+                </div>
+                <button type="button" onClick={()=>f("retired_at", localISO())}
+                  style={{fontSize:".78rem",fontWeight:700,color:"#8A8178",background:"none",border:"1.5px solid var(--stone)",borderRadius:8,padding:".45rem .85rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>
+                  Retire asset
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
@@ -6498,6 +6528,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
   const [confirm, setConfirm] = useState(null);
+  const [retirePrompt, setRetirePrompt]   = useState(null); // first stage: offer retire
+  const [retireConfirm, setRetireConfirm] = useState(null); // second stage: confirm hard delete
+  const [showRetired, setShowRetired]     = useState(false);
   const [filter, setFilter] = useState("All");
   const [lightbox, setLightbox] = useState(null);
   const [serviceModal, setServiceModal] = useState(false);
@@ -6758,9 +6791,30 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     closeModal();
   };
 
+  // Retire an asset — sets retired_at to today, keeps all history
+  const retireAsset = async (id) => {
+    const today = localISO();
+    const { error } = await supabase.from("warranties")
+      .update({ retired_at: today })
+      .eq("id", id).eq("user_id", userId);
+    if (!error) {
+      setAssets(assets.map(a => a.id === id ? {...a, retired_at: today} : a));
+      toast("Asset retired — history preserved ✓");
+      setSelectedAsset(null);
+    } else toast("Error retiring asset","error");
+    setRetirePrompt(null);
+  };
+
+  // Hard delete — only reachable after user explicitly declines the retire offer
   const confirmDel = async () => {
-    const {error} = await supabase.from("warranties").delete().eq("id",confirm).eq("user_id",userId);
-    if(!error) { setAssets(assets.filter(a=>a.id!==confirm)); toast("Asset deleted","error"); }
+    const id = retireConfirm || confirm;
+    const { error } = await supabase.from("warranties").delete().eq("id", id).eq("user_id", userId);
+    if (!error) {
+      setAssets(assets.filter(a => a.id !== id));
+      toast("Asset permanently deleted","error");
+      setSelectedAsset(null);
+    }
+    setRetireConfirm(null);
     setConfirm(null);
   };
 
@@ -6864,10 +6918,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
 
   // Filter list — uses the unified health vocabulary
-  let list = [...assets];
-  if(filter==="Warranty Active")   list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
-  else if(filter==="Needs attention") list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="bad"||h.key==="due"; });
-  else if(filter==="Healthy")      list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="ok"; });
+  // Separate retired from active
+  const retiredAssets = assets.filter(a => a.retired_at);
+  const activeAssets  = assets.filter(a => !a.retired_at);
+
+  let list = showRetired ? [...retiredAssets] : [...activeAssets];
+  if (!showRetired) {
+    if(filter==="Warranty Active")    list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
+    else if(filter==="Needs attention") list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="bad"||h.key==="due"; });
+    else if(filter==="Healthy")       list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="ok"; });
+  }
   list = list.sort((a,b)=>(a.item||"").localeCompare(b.item||""));
 
   // Health summary — counts across ALL assets (not the filtered list)
@@ -6932,7 +6992,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           <button onClick={()=>setSelectedAsset(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
           <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
           <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
-          <button onClick={()=>setConfirm(asset.id)} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>
+          <button onClick={()=>setRetirePrompt(asset.id)} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>
         </div>
 
         <div style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
@@ -7364,6 +7424,38 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           )
         )}
         {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+        {/* ── Retire-first dialog ── */}
+        {retirePrompt && (
+          <div className="overlay" onClick={e=>e.target===e.currentTarget&&setRetirePrompt(null)}>
+            <div className="modal">
+              <div className="modal-hdr"><span className="modal-title">Remove asset</span><button className="btn btn-ghost btn-sm" onClick={()=>setRetirePrompt(null)}>✕</button></div>
+              <div className="modal-body">
+                <div style={{textAlign:"center",padding:"1rem 0 .5rem"}}>
+                  <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🏚️</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".5rem"}}>Retire this asset?</div>
+                  <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.6,marginBottom:"1.25rem"}}>
+                    Retiring keeps all service history, expenses, and records intact — the asset just moves out of your active list. You can restore it anytime.
+                  </div>
+                  <button className="btn btn-primary" style={{width:"100%",marginBottom:".65rem"}} onClick={()=>retireAsset(retirePrompt)}>
+                    Retire asset — keep history
+                  </button>
+                  <button className="btn btn-ghost" style={{width:"100%",color:"var(--red)",fontSize:".82rem"}}
+                    onClick={()=>{setRetireConfirm(retirePrompt);setRetirePrompt(null);}}>
+                    Permanently delete instead
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ── Hard delete confirmation — only after declining retire ── */}
+        {retireConfirm && (
+          <Confirm
+            message="This will permanently delete the asset and all its service history. This cannot be undone. Are you sure?"
+            onConfirm={confirmDel}
+            onCancel={()=>setRetireConfirm(null)}
+          />
+        )}
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
         {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
@@ -7409,8 +7501,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   return (
     <div>
       <div className="sh">
-        <span className="sh-title">Assets</span>
-        <button className="btn btn-primary" onClick={openNew}>+ Add</button>
+        <span className="sh-title">{showRetired ? "Retired Assets" : "Assets"}</span>
+        <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+          {retiredAssets.length > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={()=>setShowRetired(r=>!r)}
+              style={{fontSize:".75rem",color:showRetired?"var(--pine)":"#8A8178"}}>
+              {showRetired ? "← Active" : `Retired (${retiredAssets.length})`}
+            </button>
+          )}
+          {!showRetired && <button className="btn btn-primary" onClick={openNew}>+ Add</button>}
+        </div>
       </div>
 
       {/* Home health hero */}
@@ -7681,6 +7781,36 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         )
       )}
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
+      {retirePrompt && !retireConfirm && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setRetirePrompt(null)}>
+          <div className="modal">
+            <div className="modal-hdr"><span className="modal-title">Remove asset</span><button className="btn btn-ghost btn-sm" onClick={()=>setRetirePrompt(null)}>✕</button></div>
+            <div className="modal-body">
+              <div style={{textAlign:"center",padding:"1rem 0 .5rem"}}>
+                <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🏚️</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".5rem"}}>Retire this asset?</div>
+                <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.6,marginBottom:"1.25rem"}}>
+                  Retiring keeps all service history, expenses, and records intact — the asset just moves out of your active list. You can restore it anytime.
+                </div>
+                <button className="btn btn-primary" style={{width:"100%",marginBottom:".65rem"}} onClick={()=>retireAsset(retirePrompt)}>
+                  Retire asset — keep history
+                </button>
+                <button className="btn btn-ghost" style={{width:"100%",color:"var(--red)",fontSize:".82rem"}}
+                  onClick={()=>{setRetireConfirm(retirePrompt);setRetirePrompt(null);}}>
+                  Permanently delete instead
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {retireConfirm && (
+        <Confirm
+          message="This will permanently delete the asset and all its service history. This cannot be undone. Are you sure?"
+          onConfirm={confirmDel}
+          onCancel={()=>setRetireConfirm(null)}
+        />
+      )}
       {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
       {warrantyModal && <Modal title={warrantyEditId?"Edit Warranty":"Track a Warranty"} onClose={()=>setWarrantyModal(false)} onSave={saveWarranty}><WarrantyOnlyForm data={warrantyData} onChange={setWarrantyData} userId={userId} planData={planData} onUpgrade={onUpgrade} assets={assets}/></Modal>}
