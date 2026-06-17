@@ -10140,12 +10140,15 @@ function RecallCheckPanel({ warranties }) {
 
   return (
     <>
-      <div className="toolbox-card" onClick={handleOpen}>
-        <div className="toolbox-card-ico">🛡️</div>
+      <div onClick={handleOpen}
+        style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".85rem .9rem",display:"flex",flexDirection:"column",gap:".5rem",cursor:"pointer",transition:"border-color .15s",minHeight:90}}
+        onMouseEnter={e=>e.currentTarget.style.borderColor="var(--pine)"}
+        onMouseLeave={e=>e.currentTarget.style.borderColor="var(--stone)"}>
+        <span style={{fontSize:"1.4rem",lineHeight:1}}>🛡️</span>
         <div>
-          <div className="toolbox-card-title">Recall Check</div>
-          <div className="toolbox-card-desc">
-            {checking ? "Checking CPSC database…" : checked ? recalls.length > 0 ? `⚠ ${recalls.length} recall${recalls.length>1?"s":""} found` : "✓ No recalls found" : "Check appliances against CPSC"}
+          <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",marginBottom:".2rem",lineHeight:1.2}}>Recall check</div>
+          <div style={{fontSize:".73rem",color:"#8A8178",lineHeight:1.4}}>
+            {checking ? "Checking CPSC database…" : checked ? recalls.length > 0 ? `⚠ ${recalls.length} recall${recalls.length>1?"s":""} found` : "✓ No recalls found" : "Check appliances for safety recalls"}
           </div>
         </div>
       </div>
@@ -11207,14 +11210,14 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
             <span style={{fontSize:"1.1rem"}}>🧰</span><span style={{fontSize:"1rem",fontWeight:700}}>Home toolbox</span>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",padding:"1rem"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",padding:"1rem",alignItems:"stretch"}}>
             {[
-              {ico:"📄",name:"Documents",      desc:"Deeds, permits, inspection reports",     action:onShowDocs},
-              {ico:"👷",name:"Contractors",     desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
-              {ico:"📊",name:"Home report",     desc:"Generate a full PDF history",           action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks});}},
-              {ico:"🔖",name:"Track a warranty",desc:`${warranties.filter(w=>w.warranty_only&&daysTo(w.expiry_date)>=0).length||""}${warranties.filter(w=>w.warranty_only).length>0?" active — tap to add more":"Scan a receipt to track any warranty"}`,action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
-              {ico:"🔧",name:"Setup wizard",    desc:"Update your home systems profile",      action:()=>setShowSetup(true)},
-              {ico:"🏡",name:"Refresh data",     desc:"Re-pull schools, tax history & value",  action:async()=>{
+              {ico:"📄", name:"Documents",       desc:"Deeds, permits, inspection reports",        action:onShowDocs},
+              {ico:"👷", name:"Contractors",      desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
+              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks});}},
+              {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
+              {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
+              {ico:"🏡", name:"Refresh data",     desc:"Re-pull schools, tax & value",              action:async()=>{
                 if(!profile?.address){toast("Add your address first","error");return;}
                 toast("Fetching property data…");
                 try{
@@ -11234,11 +11237,15 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 }catch{toast("Refresh failed — try again","error");}
               }},
             ].map(t=>(
-              <div key={t.name} onClick={t.action} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".9rem",display:"flex",alignItems:"flex-start",gap:".75rem",cursor:"pointer",transition:"all .15s"}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--pine)";}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";}}>
-                <span style={{fontSize:"1.5rem",flexShrink:0,width:32,textAlign:"center"}}>{t.ico}</span>
-                <div><div style={{fontSize:".9rem",fontWeight:700,color:"var(--dark)",marginBottom:".15rem"}}>{t.name}</div><div style={{fontSize:".75rem",color:"#8A8178",lineHeight:1.35}}>{t.desc}</div></div>
+              <div key={t.name} onClick={t.action}
+                style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".85rem .9rem",display:"flex",flexDirection:"column",gap:".5rem",cursor:"pointer",transition:"border-color .15s",minHeight:90}}
+                onMouseEnter={e=>e.currentTarget.style.borderColor="var(--pine)"}
+                onMouseLeave={e=>e.currentTarget.style.borderColor="var(--stone)"}>
+                <span style={{fontSize:"1.4rem",lineHeight:1}}>{t.ico}</span>
+                <div>
+                  <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",marginBottom:".2rem",lineHeight:1.2}}>{t.name}</div>
+                  <div style={{fontSize:".73rem",color:"#8A8178",lineHeight:1.4}}>{t.desc}</div>
+                </div>
               </div>
             ))}
             <RecallCheckPanel warranties={warranties}/>
