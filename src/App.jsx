@@ -5252,7 +5252,7 @@ function ClaimEntryForm({ data, onChange }) {
 }
 
 // ─── SEARCH BAR ───────────────────────────────────────────────────────────────
-function SearchBar({ tasks, warranties, expenses, onNavigate }) {
+function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], onNavigate, onOpenAsset, onNavigateToTask, onNavigateToExpense }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -5266,74 +5266,164 @@ function SearchBar({ tasks, warranties, expenses, onNavigate }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Auto-focus input when mobile search opens
   useEffect(() => {
     if (mobileOpen && inputRef.current) inputRef.current.focus();
   }, [mobileOpen]);
 
-  const trimmed = q.trim();
+  const trimmed = q.trim().toLowerCase();
+  const match = (str) => str?.toLowerCase().includes(trimmed);
 
-  const taskResults    = trimmed.length < 2 ? [] : tasks.filter(t => t.title?.toLowerCase().includes(trimmed.toLowerCase()) || t.category?.toLowerCase().includes(trimmed.toLowerCase())).slice(0,3).map(t => ({type:"Task",    icon:CAT_ICONS[t.category]||"🔧", label:t.title,       sub:t.status,         tab:"tasks"}));
-  const assetResults   = trimmed.length < 2 ? [] : warranties.filter(w => w.item?.toLowerCase().includes(trimmed.toLowerCase())).slice(0,2).map(w => ({type:"Asset",   icon:ASSET_ICONS[w.category]||"🔧", label:w.item, sub:w.condition||"",  tab:"warranties"}));
-  const expenseResults = trimmed.length < 2 ? [] : expenses.filter(e => e.description?.toLowerCase().includes(trimmed.toLowerCase())).slice(0,2).map(e => ({type:"Expense", icon:"💲",                         label:e.description,  sub:fmt$(e.amount),   tab:"expenses"}));
+  const groups = trimmed.length < 2 ? [] : [
+    {
+      label: "Assets",
+      icon: "🔧",
+      items: warranties
+        .filter(w => match(w.item) || match(w.brand) || match(w.model) || match(w.serial_number) || match(w.category))
+        .slice(0, 4)
+        .map(w => ({
+          id:     w.id,
+          icon:   ASSET_ICONS[w.category] || "🔧",
+          label:  w.item,
+          sub:    [w.brand, w.retired_at ? "Retired" : w.condition].filter(Boolean).join(" · "),
+          badge:  w.retired_at ? "Retired" : null,
+          action: () => { onOpenAsset(w.id); },
+        })),
+    },
+    {
+      label: "Tasks",
+      icon: "✓",
+      items: tasks
+        .filter(t => match(t.title) || match(t.category) || match(t.notes))
+        .slice(0, 3)
+        .map(t => {
+          const d = daysTo(t.due_date);
+          return {
+            id:     t.id,
+            icon:   CAT_ICONS[t.category] || "🔧",
+            label:  t.title,
+            sub:    t.due_date ? (d === 0 ? "Today" : d === 1 ? "Tomorrow" : d < 0 ? `${Math.abs(d)}d overdue` : `Due ${fmtD(t.due_date)}`) : t.status,
+            badge:  t.status === "Overdue" ? "Overdue" : null,
+            action: () => { onNavigate("tasks"); },
+          };
+        }),
+    },
+    {
+      label: "Expenses",
+      icon: "💸",
+      items: expenses
+        .filter(e => match(e.description) || match(e.category) || match(e.vendor))
+        .slice(0, 3)
+        .map(e => ({
+          id:     e.id,
+          icon:   "💸",
+          label:  e.description,
+          sub:    [fmt$(e.amount), e.vendor, e.date ? fmtD(e.date) : null].filter(Boolean).join(" · "),
+          action: () => { onNavigate("expenses"); },
+        })),
+    },
+    {
+      label: "Service logs",
+      icon: "⚙️",
+      items: serviceLogs
+        .filter(s => match(s.description) || match(s.vendor) || match(s.notes))
+        .slice(0, 2)
+        .map(s => {
+          const asset = warranties.find(w => w.id === s.asset_id);
+          return {
+            id:     s.id,
+            icon:   "⚙️",
+            label:  s.description,
+            sub:    [asset?.item, s.service_date ? fmtD(s.service_date) : null, s.cost ? fmt$(s.cost) : null].filter(Boolean).join(" · "),
+            action: () => { if (asset) onOpenAsset(asset.id); else onNavigate("warranties"); },
+          };
+        }),
+    },
+    {
+      label: "Projects",
+      icon: "🔨",
+      items: (projects || [])
+        .filter(p => match(p.name) || match(p.description) || match(p.category))
+        .slice(0, 2)
+        .map(p => ({
+          id:     p.id,
+          icon:   "🔨",
+          label:  p.name,
+          sub:    [p.status, p.budget ? fmt$(p.budget) : null].filter(Boolean).join(" · "),
+          action: () => { onNavigate("expenses"); },
+        })),
+    },
+    {
+      label: "Contractors",
+      icon: "👷",
+      items: (contractors || [])
+        .filter(c => match(c.name) || match(c.trade) || match(c.notes))
+        .slice(0, 2)
+        .map(c => ({
+          id:     c.id,
+          icon:   "👷",
+          label:  c.name,
+          sub:    c.trade || "",
+          action: () => { onNavigate("profile"); },
+        })),
+    },
+  ].filter(g => g.items.length > 0);
 
-  const hasResults = taskResults.length > 0 || assetResults.length > 0 || expenseResults.length > 0;
+  const hasResults = groups.length > 0;
   const showDropdown = open && (focused || trimmed.length >= 2);
+
+  const handleSelect = (action) => {
+    action();
+    setQ("");
+    setOpen(false);
+    setFocused(false);
+    setMobileOpen(false);
+  };
 
   return (
     <div className={`search-wrap${mobileOpen ? " mobile-open" : ""}`} ref={ref} role="search">
-      <span
-        className="search-icon"
-        onClick={() => setMobileOpen(true)}
-        role="button"
-        aria-label="Open search"
-      >🔍</span>
+      <span className="search-icon" onClick={() => setMobileOpen(true)} role="button" aria-label="Open search">🔍</span>
       <input
         ref={inputRef}
         value={q}
         onChange={e=>{ setQ(e.target.value); setOpen(true); }}
         onFocus={()=>{ setOpen(true); setFocused(true); }}
-        placeholder="Search my tasks, assets…"
-        aria-label="Search your home data — tasks, assets and expenses"
+        placeholder="Search assets, tasks, expenses…"
+        aria-label="Search your home data"
       />
       {showDropdown && (
         <div className="search-results">
-          {/* Hint when focused but no query yet */}
           {trimmed.length < 2 && (
-            <div style={{padding:".6rem .85rem",fontSize:".75rem",color:"#A8A09A",lineHeight:1.5,borderBottom:"1px solid var(--stone)"}}>
-              Searches your saved <strong style={{color:"#7A7370"}}>tasks</strong>, <strong style={{color:"#7A7370"}}>assets</strong>, and <strong style={{color:"#7A7370"}}>expenses</strong> — not the web.
+            <div style={{padding:".6rem .85rem",fontSize:".75rem",color:"#A8A09A",lineHeight:1.5}}>
+              Search assets, tasks, expenses, service logs, projects, and contractors
             </div>
           )}
 
-          {/* Grouped results */}
-          {trimmed.length >= 2 && hasResults && (
-            <>
-              {[
-                {label:"Tasks",    items:taskResults},
-                {label:"Assets",   items:assetResults},
-                {label:"Expenses", items:expenseResults},
-              ].filter(g=>g.items.length>0).map(group=>(
-                <div key={group.label}>
-                  <div style={{padding:".3rem .85rem .15rem",fontSize:".65rem",fontWeight:700,color:"#C2B8AE",textTransform:"uppercase",letterSpacing:".06em",background:"var(--cream)"}}>{group.label}</div>
-                  {group.items.map((r,i)=>(
-                    <div key={i} className="sr-item" onClick={()=>{ onNavigate(r.tab); setQ(""); setOpen(false); setFocused(false); }}>
-                      <span style={{fontSize:"1rem"}}>{r.icon}</span>
-                      <span style={{flex:1,fontWeight:500,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.label}</span>
-                      {r.sub && <span style={{fontSize:".72rem",color:"#9E9690",flexShrink:0}}>{r.sub}</span>}
-                    </div>
-                  ))}
+          {trimmed.length >= 2 && hasResults && groups.map(group => (
+            <div key={group.label}>
+              <div style={{padding:".3rem .85rem .15rem",fontSize:".65rem",fontWeight:700,color:"#C2B8AE",textTransform:"uppercase",letterSpacing:".06em",background:"var(--cream)"}}>
+                {group.label}
+              </div>
+              {group.items.map((r, i) => (
+                <div key={r.id||i} className="sr-item" onClick={()=>handleSelect(r.action)}>
+                  <span style={{fontSize:"1rem",flexShrink:0}}>{r.icon}</span>
+                  <span style={{flex:1,fontWeight:500,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.label}</span>
+                  {r.badge && (
+                    <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 6px",borderRadius:6,background:"var(--cream2)",color:"#8A8178",flexShrink:0}}>{r.badge}</span>
+                  )}
+                  {r.sub && !r.badge && (
+                    <span style={{fontSize:".72rem",color:"#9E9690",flexShrink:0,maxWidth:"35%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.sub}</span>
+                  )}
+                  <span style={{fontSize:".75rem",color:"#C2B8AE",flexShrink:0}}>→</span>
                 </div>
               ))}
-            </>
-          )}
+            </div>
+          ))}
 
-          {/* No results — explain what was searched */}
           {trimmed.length >= 2 && !hasResults && (
             <div style={{padding:".85rem",textAlign:"center"}}>
               <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",marginBottom:".25rem"}}>Nothing found for "{trimmed}"</div>
               <div style={{fontSize:".74rem",color:"#A8A09A",lineHeight:1.5}}>
-                This searches your saved tasks, assets, and expenses.<br/>
-                It doesn't search the web or look up addresses.
+                Searches assets, tasks, expenses, service logs, projects, and contractors
               </div>
             </div>
           )}
@@ -13908,7 +13998,18 @@ export default function App() {
               planData={planData}
             />
           </div>
-          <SearchBar tasks={tasks} warranties={warranties} expenses={expenses} onNavigate={setTab}/>
+          <SearchBar
+            tasks={tasks}
+            warranties={warranties}
+            expenses={expenses}
+            serviceLogs={serviceLogs}
+            contractors={contractors}
+            projects={projects}
+            onNavigate={setTab}
+            onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}
+            onNavigateToTask={()=>setTab("tasks")}
+            onNavigateToExpense={()=>setTab("expenses")}
+          />
           <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)}/>
         </header>
 
