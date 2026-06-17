@@ -5678,313 +5678,303 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   // Detect new user — hasn't run setup wizard yet
   const isNewUser = !profile?.home_setup_complete;
 
+  // ── Build unified action feed ────────────────────────────────────────────
+  const insRenewalDays = profile?.ins_renewal_date ? daysTo(profile.ins_renewal_date) : null;
+  const feedItems = [];
+
+  // 1. Recalls — highest priority
+  recalls.forEach(r => {
+    feedItems.push({
+      id:      `recall-${r.asset.id}`,
+      level:   "urgent",
+      icon:    "⚠️",
+      iconBg:  "#FEE2E2",
+      title:   `Recall: ${r.asset.item}`,
+      sub:     r.recall.title,
+      badge:   "Recall",
+      action:  () => onNavigate("warranties"),
+      url:     r.recall.url,
+    });
+  });
+
+  // 2. Overdue tasks
+  tasks.filter(t => t.status === "Overdue").forEach(t => {
+    const d = daysTo(t.due_date);
+    feedItems.push({
+      id:     `overdue-${t.id}`,
+      level:  "urgent",
+      icon:   CAT_ICONS[t.category] || "🔧",
+      iconBg: "#F7E0DA",
+      title:  t.title,
+      sub:    `${t.category || "Task"} · due ${fmtD(t.due_date)}`,
+      badge:  d !== null ? `${Math.abs(d)}d overdue` : "Overdue",
+      action: () => onNavigate("tasks"),
+    });
+  });
+
+  // 3. Insurance renewal ≤ 90 days
+  if (insRenewalDays !== null && insRenewalDays <= 90) {
+    feedItems.push({
+      id:     "ins-renewal",
+      level:  insRenewalDays <= 30 ? "urgent" : "warn",
+      icon:   "🛡️",
+      iconBg: insRenewalDays <= 30 ? "#F7E0DA" : "#FBF3DE",
+      title:  insRenewalDays < 0 ? "Insurance renewal overdue" : "Insurance renews soon",
+      sub:    profile.ins_company ? `${profile.ins_company} · ${insRenewalDays >= 0 ? `${insRenewalDays} days away` : "expired"}` : "Review your policy",
+      badge:  insRenewalDays >= 0 ? `${insRenewalDays}d` : "Expired",
+      action: () => onNavigate("profile"),
+    });
+  }
+
+  // 4. Expiring warranties ≤ 90 days
+  warranties
+    .filter(w => { const d = daysTo(w.expiry_date); return d !== null && d >= 0 && d <= 90; })
+    .sort((a,b) => daysTo(a.expiry_date) - daysTo(b.expiry_date))
+    .forEach(w => {
+      const d = daysTo(w.expiry_date);
+      feedItems.push({
+        id:     `warranty-${w.id}`,
+        level:  d <= 30 ? "warn" : "ok",
+        icon:   ASSET_ICONS[w.category] || "📋",
+        iconBg: d <= 30 ? "#FBF3DE" : "#E9F1EA",
+        title:  `${w.item} warranty`,
+        sub:    `Expires ${fmtD(w.expiry_date)}`,
+        badge:  `${d}d left`,
+        action: () => onNavigate("warranties"),
+      });
+    });
+
+  // 5. Upcoming tasks (next 7 days, after overdue)
+  upcoming.filter(t => t.status !== "Overdue").slice(0, 5).forEach(t => {
+    const d = daysTo(t.due_date);
+    feedItems.push({
+      id:     `upcoming-${t.id}`,
+      level:  "ok",
+      icon:   CAT_ICONS[t.category] || "🔧",
+      iconBg: "var(--ok-bg)",
+      title:  t.title,
+      sub:    `${t.category || "Task"} · ${fmtD(t.due_date)}`,
+      badge:  d === 0 ? "Today" : d === 1 ? "Tomorrow" : `${d}d`,
+      action: () => onNavigate("tasks"),
+    });
+  });
+
+  // Urgency score for hero
+  const urgentCount  = feedItems.filter(f => f.level === "urgent").length;
+  const warnCount    = feedItems.filter(f => f.level === "warn").length;
+  const heroLevel    = urgentCount > 0 ? "bad" : warnCount > 0 ? "warn" : "ok";
+  const heroGrad     = heroLevel === "bad"  ? "linear-gradient(150deg,#2A0C06,#6B2012)"
+                     : heroLevel === "warn" ? "linear-gradient(150deg,#2A1F06,#5A3B00)"
+                     : "linear-gradient(150deg,var(--pine-deep),var(--pine-soft))";
+  const heroStatus   = heroLevel === "bad"  ? "Needs action"
+                     : heroLevel === "warn" ? "Needs attention"
+                     : "All good";
+  const heroSub      = heroLevel === "bad"  ? `${urgentCount} urgent item${urgentCount !== 1 ? "s" : ""} — take care of these today`
+                     : heroLevel === "warn" ? `${warnCount} thing${warnCount !== 1 ? "s" : ""} to take care of soon`
+                     : upcoming.length > 0  ? `Next task due ${fmtD(upcoming[0]?.due_date)}`
+                     : "Nothing overdue, no recalls, no renewals due";
+  const ringPct      = heroLevel === "ok" ? 100 : Math.max(20, Math.round(100 - ((urgentCount * 25) + (warnCount * 10))));
+  const ringColor    = heroLevel === "bad" ? "#F0A57F" : heroLevel === "warn" ? "#F0CE7A" : "#7DCBA1";
+  const ringDash     = Math.round((ringPct / 100) * 163);
+
+  // Split feed into action vs upcoming sections
+  const actionItems   = feedItems.filter(f => f.level === "urgent" || f.level === "warn");
+  const upcomingItems = feedItems.filter(f => f.level === "ok");
+
+  const now = new Date();
+  const evMap = buildHomeEvents(tasks, warranties, profile, serviceLogs);
+  const EV_COLOR = { task:"#234A3D", task_progress:"#B8861E", task_overdue:"#C16140", task_done:"#A8A09A", warranty:"#C16140", warranty_warn:"#B8861E", insurance:"#B8861E", insurance_warn:"#E8A030", service:"#7FA088", seasonal:"#3A7AAF" };
+  const weekDays = Array.from({length:7}, (_,i) => {
+    const d = new Date(now); d.setDate(d.getDate()+i);
+    const dateStr = localISO(d);
+    const allEvs = (evMap[dateStr]||[]).filter(e => e.type !== "task_done");
+    return { d, dateStr, allEvs, isToday:i===0 };
+  });
+
+  const FeedItem = ({item}) => {
+    const levelStyle = {
+      urgent: {iconBg:item.iconBg||"#F7E0DA", badgeBg:"#F7E0DA", badgeColor:"#B0432B", titleColor:"#B0432B"},
+      warn:   {iconBg:item.iconBg||"#FBF3DE", badgeBg:"#FBF3DE", badgeColor:"#B8861E", titleColor:"var(--dark)"},
+      ok:     {iconBg:item.iconBg||"var(--ok-bg)", badgeBg:"var(--ok-bg)", badgeColor:"var(--ok)", titleColor:"var(--dark)"},
+    }[item.level] || {};
+    return (
+      <div onClick={item.url ? ()=>window.open(item.url,"_blank") : item.action}
+        style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--cream2)",cursor:"pointer"}}
+        onTouchStart={e=>e.currentTarget.style.background="var(--cream)"}
+        onTouchEnd={e=>e.currentTarget.style.background="var(--white)"}>
+        <div style={{width:42,height:42,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",flexShrink:0,background:levelStyle.iconBg}}>
+          {item.icon}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:".95rem",fontWeight:700,color:levelStyle.titleColor,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:".15rem"}}>{item.title}</div>
+          <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.3}}>{item.sub}</div>
+        </div>
+        <div style={{fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:20,flexShrink:0,background:levelStyle.badgeBg,color:levelStyle.badgeColor,whiteSpace:"nowrap"}}>{item.badge}</div>
+        <span style={{fontSize:".9rem",color:"#C2B8AE",flexShrink:0,marginLeft:2}}>›</span>
+      </div>
+    );
+  };
+
   return (
-    <div>
-      {/* Greeting */}
-      <div className="greeting">
-        <div className="greeting-time">{greeting}</div>
-        <div className="greeting-name">{profile?.name || username}</div>
-        {profile?.address && <div className="greeting-sub">📍 {profile.address}</div>}
-      </div>
+    <div style={{paddingBottom:"1.5rem"}}>
 
-      {/* ── RECALL ALERTS ── */}
-      {recalls.length > 0 && (
-        <div style={{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:"var(--r)",padding:".9rem 1rem",marginBottom:".85rem"}}>
-          <div style={{display:"flex",alignItems:"flex-start",gap:".75rem"}}>
-            <span style={{fontSize:"1.3rem",flexShrink:0}}>⚠️</span>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:".9rem",color:"#991B1B",marginBottom:".2rem"}}>
-                {recalls.length === 1 ? "Product recall found" : `${recalls.length} potential recalls found`}
-              </div>
-              <div style={{fontSize:".78rem",color:"#B91C1C",marginBottom:".6rem"}}>
-                {recalls.length === 1
-                  ? "One of your logged appliances may be affected by a CPSC safety recall. Review and take action."
-                  : "Some of your logged appliances may be affected by CPSC safety recalls. Review each one below."}
-              </div>
-              {recalls.slice(0, 3).map((r, i) => (
-                <div key={i} style={{background:"rgba(255,255,255,.7)",border:"1px solid #FCA5A5",borderRadius:8,padding:".6rem .8rem",marginBottom:i < recalls.length-1 && i < 2 ? ".4rem" : 0}}>
-                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem",flexWrap:"wrap"}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
-                      <div style={{fontWeight:700,fontSize:".78rem",color:"#991B1B"}}>{r.asset.item} — {r.asset.brand}</div>
-                      <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,
-                        background:r.recall.confidence==="high"?"#FEE2E2":"#FEF9C3",
-                        color:r.recall.confidence==="high"?"#991B1B":"#92400E"}}>
-                        {r.recall.matchNote}
-                      </span>
-                    </div>
-                      <div style={{fontSize:".73rem",color:"#B91C1C",marginTop:2,lineHeight:1.4}}>{r.recall.title}</div>
-                      {r.recall.hazard && <div style={{fontSize:".7rem",color:"#7F1D1D",marginTop:2}}>⚠ {r.recall.hazard}</div>}
-                      {r.recall.remedy && <div style={{fontSize:".7rem",color:"#4B5563",marginTop:2}}>✓ {r.recall.remedy}</div>}
-                    </div>
-                    <a href={r.recall.url} target="_blank" rel="noopener noreferrer"
-                      style={{flexShrink:0,fontSize:".72rem",fontWeight:700,color:"#991B1B",textDecoration:"none",background:"rgba(239,68,68,.1)",padding:"3px 10px",borderRadius:6,whiteSpace:"nowrap"}}>
-                      View recall →
-                    </a>
-                  </div>
-                  {r.recall.date && <div style={{fontSize:".65rem",color:"#9CA3AF",marginTop:4}}>Recall date: {r.recall.date}</div>}
-                </div>
-              ))}
-              {recalls.length > 3 && (
-                <div style={{fontSize:".75rem",color:"#B91C1C",marginTop:".4rem",fontWeight:600}}>
-                  +{recalls.length - 3} more — review your assets for full list
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Recall status — checking / no recalls found / error */}
-      {checking && (
-        <div style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".75rem",color:"var(--mid)",marginBottom:".65rem",padding:".6rem .85rem",background:"var(--white)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
-          <span className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)",flexShrink:0}}/>
-          Checking CPSC recall database for your appliances…
-        </div>
-      )}
-      {!checking && checked && recalls.length === 0 && !recallError && warranties.some(a => a.brand) && (
-        <div style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".75rem",color:"#3B6D11",marginBottom:".65rem",padding:".6rem .85rem",background:"#EAF3DE",borderRadius:"var(--r-sm)",border:"1px solid #97C459"}}>
-          🛡️ No active CPSC recalls found for your logged appliances
-        </div>
-      )}
-      {!checking && recallError && (
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",fontSize:".75rem",color:"#92400E",marginBottom:".65rem",padding:".6rem .85rem",background:"#FEF9C3",borderRadius:"var(--r-sm)",border:"1px solid #FDE68A"}}>
-          <span>⚠ {recallError}</span>
-          <button onClick={runCheck} style={{fontSize:".72rem",fontWeight:700,color:"#92400E",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"'Hanken Grotesk',sans-serif"}}>Retry</button>
-        </div>
-      )}
-
-      {/* ── NEW USER WELCOME ── show when wizard hasn't been run */}
+      {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
       {isNewUser && (
-        <div style={{background:"var(--pine)",borderRadius:"var(--r)",padding:"1.35rem 1.25rem",marginBottom:".85rem",position:"relative",overflow:"hidden"}}>
-          {/* decorative circle */}
-          <div style={{position:"absolute",right:-30,top:-30,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
-          <div style={{position:"absolute",right:20,bottom:-40,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
-          <div style={{fontSize:"1.75rem",marginBottom:".5rem"}}>🏡</div>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:"#F4EDDF",marginBottom:".35rem"}}>
-            Welcome to Steadwell
-          </div>
-          <div style={{fontSize:".8rem",color:"rgba(244,237,223,.7)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>
-            Set up your home in about 10 minutes. We'll generate a personalized maintenance plan based on your home's systems and age.
-          </div>
-          <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
-            <button
-              className="btn"
-              style={{background:"#C16140",color:"#fff",border:"none",fontWeight:700,fontSize:".85rem",padding:".55rem 1.1rem"}}
-              onClick={() => onNavigate("profile")}
-            >
-              Set up my home →
-            </button>
-            <button
-              className="btn"
-              style={{background:"rgba(255,255,255,.12)",color:"rgba(244,237,223,.85)",border:"1px solid rgba(255,255,255,.18)",fontSize:".82rem"}}
-              onClick={() => onNavigate("tasks")}
-            >
-              Add a task manually
-            </button>
-          </div>
+        <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.15,marginBottom:".5rem"}}>Welcome to Steadwell</div>
+          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>Set up your home in 10 minutes and we'll generate a personalized maintenance plan.</div>
+          <button style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".75rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:700,cursor:"pointer"}} onClick={()=>onNavigate("profile")}>
+            Set up my home →
+          </button>
         </div>
       )}
 
-      {/* ── HOME AUDIT CHECKLIST — show when setup is done but profile is incomplete ── */}
-      {profile?.home_setup_complete && warranties.length > 0 && (
-        <HomeAuditChecklist warranties={warranties} onNavigate={onNavigate} onOpenAsset={onOpenAsset} userId={userId} profile={profile}/>
-      )}
-
-      {/* Health score + cost forecast — always show but context-aware */}
-      {planData && (
-        <div style={{marginBottom:".85rem"}}>
-          <HealthScoreWidget tasks={tasks} warranties={warranties} profile={profile} planData={planData} onUpgrade={onUpgrade}/>
-          <CostForecastWidget warranties={warranties} planData={planData} onUpgrade={onUpgrade}/>
-        </div>
-      )}
-
-      {/* Overdue alert */}
-      {overdue > 0 && (
-        <div className="alert-banner" onClick={() => onNavigate("tasks")}>
-          <span style={{fontSize:"1.2rem"}}>⚠️</span>
-          <span className="alert-banner-text">You have overdue tasks that need attention</span>
-          <span className="alert-banner-count">{overdue} overdue</span>
-          <span style={{color:"var(--red)",fontSize:".85rem"}}>→</span>
-        </div>
-      )}
-
-      {/* Insurance renewal alert */}
-      {(() => {
-        const d = profile?.ins_renewal_date ? daysTo(profile.ins_renewal_date) : null;
-        if (d === null || d > 90) return null;
-        const urgent = d <= 30;
-        return (
-          <div className="alert-banner" style={{background:urgent?"var(--red-light)":"#FFF8E6",borderColor:urgent?"#EFCFCC":"#F5CC76"}} onClick={() => onNavigate("profile")}>
-            <span style={{fontSize:"1.2rem"}}>{urgent?"🚨":"⚠️"}</span>
-            <span className="alert-banner-text" style={{color:urgent?"#8B2020":"#92610A"}}>
-              {d < 0 ? "Insurance renewal date has passed" : `Insurance renews in ${d} day${d!==1?"s":""}`}
-            </span>
-            <span style={{fontSize:".75rem",fontWeight:600,color:urgent?"var(--red)":"#92610A"}}>View →</span>
-          </div>
-        );
-      })()}
-
-      {/* Stat tiles — only show when user has data */}
+      {/* ── STATUS HERO ── */}
       {!isNewUser && (
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
-          <div className="stat c-gold" onClick={() => onNavigate("expenses")} style={{marginBottom:0}}>
-            <div className="stat-label">{yr} Spend</div>
-            <div className="stat-val" style={{fontSize:"1.35rem"}}>{fmt$(yrSpend)}</div>
-            <div className="stat-sub">{fmt$(totalSpend)} lifetime</div>
+        <div style={{background:heroGrad,padding:"1.5rem 1.25rem 1.6rem",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",left:-30,bottom:-60,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.03)",pointerEvents:"none"}}/>
+
+          {/* Top row */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.2rem"}}>
+            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"rgba(244,237,223,.4)"}}>{profile?.address?.split(",")[0] || profile?.name || "My Home"}</span>
+            <span style={{fontSize:".75rem",fontWeight:600,color:"rgba(244,237,223,.3)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
           </div>
-          <div className="stat c-sage" onClick={() => onNavigate("warranties")} style={{marginBottom:0}}>
-            <div className="stat-label">Assets</div>
-            <div className="stat-val">{activeW}</div>
-            <div className="stat-sub">{expiringW.length > 0 ? `${expiringW.length} warranty expiring` : "tracked"}</div>
+
+          {/* Status + ring */}
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:"1rem"}}>
+            <div>
+              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"rgba(244,237,223,.4)",marginBottom:".4rem"}}>Home status</div>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.5px"}}>{heroStatus}</div>
+              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.5)",marginTop:".35rem",lineHeight:1.4,maxWidth:220}}>{heroSub}</div>
+            </div>
+            <div style={{flexShrink:0,position:"relative",width:64,height:64}}>
+              <svg width="64" height="64" viewBox="0 0 64 64" style={{transform:"rotate(-90deg)"}}>
+                <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="6"/>
+                <circle cx="32" cy="32" r="26" fill="none" stroke={ringColor} strokeWidth="6"
+                  strokeDasharray={`${ringDash} 163`} strokeLinecap="round"/>
+              </svg>
+              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                {heroLevel === "ok"
+                  ? <span style={{fontSize:"1.1rem",color:"#7DCBA1",lineHeight:1}}>✓</span>
+                  : <><span style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{urgentCount + warnCount}</span>
+                     <span style={{fontSize:".5rem",textTransform:"uppercase",letterSpacing:".08em",color:"rgba(244,237,223,.4)",fontWeight:700,marginTop:2}}>items</span></>
+                }
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Seasonal banner */}
-      <div className="seasonal-banner" style={{background:tip.color,border:`1px solid ${tip.border}`}}>
-        <div className="seasonal-icon">{tip.icon}</div>
-        <div>
-          <div className="seasonal-title">{tip.title}</div>
-          <div className="seasonal-tip">{tip.tip}</div>
-        </div>
-      </div>
-
-      {/* ── Week Ahead tile ── */}
-      {(() => {
-        const now = new Date();
-        const evMap = buildHomeEvents(tasks, warranties, profile, serviceLogs);
-        const EV_COLOR = { task:"#234A3D", task_progress:"#B8861E", task_overdue:"#C16140", task_done:"#A8A09A", warranty:"#C16140", warranty_warn:"#B8861E", insurance:"#B8861E", insurance_warn:"#E8A030", service:"#7FA088", seasonal:"#3A7AAF" };
-        const days = Array.from({length:7}, (_,i) => {
-          const d = new Date(now); d.setDate(d.getDate()+i);
-          const dateStr = localISO(d);
-          const allEvs = (evMap[dateStr]||[]).filter(e => e.type !== "task_done");
-          return { d, dateStr, allEvs, isToday:i===0 };
-        });
-        const weekEvCount = days.reduce((s,d)=>s+d.allEvs.length,0);
-        const overdueCount = tasks.filter(t=>t.status==="Overdue").length;
-        return (
-          <div className="week-tile">
-            <div className="week-tile-hdr">
-              <span className="week-tile-title">Week ahead</span>
-              <button className="btn btn-ghost btn-sm" onClick={()=>onNavigate("tasks")}>Calendar →</button>
-            </div>
-            <div className="week-days">
-              {days.map(({d, dateStr, allEvs, isToday},i) => (
-                <div key={i} className={`wd${isToday?" wd-today":""}${allEvs.length>0?" has-ev":""}`}
-                  onClick={()=>allEvs.length>0 && onNavigate("tasks")}
-                >
-                  <div className="wd-label">{["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()]}</div>
-                  <div className="wd-num">{d.getDate()}</div>
-                  <div className="wd-dots">
-                    {allEvs.slice(0,3).map((e,j)=><div key={j} className="wd-dot" style={{background:EV_COLOR[e.type]||"#A8A09A"}}/>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="week-summary">
-              {weekEvCount > 0
-                ? <span>{weekEvCount} event{weekEvCount>1?"s":""} this week</span>
-                : <span style={{color:"var(--sage-deep)"}}>✓ Clear week ahead</span>
-              }
-              {overdueCount > 0 && <span style={{color:"var(--rust)",fontWeight:600}}>· {overdueCount} overdue</span>}
-              {weekEvCount > 0 && <span style={{color:"#C2B8AE"}}>· tap a dot to view</span>}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Quick Actions ── */}
-      <div className="quick-acts">
+      {/* ── QUICK ACTIONS — front and center ── */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".65rem",padding:".85rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)"}}>
         {[
-          {icon:"✓", label:"Add Task",     tab:"tasks"},
-          {icon:"💲", label:"Log Expense",  tab:"expenses"},
-          {icon:"🔧", label:"Add Asset",    tab:"warranties"},
-        ].map(({icon,label,tab})=>(
-          <button key={tab} className="qa-btn" onClick={()=>onNavigate(tab)}>
-            <span className="qa-icon">{icon}</span>
-            <span>{label}</span>
+          {icon:"✓",  label:"Add task",    action:()=>onNavigate("tasks")},
+          {icon:"💸", label:"Log expense", action:()=>onNavigate("expenses")},
+          {icon:"🔧", label:"Add asset",   action:()=>onNavigate("warranties")},
+        ].map(({icon,label,action})=>(
+          <button key={label} onClick={action}
+            style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".85rem .5rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".4rem",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--pine)";e.currentTarget.style.background="rgba(35,74,61,.04)";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--cream)";}}>
+            <span style={{fontSize:"1.4rem"}}>{icon}</span>
+            <span style={{fontSize:".75rem",fontWeight:700,color:"var(--dark)"}}>{label}</span>
           </button>
         ))}
       </div>
 
-      {/* Panels */}
-      <div className="dash-grid">
-        <div className="panel">
-          <div className="panel-title" style={{cursor:"pointer"}} onClick={() => onNavigate("tasks")}>📋 Coming up <span style={{fontSize:".7rem",color:"#A8A09A",fontWeight:400,fontFamily:"'Hanken Grotesk',sans-serif"}}>· tap to view all →</span></div>
-          {upcoming.length===0 ? (
-            <div className="empty" style={{padding:"1.5rem .5rem"}}>
-              <span className="ei">{isNewUser ? "🏡" : "✅"}</span>
-              {isNewUser ? (
-                <>
-                  <strong>No tasks yet</strong>
-                  <p>Run the Home Setup Wizard to get a personalized maintenance schedule in minutes</p>
-                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate("profile")}>Set up my home →</button>
-                </>
-              ) : (
-                <>
-                  <strong>All clear!</strong>
-                  <p>No tasks due in the next 30 days</p>
-                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate("tasks")}>Add a task</button>
-                </>
-              )}
-            </div>
-          ) : upcoming.slice(0,5).map(t => {
-            const d = daysTo(t.due_date);
-            return (
-              <button className="up-item" key={t.id} onClick={() => onNavigate("tasks")}>
-                <span style={{fontSize:"1.15rem"}}>{CAT_ICONS[t.category]||"🔧"}</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                  <div style={{fontSize:".71rem",color:"#A8A09A",marginTop:"1px"}}>{t.category} · {fmtD(t.due_date)}</div>
-                </div>
-                <div className="up-days" style={{background:d===0?"var(--red-light)":d<=7?"#FFF8E6":"var(--sky-light)",color:d===0?"var(--red)":d<=7?"#92610A":"var(--sky)"}}>
-                  {d===0?"Today":d===1?"Tomorrow":`${d}d`}
-                </div>
-                <span style={{color:"#C2B8AE",fontSize:".8rem",marginLeft:"2px",flexShrink:0}}>›</span>
-              </button>
-            );
-          })}
-          {upcoming.length > 5 && (
-            <button className="btn btn-ghost btn-sm" style={{width:"100%",marginTop:".5rem",justifyContent:"center"}} onClick={() => onNavigate("tasks")}>
-              See all {upcoming.length} upcoming →
-            </button>
-          )}
+      {/* ── RECALL checking / no recalls status ── */}
+      {checking && (
+        <div style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".75rem",color:"var(--mid)",padding:".65rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--cream2)"}}>
+          <span className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:"rgba(35,74,61,.15)",borderTopColor:"var(--pine)",flexShrink:0}}/>
+          Checking CPSC recall database…
         </div>
+      )}
 
-        <div className="panel">
-          <div className="panel-title">🏠 Asset warranty alerts</div>
-          {expiringW.length===0 ? (
-            <div className="empty" style={{padding:"1.5rem .5rem"}}>
-              <span className="ei">{isNewUser ? "📦" : "🛡️"}</span>
-              {isNewUser ? (
-                <>
-                  <strong>No assets tracked</strong>
-                  <p>Add your appliances and systems to track warranties and get expiry alerts</p>
-                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate("warranties")}>Add an asset</button>
-                </>
-              ) : (
-                <>
-                  <strong>All covered</strong>
-                  <p>No warranties expiring in 90 days</p>
-                </>
-              )}
+      {/* ── UNIFIED ACTION FEED ── */}
+      <div style={{marginTop:".75rem"}}>
+        {actionItems.length > 0 && (
+          <>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".5rem 1.25rem .4rem"}}>
+              <span style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#A8A09A"}}>Action needed</span>
+              <span style={{fontSize:".7rem",fontWeight:700,color:"var(--rust)"}}>{actionItems.length} item{actionItems.length!==1?"s":""}</span>
             </div>
-          ) : expiringW.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).slice(0,5).map(w => {
-            const d = daysTo(w.expiry_date);
-            return (
-              <button className="up-item" key={w.id} onClick={() => onNavigate("warranties")}>
-                <span style={{fontSize:"1.15rem"}}>📋</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.item}</div>
-                  <div style={{fontSize:".71rem",color:"#A8A09A",marginTop:"1px"}}>Expires {fmtD(w.expiry_date)}</div>
+            <div style={{background:"var(--white)"}}>
+              {actionItems.map(item => <FeedItem key={item.id} item={item}/>)}
+            </div>
+          </>
+        )}
+
+        {actionItems.length === 0 && !isNewUser && (
+          <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem 1.25rem",background:"var(--white)"}}>
+            <div style={{width:44,height:44,borderRadius:12,background:"var(--ok-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>✅</div>
+            <div>
+              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>You're on top of everything</div>
+              <div style={{fontSize:".8rem",color:"#8A8178",marginTop:".15rem"}}>No overdue tasks, recalls, or renewals due</div>
+            </div>
+          </div>
+        )}
+
+        {upcomingItems.length > 0 && (
+          <>
+            <div style={{padding:".65rem 1.25rem .4rem",borderTop:"1px solid var(--cream2)",marginTop:actionItems.length > 0 ? ".75rem" : 0}}>
+              <span style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C2B8AE"}}>Coming up</span>
+            </div>
+            <div style={{background:"var(--white)"}}>
+              {upcomingItems.map((item,i) => (
+                <div key={item.id} style={{borderBottom:i<upcomingItems.length-1?"1px solid var(--cream2)":"none"}}>
+                  <FeedItem item={item}/>
                 </div>
-                <div className="up-days" style={{background:d<=30?"var(--red-light)":"#FFF8E6",color:d<=30?"var(--red)":"#92610A"}}>{d}d left</div>
-                <span style={{color:"#C2B8AE",fontSize:".8rem",marginLeft:"2px",flexShrink:0}}>›</span>
-              </button>
-            );
-          })}
+              ))}
+            </div>
+          </>
+        )}
+
+        {feedItems.length === 0 && !isNewUser && (
+          <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem 1.25rem",background:"var(--white)"}}>
+            <div style={{width:44,height:44,borderRadius:12,background:"var(--ok-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>🏡</div>
+            <div>
+              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>Nothing to do right now</div>
+              <div style={{fontSize:".8rem",color:"#8A8178",marginTop:".15rem"}}>Add tasks or assets to start tracking your home</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── WEEK STRIP ── */}
+      <div style={{background:"var(--white)",margin:".75rem 0",padding:"1rem 1.25rem"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem"}}>
+          <span style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#A8A09A"}}>This week</span>
+          <button onClick={()=>onNavigate("tasks")} style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Full calendar →</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+          {weekDays.map(({d, allEvs, isToday}, i) => (
+            <div key={i} onClick={()=>allEvs.length>0&&onNavigate("tasks")}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:".5rem .2rem",borderRadius:10,cursor:allEvs.length>0?"pointer":"default",
+                background:isToday?"var(--pine)":allEvs.length>0?"var(--cream)":"transparent",
+                transition:"background .1s"}}>
+              <span style={{fontSize:".62rem",fontWeight:700,color:isToday?"rgba(244,237,223,.6)":"#BFB5A8",letterSpacing:".04em",textTransform:"uppercase"}}>
+                {["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()]}
+              </span>
+              <span style={{fontSize:".95rem",fontWeight:700,color:isToday?"#F4EDDF":"var(--dark)"}}>{d.getDate()}</span>
+              <div style={{display:"flex",gap:2,height:6,alignItems:"center",justifyContent:"center"}}>
+                {allEvs.slice(0,3).map((e,j)=>(
+                  <div key={j} style={{width:5,height:5,borderRadius:"50%",background:EV_COLOR[e.type]||"#A8A09A"}}/>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* ── SEASONAL TIP ── */}
+      {tip.tip && (
+        <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1.25rem",fontSize:".82rem",color:"#7A7370"}}>
+          <span style={{fontSize:"1.1rem",flexShrink:0}}>{tip.icon}</span>
+          <span style={{lineHeight:1.45}}><strong>{tip.title}:</strong> {tip.tip}</span>
+        </div>
+      )}
 
       {/* Day detail modal */}
       {selectedDay && (
