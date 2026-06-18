@@ -6762,7 +6762,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Deep-link: open warranty module from toolbox
   useEffect(() => {
     if (pendingWarrantyTracker) {
-      setShowWarrantyModule(true);
+      openNewWarranty();
       onClearPendingWarranty?.();
     }
   }, [pendingWarrantyTracker]);
@@ -14070,7 +14070,7 @@ export default function App() {
             <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
               <button onClick={()=>setShowWarrantyModule(false)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>←</button>
               <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,flex:1}}>Warranties</span>
-              <button onClick={()=>{setShowWarrantyModule(false);setPendingWarrantyTracker(true);setTab("warranties");}} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,padding:".45rem .9rem",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Add</button>
+              <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,padding:".45rem .9rem",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Add</button>
             </div>
             <div style={{flex:1,padding:"0 0 3rem"}}>
               {(()=>{
@@ -14121,7 +14121,7 @@ export default function App() {
                     <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginBottom:"1rem",lineHeight:1.5}}>
                       {allW.length===0?"Track warranties for any item — appliances, electronics, vehicles, jewelry":[urgent.length>0&&`${urgent.length} expiring within 30 days`,expired.length>0&&`${expired.length} expired`,assetExp.length>0&&`${assetExp.length} asset warranties expiring soon`].filter(Boolean).join(" · ")||"All warranties are current"}
                     </div>
-                    <button onClick={()=>{setShowWarrantyModule(false);setPendingWarrantyTracker(true);setTab("warranties");}}
+                    <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}}
                       style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".8rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".9rem",fontWeight:700,cursor:"pointer"}}>
                       + Track a warranty
                     </button>
@@ -14167,7 +14167,7 @@ export default function App() {
                       <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🔖</div>
                       <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".5rem"}}>No warranties tracked yet</div>
                       <div style={{fontSize:".85rem",color:"#8A8178",lineHeight:1.6,marginBottom:"1.25rem",maxWidth:300,margin:"0 auto .85rem"}}>Track warranties for appliances, electronics, vehicles, jewelry — anything with a warranty.</div>
-                      <button onClick={()=>{setShowWarrantyModule(false);setPendingWarrantyTracker(true);setTab("warranties");}} className="btn btn-primary">Track your first warranty →</button>
+                      <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}} className="btn btn-primary">Track your first warranty →</button>
                     </div>
                   )}
                 </>);
