@@ -936,7 +936,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .lp-brand .wm{font-family:var(--display);font-weight:600;font-size:1.4rem;letter-spacing:-.02em;color:var(--linen);transition:color .35s}
 .lp-root .lp-nav.solid .lp-brand .wm{color:var(--pine)}
 .lp-root .lp-nav-links{display:flex;align-items:center;gap:34px}
-.lp-root .lp-nav-links a{font-size:.92rem;font-weight:500;color:rgba(244,237,223,.78);cursor:pointer;transition:color .25s;position:relative;text-decoration:none}
+.lp-root .lp-nav-links a{font-size:.92rem;font-weight:500;color:rgba(244,237,223,.78);cursor:pointer;transition:color .25s;position:relative}
 .lp-root .lp-nav-links a::after{content:"";position:absolute;left:0;right:100%;bottom:-5px;height:1.5px;background:var(--terracotta-soft);transition:right .3s cubic-bezier(.22,1,.36,1)}
 .lp-root .lp-nav-links a:hover::after{right:0}
 .lp-root .lp-nav.solid .lp-nav-links a{color:var(--ink-soft)}
@@ -1147,7 +1147,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .foot-brand .wm{font-family:var(--display);font-weight:600;color:var(--linen);font-size:1.1rem}
 .lp-root .foot-tag{font-size:.84rem;color:rgba(244,237,223,.5)}
 .lp-root .foot-links{display:flex;gap:26px}
-.lp-root .foot-links a{font-size:.88rem;color:rgba(244,237,223,.72);cursor:pointer;transition:color .2s;text-decoration:none;font-family:var(--body)}
+.lp-root .foot-links a{font-size:.88rem;color:rgba(244,237,223,.72);cursor:pointer;transition:color .2s}
 .lp-root .foot-links a:hover{color:#fff}
 .lp-root .foot-copy{max-width:var(--maxw);margin:26px auto 0;padding-top:22px;border-top:1px solid rgba(167,191,168,.1);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.8rem;color:rgba(244,237,223,.45)}
 
@@ -1931,8 +1931,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             <a onClick={() => scrollTo("features")}>Features</a>
             <a onClick={() => scrollTo("how")}>How it works</a>
             <a onClick={() => scrollTo("pricing")}>Pricing</a>
-            <a href="/warranty-tracker">Warranty Tracker</a>
-            <a href="/blog">Blog</a>
+            <a href="/blog" style={{color:"inherit",textDecoration:"none"}}>Blog</a>
           </div>
           <div className="lp-nav-cta">
             <button className="lp-signin lp-nav-desktop" onClick={onSignIn}>Sign in</button>
@@ -1946,7 +1945,6 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a onClick={() => { scrollTo("features"); setMobileMenuOpen(false); }}>Features</a>
               <a onClick={() => { scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
               <a onClick={() => { scrollTo("pricing"); setMobileMenuOpen(false); }}>Pricing</a>
-              <a href="/warranty-tracker" onClick={() => setMobileMenuOpen(false)}>Warranty Tracker</a>
               <a href="/blog" onClick={() => setMobileMenuOpen(false)}>Blog</a>
               <div className="lp-mobile-menu-btns">
                 <button className="lp-signin" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>Sign in</button>
@@ -2209,21 +2207,20 @@ function LandingPage({ onSignIn, onSignUp }) {
               <span className="wm">Steadwell</span>
               <span className="foot-tag">— Your home, kept well.</span>
             </div>
-            <div className="foot-links">
+            <div className="foot-links" style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
               <a onClick={() => scrollTo("features")}>Features</a>
               <a onClick={() => scrollTo("pricing")}>Pricing</a>
-              <a href="/warranty-tracker">Warranty Tracker</a>
-              <a href="/blog">Blog</a>
-              <a href="mailto:hello@trysteadwell.app">Contact</a>
+              <a href="/blog" style={{color:"inherit",textDecoration:"none"}}>Blog</a>
               <a onClick={onSignIn}>Sign in</a>
             </div>
           </div>
-          <div style={{marginTop:"1.25rem",paddingTop:"1rem",borderTop:"1px solid rgba(244,237,223,.07)",display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:"1rem",alignItems:"center"}}>
-            <span style={{fontSize:".78rem",color:"rgba(244,237,223,.28)",fontFamily:"var(--body)"}}>&copy; 2026 Steadwell, LLC. Built for homeowners.</span>
+          <div style={{marginTop:"1.5rem",paddingTop:"1rem",borderTop:"1px solid rgba(244,237,223,.08)",display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:"1rem",alignItems:"center"}}>
+            <span style={{fontSize:".8rem",color:"rgba(244,237,223,.35)"}}>&copy; 2026 Steadwell, LLC. Built for homeowners.</span>
             <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
-              <a href="/terms"       style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Terms</a>
-              <a href="/privacy"     style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Privacy</a>
-              <a href="/ada"         style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Accessibility</a>
+              <a href="/terms" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Terms</a>
+              <a href="/privacy" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Privacy</a>
+              <a href="/ada" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Accessibility</a>
+              <a href="/blog" style={{color:"rgba(244,237,223,.35)",textDecoration:"none",fontSize:".8rem"}}>Blog</a>
             </div>
           </div>
         </div>
@@ -6639,7 +6636,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [warrantyModal, setWarrantyModal] = useState(false);
   const [warrantyData, setWarrantyData] = useState({});
   const [warrantyEditId, setWarrantyEditId] = useState(null);
-  const [showWarrantyModule, setShowWarrantyModule] = useState(false);
 
   const openNewWarranty = () => {
     setWarrantyData({purchase_date: localISO()});
@@ -6760,10 +6756,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     }
   }, [pendingSelectedAsset]);
 
-  // Deep-link: open warranty module from toolbox
+  // Deep-link: open warranty tracker modal from toolbox
   useEffect(() => {
     if (pendingWarrantyTracker) {
-      setShowWarrantyModule(true);
+      openNewWarranty();
       onClearPendingWarranty?.();
     }
   }, [pendingWarrantyTracker]);
@@ -7686,34 +7682,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
       )}
 
-      {/* Track a warranty tile */}
-      {!showRetired && (
-        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:".9rem",overflow:"hidden"}}>
-          <div onClick={()=>setShowWarrantyModule(true)}
-            style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",cursor:"pointer",transition:"background .1s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
-            onMouseLeave={e=>e.currentTarget.style.background="var(--white)"}>
-            <div style={{width:40,height:40,borderRadius:11,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",flexShrink:0}}>🔖</div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Warranties</div>
-              <div style={{fontSize:".75rem",color:"#8A8178",marginTop:1}}>
-                {assets.filter(w=>w.warranty_only).length > 0
-                  ? `${assets.filter(w=>w.warranty_only && daysTo(w.expiry_date) >= 0).length} active · ${assets.filter(w=>w.warranty_only && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0).length > 0 ? assets.filter(w=>w.warranty_only && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0).length + " expired" : "all current"}`
-                  : "Track warranties for any item you own"}
-              </div>
-            </div>
-            <span style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)"}}>View all →</span>
-          </div>
-          <div style={{borderTop:"1px solid var(--cream2)",padding:".6rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:".75rem",color:"#A8A09A"}}>Scan a receipt · link to an asset · get expiry reminders</span>
-            <button onClick={openNewWarranty}
-              style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1px solid var(--pine)",borderRadius:8,padding:".3rem .7rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
-              + Add
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Empty state */}
       {list.length===0 && (
         <div className="empty">
@@ -7953,151 +7921,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           </Modal>
         )
       )}
-      {/* ── WARRANTY MODULE FULL-SCREEN ── */}
-      {showWarrantyModule && (
-        <div style={{position:"fixed",inset:0,background:"var(--cream)",zIndex:300,overflowY:"auto",display:"flex",flexDirection:"column"}}>
-          {/* Header */}
-          <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
-            <button onClick={()=>setShowWarrantyModule(false)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>←</button>
-            <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,flex:1}}>Warranties</span>
-            <button onClick={openNewWarranty} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,padding:".45rem .9rem",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Add</button>
-          </div>
-
-          <div style={{flex:1,padding:"0 0 3rem"}}>
-            {(() => {
-              const allWarranties = assets.filter(w => w.warranty_only);
-              const active   = allWarranties.filter(w => { const d = daysTo(w.expiry_date); return d !== null && d >= 0; });
-              const urgent   = active.filter(w => daysTo(w.expiry_date) <= 30);
-              const upcoming = active.filter(w => daysTo(w.expiry_date) > 30);
-              const expired  = allWarranties.filter(w => { const d = daysTo(w.expiry_date); return d !== null && d < 0; });
-              const noDate   = allWarranties.filter(w => !w.expiry_date);
-              const assetWarranties = assets.filter(w => !w.warranty_only && w.expiry_date);
-              const assetExpiring   = assetWarranties.filter(w => { const d = daysTo(w.expiry_date); return d !== null && d >= 0 && d <= 90; });
-
-              const WarrantyRow = ({w, isAsset=false}) => {
-                const d = daysTo(w.expiry_date);
-                const isExpired = d !== null && d < 0;
-                const isUrgent  = d !== null && d >= 0 && d <= 30;
-                const statusColor = isExpired ? "#B0432B" : isUrgent ? "#B8861E" : "var(--ok)";
-                const statusBg    = isExpired ? "#F7E0DA" : isUrgent ? "#FBF3DE" : "var(--ok-bg)";
-                const statusLabel = d === null ? "No date" : isExpired ? `${Math.abs(d)}d ago` : d === 0 ? "Today" : d === 1 ? "Tomorrow" : d <= 30 ? `${d}d left` : `${Math.round(d/30)}mo left`;
-                const catColor    = CATEGORY_COLORS[w.category] || CATEGORY_COLORS.Other;
-                const linkedAsset = w.asset_id ? assets.find(a => a.id === w.asset_id) : null;
-                return (
-                  <div key={w.id}
-                    onClick={()=>{ if(isAsset){ setSelectedAsset(w.id); setShowWarrantyModule(false); } else { setWarrantyData({...w}); setWarrantyEditId(w.id); setWarrantyModal(true); } }}
-                    style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--cream2)",cursor:"pointer"}}
-                    onTouchStart={e=>e.currentTarget.style.background="var(--cream)"}
-                    onTouchEnd={e=>e.currentTarget.style.background="var(--white)"}>
-                    <div style={{width:42,height:42,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`}}>
-                      <AssetIcon asset={w} size={20}/>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:".15rem"}}>{w.item}</div>
-                      <div style={{fontSize:".75rem",color:"#8A8178",lineHeight:1.3}}>
-                        {[w.brand, w.model, linkedAsset ? `🔗 ${linkedAsset.item}` : null].filter(Boolean).join(" · ") || (isAsset ? "Full asset record" : "Warranty only")}
-                      </div>
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
-                      <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:20,background:statusBg,color:statusColor,whiteSpace:"nowrap"}}>{statusLabel}</span>
-                      {w.expiry_date && <span style={{fontSize:".68rem",color:"#A8A09A"}}>{fmtD(w.expiry_date)}</span>}
-                    </div>
-                    <span style={{fontSize:".9rem",color:"#C2B8AE",flexShrink:0}}>›</span>
-                  </div>
-                );
-              };
-
-              return (
-                <>
-                  {/* Hero summary */}
-                  <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.35rem 1.25rem",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.2,marginBottom:".4rem"}}>
-                      {allWarranties.length === 0 ? "No warranties tracked yet" : `${active.length} active warrant${active.length !== 1 ? "ies" : "y"}`}
-                    </div>
-                    <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginBottom:"1rem",lineHeight:1.5}}>
-                      {allWarranties.length === 0
-                        ? "Track warranties for any item — appliances, electronics, vehicles, jewelry"
-                        : [urgent.length > 0 && `${urgent.length} expiring within 30 days`, expired.length > 0 && `${expired.length} expired`, assetExpiring.length > 0 && `${assetExpiring.length} asset warranties expiring soon`].filter(Boolean).join(" · ") || "All warranties are current"}
-                    </div>
-                    <button onClick={openNewWarranty}
-                      style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".8rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".9rem",fontWeight:700,cursor:"pointer"}}>
-                      + Track a warranty
-                    </button>
-                  </div>
-
-                  {/* Urgent — expiring ≤30 days */}
-                  {urgent.length > 0 && (
-                    <div style={{background:"var(--white)",border:"1.5px solid #EAD9A6",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                      <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",gap:".5rem"}}>
-                        <span style={{fontSize:".75rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 8px",borderRadius:8}}>⚠ Expiring within 30 days</span>
-                      </div>
-                      {urgent.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WarrantyRow key={w.id} w={w}/>)}
-                    </div>
-                  )}
-
-                  {/* Asset warranties expiring soon */}
-                  {assetExpiring.length > 0 && (
-                    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                      <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <span style={{fontSize:".88rem",fontWeight:700}}>Asset warranties expiring</span>
-                        <span style={{fontSize:".72rem",color:"#8A8178"}}>From your asset records</span>
-                      </div>
-                      {assetExpiring.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WarrantyRow key={w.id} w={w} isAsset={true}/>)}
-                    </div>
-                  )}
-
-                  {/* Active */}
-                  {upcoming.length > 0 && (
-                    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                      <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <span style={{fontSize:".88rem",fontWeight:700}}>Active</span>
-                        <span style={{fontSize:".75rem",fontWeight:700,color:"var(--ok)",background:"var(--ok-bg)",padding:"2px 8px",borderRadius:8}}>{upcoming.length} covered</span>
-                      </div>
-                      {upcoming.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WarrantyRow key={w.id} w={w}/>)}
-                    </div>
-                  )}
-
-                  {/* No expiry date */}
-                  {noDate.length > 0 && (
-                    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                      <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                        <span style={{fontSize:".88rem",fontWeight:700,color:"#8A8178"}}>No expiry date set</span>
-                      </div>
-                      {noDate.map(w=><WarrantyRow key={w.id} w={w}/>)}
-                    </div>
-                  )}
-
-                  {/* Expired */}
-                  {expired.length > 0 && (
-                    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden",opacity:.75}}>
-                      <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <span style={{fontSize:".88rem",fontWeight:700,color:"#8A8178"}}>Expired</span>
-                        <span style={{fontSize:".72rem",color:"#A8A09A"}}>{expired.length} item{expired.length!==1?"s":""}</span>
-                      </div>
-                      <div style={{padding:".55rem 1rem",background:"var(--cream2)",borderBottom:"1px solid var(--cream2)",fontSize:".75rem",color:"#8A8178"}}>Consider extended coverage or budget for replacement</div>
-                      {expired.sort((a,b)=>daysTo(b.expiry_date)-daysTo(a.expiry_date)).map(w=><WarrantyRow key={w.id} w={w}/>)}
-                    </div>
-                  )}
-
-                  {/* Empty state */}
-                  {allWarranties.length === 0 && assetWarranties.length === 0 && (
-                    <div style={{textAlign:"center",padding:"2rem 1.5rem"}}>
-                      <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🔖</div>
-                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".5rem"}}>No warranties tracked yet</div>
-                      <div style={{fontSize:".85rem",color:"#8A8178",lineHeight:1.6,marginBottom:"1.25rem",maxWidth:300,margin:"0 auto .85rem"}}>
-                        Track warranties for appliances, electronics, vehicles, jewelry — anything with a warranty.
-                      </div>
-                      <button onClick={openNewWarranty} className="btn btn-primary">Track your first warranty →</button>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
       {confirm && <Confirm message="This asset and its service history will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {retirePrompt && !retireConfirm && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setRetirePrompt(null)}>
