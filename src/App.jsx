@@ -6649,15 +6649,24 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const saveWarranty = async () => {
     if (!warrantyData.item?.trim()) { toast("Item name is required","error"); return; }
 
+    // Spread warrantyData but convert empty strings to null for typed columns
+    const nullify = (v) => (v === "" || v === undefined) ? null : v;
     const payload = {
       ...warrantyData,
-      user_id:       userId,
-      property_id:   propertyId,
-      warranty_only: true,
-      condition:     "Good",
+      user_id:        userId,
+      property_id:    propertyId,
+      warranty_only:  true,
+      condition:      "Good",
+      // UUID fields must be null not ""
+      asset_id:       nullify(warrantyData.asset_id),
+      // Date fields must be null not ""
+      expiry_date:    nullify(warrantyData.expiry_date),
+      purchase_date:  nullify(warrantyData.purchase_date),
+      // Numeric fields must be null not ""
+      cost:           warrantyData.cost ? Number(warrantyData.cost) : null,
     };
 
-    // Remove internal _asset helper field before saving
+    // Remove internal helper fields before saving
     delete payload._asset;
 
     let savedId = warrantyEditId;
