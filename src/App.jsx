@@ -14089,7 +14089,10 @@ export default function App() {
                 const upcoming = active.filter(w=>daysTo(w.expiry_date)>30);
                 const expired  = allW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; });
                 const noDate   = allW.filter(w=>!w.expiry_date);
-                const assetExp = warranties.filter(w=>!w.warranty_only&&w.expiry_date&&daysTo(w.expiry_date)>=0&&daysTo(w.expiry_date)<=90);
+                const allAssetW    = warranties.filter(w=>!w.warranty_only && w.expiry_date);
+                const assetActive  = allAssetW.filter(w=>daysTo(w.expiry_date)>=0);
+                const assetExp     = allAssetW.filter(w=>daysTo(w.expiry_date)>=0&&daysTo(w.expiry_date)<=90);
+                const assetExpired = allAssetW.filter(w=>daysTo(w.expiry_date)<0);
 
                 const WRow = ({w,isAsset=false})=>{
                   const d=daysTo(w.expiry_date);
@@ -14125,10 +14128,10 @@ export default function App() {
                   <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.35rem 1.25rem",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
                     <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.2,marginBottom:".4rem"}}>
-                      {allW.length===0?"No warranties tracked yet":`${active.length} active warrant${active.length!==1?"ies":"y"}`}
+                      {allW.length===0&&allAssetW.length===0?"No warranties tracked yet":`${active.length + assetActive.length} active warrant${(active.length+assetActive.length)!==1?"ies":"y"}`}
                     </div>
                     <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginBottom:"1rem",lineHeight:1.5}}>
-                      {allW.length===0?"Track warranties for any item — appliances, electronics, vehicles, jewelry":[urgent.length>0&&`${urgent.length} expiring within 30 days`,expired.length>0&&`${expired.length} expired`,assetExp.length>0&&`${assetExp.length} asset warranties expiring soon`].filter(Boolean).join(" · ")||"All warranties are current"}
+                      {allW.length===0&&allAssetW.length===0?"Track warranties for any item — appliances, electronics, vehicles, jewelry":[urgent.length>0&&`${urgent.length} expiring within 30 days`,assetExp.length>0&&`${assetExp.length} asset warranties expiring soon`,(expired.length+assetExpired.length)>0&&`${expired.length+assetExpired.length} expired`].filter(Boolean).join(" · ")||"All warranties are current"}
                     </div>
                     <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}}
                       style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".8rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".9rem",fontWeight:700,cursor:"pointer"}}>
@@ -14141,12 +14144,20 @@ export default function App() {
                     {urgent.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WRow key={w.id} w={w}/>)}
                   </div>)}
 
-                  {assetExp.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  {assetActive.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
                     <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:".88rem",fontWeight:700}}>Asset warranties expiring</span>
-                      <span style={{fontSize:".72rem",color:"#8A8178"}}>From your asset records</span>
+                      <span style={{fontSize:".88rem",fontWeight:700}}>Asset warranties</span>
+                      <span style={{fontSize:".72rem",color:"#8A8178"}}>{assetActive.length} from asset records</span>
                     </div>
-                    {assetExp.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WRow key={w.id} w={w} isAsset={true}/>)}
+                    {assetActive.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WRow key={w.id} w={w} isAsset={true}/>)}
+                  </div>)}
+
+                  {assetExpired.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden",opacity:.75}}>
+                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:".88rem",fontWeight:700,color:"#8A8178"}}>Expired asset warranties</span>
+                      <span style={{fontSize:".72rem",color:"#A8A09A"}}>{assetExpired.length} item{assetExpired.length!==1?"s":""}</span>
+                    </div>
+                    {assetExpired.sort((a,b)=>daysTo(b.expiry_date)-daysTo(a.expiry_date)).map(w=><WRow key={w.id} w={w} isAsset={true}/>)}
                   </div>)}
 
                   {upcoming.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
@@ -14171,7 +14182,7 @@ export default function App() {
                     {expired.sort((a,b)=>daysTo(b.expiry_date)-daysTo(a.expiry_date)).map(w=><WRow key={w.id} w={w}/>)}
                   </div>)}
 
-                  {allW.length===0&&assetExp.length===0&&(
+                  {allW.length===0&&allAssetW.length===0&&(
                     <div style={{textAlign:"center",padding:"2rem 1.5rem"}}>
                       <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🔖</div>
                       <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".5rem"}}>No warranties tracked yet</div>
