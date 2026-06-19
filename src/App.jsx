@@ -1146,7 +1146,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .foot-brand .tile svg{width:60%;height:60%}
 .lp-root .foot-brand .wm{font-family:var(--display);font-weight:600;color:var(--linen);font-size:1.1rem}
 .lp-root .foot-tag{font-size:.84rem;color:rgba(244,237,223,.5)}
-.lp-root .foot-links{display:flex;gap:26px}
+.lp-root .foot-links{display:flex;gap:26px;flex-wrap:wrap;justify-content:flex-end}
 .lp-root .foot-links a{font-size:.88rem;color:rgba(244,237,223,.72);cursor:pointer;transition:color .2s;text-decoration:none;font-family:var(--body)}
 .lp-root .foot-links a:hover{color:#fff}
 .lp-root .foot-copy{max-width:var(--maxw);margin:26px auto 0;padding-top:22px;border-top:1px solid rgba(167,191,168,.1);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.8rem;color:rgba(244,237,223,.45)}
@@ -1183,6 +1183,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .feat.spot h3{font-size:1.5rem}
   .lp-root .price-wrap{grid-template-columns:1fr;max-width:100%}
   .lp-root .foot-in{flex-direction:column;align-items:flex-start;gap:18px}
+  .lp-root .foot-links{justify-content:flex-start;gap:16px 22px}
   .lp-root .foot-copy{justify-content:flex-start;flex-direction:column;gap:4px}
   .lp-root .hero-btns{gap:10px}
   .lp-root .hero-btns .btn{flex:1 1 100%}
