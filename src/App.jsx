@@ -4356,6 +4356,31 @@ function ProUpgradeModal({ onClose }) {
 // ─── AI SCAN BUTTON ───────────────────────────────────────────────────────────
 const AI_SCAN_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/ai-document-scan";
 
+// Lightweight PDF page counter — reads raw bytes for "/Type /Page" object markers.
+// Works for the vast majority of real-world PDFs without needing a full parser library.
+// Falls back to null (unknown) if the structure can't be read — caller should allow upload in that case.
+const countPdfPages = async (file) => {
+  try {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    // Decode as latin1 so byte offsets match string indices for ASCII PDF markers
+    let str = "";
+    const chunkSize = 65536;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      str += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+    }
+    // Prefer /Type/Pages /Count N if present — most reliable
+    const countMatch = str.match(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/);
+    if (countMatch) return parseInt(countMatch[1], 10);
+    // Fallback: count individual /Type /Page object markers (excludes /Pages)
+    const pageMatches = str.match(/\/Type\s*\/Page[^s]/g);
+    if (pageMatches) return pageMatches.length;
+    return null; // unknown — allow through, let the API decide
+  } catch {
+    return null;
+  }
+};
+
 function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef, highlighted=false }) {
   const [scanning, setScanning]   = useState(false);
   const [error, setError]         = useState("");
@@ -4378,6 +4403,19 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     const isPdf   = file.type === "application/pdf";
     if (!isPdf && !isImage) { setError("Please select an image or PDF."); return; }
     if (file.size > 50 * 1024 * 1024) { setError("File must be under 50MB."); return; }
+
+    // PDF page guard — Claude's document API caps at 100 pages, and large bundles
+    // (full policy + every endorsement) waste storage without adding useful detail.
+    if (isPdf) {
+      const pageCount = await countPdfPages(file);
+      if (pageCount !== null && pageCount > 60) {
+        const tip = scanType === "insurance"
+          ? "Try uploading just your declarations page instead — usually the first 1–5 pages of your policy packet. It has everything we need (company, coverage amounts, deductible, renewal date) without using up your document storage on boilerplate pages."
+          : "Try uploading just the relevant pages instead of the full document — it scans faster and uses less of your document storage.";
+        setError(`This PDF has ${pageCount} pages — that's more than we can scan reliably. ${tip}`);
+        return;
+      }
+    }
 
     setScanning(true); setError("");
 
@@ -5195,17 +5233,47 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
 
 function InsuranceForm({ data, onChange, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
+  const handleScanComplete = (fields) => {
+    // AI returns ins_* prefixed fields directly — only apply known keys, ignore anything unexpected
+    const allowed = ["ins_company","ins_policy_number","ins_agent_name","ins_agent_phone","ins_premium","ins_deductible","ins_dwelling_coverage","ins_personal_property","ins_liability_coverage","ins_loss_of_use","ins_renewal_date","ins_notes"];
+    const clean = {};
+    allowed.forEach(k => { if (fields[k] !== undefined && fields[k] !== null && fields[k] !== "") clean[k] = fields[k]; });
+    onChange({...data, ...clean});
+  };
   return (
     <div>
-      <AIScanButton
-        onScanComplete={fields => onChange({...data,...fields})}
-        label="Scan policy document"
-        description="Auto-fill company, policy number, premium, coverage & renewal date"
-        scanType="insurance"
-        planData={planData}
-        onUpgrade={onUpgrade}
-        useCamera={true}
-      />
+      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.1rem 1.1rem .9rem",marginBottom:"1rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".5rem"}}>
+          <span style={{fontSize:"1rem"}}>✨</span>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Scan policy document</div>
+          {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
+        </div>
+        <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
+          Just your declarations page is enough — usually pages 1–5 of your policy packet. It has everything we need (company, coverage, deductible, renewal date) without using up your document storage on boilerplate pages.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+          <AIScanButton
+            onScanComplete={handleScanComplete}
+            label="Take photo"
+            description="Photograph your dec page"
+            scanType="insurance"
+            planData={planData}
+            onUpgrade={onUpgrade}
+            useCamera={true}
+            compact={true}
+          />
+          <AIScanButton
+            onScanComplete={handleScanComplete}
+            label="Upload file"
+            description="PDF or photo from library"
+            scanType="insurance"
+            planData={planData}
+            onUpgrade={onUpgrade}
+            useCamera={false}
+            compact={true}
+          />
+        </div>
+      </div>
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
         <div className="field s2"><label>Insurance Company *</label><input value={data.ins_company||""} onChange={e=>f("ins_company",e.target.value)} placeholder="e.g. State Farm" /></div>

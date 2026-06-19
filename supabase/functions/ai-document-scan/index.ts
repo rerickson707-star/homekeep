@@ -129,20 +129,26 @@ Return only the JSON. No markdown, no explanation.`,
 
     case "insurance":
       return {
-        max_tokens: 500,
-        prompt: `You are reading a homeowner insurance policy, declaration page, or insurance document.
+        max_tokens: 700,
+        prompt: `You are reading a homeowner insurance policy, declaration page, renewal notice, or insurance ID card. This may be a multi-page document — look across all pages for the requested fields.
 
 Return ONLY a JSON object:
 {
-  "carrier": "insurance company name",
-  "policy_number": "policy number",
-  "coverage_amount": number or null,
-  "premium": number or null,
-  "start_date": "YYYY-MM-DD or null",
-  "expiry_date": "YYYY-MM-DD or null",
-  "deductible": number or null,
-  "notes": "coverage types or other key details"
+  "ins_company": "insurance company / carrier name",
+  "ins_policy_number": "policy number",
+  "ins_agent_name": "agent or broker name if listed",
+  "ins_agent_phone": "agent phone number if listed",
+  "ins_premium": number or null (annual premium in dollars, no symbols),
+  "ins_deductible": number or null (standard/all-other-perils deductible in dollars),
+  "ins_dwelling_coverage": number or null (Coverage A — dwelling),
+  "ins_personal_property": number or null (Coverage C — personal property/contents),
+  "ins_liability_coverage": number or null (Coverage E — personal liability),
+  "ins_loss_of_use": number or null (Coverage D — loss of use/additional living expense),
+  "ins_renewal_date": "YYYY-MM-DD or null (policy expiration/renewal date)",
+  "ins_notes": "named exclusions, riders, endorsements, wind mitigation discounts, or other key details worth remembering"
 }
+
+If a field is not present in the document, return null for it rather than guessing. Distinguish between similarly-named coverages carefully — dwelling (structure) is different from personal property (contents) is different from liability.
 
 Return only the JSON. No markdown, no explanation.`,
       };
@@ -185,6 +191,31 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "fileBase64 required" }), {
         headers: { ...CORS, "Content-Type": "application/json" }, status: 400,
       });
+    }
+
+    // Server-side PDF page guard — defense in depth behind the client-side check.
+    // Protects against bypass and unexpected cost spikes from oversized documents.
+    if (mimeType === "application/pdf") {
+      try {
+        const pdfBytes = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
+        let pdfStr = "";
+        const chunk = 65536;
+        for (let i = 0; i < pdfBytes.length; i += chunk) {
+          pdfStr += String.fromCharCode.apply(null, pdfBytes.subarray(i, Math.min(i + chunk, pdfBytes.length)));
+        }
+        const countMatch = pdfStr.match(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/);
+        const pageCount = countMatch
+          ? parseInt(countMatch[1], 10)
+          : (pdfStr.match(/\/Type\s*\/Page[^s]/g) || []).length || null;
+        if (pageCount !== null && pageCount > 100) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: `This document has ${pageCount} pages, which exceeds the 100-page scanning limit. Try uploading just the declarations page or relevant section instead.`,
+          }), { headers: { ...CORS, "Content-Type": "application/json" }, status: 400 });
+        }
+      } catch {
+        // If page count can't be determined, allow through — Anthropic's API will reject if truly oversized
+      }
     }
 
     const { prompt, max_tokens } = getPrompt(scanType || "document");
