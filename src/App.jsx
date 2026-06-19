@@ -623,9 +623,9 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .exp-file-thumb:hover{opacity:.9}
 .exp-file-pdf{display:flex;align-items:center;gap:.5rem;padding:.5rem .7rem;background:var(--cream2);border-radius:var(--r-sm);font-size:.78rem;color:var(--dark);cursor:pointer;text-decoration:none}
 .exp-file-pdf:hover{background:var(--stone)}
-.exp-upload-inline{border:1.5px dashed var(--stone);border-radius:var(--r-sm);padding:.65rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--white);position:relative;font-size:.75rem;color:#A8A09A}
+.exp-upload-inline{border:1.5px dashed var(--stone);border-radius:var(--r-sm);padding:.65rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--white);position:relative;font-size:.75rem;color:#A8A09A;-webkit-tap-highlight-color:transparent}
 .exp-upload-inline:hover{border-color:var(--rust);color:var(--rust);background:var(--rust-light)}
-.exp-upload-inline input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.exp-upload-inline input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;-webkit-appearance:none;appearance:none;font-size:16px;z-index:1}
 .exp-upload-progress{font-size:.72rem;color:var(--rust);display:flex;align-items:center;gap:.4rem;margin-top:.3rem}
 /* lightbox */
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -4620,9 +4620,24 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
           <button className="btn btn-danger btn-sm" style={{marginTop:"6px"}} onClick={handleRemove}>✕ Remove file</button>
         </div>
       ) : (
-        <div className="exp-upload-inline">
-          <input type="file" accept="image/*,.pdf" onChange={e=>handleFile(e.target.files[0])} />
-          📎 Attach receipt or photo (JPG, PNG, PDF — up to 20MB)
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+            <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem .5rem",cursor:"pointer",background:"var(--white)",transition:"all .15s",WebkitTapHighlightColor:"transparent"}}
+              onTouchStart={e=>{e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="var(--rust-light)";}}
+              onTouchEnd={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--white)";}}>
+              <span style={{fontSize:"1.3rem"}}>📷</span>
+              <span style={{fontSize:".72rem",fontWeight:700,color:"#8A8178"}}>Take photo</span>
+              <input type="file" accept="image/*" capture="environment" style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
+            </label>
+            <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem .5rem",cursor:"pointer",background:"var(--white)",transition:"all .15s",WebkitTapHighlightColor:"transparent"}}
+              onTouchStart={e=>{e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="var(--rust-light)";}}
+              onTouchEnd={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--white)";}}>
+              <span style={{fontSize:"1.3rem"}}>📎</span>
+              <span style={{fontSize:".72rem",fontWeight:700,color:"#8A8178"}}>Choose file</span>
+              <input type="file" accept="image/*,.pdf" style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
+            </label>
+          </div>
+          <div style={{fontSize:".7rem",color:"#A8A09A",textAlign:"center",marginTop:".4rem"}}>JPG, PNG, PDF — up to {maxMB}MB</div>
         </div>
       )}
       {uploading && <div className="exp-upload-progress"><span className="spinner" style={{width:12,height:12,borderWidth:2}}/>Uploading…</div>}
