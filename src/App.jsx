@@ -4356,32 +4356,36 @@ function ProUpgradeModal({ onClose }) {
 // ─── AI SCAN BUTTON ───────────────────────────────────────────────────────────
 const AI_SCAN_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/ai-document-scan";
 
-// Lightweight PDF page counter — reads raw bytes for "/Type /Page" object markers.
-// Works for the vast majority of real-world PDFs without needing a full parser library.
-// Falls back to null (unknown) if the structure can't be read — caller should allow upload in that case.
+// Lightweight PDF page counter — reads raw bytes for the /Pages /Count marker,
+// which is the authoritative page count Adobe and most PDF writers embed in the
+// document catalog. This is far more reliable than counting /Type/Page occurrences,
+// since those can appear inside compressed object streams and give false counts.
+// Returns null (unknown) whenever confidence is low — callers should always allow
+// the upload through on null rather than guessing.
 const countPdfPages = async (file) => {
   try {
     const buf = await file.arrayBuffer();
     const bytes = new Uint8Array(buf);
-    // Decode as latin1 so byte offsets match string indices for ASCII PDF markers
     let str = "";
     const chunkSize = 65536;
     for (let i = 0; i < bytes.length; i += chunkSize) {
       str += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
     }
-    // Prefer /Type/Pages /Count N if present — most reliable
-    const countMatch = str.match(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/);
-    if (countMatch) return parseInt(countMatch[1], 10);
-    // Fallback: count individual /Type /Page object markers (excludes /Pages)
-    const pageMatches = str.match(/\/Type\s*\/Page[^s]/g);
-    if (pageMatches) return pageMatches.length;
-    return null; // unknown — allow through, let the API decide
+    // Look for every /Count N near a /Type/Pages declaration — take the largest
+    // match found (root pages tree count is usually the biggest in the document).
+    const matches = [...str.matchAll(/\/Type\s*\/Pages[^>]{0,200}?\/Count\s+(\d+)/g)];
+    if (matches.length > 0) {
+      const counts = matches.map(m => parseInt(m[1], 10)).filter(n => !isNaN(n) && n > 0);
+      if (counts.length > 0) return Math.max(...counts);
+    }
+    // No reliable marker found (likely a compressed/linearized PDF) — don't guess.
+    return null;
   } catch {
     return null;
   }
 };
 
-function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef, highlighted=false }) {
+function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef, highlighted=false, saveDocument=false, currentUserId }) {
   const [scanning, setScanning]   = useState(false);
   const [error, setError]         = useState("");
   const [success, setSuccess]     = useState(false);
@@ -4404,11 +4408,11 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     if (!isPdf && !isImage) { setError("Please select an image or PDF."); return; }
     if (file.size > 50 * 1024 * 1024) { setError("File must be under 50MB."); return; }
 
-    // PDF page guard — Claude's document API caps at 100 pages, and large bundles
-    // (full policy + every endorsement) waste storage without adding useful detail.
+    // PDF page guard — only blocks when we're CONFIDENT the page count exceeds the limit.
+    // Unknown/uncertain counts always pass through; the server-side check is the real backstop.
     if (isPdf) {
       const pageCount = await countPdfPages(file);
-      if (pageCount !== null && pageCount > 60) {
+      if (pageCount !== null && pageCount > 95) {
         const tip = scanType === "insurance"
           ? "Try uploading just your declarations page instead — usually the first 1–5 pages of your policy packet. It has everything we need (company, coverage amounts, deductible, renewal date) without using up your document storage on boilerplate pages."
           : "Try uploading just the relevant pages instead of the full document — it scans faster and uses less of your document storage.";
@@ -4507,7 +4511,43 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
       if (!resp.ok || !data.ok) throw new Error(data.error || "Scan failed");
 
       console.log("[Scan] fields:", JSON.stringify(data.fields));
-      onScanComplete(data.fields);
+
+      // Save the original document into the shared Documents vault (home_documents)
+      // rather than a loose storage file — this makes it visible in the Documents tab
+      // automatically, and any module can reference the same row. No duplicate storage.
+      let savedDoc = null;
+      if (saveDocument && currentUserId) {
+        try {
+          const ext = mimeType === "application/pdf" ? "pdf" : (file.name.split(".").pop() || "jpg");
+          const path = `${currentUserId}/documents/${Date.now()}-scan-${scanType}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("expense-files")
+            .upload(path, file, { upsert: true, contentType: mimeType });
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
+            const docCategory = scanType === "insurance" || scanType === "additional_policy" ? "insurance" : "other";
+            const docName = data.fields?.ins_company || data.fields?.company || `Scanned ${scanType.replace("_"," ")}`;
+            const { data: docRow, error: docErr } = await supabase
+              .from("home_documents")
+              .insert([{
+                user_id:     currentUserId,
+                name:        docName,
+                category:    docCategory,
+                description: "Saved automatically from a policy scan",
+                expiry_date: data.fields?.ins_renewal_date || data.fields?.renewal_date || null,
+                file_url:    urlData.publicUrl + "?t=" + Date.now(),
+                file_type:   mimeType,
+              }])
+              .select()
+              .single();
+            if (!docErr && docRow) savedDoc = docRow;
+          }
+        } catch {
+          // Document save is best-effort — don't block the field-fill flow if storage fails
+        }
+      }
+
+      onScanComplete(data.fields, savedDoc);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -4523,7 +4563,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     return (
       <div style={{flex:1,display:"flex",flexDirection:"column",gap:".3rem"}}>
         <input ref={fileRef} type="file"
-          accept="image/*"
+          accept={useCamera ? "image/*" : "image/*,.pdf"}
           {...(useCamera ? { capture:"environment" } : {})}
           style={{display:"none"}} onChange={handleFile}
         />
@@ -5231,13 +5271,22 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
   );
 }
 
-function InsuranceForm({ data, onChange, planData, onUpgrade }) {
+function InsuranceForm({ data, onChange, planData, onUpgrade, userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
-  const handleScanComplete = (fields) => {
+  const [linkedDoc, setLinkedDoc] = useState(null);
+
+  useEffect(() => {
+    if (!data.ins_document_id) { setLinkedDoc(null); return; }
+    supabase.from("home_documents").select("id,name,file_url,file_type").eq("id", data.ins_document_id).single()
+      .then(({data:doc}) => setLinkedDoc(doc||null));
+  }, [data.ins_document_id]);
+
+  const handleScanComplete = (fields, savedDoc) => {
     // AI returns ins_* prefixed fields directly — only apply known keys, ignore anything unexpected
     const allowed = ["ins_company","ins_policy_number","ins_agent_name","ins_agent_phone","ins_premium","ins_deductible","ins_dwelling_coverage","ins_personal_property","ins_liability_coverage","ins_loss_of_use","ins_renewal_date","ins_notes"];
     const clean = {};
     allowed.forEach(k => { if (fields[k] !== undefined && fields[k] !== null && fields[k] !== "") clean[k] = fields[k]; });
+    if (savedDoc?.id) clean.ins_document_id = savedDoc.id;
     onChange({...data, ...clean});
   };
   return (
@@ -5249,7 +5298,7 @@ function InsuranceForm({ data, onChange, planData, onUpgrade }) {
           {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
         </div>
         <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
-          Just your declarations page is enough — usually pages 1–5 of your policy packet. It has everything we need (company, coverage, deductible, renewal date) without using up your document storage on boilerplate pages.
+          Just your declarations page is enough — usually pages 1–5 of your policy packet. It has everything we need (company, coverage, deductible, renewal date) without using up your document storage on boilerplate pages. We'll save a copy for you too.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
           <AIScanButton
@@ -5261,6 +5310,8 @@ function InsuranceForm({ data, onChange, planData, onUpgrade }) {
             onUpgrade={onUpgrade}
             useCamera={true}
             compact={true}
+            saveDocument={true}
+            currentUserId={userId}
           />
           <AIScanButton
             onScanComplete={handleScanComplete}
@@ -5271,8 +5322,17 @@ function InsuranceForm({ data, onChange, planData, onUpgrade }) {
             onUpgrade={onUpgrade}
             useCamera={false}
             compact={true}
+            saveDocument={true}
+            currentUserId={userId}
           />
         </div>
+        {linkedDoc && (
+          <div style={{marginTop:".75rem",display:"flex",alignItems:"center",gap:".6rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:".6rem .75rem"}}>
+            <span style={{fontSize:"1rem"}}>📄</span>
+            <a href={linkedDoc.file_url} target="_blank" rel="noopener noreferrer" style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#F4EDDF",textDecoration:"none"}}>View in Documents — {linkedDoc.name} →</a>
+            <button type="button" onClick={()=>f("ins_document_id","")} style={{background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".85rem",cursor:"pointer"}}>✕</button>
+          </div>
+        )}
       </div>
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -5304,23 +5364,84 @@ const POLICY_TYPES = [
   { key:"other",       label:"Other",                icon:"📋", hint:"" },
 ];
 
-function AdditionalPolicyForm({ data, onChange }) {
+function AdditionalPolicyForm({ data, onChange, planData, onUpgrade, userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const pt = POLICY_TYPES.find(t => t.key === data.type) || POLICY_TYPES[0];
+  const [linkedDoc, setLinkedDoc] = useState(null);
+
+  useEffect(() => {
+    if (!data.document_id) { setLinkedDoc(null); return; }
+    supabase.from("home_documents").select("id,name,file_url,file_type").eq("id", data.document_id).single()
+      .then(({data:doc}) => setLinkedDoc(doc||null));
+  }, [data.document_id]);
+
+  const handleScanComplete = (fields, savedDoc) => {
+    const allowed = ["type","company","policy_number","premium","coverage","renewal_date","notes"];
+    const clean = {};
+    allowed.forEach(k => { if (fields[k] !== undefined && fields[k] !== null && fields[k] !== "") clean[k] = fields[k]; });
+    if (savedDoc?.id) clean.document_id = savedDoc.id;
+    onChange({...data, ...clean});
+  };
   return (
-    <div className="fg">
-      <div className="field s2"><label>Policy Type</label>
-        <select value={data.type||"flood"} onChange={e=>f("type",e.target.value)}>
-          {POLICY_TYPES.map(t=><option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
-        </select>
+    <div>
+      <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:16,padding:"1.1rem 1.1rem .9rem",marginBottom:"1rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".5rem"}}>
+          <span style={{fontSize:"1rem"}}>✨</span>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Scan policy document</div>
+          {!planData?.aiScan && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.4)",color:"#F4EDDF",fontWeight:700,padding:"2px 7px",borderRadius:8,marginLeft:2}}>Plus</span>}
+        </div>
+        <div style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginBottom:".85rem",lineHeight:1.5}}>
+          Flood, umbrella, jewelry rider, home warranty — works for any policy type. Just the declarations page is enough; it has everything we need without using up your document storage. We'll save a copy for you too.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+          <AIScanButton
+            onScanComplete={handleScanComplete}
+            label="Take photo"
+            description="Photograph your dec page"
+            scanType="additional_policy"
+            planData={planData}
+            onUpgrade={onUpgrade}
+            useCamera={true}
+            compact={true}
+            saveDocument={true}
+            currentUserId={userId}
+          />
+          <AIScanButton
+            onScanComplete={handleScanComplete}
+            label="Upload file"
+            description="PDF or photo from library"
+            scanType="additional_policy"
+            planData={planData}
+            onUpgrade={onUpgrade}
+            useCamera={false}
+            compact={true}
+            saveDocument={true}
+            currentUserId={userId}
+          />
+        </div>
+        {linkedDoc && (
+          <div style={{marginTop:".75rem",display:"flex",alignItems:"center",gap:".6rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:".6rem .75rem"}}>
+            <span style={{fontSize:"1rem"}}>📄</span>
+            <a href={linkedDoc.file_url} target="_blank" rel="noopener noreferrer" style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#F4EDDF",textDecoration:"none"}}>View in Documents — {linkedDoc.name} →</a>
+            <button type="button" onClick={()=>f("document_id","")} style={{background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".85rem",cursor:"pointer"}}>✕</button>
+          </div>
+        )}
       </div>
-      {pt.hint&&<div className="field s2"><div style={{fontSize:".78rem",color:"#8A8178",padding:".5rem .75rem",background:"var(--cream)",borderRadius:8,lineHeight:1.4}}>💡 {pt.hint}</div></div>}
-      <div className="field s2"><label>Insurance Company</label><input value={data.company||""} onChange={e=>f("company",e.target.value)} placeholder="e.g. NFIP, Nationwide…"/></div>
-      <div className="field"><label>Policy Number</label><input value={data.policy_number||""} onChange={e=>f("policy_number",e.target.value)} placeholder="Policy #"/></div>
-      <div className="field"><label>Annual Premium ($)</label><input type="number" value={data.premium||""} onChange={e=>f("premium",e.target.value)} placeholder="0"/></div>
-      <div className="field"><label>Coverage Amount ($)</label><input type="number" value={data.coverage||""} onChange={e=>f("coverage",e.target.value)} placeholder="0"/></div>
-      <div className="field"><label>Renewal Date</label><input type="date" value={data.renewal_date||""} onChange={e=>f("renewal_date",e.target.value)}/></div>
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Deductible, agent name, special terms…"/></div>
+      <div className="scan-divider">or fill in manually</div>
+      <div className="fg">
+        <div className="field s2"><label>Policy Type</label>
+          <select value={data.type||"flood"} onChange={e=>f("type",e.target.value)}>
+            {POLICY_TYPES.map(t=><option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
+          </select>
+        </div>
+        {pt.hint&&<div className="field s2"><div style={{fontSize:".78rem",color:"#8A8178",padding:".5rem .75rem",background:"var(--cream)",borderRadius:8,lineHeight:1.4}}>💡 {pt.hint}</div></div>}
+        <div className="field s2"><label>Insurance Company</label><input value={data.company||""} onChange={e=>f("company",e.target.value)} placeholder="e.g. NFIP, Nationwide…"/></div>
+        <div className="field"><label>Policy Number</label><input value={data.policy_number||""} onChange={e=>f("policy_number",e.target.value)} placeholder="Policy #"/></div>
+        <div className="field"><label>Annual Premium ($)</label><input type="number" value={data.premium||""} onChange={e=>f("premium",e.target.value)} placeholder="0"/></div>
+        <div className="field"><label>Coverage Amount ($)</label><input type="number" value={data.coverage||""} onChange={e=>f("coverage",e.target.value)} placeholder="0"/></div>
+        <div className="field"><label>Renewal Date</label><input type="date" value={data.renewal_date||""} onChange={e=>f("renewal_date",e.target.value)}/></div>
+        <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Deductible, agent name, special terms…"/></div>
+      </div>
     </div>
   );
 }
@@ -6700,7 +6821,7 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset }) {
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -6851,6 +6972,17 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       onClearPendingSelected?.();
     }
   }, [pendingSelectedAsset]);
+
+  // Deep-link: open a pre-filled new-asset form — used by System Health cards
+  // when a system has no real asset tracked yet (estimate was based on home age).
+  useEffect(() => {
+    if (!pendingNewAsset) return;
+    setEditData({ condition:"Good", category: pendingNewAsset.category||"", item: pendingNewAsset.item||"" });
+    setEditId(null);
+    setAddMode("manual");
+    setModal(true);
+    onClearPendingNewAsset?.();
+  }, [pendingNewAsset]);
 
   // Deep-link: open warranty module from toolbox
   useEffect(() => {
@@ -10810,11 +10942,22 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const [editModal, setEditModal] = useState(false);
   const [editTab, setEditTab]     = useState("property");
   const [modal, setModal]         = useState(false);
   const [insModal, setInsModal]   = useState(false);
+  const [insuranceDocuments, setInsuranceDocuments] = useState([]);
+
+  // Pull any document tagged "insurance" from the shared Documents vault —
+  // covers both docs uploaded here via scan AND docs uploaded directly in the Documents tab.
+  const refetchInsuranceDocs = () => {
+    if (!userId) return;
+    supabase.from("home_documents").select("id,name,description,file_url,file_type,expiry_date,created_at")
+      .eq("user_id", userId).eq("category", "insurance").order("created_at", {ascending:false})
+      .then(({data}) => setInsuranceDocuments(data||[]));
+  };
+  useEffect(refetchInsuranceDocs, [userId]);
   const [editData, setEditData]   = useState({});
   const [insData, setInsData]     = useState({});
 
@@ -10861,7 +11004,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const saveAddPolicy   = async () => {
     if (!policyData.company && !policyData.type) return;
     const updated = [...additionalPolicies, {...policyData, id: Date.now()}];
-    if (await saveAdditionalPolicies(updated)) { toast("Policy added ✓"); setAddPolicyModal(false); }
+    if (await saveAdditionalPolicies(updated)) { toast("Policy added ✓"); setAddPolicyModal(false); refetchInsuranceDocs(); }
     else toast("Error saving","error");
   };
   const saveEditPolicy  = async () => {
@@ -10997,10 +11140,11 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       ins_loss_of_use:        insData.ins_loss_of_use||"",
       ins_renewal_date:       insData.ins_renewal_date||"",
       ins_notes:              insData.ins_notes||"",
+      ins_document_id:        insData.ins_document_id||null,
     };
     if(profile?.id) {
       const {error} = await supabase.from("profiles").update(insFields).eq("id",profile.id).eq("user_id",userId);
-      if(!error) { setProfile({...profile,...insFields}); toast("Insurance saved ✓"); }
+      if(!error) { setProfile({...profile,...insFields}); toast("Insurance saved ✓"); refetchInsuranceDocs(); }
       else toast("Error saving","error");
     }
     setInsModal(false); setEditModal(false);
@@ -11292,6 +11436,20 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
+      {/* ── HOME HEALTH SCORE ── */}
+      {!showSetup && (
+        <div style={{margin:"0 1rem 1rem"}}>
+          <HealthScoreWidget tasks={tasks} warranties={warranties} profile={profile} planData={planData} onUpgrade={onUpgrade} serviceLogs={serviceLogs}/>
+        </div>
+      )}
+
+      {/* ── 5-YEAR COST FORECAST ── */}
+      {!showSetup && (
+        <div style={{margin:"0 1rem 1rem"}}>
+          <CostForecastWidget warranties={warranties} planData={planData} onUpgrade={onUpgrade}/>
+        </div>
+      )}
+
       {/* ── SYSTEM HEALTH ── */}
       {!showSetup && systemAlerts.length > 0 && (
         <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
@@ -11303,9 +11461,20 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             const h = s.status==="alert"?{color:"#B0432B",bg:"#F7E0DA",label:"Needs attention"}:s.status==="warn"?{color:"#C16140",bg:"#F8E8E1",label:"Service due"}:{color:"#3E7D5A",bg:"#E9F1EA",label:"Healthy"};
             const lifespan = s.linkedAsset ? Number(s.linkedAsset.lifespan_years||s.lifespan) : s.lifespan;
             const pct = Math.min(100, Math.round((s.ageYears/lifespan)*100));
+            const handleClick = () => {
+              if (s.linkedAsset) {
+                onOpenAsset?.(s.linkedAsset.id);
+              } else {
+                // No real asset tracked yet — open the add form pre-filled so the
+                // home-age estimate becomes a one-tap path to real data instead of a dead end.
+                onOpenNewAsset?.({ category: s.categories[0], item: s.name });
+              }
+            };
             return (
-              <div key={i} onClick={()=>s.linkedAsset&&onNavigate&&onNavigate("warranties")}
-                style={{padding:".85rem 1rem",borderBottom:i<systemAlerts.length-1?"1px solid var(--cream2)":"none",cursor:s.linkedAsset?"pointer":"default"}}>
+              <div key={i} onClick={handleClick}
+                style={{padding:".85rem 1rem",borderBottom:i<systemAlerts.length-1?"1px solid var(--cream2)":"none",cursor:"pointer"}}
+                onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".35rem"}}>
                   <span style={{fontSize:".92rem",fontWeight:700}}>{s.name}</span>
                   <span style={{fontSize:".72rem",fontWeight:700,padding:"2px 9px",borderRadius:20,background:h.bg,color:h.color}}>{h.label}</span>
@@ -11313,7 +11482,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden",marginBottom:".3rem"}}>
                   <div style={{height:"100%",width:`${pct}%`,borderRadius:4,background:h.color}}/>
                 </div>
-                <div style={{fontSize:".75rem",color:s.fromAsset?"#8A8178":"#C2B8AE"}}>{s.detail}</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem"}}>
+                  <span style={{fontSize:".75rem",color:s.fromAsset?"#8A8178":"#C2B8AE"}}>{s.detail}</span>
+                  {!s.fromAsset && (
+                    <span style={{fontSize:".7rem",fontWeight:700,color:"var(--pine)",flexShrink:0,whiteSpace:"nowrap"}}>+ Add real data →</span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -11704,6 +11878,30 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                   )}
                 </div>
 
+                {/* ── RELATED DOCUMENTS ── pulled from the shared Documents vault */}
+                {insuranceDocuments.length > 0 && (
+                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📄</span><span style={{fontSize:"1rem",fontWeight:700}}>Documents</span></div>
+                      <button onClick={onShowDocs} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View all →</button>
+                    </div>
+                    <div style={{padding:".55rem 1rem",background:"var(--cream)",fontSize:".75rem",color:"#8A8178"}}>Scanned here or uploaded in Documents — all insurance files live in one place.</div>
+                    {insuranceDocuments.map(doc => (
+                      <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                        style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1rem",borderTop:"1px solid var(--cream2)",textDecoration:"none",color:"inherit"}}>
+                        <div style={{width:38,height:38,borderRadius:10,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>
+                          {doc.file_type?.includes("pdf") ? "📄" : "🖼️"}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.name}</div>
+                          <div style={{fontSize:".72rem",color:"#A8A09A"}}>{doc.expiry_date ? `Renews ${fmtD(doc.expiry_date)}` : fmtD(doc.created_at?.slice(0,10))}</div>
+                        </div>
+                        <span style={{fontSize:".8rem",color:"#C2B8AE",flexShrink:0}}>↗</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+
                 {/* ── CLAIM LOG ── */}
                 <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
@@ -11761,8 +11959,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       )}
 
       {/* ── Modals for insurance module ── */}
-      {addPolicyModal && <Modal title="Add Policy" onClose={()=>setAddPolicyModal(false)} onSave={saveAddPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData}/></Modal>}
-      {editPolicyModal && <Modal title="Edit Policy" onClose={()=>setEditPolicyModal(false)} onSave={saveEditPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData}/></Modal>}
+      {addPolicyModal && <Modal title="Add Policy" onClose={()=>setAddPolicyModal(false)} onSave={saveAddPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
+      {editPolicyModal && <Modal title="Edit Policy" onClose={()=>setEditPolicyModal(false)} onSave={saveEditPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
       {addClaimModal && <Modal title="Log Claim Entry" onClose={()=>setAddClaimModal(false)} onSave={saveClaimEntry}><ClaimEntryForm data={claimData} onChange={setClaimData}/></Modal>}
 
       {/* ── HOME TOOLBOX ── */}
@@ -11940,7 +12138,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           </div>
         </div>
       )}
-      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {insModal && <Modal title={profile?.ins_company?"Edit Insurance":"Add Insurance"} onClose={()=>setInsModal(false)} onSave={saveIns}><InsuranceForm data={insData} onChange={setInsData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
     </div>
   );
 }
@@ -13839,6 +14037,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showExport,   setShowExport]   = useState(false);
   const [pendingAssetEdit, setPendingAssetEdit] = useState(null);
+  const [pendingNewAsset, setPendingNewAsset] = useState(null); // {category, item} — pre-fill new asset form
   const [pendingWarrantyTracker, setPendingWarrantyTracker] = useState(false);
   const [pendingSelectedAsset, setPendingSelectedAsset] = useState(null);
   const [showWarrantyModule, setShowWarrantyModule] = useState(false);
@@ -14315,9 +14514,9 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
@@ -14438,13 +14637,13 @@ function TermsPage() {
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
   const sections = [
     {t:"1. Acceptance of Terms",b:"By creating an account or using the Steadwell platform (the \"Service\"), you agree to these Terms of Service. You must be at least 18 years old and a US resident. These Terms form a binding legal agreement between you and Steadwell."},
-    {t:"2. Description of Service",b:"Steadwell is a web-based home management platform for tracking maintenance tasks, warranties, service records, home expenses, utility bills, documents, and publicly available property data. It is not a licensed real estate, financial advisory, legal, or professional home inspection service."},
-    {t:"3. Account Registration",b:"You must register with a valid email address. You are responsible for your account credentials and all activity under your account. Contact hello@steadwell.app immediately if you suspect unauthorized access."},
+    {t:"2. Description of Service",b:"Steadwell is a web-based home management platform for tracking maintenance tasks, warranties, service records, home expenses, utility bills, documents, insurance policies, and publicly available property data. It is not a licensed real estate, financial advisory, legal, or professional home inspection service."},
+    {t:"3. Account Registration",b:"You must register with a valid email address. You are responsible for your account credentials and all activity under your account. Contact hello@trysteadwell.app immediately if you suspect unauthorized access."},
     {t:"4. Acceptable Use",b:"You agree not to use the Service for unlawful purposes, upload content you don\'t have the right to share, attempt unauthorized access, reverse-engineer the Service, use automated scraping tools, or misrepresent your identity or property ownership. Violations may result in immediate account termination."},
-    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost. Pro Plan: $4.99/month, billed monthly, auto-renews until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if Pro features were not materially used. Payments processed by Stripe — we do not store card information."},
+    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost, including unlimited asset and warranty tracking, expiry reminders, recall alerts, insurance and claim tracking, and basic recurring tasks. Plus Plan: $4.99/month, adds AI receipt, nameplate, and policy document scanning, Smart Fill model lookup, full recurring task intervals, the complete Home Setup Wizard, home health score, 5-year cost forecasting, and expanded document storage. Pro Plan: $9.99/month, adds support for up to 3 properties, shared household access, and unlimited document storage. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if paid features were not materially used. Payments processed by Stripe — we do not store card information."},
     {t:"6. Your Content and Data",b:"You retain full ownership of all content you create or upload. We store it solely to provide the Service. We do not sell your content. You may export or delete your data at any time from Settings."},
     {t:"7. Property Data Disclaimer",b:"Property value estimates come from third-party sources including Zillow (via APIllow) and are informational only. THEY ARE NOT APPRAISALS, BROKER PRICE OPINIONS, OR PROFESSIONAL VALUATIONS. Do not rely on Steadwell\'s data as the sole basis for any real estate, financial, insurance, or legal decision."},
-    {t:"8. Third-Party Services",b:"The Service integrates with Supabase (database & auth), APIllow/Zillow (property data), Geoapify (address lookup), and Stripe (payments). Your use is also subject to their respective terms."},
+    {t:"8. Third-Party Services",b:"The Service integrates with Supabase (database & auth), APIllow/Zillow (property data), Geoapify (address lookup), Resend (email delivery), and Stripe (payments). Your use is also subject to their respective terms."},
     {t:"9. Disclaimers",b:"THE SERVICE IS PROVIDED \"AS IS\" WITHOUT WARRANTY OF ANY KIND. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED OR ERROR-FREE. Steadwell is not a licensed contractor, inspector, insurance agent, real estate broker, financial advisor, or attorney."},
     {t:"10. Limitation of Liability",b:"TO THE FULLEST EXTENT PERMITTED BY LAW, STEADWELL SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES. OUR TOTAL LIABILITY SHALL NOT EXCEED THE GREATER OF FEES PAID IN THE PRIOR 12 MONTHS OR $50 USD."},
     {t:"11. Governing Law",b:"These Terms are governed by the laws of the State of Florida. Disputes shall be resolved by binding arbitration (AAA Consumer Rules) except that either party may seek injunctive relief in Pinellas County, Florida courts. YOU WAIVE CLASS-ACTION RIGHTS."},
@@ -14464,11 +14663,11 @@ function TermsPage() {
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Terms of Service</h1>
         <p style={S.meta}>Effective date: June 1, 2026 &nbsp;&middot;&nbsp; Last updated: June 1, 2026</p>
-        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell is a home management tool for US homeowners 18+. You own your data. Property values are estimates, not appraisals. Pro plan is $4.99/month. Florida law governs these terms.</div>
+        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell is a home management tool for US homeowners 18+. You own your data. Property values are estimates, not appraisals. Plus plan is $4.99/month, Pro plan is $9.99/month. Florida law governs these terms.</div>
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Questions About These Terms?</h2>
-          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact us at <a href="mailto:hello@steadwell.app" style={{color:"#F4EDDF"}}>hello@steadwell.app</a></p>
+          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact us at <a href="mailto:hello@trysteadwell.app" style={{color:"#F4EDDF"}}>hello@trysteadwell.app</a></p>
           <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell &middot; St. Petersburg, Florida</p>
         </div>
       </main>
@@ -14488,15 +14687,15 @@ function PrivacyPage() {
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
   const sections = [
-    {t:"1. Who We Are",b:"Steadwell operates the home management platform at steadwell.app. Questions? Email privacy@steadwell.app."},
+    {t:"1. Who We Are",b:"Steadwell operates the home management platform at trysteadwell.app. Questions? Email privacy@trysteadwell.app."},
     {t:"2. Information We Collect",b:"Account info (email, hashed password); home address and property details you enter or confirm; maintenance records, expenses, utility bills, and insurance details; uploaded documents and photos; property data retrieved from Zillow (via APIllow) and address suggestions from Geoapify on your behalf; log and device data for security."},
-    {t:"3. How We Use Your Information",b:"To provide and improve the Service; to retrieve property data on your behalf; to send maintenance reminders (Pro); to process payments; to respond to support requests; to detect and prevent security incidents; and to comply with legal obligations. We do NOT use your data to serve advertisements."},
+    {t:"3. How We Use Your Information",b:"To provide and improve the Service; to retrieve property data on your behalf; to send maintenance and warranty expiry reminders; to process payments; to respond to support requests; to detect and prevent security incidents; and to comply with legal obligations. We do NOT use your data to serve advertisements."},
     {t:"4. How We Share Your Information",b:"Supabase (database, auth, and storage — SOC 2 Type II certified, row-level security enforced); APIllow/Zillow (property lookups, your address only); Geoapify (address autocomplete); Stripe (payment processing — we never store card numbers). We do not sell, rent, or share your data with any other third parties."},
     {t:"5. Data Retention",b:"Active accounts: data retained while your account is active. Deleted accounts: deletion begins within 30 days of account closure; permanent purge after the 30-day grace period. Encrypted backups: up to 90 days. Legal holds: as required by law."},
     {t:"6. Security",b:"Row-level security ensures users cannot access each other\'s data. All data is encrypted in transit (TLS 1.2+) and at rest. Passwords are hashed and never stored in plain text."},
-    {t:"7. Your Rights",b:"You may access, correct, export, or delete your data at any time from your account Settings. To submit a data request, email privacy@steadwell.app. We respond within 45 days."},
-    {t:"8. California Privacy Rights (CCPA/CPRA)",b:"California residents have the right to know, delete, correct, and opt out of sale (we don\'t sell data). Submit a CCPA request to privacy@steadwell.app with subject line \"California Privacy Request.\" We do not discriminate against users who exercise their privacy rights."},
-    {t:"9. Children\'s Privacy",b:"Steadwell is for users 18 and older. We do not knowingly collect data from children under 13. If you believe we have, contact privacy@steadwell.app immediately."},
+    {t:"7. Your Rights",b:"You may access, correct, export, or delete your data at any time from your account Settings. To submit a data request, email privacy@trysteadwell.app. We respond within 45 days."},
+    {t:"8. California Privacy Rights (CCPA/CPRA)",b:"California residents have the right to know, delete, correct, and opt out of sale (we don\'t sell data). Submit a CCPA request to privacy@trysteadwell.app with subject line \"California Privacy Request.\" We do not discriminate against users who exercise their privacy rights."},
+    {t:"9. Children\'s Privacy",b:"Steadwell is for users 18 and older. We do not knowingly collect data from children under 13. If you believe we have, contact privacy@trysteadwell.app immediately."},
     {t:"10. Changes to This Policy",b:"We will notify you of material changes via email or in-app notice at least 30 days before they take effect."},
   ];
   return (
@@ -14517,7 +14716,7 @@ function PrivacyPage() {
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Privacy Questions?</h2>
-          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact <a href="mailto:privacy@steadwell.app" style={{color:"#F4EDDF"}}>privacy@steadwell.app</a> &mdash; we respond within 45 days.</p>
+          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact <a href="mailto:privacy@trysteadwell.app" style={{color:"#F4EDDF"}}>privacy@trysteadwell.app</a> &mdash; we respond within 45 days.</p>
         </div>
       </main>
       <footer role="contentinfo" style={S.ft}>
@@ -15076,7 +15275,7 @@ function ADAPage() {
         <h2 style={S.h2}>6. How to Report an Accessibility Barrier</h2>
         <p style={S.p}>We welcome feedback on accessibility barriers. If you encounter content or features that are inaccessible to you, please contact us:</p>
         <ul style={S.ul}>
-          <li style={S.li}><strong>Email:</strong> <a href="mailto:accessibility@steadwell.app" style={{color:"#234A3D"}}>accessibility@steadwell.app</a></li>
+          <li style={S.li}><strong>Email:</strong> <a href="mailto:accessibility@trysteadwell.app" style={{color:"#234A3D"}}>accessibility@trysteadwell.app</a></li>
           <li style={S.li}><strong>Subject line:</strong> "Accessibility Feedback"</li>
           <li style={S.li}><strong>Response time:</strong> We aim to respond within 5 business days</li>
         </ul>
@@ -15100,7 +15299,7 @@ function ADAPage() {
 
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Accessibility Feedback</h2>
-          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Found a barrier? Email <a href="mailto:accessibility@steadwell.app" style={{color:"#F4EDDF"}}>accessibility@steadwell.app</a> and we will respond within 5 business days.</p>
+          <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Found a barrier? Email <a href="mailto:accessibility@trysteadwell.app" style={{color:"#F4EDDF"}}>accessibility@trysteadwell.app</a> and we will respond within 5 business days.</p>
           <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell &middot; St. Petersburg, Florida &middot; Targeting WCAG 2.1 Level AA</p>
         </div>
       </main>
@@ -15183,9 +15382,13 @@ async function checkFileLimit(userId, planData) {
 
 // ─── HEALTH SCORE ENGINE ──────────────────────────────────────────────────────
 // Pure function — returns { score, grade, factors }
-function computeHealthScore(tasks, warranties, profile) {
+function computeHealthScore(tasks, warranties, profile, serviceLogs=[]) {
   const now = new Date();
   const today = localISO(now);
+
+  // Only count active, fully-tracked assets — exclude retired items and
+  // warranty-only records (they don't have condition/age data worth scoring).
+  const activeAssets = (warranties || []).filter(a => !a.retired_at && !a.warranty_only);
 
   // Factor 1: Task health (0-100) — penalise overdue/incomplete
   const totalTasks = tasks.length;
@@ -15194,34 +15397,35 @@ function computeHealthScore(tasks, warranties, profile) {
   const taskScore  = totalTasks === 0 ? 70
     : Math.max(0, 100 - (overdue / totalTasks) * 60 - ((totalTasks - completed) / totalTasks) * 20);
 
-  // Factor 2: Asset health (0-100) — penalise old assets
-  const AGE_MAP = { "0-5":2, "6-10":8, "11-15":13, "16+":20 };
-  const assets = warranties || [];
-  const assetScore = assets.length === 0 ? 70 : (() => {
-    const scores = assets.map(a => {
-      const notes = a.notes || "";
-      const ageMatch = notes.match(/Age: (\d+-\d+|\d+\+) years/);
-      if (!ageMatch) return 80;
-      const age = AGE_MAP[ageMatch[1]] || 5;
-      return age <= 5 ? 100 : age <= 10 ? 85 : age <= 15 ? 60 : 30;
-    });
+  // Factor 2: Asset health (0-100) — reuses the same per-asset logic shown
+  // in the Assets tab (real install_date, lifespan, condition, overdue PM —
+  // not a regex guess against free-text notes).
+  const ASSET_HEALTH_POINTS = { ok:100, heads:70, due:40, bad:10 };
+  const assetScore = activeAssets.length === 0 ? 70 : (() => {
+    const scores = activeAssets.map(a => ASSET_HEALTH_POINTS[getAssetHealth(a, serviceLogs, tasks).key] ?? 50);
     return scores.reduce((s,v) => s+v, 0) / scores.length;
   })();
 
-  // Factor 3: Warranty coverage (0-100) — reward tracked warranties
-  const expiring = assets.filter(a => a.expiry_date && a.expiry_date < localISO(new Date(now.getTime() + 30*86400000))).length;
-  const warrantyScore = assets.length === 0 ? 60
-    : Math.max(0, 100 - (expiring / assets.length) * 40);
+  // Factor 3: Warranty coverage (0-100) — reward tracked, non-expiring warranties.
+  // Includes warranty-only records too, since this factor is about coverage, not asset condition.
+  const allWarrantyItems = (warranties || []).filter(a => !a.retired_at && a.expiry_date);
+  const expiringSoon = allWarrantyItems.filter(a => a.expiry_date < localISO(new Date(now.getTime() + 30*86400000))).length;
+  const warrantyScore = allWarrantyItems.length === 0 ? 60
+    : Math.max(0, 100 - (expiringSoon / allWarrantyItems.length) * 40);
 
-  // Factor 4: Documentation (0-100) — reward complete profile
-  const profileFields = ["address","type","year","sqft","bedrooms","bathrooms","ins_company","ins_renewal_date"].filter(f => profile?.[f]);
-  const docScore = Math.round((profileFields.length / 8) * 100);
+  // Factor 4: Documentation (0-100) — reward a complete property + insurance profile
+  const profileFields = ["address","type","year","sqft","bedrooms","bathrooms"].filter(f => profile?.[f]);
+  const hasInsurance  = !!profile?.ins_company;
+  const hasRenewal    = !!profile?.ins_renewal_date;
+  const docPoints = profileFields.length + (hasInsurance ? 1 : 0) + (hasRenewal ? 1 : 0);
+  const docScore  = Math.round((docPoints / 8) * 100);
 
-  // Weighted total
+  // Weighted total — asset condition now carries the most weight since it's
+  // backed by real data instead of a parsed guess.
   const score = Math.round(
-    taskScore    * 0.40 +
-    assetScore   * 0.30 +
-    warrantyScore* 0.15 +
+    assetScore   * 0.35 +
+    taskScore    * 0.30 +
+    warrantyScore* 0.20 +
     docScore     * 0.15
   );
 
@@ -15233,8 +15437,8 @@ function computeHealthScore(tasks, warranties, profile) {
     grade,
     color,
     factors: [
-      { label: "Tasks",         val: Math.round(taskScore),     color: taskScore >= 75 ? "#2A9D6A" : "#C16140" },
       { label: "Assets",        val: Math.round(assetScore),    color: assetScore >= 75 ? "#2A9D6A" : "#B8861E" },
+      { label: "Tasks",         val: Math.round(taskScore),     color: taskScore >= 75 ? "#2A9D6A" : "#C16140" },
       { label: "Warranties",    val: Math.round(warrantyScore), color: warrantyScore >= 75 ? "#2A9D6A" : "#C16140" },
       { label: "Profile",       val: Math.round(docScore),      color: docScore >= 75 ? "#2A9D6A" : "#B8861E" },
     ],
@@ -15242,41 +15446,44 @@ function computeHealthScore(tasks, warranties, profile) {
 }
 
 // ─── COST FORECAST ENGINE ─────────────────────────────────────────────────────
-// Returns 5-year projected spend based on asset ages and typical replacement costs
-const REPLACEMENT_COSTS = {
-  "HVAC":       { life:18, cost:10000, label:"HVAC system"        },
-  "Plumbing":   { life:12, cost:1200,  label:"Water heater"       },
-  "Roofing":    { life:25, cost:16000, label:"Roof replacement"   },
-  "Electrical": { life:30, cost:3500,  label:"Electrical panel"   },
-  "Structural": { life:40, cost:8000,  label:"Foundation/structure"},
-  "Appliance":  { life:12, cost:900,   label:"Appliance"          }, "Appliances": { life:12, cost:900, label:"Appliance" },
-  "Other":      { life:15, cost:2000,  label:"System"             },
+// Returns 5-year projected spend based on real asset ages (install_date/purchase_date)
+// and lifespan data — matches the same source of truth used by getAssetHealth(),
+// not a separate guessed table.
+const FORECAST_DEFAULT_COST = {
+  HVAC:10000, Appliance:900, Electronics:600, Vehicle:4000, Tools:300,
+  Roofing:16000, Plumbing:1200, Electrical:3500, Structure:8000,
+  Safety:150, Landscaping:2000, "Jewelry & Valuables":0, Outdoor:2500, Other:1000,
 };
-const AGE_TO_YEARS = { "0-5":3, "6-10":8, "11-15":13, "16+":20 };
 
 function computeCostForecast(warranties, years=5) {
   const thisYear = new Date().getFullYear();
   const yearBuckets = Array.from({length:years}, (_,i) => ({ year: thisYear+i, items:[], total:0 }));
 
-  (warranties||[]).forEach(asset => {
-    const cat = asset.category || "Other";
-    const template = REPLACEMENT_COSTS[cat] || REPLACEMENT_COSTS.Other;
-    const notes = asset.notes || "";
-    const ageMatch = notes.match(/Age: (\d+-\d+|\d+\+) years/);
-    const currentAge = ageMatch ? (AGE_TO_YEARS[ageMatch[1]] || 5) : 5;
-    const remainingLife = Math.max(0, template.life - currentAge);
+  // Same exclusions as the health score — retired and warranty-only items
+  // don't have meaningful replacement timelines to forecast.
+  const activeAssets = (warranties || []).filter(a => !a.retired_at && !a.warranty_only);
+
+  activeAssets.forEach(asset => {
+    const cat = CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other";
+    const lifespan = Number(asset.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
+    const replaceCost = Number(asset.replacement_cost) || FORECAST_DEFAULT_COST[cat] || 1000;
+    if (replaceCost <= 0) return; // skip items with no meaningful replacement cost (e.g. jewelry)
+
+    const installDate = asset.install_date || asset.purchase_date;
+    const ageYears = installDate ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000) : lifespan * 0.3;
+    const remainingLife = Math.max(0, lifespan - ageYears);
 
     if (remainingLife < years) {
-      const replaceInYear = thisYear + Math.max(0, Math.ceil(remainingLife));
+      const replaceInYear = thisYear + Math.max(0, Math.round(remainingLife));
       const bucket = yearBuckets.find(b => b.year === replaceInYear);
       if (bucket) {
-        bucket.items.push({ name: asset.item || template.label, cost: template.cost, category: cat });
-        bucket.total += template.cost;
+        bucket.items.push({ name: asset.item || cat, cost: replaceCost, category: cat });
+        bucket.total += replaceCost;
       }
     }
 
-    // Annual maintenance ~1% of replacement cost
-    const annualMaint = template.cost * 0.01;
+    // Annual maintenance ~1% of replacement cost — small ongoing upkeep estimate
+    const annualMaint = replaceCost * 0.01;
     yearBuckets.forEach(b => { b.total += annualMaint; });
   });
 
@@ -15301,8 +15508,8 @@ function UpgradePrompt({ icon="✨", title, sub, target="plus", onUpgrade }) {
 }
 
 // ─── HEALTH SCORE WIDGET ──────────────────────────────────────────────────────
-function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade }) {
-  const { score, grade, color, factors } = computeHealthScore(tasks, warranties, profile);
+function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade, serviceLogs=[] }) {
+  const { score, grade, color, factors } = computeHealthScore(tasks, warranties, profile, serviceLogs);
   const locked = !planData.healthScore;
   const r = 28, C = 2 * Math.PI * r;
   const dash = (score / 100) * C;

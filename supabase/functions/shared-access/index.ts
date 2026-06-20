@@ -18,15 +18,20 @@ serve(async (req) => {
   try {
     const { ownerName, ownerEmail, memberEmail, propertyAddress, propertyId, ownerId } = await req.json();
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Check if invite already exists
-    const { data: existing } = await supabase
+    // Check if invite already exists — maybeSingle() returns null on no match
+    // instead of throwing, which is the normal case for a first-time invite.
+    const { data: existing, error: selectErr } = await supabase
       .from("home_members")
       .select("id, status")
       .eq("property_id", propertyId)
       .eq("member_email", memberEmail)
-      .single();
+      .maybeSingle();
+
+    if (selectErr) throw new Error(`Lookup failed: ${selectErr.message}`);
 
     if (existing) {
       if (existing.status === "accepted") {
@@ -35,14 +40,14 @@ serve(async (req) => {
       // Re-send invite if pending
     } else {
       // Create invite record
-      const { error } = await supabase.from("home_members").insert([{
+      const { error: insertErr } = await supabase.from("home_members").insert([{
         property_id: propertyId,
         owner_id: ownerId,
         member_email: memberEmail,
         role: "member",
         status: "pending",
       }]);
-      if (error) throw new Error(error.message);
+      if (insertErr) throw new Error(`Insert failed: ${insertErr.message}`);
     }
 
     const acceptUrl = `https://www.trysteadwell.app?shared_invite=${propertyId}&email=${encodeURIComponent(memberEmail)}`;
@@ -66,15 +71,15 @@ serve(async (req) => {
     <div class="body">
       <div class="title">${ownerName || ownerEmail} invited you to their home</div>
       <div class="text">
-        You've been invited to access <strong>${propertyAddress}</strong> on Steadwell — 
+        You've been invited to access <strong>${propertyAddress}</strong> on Steadwell &mdash;
         home management software that tracks systems, maintenance, warranties, and costs.
         <br><br>
         Click below to accept the invitation and view the property.
       </div>
-      <a href="${acceptUrl}" class="btn">Accept Invitation →</a>
+      <a href="${acceptUrl}" class="btn">Accept Invitation &#8594;</a>
     </div>
     <div class="footer">
-      Invited to ${memberEmail} · <a href="https://www.trysteadwell.app" style="color:#A8A09A">trysteadwell.app</a>
+      Invited to ${memberEmail} &middot; <a href="https://www.trysteadwell.app" style="color:#A8A09A">trysteadwell.app</a>
     </div>
   </div>
 </body>

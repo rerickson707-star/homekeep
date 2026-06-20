@@ -153,6 +153,27 @@ If a field is not present in the document, return null for it rather than guessi
 Return only the JSON. No markdown, no explanation.`,
       };
 
+    case "additional_policy":
+      return {
+        max_tokens: 500,
+        prompt: `You are reading a supplemental insurance policy document — this could be flood (often NFIP), wind/hurricane, umbrella/excess liability, earthquake, a jewelry/valuables rider, or a home warranty contract. This may be a multi-page document — look across all pages for the requested fields.
+
+Return ONLY a JSON object:
+{
+  "type": "one of: flood, wind, umbrella, earthquake, jewelry, home_warranty, other — pick the best match based on the document content",
+  "company": "insurance company or underwriter name",
+  "policy_number": "policy number",
+  "premium": number or null (annual premium in dollars, no symbols),
+  "coverage": number or null (the primary coverage/limit amount in dollars),
+  "renewal_date": "YYYY-MM-DD or null (policy expiration/renewal date)",
+  "notes": "deductible amount, agent name, named exclusions, or other key details worth remembering"
+}
+
+If a field is not present in the document, return null for it rather than guessing.
+
+Return only the JSON. No markdown, no explanation.`,
+      };
+
     case "document":
     default:
       return {
@@ -194,7 +215,7 @@ serve(async (req) => {
     }
 
     // Server-side PDF page guard — defense in depth behind the client-side check.
-    // Protects against bypass and unexpected cost spikes from oversized documents.
+    // Only blocks when confident; uncertain counts pass through to Anthropic's own limit check.
     if (mimeType === "application/pdf") {
       try {
         const pdfBytes = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
@@ -203,10 +224,9 @@ serve(async (req) => {
         for (let i = 0; i < pdfBytes.length; i += chunk) {
           pdfStr += String.fromCharCode.apply(null, pdfBytes.subarray(i, Math.min(i + chunk, pdfBytes.length)));
         }
-        const countMatch = pdfStr.match(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/);
-        const pageCount = countMatch
-          ? parseInt(countMatch[1], 10)
-          : (pdfStr.match(/\/Type\s*\/Page[^s]/g) || []).length || null;
+        const matches = [...pdfStr.matchAll(/\/Type\s*\/Pages[^>]{0,200}?\/Count\s+(\d+)/g)];
+        const counts = matches.map(m => parseInt(m[1], 10)).filter(n => !isNaN(n) && n > 0);
+        const pageCount = counts.length > 0 ? Math.max(...counts) : null;
         if (pageCount !== null && pageCount > 100) {
           return new Response(JSON.stringify({
             ok: false,
@@ -219,6 +239,8 @@ serve(async (req) => {
     }
 
     const { prompt, max_tokens } = getPrompt(scanType || "document");
+
+    const isPdfRequest = mimeType === "application/pdf";
 
     const aiResp = await fetch(ANTHROPIC_API, {
       method: "POST",
@@ -233,14 +255,23 @@ serve(async (req) => {
         messages: [{
           role: "user",
           content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mimeType || "image/jpeg",
-                data: fileBase64,
-              },
-            },
+            isPdfRequest
+              ? {
+                  type: "document",
+                  source: {
+                    type: "base64",
+                    media_type: "application/pdf",
+                    data: fileBase64,
+                  },
+                }
+              : {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mimeType || "image/jpeg",
+                    data: fileBase64,
+                  },
+                },
             { type: "text", text: prompt },
           ],
         }],
