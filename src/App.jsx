@@ -1055,6 +1055,8 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .feat h3{font-family:var(--display);font-weight:560;font-size:1.32rem;line-height:1.15;letter-spacing:-.015em;color:var(--pine);margin:0 0 .55rem}
 .lp-root .feat p{font-size:.93rem;line-height:1.58;color:var(--ink-soft);margin:0 0 1.1rem}
 .lp-root .feat .tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--terracotta);background:rgba(193,97,64,.09);padding:.3rem .7rem;border-radius:30px}
+.lp-root .feat .tag.locked{color:#234A3D;background:rgba(35,74,61,.09)}
+.lp-root .feat.spot .tag.locked{color:#F4EDDF;background:rgba(255,255,255,.14)}
 /* big spotlight feature */
 .lp-root .feat.spot{grid-column:1 / -1;display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center;background:var(--pine);border-color:transparent;color:var(--linen);padding:40px 44px}
 .lp-root .feat.spot h3{color:#fff;font-size:clamp(1.6rem,2.6vw,2.1rem)}
@@ -1111,7 +1113,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .pdesc{font-size:.92rem;color:var(--ink-soft);margin:.6rem 0 1.5rem;line-height:1.5}
 .lp-root .pcard.plus .pdesc{color:rgba(244,237,223,.72)}
 .lp-root .plist{list-style:none;padding:0;margin:0 0 1.8rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
-.lp-root .plist li{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--ink)}
+.lp-root .plist li{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--ink);text-align:left}
 .lp-root .pcard.plus .plist li{color:rgba(244,237,223,.9)}
 .lp-root .plist .ck{width:18px;height:18px;border-radius:50%;background:rgba(167,191,168,.35);color:var(--pine);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;flex-shrink:0;margin-top:2px}
 .lp-root .pcard.plus .plist .ck{background:var(--terracotta);color:#fff}
@@ -1821,6 +1823,24 @@ function LandingPage({ onSignIn, onSignUp }) {
   const [typed, setTyped] = useState("1420 Maple Grove Dr");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  useSEO({
+    title: "Free Home Maintenance & Warranty Tracker",
+    description: "Track warranties, maintenance, insurance, and home value — all in one place. Free to start. Built for homeowners who want to stay ahead, not catch up.",
+    canonical: "https://www.trysteadwell.app",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Steadwell",
+      "url": "https://www.trysteadwell.app",
+      "logo": "https://www.trysteadwell.app/logo.png",
+      "sameAs": [
+        "https://www.instagram.com/trysteadwell",
+        "https://www.facebook.com/people/Steadwell/61590757207786/",
+        "https://linkedin.com/company/steadwell"
+      ]
+    }
+  });
+
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   useEffect(() => {
@@ -1891,12 +1911,12 @@ function LandingPage({ onSignIn, onSignUp }) {
   );
 
   const features = [
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>, title: "Instant property lookup", desc: "Type your address and we pull your home's year built, sale history, tax records, and estimated value automatically. No forms, no manual entry.", tag: "Automatic" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranty & asset tracking", desc: "Every appliance, model number, serial number, and warranty with expiry alerts. Scan the nameplate tag with your camera — AI fills the rest.", tag: "Never lose a receipt" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home's age and systems — so nothing slips through.", tag: "Stay ahead" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & spending", desc: "See every dollar your home has cost you, broken down by category. Weigh it against what your home is worth.", tag: "Know your numbers" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>, title: "Document vault", desc: "Deeds, permits, inspections, insurance — filed and searchable, tied to the asset or project they belong to.", tag: "All your paperwork" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>, title: "Shared home access", desc: "Invite your spouse or partner. They get full access to tasks, assets, and documents — always on the same page.", tag: "Pro feature" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>, title: "Instant property lookup", desc: "Type your address and we pull your home's year built, sale history, tax records, and estimated value automatically. No forms, no manual entry.", tag: "Free" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranty tracking, every category", desc: "Appliances, electronics, vehicles, tools, jewelry — every warranty in one place, with expiry alerts at 30 and 7 days. No paid app does this much for free.", tag: "Free" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, title: "Safety recall alerts", desc: "Every tracked appliance is checked against the federal recall database automatically. Most homeowners never find out their fridge or heater was recalled — you will.", tag: "Free" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home's age and systems — so nothing slips through.", tag: "Free" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M9 21V12h6v9"/></svg>, title: "Insurance & claim log", desc: "Policy details, coverage gap alerts, an annual photo check-in, and a running claim log — everything ready before you ever need to file.", tag: "Free" },
+    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & spending", desc: "See every dollar your home has cost you, broken down by category. Weigh it against what your home is worth.", tag: "Free" },
   ];
 
   const comparisons = [
@@ -2042,7 +2062,7 @@ function LandingPage({ onSignIn, onSignUp }) {
                 <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
                 <h3>Scan the nameplate. Done.</h3>
                 <p>Point your phone camera at any appliance tag — HVAC unit, water heater, fridge — and AI reads the model number, serial number, and brand in seconds. No typing, no searching.</p>
-                <span className="tag">AI-powered</span>
+                <span className="tag locked">Plus feature</span>
               </div>
               <div className="spot-vis" aria-hidden="true">
                 <div className="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scanning nameplate…</div>
@@ -2131,7 +2151,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$0<span> / month</span></div>
               <p className="pdesc">Everything you need to get started and stay organized.</p>
               <ul className="plist">
-                {["Unlimited tasks & maintenance reminders","Unlimited assets & expense tracking","Property auto-fill from public records","Contractor rolodex","5 documents","Weekly email digest","1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Unlimited tasks, assets & expenses","Warranty alerts & weekly digest","Safety recall alerts","Full Home Setup Wizard","Property auto-fill & data export","Contractor rolodex","5 documents · 1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
@@ -2141,7 +2161,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$4.99<span> / month</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free","AI nameplate scan","Smart Fill from model number","Home health score","5-year cost forecasting","Daily reminders & warranty alerts","25 documents","Full home setup wizard"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate, receipt & policy scan","Smart Fill from model number","Home health score & cost forecast","Project ROI calculator","Home history report (PDF)","25 documents"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $4.99/mo</button>
             </div>
@@ -2150,7 +2170,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$9.99<span> / month</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
-                {["Everything in Plus","Up to 3 properties","Unlimited documents","Shared household access","Home History Report (PDF)","Contractor cost estimates","Data export (Excel)","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Plus","Up to 3 properties","Unlimited documents","Shared household access — invite spouse/partner","50MB file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $9.99/mo</button>
             </div>
@@ -2221,7 +2241,24 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
           <div style={{marginTop:"1.25rem",paddingTop:"1rem",borderTop:"1px solid rgba(244,237,223,.07)",display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:"1rem",alignItems:"center"}}>
             <span style={{fontSize:".78rem",color:"rgba(244,237,223,.28)",fontFamily:"var(--body)"}}>&copy; 2026 Steadwell, LLC. Built for homeowners.</span>
-            <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:"1.25rem",alignItems:"center",flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
+                <a href="https://www.instagram.com/trysteadwell" target="_blank" rel="noopener noreferrer" aria-label="Steadwell on Instagram"
+                  style={{color:"rgba(244,237,223,.35)",display:"flex",transition:"color .2s"}}
+                  onMouseEnter={e=>e.currentTarget.style.color="#F4EDDF"} onMouseLeave={e=>e.currentTarget.style.color="rgba(244,237,223,.35)"}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                </a>
+                <a href="https://www.facebook.com/people/Steadwell/61590757207786/" target="_blank" rel="noopener noreferrer" aria-label="Steadwell on Facebook"
+                  style={{color:"rgba(244,237,223,.35)",display:"flex",transition:"color .2s"}}
+                  onMouseEnter={e=>e.currentTarget.style.color="#F4EDDF"} onMouseLeave={e=>e.currentTarget.style.color="rgba(244,237,223,.35)"}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                </a>
+                <a href="https://linkedin.com/company/steadwell" target="_blank" rel="noopener noreferrer" aria-label="Steadwell on LinkedIn"
+                  style={{color:"rgba(244,237,223,.35)",display:"flex",transition:"color .2s"}}
+                  onMouseEnter={e=>e.currentTarget.style.color="#F4EDDF"} onMouseLeave={e=>e.currentTarget.style.color="rgba(244,237,223,.35)"}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                </a>
+              </div>
               <a href="/terms"       style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Terms</a>
               <a href="/privacy"     style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Privacy</a>
               <a href="/ada"         style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Accessibility</a>
@@ -2489,9 +2526,14 @@ function OnboardingWizard({ session, onComplete }) {
         <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
           {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
         </button>
-        <button className="onb-skip" onClick={() => handleFinish(true)}>
-          Skip for now — go to my dashboard
-        </button>
+        <div style={{textAlign:"center",marginTop:".5rem"}}>
+          <button className="onb-skip" onClick={() => handleFinish(true)}>
+            Skip for now — go to my dashboard
+          </button>
+          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".35rem",lineHeight:1.5}}>
+            You'll start with an empty dashboard and no maintenance schedule. Takes about 3 minutes to set up — worth it.
+          </div>
+        </div>
         <button className="onb-back" onClick={() => setStep(2)}>← Back</button>
       </div>
     </div>
@@ -2658,7 +2700,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
-function UserMenu({ user, onSignOut, onFeedback, onExport }) {
+function UserMenu({ user, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -2676,6 +2718,12 @@ function UserMenu({ user, onSignOut, onFeedback, onExport }) {
       {open && (
         <div className="user-dropdown">
           <div className="user-dd-email">{user.email}</div>
+          <button className="user-dd-item" onClick={()=>{setOpen(false);onAccount();}}>
+            <span>👤</span> My Account
+          </button>
+          <button className="user-dd-item" onClick={()=>{setOpen(false);onPrivacySettings();}}>
+            <span>🔒</span> Privacy Settings
+          </button>
           <button className="user-dd-item" onClick={()=>{setOpen(false);onFeedback();}}>
             <span>💬</span> Send Feedback
           </button>
@@ -2687,6 +2735,202 @@ function UserMenu({ user, onSignOut, onFeedback, onExport }) {
             <span>🚪</span> Sign Out
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PRIVACY SETTINGS MODAL ────────────────────────────────────────────────────
+function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
+  const [saving, setSaving] = useState(false);
+  const optedIn = !!profile?.consent_contractor_insights;
+
+  const handleToggle = async () => {
+    setSaving(true);
+    const newVal = !optedIn;
+    const { error } = await supabase.from("profiles").update({ consent_contractor_insights: newVal }).eq("id", profile.id);
+    if (!error) {
+      setProfile(p => ({ ...p, consent_contractor_insights: newVal }));
+      toast(newVal ? "Opted in — thank you ✓" : "Opted out ✓");
+    } else {
+      toast("Could not update — try again", "error");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-handle" />
+        <div className="modal-hdr">
+          <span className="modal-title">🔒 Privacy Settings</span>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1.1rem",marginBottom:"1rem"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"1rem",marginBottom:".75rem"}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",marginBottom:".3rem"}}>Contractor Insights Program</div>
+                <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55}}>
+                  Share anonymized, aggregated trends — like "homes in your area with aging HVAC systems" — with local contractor partners. <strong>Your name, address, and specific records are never included or identifiable.</strong> Off by default.
+                </div>
+              </div>
+              <button
+                onClick={handleToggle}
+                disabled={saving}
+                style={{flexShrink:0,width:48,height:28,borderRadius:14,border:"none",background:optedIn?"var(--pine)":"var(--stone)",position:"relative",cursor:saving?"default":"pointer",transition:"background .15s",opacity:saving?.6:1}}
+                aria-label={optedIn ? "Opted in — tap to opt out" : "Opted out — tap to opt in"}
+              >
+                <div style={{position:"absolute",top:3,left:optedIn?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+              </button>
+            </div>
+            <div style={{fontSize:".75rem",fontWeight:700,color:optedIn?"var(--ok)":"#A8A09A"}}>
+              {optedIn ? "✓ Opted in" : "Opted out (default)"}
+            </div>
+          </div>
+
+          <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.6}}>
+            This setting has no effect on any Steadwell feature — free or paid. You can change it anytime. Full details in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{color:"var(--pine)",fontWeight:600}}>Privacy Policy</a>.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ACCOUNT MODAL ──────────────────────────────────────────────────────────────
+function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow }) {
+  const [confirmDowngrade, setConfirmDowngrade] = useState(null); // target plan key, or null
+
+  const plan = planData?.plan || "free";
+  const planLabel = PLANS[plan]?.label || "Free";
+  const planColors = {
+    free: { color:"#6B6259", bg:"var(--cream2)", border:"var(--stone)" },
+    plus: { color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7" },
+    pro:  { color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0" },
+  };
+  const pc = planColors[plan] || planColors.free;
+
+  // Member tenure — Supabase Auth always includes created_at on the session, no extra fetch
+  const memberSince = session?.user?.created_at ? new Date(session.user.created_at) : null;
+  const tenureLabel = (() => {
+    if (!memberSince) return null;
+    const days = Math.floor((Date.now() - memberSince.getTime()) / 86400000);
+    if (days < 1) return "Joined today";
+    if (days < 30) return `Member for ${days} day${days!==1?"s":""}`;
+    const months = Math.floor(days / 30.44);
+    if (months < 12) return `Member for ${months} month${months!==1?"s":""}`;
+    const years = Math.floor(months / 12);
+    const remMonths = months % 12;
+    return `Member for ${years} year${years!==1?"s":""}${remMonths>0?`, ${remMonths} mo`:""}`;
+  })();
+
+  const TIERS = [
+    { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border },
+    { key:"plus", label:"Plus", price:"$4.99", period:"/month", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border },
+    { key:"pro",  label:"Pro",  price:"$9.99", period:"/month", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border },
+  ];
+  const tierOrder = { free:0, plus:1, pro:2 };
+
+  // Placeholder until Stripe is live — same pattern as the existing upgrade modal.
+  // When Stripe goes live, this becomes a real Checkout/Portal redirect; nothing
+  // else in this component needs to change.
+  const handlePlanChange = (targetKey) => {
+    if (tierOrder[targetKey] < tierOrder[plan]) {
+      // Downgrading — confirm first since it removes access to paid features
+      setConfirmDowngrade(targetKey);
+      return;
+    }
+    onUpgradeFlow ? onUpgradeFlow() : alert(`Stripe coming soon — ${PLANS[targetKey]?.label} at ${TIERS.find(t=>t.key===targetKey)?.price}/mo`);
+  };
+
+  const confirmDowngradeNow = async () => {
+    const target = confirmDowngrade;
+    setConfirmDowngrade(null);
+    // Until Stripe billing is live, downgrades update the plan directly.
+    // Once live, this will instead redirect to the Stripe customer portal.
+    const { error } = await supabase.from("profiles").update({ plan: target }).eq("id", profile.id);
+    if (!error) {
+      setProfile(p => ({ ...p, plan: target }));
+      toast(`Switched to ${PLANS[target]?.label} ✓`);
+    } else {
+      toast("Could not update plan — try again", "error");
+    }
+  };
+
+  return (
+    <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal" style={{maxWidth:460}}>
+        <div className="modal-handle" />
+        <div className="modal-hdr">
+          <span className="modal-title">👤 My Account</span>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+
+          {/* Identity card */}
+          <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem",background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:"1rem"}}>
+            <div style={{width:48,height:48,borderRadius:"50%",background:"var(--pine)",color:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,flexShrink:0}}>
+              {initials(session?.user?.email)}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{session?.user?.email}</div>
+              {tenureLabel && <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2}}>{tenureLabel}</div>}
+            </div>
+          </div>
+
+          {/* Current plan */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",background:pc.bg,border:`1.5px solid ${pc.border}`,borderRadius:"var(--r-sm)",marginBottom:"1.1rem"}}>
+            <div>
+              <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:pc.color,opacity:.75,marginBottom:2}}>Current plan</div>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:600,color:pc.color}}>{planLabel}</div>
+            </div>
+            {plan !== "free" && (
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:".68rem",color:pc.color,opacity:.7}}>Billed monthly</div>
+                <div style={{fontSize:".82rem",fontWeight:700,color:pc.color}}>{TIERS.find(t=>t.key===plan)?.price}/mo</div>
+              </div>
+            )}
+          </div>
+
+          {/* Plan switcher */}
+          <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#A8A09A",marginBottom:".6rem"}}>Switch plan</div>
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginBottom:"1rem"}}>
+            {TIERS.map(t => {
+              const isCurrent = t.key === plan;
+              const isUpgrade = tierOrder[t.key] > tierOrder[plan];
+              const isDowngrade = tierOrder[t.key] < tierOrder[plan];
+              return (
+                <div key={t.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".75rem .9rem",borderRadius:10,border:`1.5px solid ${isCurrent?t.border:"var(--stone)"}`,background:isCurrent?t.bg:"var(--white)"}}>
+                  <div>
+                    <div style={{fontSize:".88rem",fontWeight:700,color:isCurrent?t.color:"var(--dark)"}}>{t.label}{isCurrent && <span style={{fontSize:".68rem",fontWeight:700,marginLeft:6,color:t.color}}>· Current</span>}</div>
+                    <div style={{fontSize:".75rem",color:"#A8A09A"}}>{t.price} {t.period}</div>
+                  </div>
+                  {!isCurrent && (
+                    <button
+                      onClick={()=>handlePlanChange(t.key)}
+                      style={{fontSize:".78rem",fontWeight:700,padding:".4rem .85rem",borderRadius:8,border:isUpgrade?"none":"1.5px solid var(--stone)",background:isUpgrade?t.color:"transparent",color:isUpgrade?"#fff":"#8A8178",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+                      {isUpgrade ? "Upgrade →" : "Downgrade"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690"}}>
+            Cancel anytime · No long-term commitment · Secure payments via Stripe
+          </div>
+        </div>
+      </div>
+
+      {/* Downgrade confirmation */}
+      {confirmDowngrade && (
+        <Confirm
+          message={`Switch to ${PLANS[confirmDowngrade]?.label}? You'll immediately lose access to ${plan==="pro"&&confirmDowngrade==="plus"?"multi-property and shared access":"AI scanning, Smart Fill, health score, and cost forecasting"} features.`}
+          onConfirm={confirmDowngradeNow}
+          onCancel={()=>setConfirmDowngrade(null)}
+        />
       )}
     </div>
   );
@@ -4783,6 +5027,84 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
 }
 
 const PROJECT_STATUSES = ["Planning","In Progress","Completed","On Hold"];
+
+// ─── PROJECT ROI REFERENCE DATA ───────────────────────────────────────────────
+// National averages from the annual Cost vs. Value Report (Remodeling magazine / Zonda),
+// the standard industry benchmark comparing renovation cost to resale value added.
+// These are national averages only — actual ROI varies significantly by region, home
+// price tier, and execution quality. Always shown with that caveat in the UI.
+//
+// laborShare = typical fraction of total cost that goes to labor (vs materials) for
+// that category. Used to adjust the DIY estimate — see computeProjectROI() below.
+// Sourced from industry data putting labor at ~35-60% of total cost depending on trade
+// complexity; simple swaps (garage door) skew lower, structural/mechanical work skews higher.
+const PROJECT_ROI_DATA = {
+  garage_door:   { label:"Garage Door Replacement",     avgCost:4500,  roi:194, icon:"🚪", laborShare:0.35 },
+  stone_veneer:  { label:"Manufactured Stone Veneer",   avgCost:11000, roi:153, icon:"🧱", laborShare:0.55 },
+  entry_door:    { label:"Entry Door Replacement",      avgCost:2200,  roi:136, icon:"🚪", laborShare:0.40 },
+  siding:        { label:"Siding Replacement",          avgCost:17500, roi:114, icon:"🏠", laborShare:0.45 },
+  minor_kitchen: { label:"Minor Kitchen Remodel",       avgCost:28000, roi:113, icon:"🍳", laborShare:0.45 },
+  hvac:          { label:"HVAC Replacement",            avgCost:13000, roi:90,  icon:"🌡️", laborShare:0.40 },
+  windows:       { label:"Window Replacement",          avgCost:21000, roi:85,  icon:"🪟", laborShare:0.40 },
+  deck:          { label:"Deck Addition (wood)",        avgCost:19000, roi:80,  icon:"🪵", laborShare:0.50 },
+  roof:          { label:"Roof Replacement",            avgCost:31000, roi:68,  icon:"🏚️", laborShare:0.40 },
+  bathroom:      { label:"Bathroom Remodel",             avgCost:27000, roi:66,  icon:"🚿", laborShare:0.55 },
+  major_kitchen: { label:"Major Kitchen Remodel",       avgCost:80000, roi:58,  icon:"🍳", laborShare:0.50 },
+  primary_suite: { label:"Primary Suite Addition",      avgCost:160000,roi:33,  icon:"🛏️", laborShare:0.55 },
+  pool:          { label:"Swimming Pool",               avgCost:65000, roi:30,  icon:"🏊", laborShare:0.50 },
+  other:         { label:"Other / Custom Project",      avgCost:null,  roi:null, icon:"🔨", laborShare:0.45 },
+};
+const PROJECT_ROI_SOURCE = "Cost vs. Value Report — national averages, actual results vary by region and home price tier";
+
+// Computes the ROI estimate accounting for: whether the work is DIY or contractor,
+// and how far the actual/budgeted spend deviates from the category's typical cost.
+//
+// Why this matters: published ROI% is calculated against the FULL contractor-installed
+// cost (labor + materials). A finished garage door is worth the same to a buyer whether
+// you installed it yourself or paid a pro — so DIY doesn't reduce the value added, it
+// just reduces what you spent to get there. We model this by treating "value added" as
+// anchored to the category's typical finished-result value (scaled to your spend on
+// materials-equivalent terms), while DIY cost basis excludes the labor share.
+//
+// Scope deviation: the published ROI is itself an average across small and large jobs
+// in that category. A spend far outside the typical range is less reliable to project
+// from — we flag this with a confidence note rather than silently extrapolating.
+function computeProjectROI(categoryKey, actualSpend, isDIY) {
+  const info = PROJECT_ROI_DATA[categoryKey];
+  if (!info || info.roi === null) return null;
+
+  const spend = Number(actualSpend) > 0 ? Number(actualSpend) : info.avgCost;
+  const laborShare = info.laborShare;
+
+  // Estimate what this would have cost at full contractor rate, so we can anchor
+  // "value added" to the category's typical finished-result value regardless of
+  // who did the labor.
+  // If DIY: the user's spend is assumed to be ~materials-only, so the equivalent
+  // contractor-installed cost would be spend / (1 - laborShare).
+  const contractorEquivCost = isDIY ? spend / (1 - laborShare) : spend;
+
+  // Value added scales with the contractor-equivalent cost (this is what the
+  // Cost vs. Value ROI% was actually measured against).
+  const valueAdded = Math.round(contractorEquivCost * (info.roi / 100));
+  const netCost = spend - valueAdded;
+  const effectiveROI = spend > 0 ? Math.round((valueAdded / spend) * 100) : info.roi;
+
+  // Scope deviation confidence check — how far is actual spend from the category average?
+  const deviationRatio = info.avgCost ? spend / info.avgCost : 1;
+  const lowConfidence = deviationRatio < 0.4 || deviationRatio > 2.5;
+
+  return {
+    spend,
+    valueAdded,
+    netCost,
+    effectiveROI,
+    publishedROI: info.roi,
+    isDIY,
+    lowConfidence,
+    laborShare,
+  };
+}
+
 const PROJECT_STATUS_STYLE = {
   "Planning":    {bg:"var(--sky-light)",   text:"var(--sky)",   border:"#93C5E8"},
   "In Progress": {bg:"#FFF8E6",            text:"#92610A",      border:"#F5CC76"},
@@ -4844,9 +5166,11 @@ function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUr
   );
 }
 
-function ProjectForm({ data, onChange, userId, contractors=[] }) {
+function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const status = data.status || "Planning";
+  const roiInfo = data.roi_category ? PROJECT_ROI_DATA[data.roi_category] : null;
+  const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
 
   // Which photo slots to show based on status
   const slots = [
@@ -4858,6 +5182,83 @@ function ProjectForm({ data, onChange, userId, contractors=[] }) {
   return (
     <div className="fg">
       <div className="field s2"><label>Project Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Kitchen Remodel" /></div>
+      <div className="field s2">
+        <label>Project Type <span style={{fontWeight:400,color:"#A8A09A"}}>(for ROI estimate)</span> {!isPaid && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.15)",color:"var(--rust)",fontWeight:700,padding:"1px 6px",borderRadius:6,marginLeft:4}}>Plus</span>}</label>
+        {isPaid ? (
+          <select value={data.roi_category||""} onChange={e=>f("roi_category",e.target.value)}>
+            <option value="">Select if you want a value estimate…</option>
+            {Object.entries(PROJECT_ROI_DATA).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
+          </select>
+        ) : (
+          <button type="button" onClick={onUpgrade}
+            style={{width:"100%",textAlign:"left",padding:".7rem .85rem",borderRadius:10,border:"1.5px dashed var(--stone)",background:"var(--cream)",cursor:"pointer",fontFamily:"inherit",fontSize:".85rem",color:"#8A8178",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span>See estimated resale value for this project</span>
+            <span style={{fontWeight:700,color:"var(--rust)"}}>Upgrade →</span>
+          </button>
+        )}
+      </div>
+
+      {/* DIY vs contractor toggle — only shown once a category is picked, paid plans only */}
+      {isPaid && roiInfo && roiInfo.roi !== null && (
+        <div className="field s2">
+          <label>Who's doing the work?</label>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
+            <button type="button" onClick={()=>f("roi_diy",false)}
+              style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${!data.roi_diy?"var(--pine)":"var(--stone)"}`,background:!data.roi_diy?"var(--pine)":"var(--white)",color:!data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
+              👷 Contractor
+            </button>
+            <button type="button" onClick={()=>f("roi_diy",true)}
+              style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${data.roi_diy?"var(--pine)":"var(--stone)"}`,background:data.roi_diy?"var(--pine)":"var(--white)",color:data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
+              🔧 DIY
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ROI preview — shown once a category with real data is picked, paid plans only */}
+      {isPaid && roiInfo && roiInfo.roi !== null && (() => {
+        const useBudget = Number(data.budget) > 0 ? Number(data.budget) : null;
+        const calc = computeProjectROI(data.roi_category, useBudget, !!data.roi_diy);
+        if (!calc) return null;
+        const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
+        return (
+          <div className="field s2">
+            <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:14,padding:"1rem 1.1rem"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".7rem"}}>
+                <span style={{fontSize:"1rem"}}>📊</span>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Estimated return</span>
+                {calc.isDIY && <span style={{fontSize:".6rem",background:"rgba(125,203,161,.2)",color:"#7DCBA1",fontWeight:700,padding:"2px 7px",borderRadius:8}}>DIY adjusted</span>}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".6rem",marginBottom:".7rem"}}>
+                <div>
+                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Your est. ROI</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:calc.effectiveROI>=100?"#7DCBA1":calc.effectiveROI>=70?"#F0CE7A":"#E8A57F"}}>{calc.effectiveROI}%</div>
+                </div>
+                <div>
+                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Value added</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:"#F4EDDF"}}>${calc.valueAdded.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Net cost</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:"#F4EDDF"}}>${calc.netCost.toLocaleString()}</div>
+                </div>
+              </div>
+              <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
+                Based on {useBudget?"a $"+calc.spend.toLocaleString()+" budget":"the national average $"+roiInfo.avgCost.toLocaleString()+" cost"} ({calc.isDIY?"DIY":"contractor"}).
+                {calc.isDIY && ` The published ${calc.publishedROI}% ROI assumes contractor installation — since the finished result is worth about the same either way, doing it yourself typically means a higher return on what you actually spend.`}
+                {pctOfHome && ` About ${pctOfHome}% of your home's estimated value.`}
+                {" "}{PROJECT_ROI_SOURCE}.
+              </div>
+              {calc.lowConfidence && (
+                <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
+                  ⚠ Your {useBudget?"budget":"cost"} is far from the typical range for this project type — treat this estimate as rougher than usual.
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="field"><label>Status</label><select value={data.status||"Planning"} onChange={e=>f("status",e.target.value)}>{PROJECT_STATUSES.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Budget ($)</label><input type="number" value={data.budget||""} onChange={e=>f("budget",e.target.value)} placeholder="0" /></div>
       <div className="field"><label>Start Date</label><input type="date" value={data.start_date||""} onChange={e=>f("start_date",e.target.value)} /></div>
@@ -6060,7 +6461,7 @@ function useRecallAlerts(assets) {
   return { recalls, checking, checked, recallError, runCheck: () => runCheck(assets) };
 }
 
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId }) {
+function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup }) {
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
@@ -6242,9 +6643,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       {isNewUser && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.15,marginBottom:".5rem"}}>Welcome to Steadwell</div>
-          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>Set up your home in 10 minutes and we'll generate a personalized maintenance plan.</div>
-          <button style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".75rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:700,cursor:"pointer"}} onClick={()=>onNavigate("profile")}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.15,marginBottom:".5rem"}}>Your home isn't set up yet</div>
+          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>Takes about 3 minutes and unlocks your personalized maintenance schedule — no more guessing what needs attention.</div>
+          <button style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".75rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:700,cursor:"pointer"}} onClick={()=>onLaunchSetup?onLaunchSetup():onNavigate("profile")}>
             Set up my home →
           </button>
         </div>
@@ -8300,7 +8701,7 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset }) {
+function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0 }) {
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -8385,7 +8786,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   // ── Project CRUD
-  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after"];
+  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after","roi_category","roi_diy"];
   const pickProject = (d) => Object.fromEntries(PROJECT_FIELDS.filter(f => f in d && d[f] !== undefined).map(f => [f, d[f] ?? null]));
 
   const openNewProject = () => { setProjectEditData({status:"Planning",start_date:localISO()}); setProjectEditId(null); setProjectModal(true); };
@@ -8884,6 +9285,66 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       </button>
                     )}
 
+                    {/* ROI result — uses real spend, shown whenever a project type is set, Plus/Pro only */}
+                    {p.roi_category && PROJECT_ROI_DATA[p.roi_category]?.roi !== null && spent > 0 && (() => {
+                      const isPaidView = planData?.plan === "plus" || planData?.plan === "pro";
+                      const roiInfo = PROJECT_ROI_DATA[p.roi_category];
+
+                      if (!isPaidView) {
+                        return (
+                          <div onClick={onUpgrade} style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:"var(--r-sm)",padding:"1rem 1.1rem",marginBottom:"1rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".75rem"}}>
+                            <span style={{fontSize:"1.3rem",flexShrink:0}}>{roiInfo.icon}</span>
+                            <div style={{flex:1}}>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>See estimated return on this project</div>
+                              <div style={{fontSize:".75rem",color:"rgba(244,237,223,.5)",marginTop:2}}>Value added, net cost, and DIY-adjusted ROI</div>
+                            </div>
+                            <span style={{fontSize:".75rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Upgrade →</span>
+                          </div>
+                        );
+                      }
+
+                      const calc = computeProjectROI(p.roi_category, spent, !!p.roi_diy);
+                      if (!calc) return null;
+                      const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
+                      const isComplete = p.status === "Completed";
+                      return (
+                        <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:"var(--r-sm)",padding:"1.1rem 1.1rem",marginBottom:"1rem"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".75rem"}}>
+                            <span style={{fontSize:"1.05rem"}}>{roiInfo.icon}</span>
+                            <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"#F4EDDF"}}>
+                              {isComplete ? "Estimated return" : "Projected return so far"}
+                            </span>
+                            {calc.isDIY && <span style={{fontSize:".6rem",background:"rgba(125,203,161,.2)",color:"#7DCBA1",fontWeight:700,padding:"2px 7px",borderRadius:8}}>DIY adjusted</span>}
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".6rem",marginBottom:".7rem"}}>
+                            <div>
+                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Your est. ROI</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:calc.effectiveROI>=100?"#7DCBA1":calc.effectiveROI>=70?"#F0CE7A":"#E8A57F"}}>{calc.effectiveROI}%</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Value added</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:"#F4EDDF"}}>${calc.valueAdded.toLocaleString()}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Net cost</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:"#F4EDDF"}}>${calc.netCost.toLocaleString()}</div>
+                            </div>
+                          </div>
+                          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
+                            Based on ${calc.spend.toLocaleString()} spent on {roiInfo.label.toLowerCase()} ({calc.isDIY?"DIY":"contractor"}).
+                            {calc.isDIY && ` Published ${calc.publishedROI}% ROI assumes contractor installation — DIY typically returns more per dollar spent since the finished result is worth about the same.`}
+                            {pctOfHome && ` About ${pctOfHome}% of your home's estimated value.`}
+                            {" "}{PROJECT_ROI_SOURCE}.
+                          </div>
+                          {calc.lowConfidence && (
+                            <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
+                              ⚠ Your spend is far from the typical range for this project type — treat this estimate as rougher than usual.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Budget donut — only if budget set */}
                     {budget > 0 && (
                       <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",marginBottom:"1rem"}}>
@@ -9007,11 +9468,24 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           {!selectedProject && (
             <div>
               {projects.length===0 ? (
-                <div className="empty">
-                  <span className="ei">🔨</span>
-                  <strong>No projects yet</strong>
-                  <p>Track remodels, renovations, and major work. Group expenses under a project to see true costs and build a record for resale.</p>
-                  <button className="btn btn-primary" onClick={openNewProject}>＋ Create your first project</button>
+                <div>
+                  <div className="empty">
+                    <span className="ei">🔨</span>
+                    <strong>No projects yet</strong>
+                    <p>Track remodels, renovations, and major work. Group expenses under a project to see true costs and build a record for resale.</p>
+                    <button className="btn btn-primary" onClick={openNewProject}>＋ Create your first project</button>
+                  </div>
+                  {!(planData?.plan === "plus" || planData?.plan === "pro") && (
+                    <div onClick={onUpgrade}
+                      style={{display:"flex",alignItems:"center",gap:".85rem",margin:"0 1rem 1rem",padding:"1rem 1.1rem",borderRadius:"var(--r-sm)",background:"linear-gradient(135deg,#1C3D31,#234A3D)",cursor:"pointer"}}>
+                      <div style={{width:42,height:42,borderRadius:12,background:"rgba(193,97,64,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>📊</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>See what a project is worth before you start</div>
+                        <div style={{fontSize:".75rem",color:"rgba(244,237,223,.5)",marginTop:2}}>ROI calculator — estimated resale value, DIY-adjusted</div>
+                      </div>
+                      <span style={{fontSize:".78rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Upgrade →</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -9040,6 +9514,19 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       </div>
                     );
                   })()}
+
+                  {/* ROI calculator upgrade tile — free users only */}
+                  {!(planData?.plan === "plus" || planData?.plan === "pro") && (
+                    <div onClick={onUpgrade}
+                      style={{display:"flex",alignItems:"center",gap:".85rem",margin:"0 1rem 1.1rem",padding:"1rem 1.1rem",borderRadius:"var(--r-sm)",background:"linear-gradient(135deg,#1C3D31,#234A3D)",cursor:"pointer"}}>
+                      <div style={{width:42,height:42,borderRadius:12,background:"rgba(193,97,64,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>📊</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>See what a project is worth before you start</div>
+                        <div style={{fontSize:".75rem",color:"rgba(244,237,223,.5)",marginTop:2}}>ROI calculator — estimated resale value, DIY-adjusted</div>
+                      </div>
+                      <span style={{fontSize:".78rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Upgrade →</span>
+                    </div>
+                  )}
 
                   {/* Status filter chips */}
                   <div style={{display:"flex",gap:".5rem",padding:"0 1rem",marginBottom:"1rem",overflowX:"auto",scrollbarWidth:"none"}}>
@@ -9344,7 +9831,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
       {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
       {confirm && <Confirm message="This expense will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-      {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId} contractors={contractors}/></Modal>}
+      {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId} contractors={contractors} homeValue={homeValue} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
       {utilModal && <Modal title={utilEditId?"Edit Utility":"Add Utility"} onClose={()=>setUtilModal(false)} onSave={saveUtil}><UtilityForm data={utilEditData} onChange={setUtilEditData}/></Modal>}
       {utilConfirm && <Confirm message="This utility and all its bill history will be permanently deleted." onConfirm={confirmDelUtil} onCancel={()=>setUtilConfirm(null)}/>}
@@ -12157,7 +12644,6 @@ function loadXLSX() {
 }
 
 function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contractors, profile, planData, onUpgrade, onClose }) {
-  const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
   const [downloading, setDownloading] = useState(false);
 
   const SHEETS = [
@@ -12202,7 +12688,6 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
   const totalRecords = SHEETS.reduce((s, sh) => s + sh.count, 0);
 
   const downloadXLSX = async () => {
-    if (!isPaid) { onUpgrade(); return; }
     setDownloading(true);
     try {
       const XLSX = await loadXLSX();
@@ -12260,16 +12745,6 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
           <button onClick={onClose} style={{background:"none",border:"none",fontSize:"1.3rem",cursor:"pointer",color:"#9E9690",lineHeight:1,padding:".2rem .4rem"}}>×</button>
         </div>
 
-        {/* Upgrade prompt for free users */}
-        {!isPaid && (
-          <div style={{margin:"1rem 1.4rem 0",padding:".85rem 1rem",background:"#EEF4FF",border:"1px solid #C5D5F7",borderRadius:"10px",fontSize:".82rem",color:"#3B5FBF",lineHeight:1.5}}>
-            <strong>Export is a Plus feature.</strong> Upgrade to download your data anytime.
-            <button onClick={onUpgrade} style={{display:"block",marginTop:".5rem",background:"#3B5FBF",color:"#fff",border:"none",borderRadius:"8px",padding:".35rem .85rem",fontSize:".78rem",fontWeight:600,cursor:"pointer"}}>
-              Upgrade to Plus
-            </button>
-          </div>
-        )}
-
         {/* Sheet preview */}
         <div style={{padding:"1rem 1.4rem"}}>
           {SHEETS.map((sheet, i) => (
@@ -12290,8 +12765,8 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
         <div style={{padding:"0 1.4rem 1.4rem"}}>
           <button
             onClick={downloadXLSX}
-            disabled={downloading || !isPaid && false}
-            style={{width:"100%",padding:".85rem",background: isPaid ? "var(--pine)" : "var(--stone)",color: isPaid ? "#fff" : "#9E9690",border:"none",borderRadius:"10px",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:600,cursor: isPaid ? "pointer" : "not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:".5rem"}}
+            disabled={downloading}
+            style={{width:"100%",padding:".85rem",background:"var(--pine)",color:"#fff",border:"none",borderRadius:"10px",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:".5rem"}}
           >
             {downloading
               ? <><span className="spinner" style={{width:14,height:14,borderWidth:2,borderColor:"rgba(255,255,255,.3)",borderTopColor:"#fff"}}/> Building your file…</>
@@ -12346,11 +12821,17 @@ function generateHomeProfile(answers) {
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   // Estimated install year from age bracket
+  // Estimate an install_date (ISO string) from an age bracket the user selected.
+  // Uses Jan 1 of the midpoint year as a reasonable default — exact day is unknown,
+  // but a real (if approximate) date is far more useful than burying it in notes text,
+  // since install_date drives the health score, cost forecast, and System Health cards.
   const installYr = (age) => {
     if (!age) return null;
     const mid = { "0-5":2, "6-10":8, "11-15":13, "16+":20 };
-    return yr - (mid[age] || 0);
+    const year = yr - (mid[age] || 0);
+    return `${year}-01-01`;
   };
+  const yrOf = (isoDate) => isoDate ? isoDate.slice(0,4) : null; // for display in notes
 
   // Due date string N days from today
   const dueIn = (days) => {
@@ -12409,10 +12890,11 @@ function generateHomeProfile(answers) {
     const year       = installYr(hvac.acAge);
 
     addAsset("hvac_ac", label, "HVAC", {
+      install_date: year,
       notes: [
         hvac.acType ? `Type: ${hvac.acType.replace(/_/g," ")}` : null,
         hvac.acAge  ? `Age: ${hvac.acAge} years` : null,
-        year        ? `Est. installed: ${year}` : null,
+        year        ? `Est. installed: ${yrOf(year)}` : null,
       ].filter(Boolean).join(" · "),
     });
 
@@ -12471,10 +12953,11 @@ function generateHomeProfile(answers) {
     const year    = installYr(hvac.furnaceAge);
 
     addAsset("hvac_furnace", label, "HVAC", {
+      install_date: year,
       notes: [
         fuel        ? `Fuel: ${fuel}` : null,
         hvac.furnaceAge ? `Age: ${hvac.furnaceAge} years` : null,
-        year        ? `Est. installed: ${year}` : null,
+        year        ? `Est. installed: ${yrOf(year)}` : null,
       ].filter(Boolean).join(" · "),
     });
 
@@ -12622,10 +13105,11 @@ function generateHomeProfile(answers) {
     const year       = installYr(water.heaterAge);
 
     addAsset("water_heater", label, "Plumbing", {
+      install_date: year,
       notes: [
         `Type: ${isTankless ? "Tankless/on-demand" : "Storage tank"}`,
         water.heaterAge ? `Age: ${water.heaterAge} years` : null,
-        year ? `Est. installed: ${year}` : null,
+        year ? `Est. installed: ${yrOf(year)}` : null,
       ].filter(Boolean).join(" · "),
     });
 
@@ -12752,10 +13236,11 @@ function generateHomeProfile(answers) {
   const roofYear  = installYr(structure?.roofAge);
 
   addAsset("roof", roofLabel, "Roofing", {
+    install_date: roofYear,
     notes: [
       structure?.roofType && structure.roofType !== "unknown" ? `Type: ${structure.roofType.replace(/_/g," ")}` : null,
       structure?.roofAge  ? `Age: ${structure.roofAge} years` : null,
-      roofYear            ? `Est. installed: ${roofYear}` : null,
+      roofYear            ? `Est. installed: ${yrOf(roofYear)}` : null,
     ].filter(Boolean).join(" · "),
   });
 
@@ -13130,7 +13615,7 @@ function generateHomeProfile(answers) {
   if (appliances?.hasFridge) {
     const year = installYr(appliances.fridgeAge);
     addAsset("fridge", "Refrigerator", "Appliance", {
-      install_date: year ? `${year}-01-01` : null,
+      install_date: year,
       lifespan_years: 15,
       notes: appliances.fridgeAge ? `Age: ${appliances.fridgeAge} years` : null,
     });
@@ -13143,7 +13628,7 @@ function generateHomeProfile(answers) {
   if (appliances?.hasDishwasher) {
     const year = installYr(appliances.dwAge);
     addAsset("dishwasher", "Dishwasher", "Appliance", {
-      install_date: year ? `${year}-01-01` : null,
+      install_date: year,
       lifespan_years: 12,
       notes: appliances.dwAge ? `Age: ${appliances.dwAge} years` : null,
     });
@@ -13156,7 +13641,7 @@ function generateHomeProfile(answers) {
   if (appliances?.hasWasher) {
     const year = installYr(appliances.washerAge);
     addAsset("washer", "Washing Machine", "Appliance", {
-      install_date: year ? `${year}-01-01` : null,
+      install_date: year,
       lifespan_years: 12,
       notes: appliances.washerAge ? `Age: ${appliances.washerAge} years` : null,
     });
@@ -13174,7 +13659,7 @@ function generateHomeProfile(answers) {
     const year = installYr(appliances.dryerAge);
     const fuelLabel = appliances.dryerFuel ? ` (${appliances.dryerFuel})` : "";
     addAsset("dryer", `Dryer${fuelLabel}`, "Appliance", {
-      install_date: year ? `${year}-01-01` : null,
+      install_date: year,
       lifespan_years: 13,
       notes: [appliances.dryerAge ? `Age: ${appliances.dryerAge} years` : null, appliances.dryerFuel ? `Fuel: ${appliances.dryerFuel}` : null].filter(Boolean).join(" · "),
     });
@@ -13188,7 +13673,7 @@ function generateHomeProfile(answers) {
     const year = installYr(appliances.rangeAge);
     const fuelLabel = appliances.rangeFuel ? ` (${appliances.rangeFuel === "dual" ? "dual fuel" : appliances.rangeFuel})` : "";
     addAsset("range", `Oven / Range${fuelLabel}`, "Appliance", {
-      install_date: year ? `${year}-01-01` : null,
+      install_date: year,
       lifespan_years: 18,
       notes: [appliances.rangeAge ? `Age: ${appliances.rangeAge} years` : null, appliances.rangeFuel ? `Fuel: ${appliances.rangeFuel}` : null].filter(Boolean).join(" · "),
     });
@@ -13203,7 +13688,7 @@ function generateHomeProfile(answers) {
   if (appliances?.hasMicrowave) {
     const year = installYr(appliances.mwAge);
     addAsset("microwave", "Built-in Microwave", "Appliance", {
-      install_date: year ? `${year}-01-01` : null,
+      install_date: year,
       lifespan_years: 10,
       notes: appliances.mwAge ? `Age: ${appliances.mwAge} years` : null,
     });
@@ -14035,6 +14520,8 @@ export default function App() {
     };
   }, [tab]);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [showExport,   setShowExport]   = useState(false);
   const [pendingAssetEdit, setPendingAssetEdit] = useState(null);
   const [pendingNewAsset, setPendingNewAsset] = useState(null); // {category, item} — pre-fill new asset form
@@ -14353,7 +14840,7 @@ export default function App() {
             onNavigateToTask={()=>setTab("tasks")}
             onNavigateToExpense={()=>setTab("expenses")}
           />
-          <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)}/>
+          <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
         </header>
 
         {/* ── WARRANTY MODULE — top-level overlay so it works from any tab ── */}
@@ -14512,10 +14999,10 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
-              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}}/></div>
+              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
@@ -14540,6 +15027,26 @@ export default function App() {
             userId={uid}
             currentTab={tab}
             onClose={()=>setShowFeedback(false)}
+          />
+        )}
+        {showPrivacySettings && (
+          <PrivacySettingsModal
+            userId={uid}
+            profile={profile}
+            setProfile={setProfile}
+            toast={toast}
+            onClose={()=>setShowPrivacySettings(false)}
+          />
+        )}
+        {showAccount && (
+          <AccountModal
+            session={session}
+            profile={profile}
+            setProfile={setProfile}
+            planData={planData}
+            toast={toast}
+            onClose={()=>setShowAccount(false)}
+            onUpgradeFlow={()=>{setShowAccount(false);setShowUpgrade(true);}}
           />
         )}
         {showExport && (
@@ -14585,12 +15092,12 @@ export default function App() {
                   {
                     plan:"Plus", price:"$4.99", period:"/month", color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7",
                     pitch:"Automation and intelligence for the serious homeowner.",
-                    features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","Daily task & warranty reminders","AI receipt scan","25 documents","Full Home Setup Wizard"],
+                    features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","AI receipt, nameplate & policy scanning","Smart Fill model lookup","Daily task & warranty reminders","25 documents"],
                   },
                   {
                     plan:"Pro", price:"$9.99", period:"/month", color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0",
                     pitch:"Multiple properties, shared access, and the complete platform.",
-                    features:["Everything in Plus","Up to 3 properties","Unlimited documents","Shared home access — invite spouse/partner","Pre-sale home report included","Contractor verified badge","Priority support"],
+                    features:["Everything in Plus","Up to 3 properties","Unlimited documents","Shared home access — invite spouse/partner","Priority support"],
                   },
                 ].map(t => (
                   <div key={t.plan} style={{background:t.bg,border:`1.5px solid ${t.border}`,borderRadius:"14px",overflow:"hidden"}}>
@@ -14640,7 +15147,7 @@ function TermsPage() {
     {t:"2. Description of Service",b:"Steadwell is a web-based home management platform for tracking maintenance tasks, warranties, service records, home expenses, utility bills, documents, insurance policies, and publicly available property data. It is not a licensed real estate, financial advisory, legal, or professional home inspection service."},
     {t:"3. Account Registration",b:"You must register with a valid email address. You are responsible for your account credentials and all activity under your account. Contact hello@trysteadwell.app immediately if you suspect unauthorized access."},
     {t:"4. Acceptable Use",b:"You agree not to use the Service for unlawful purposes, upload content you don\'t have the right to share, attempt unauthorized access, reverse-engineer the Service, use automated scraping tools, or misrepresent your identity or property ownership. Violations may result in immediate account termination."},
-    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost, including unlimited asset and warranty tracking, expiry reminders, recall alerts, insurance and claim tracking, and basic recurring tasks. Plus Plan: $4.99/month, adds AI receipt, nameplate, and policy document scanning, Smart Fill model lookup, full recurring task intervals, the complete Home Setup Wizard, home health score, 5-year cost forecasting, and expanded document storage. Pro Plan: $9.99/month, adds support for up to 3 properties, shared household access, and unlimited document storage. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if paid features were not materially used. Payments processed by Stripe — we do not store card information."},
+    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost, including unlimited asset and warranty tracking, the complete Home Setup Wizard, expiry reminders (30-day and 7-day), recall alerts, insurance and claim tracking, basic recurring tasks, and data export. Plus Plan: $4.99/month, adds AI receipt, nameplate, and policy document scanning, Smart Fill model lookup, full recurring task intervals, home health score, 5-year cost forecasting, the home history report, and expanded document storage. Pro Plan: $9.99/month, adds support for up to 3 properties, shared household access, larger file uploads, and unlimited document storage. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if paid features were not materially used. Payments processed by Stripe — we do not store card information."},
     {t:"6. Your Content and Data",b:"You retain full ownership of all content you create or upload. We store it solely to provide the Service. We do not sell your content. You may export or delete your data at any time from Settings."},
     {t:"7. Property Data Disclaimer",b:"Property value estimates come from third-party sources including Zillow (via APIllow) and are informational only. THEY ARE NOT APPRAISALS, BROKER PRICE OPINIONS, OR PROFESSIONAL VALUATIONS. Do not rely on Steadwell\'s data as the sole basis for any real estate, financial, insurance, or legal decision."},
     {t:"8. Third-Party Services",b:"The Service integrates with Supabase (database & auth), APIllow/Zillow (property data), Geoapify (address lookup), Resend (email delivery), and Stripe (payments). Your use is also subject to their respective terms."},
@@ -14690,13 +15197,14 @@ function PrivacyPage() {
     {t:"1. Who We Are",b:"Steadwell operates the home management platform at trysteadwell.app. Questions? Email privacy@trysteadwell.app."},
     {t:"2. Information We Collect",b:"Account info (email, hashed password); home address and property details you enter or confirm; maintenance records, expenses, utility bills, and insurance details; uploaded documents and photos; property data retrieved from Zillow (via APIllow) and address suggestions from Geoapify on your behalf; log and device data for security."},
     {t:"3. How We Use Your Information",b:"To provide and improve the Service; to retrieve property data on your behalf; to send maintenance and warranty expiry reminders; to process payments; to respond to support requests; to detect and prevent security incidents; and to comply with legal obligations. We do NOT use your data to serve advertisements."},
-    {t:"4. How We Share Your Information",b:"Supabase (database, auth, and storage — SOC 2 Type II certified, row-level security enforced); APIllow/Zillow (property lookups, your address only); Geoapify (address autocomplete); Stripe (payment processing — we never store card numbers). We do not sell, rent, or share your data with any other third parties."},
-    {t:"5. Data Retention",b:"Active accounts: data retained while your account is active. Deleted accounts: deletion begins within 30 days of account closure; permanent purge after the 30-day grace period. Encrypted backups: up to 90 days. Legal holds: as required by law."},
-    {t:"6. Security",b:"Row-level security ensures users cannot access each other\'s data. All data is encrypted in transit (TLS 1.2+) and at rest. Passwords are hashed and never stored in plain text."},
-    {t:"7. Your Rights",b:"You may access, correct, export, or delete your data at any time from your account Settings. To submit a data request, email privacy@trysteadwell.app. We respond within 45 days."},
-    {t:"8. California Privacy Rights (CCPA/CPRA)",b:"California residents have the right to know, delete, correct, and opt out of sale (we don\'t sell data). Submit a CCPA request to privacy@trysteadwell.app with subject line \"California Privacy Request.\" We do not discriminate against users who exercise their privacy rights."},
-    {t:"9. Children\'s Privacy",b:"Steadwell is for users 18 and older. We do not knowingly collect data from children under 13. If you believe we have, contact privacy@trysteadwell.app immediately."},
-    {t:"10. Changes to This Policy",b:"We will notify you of material changes via email or in-app notice at least 30 days before they take effect."},
+    {t:"4. How We Share Your Information",b:"Supabase (database, auth, and storage — SOC 2 Type II certified, row-level security enforced); APIllow/Zillow (property lookups, your address only); Geoapify (address autocomplete); Stripe (payment processing — we never store card numbers). We do not sell, rent, or share your personal data with any other third parties. The only exception is the optional Contractor Insights program described in Section 5 below, which is off by default and requires your explicit opt-in."},
+    {t:"5. Optional: Contractor Insights Program",b:"If you choose to opt in (Settings > Privacy), we may share de-identified, aggregated trends — such as \"homes in your area with HVAC systems over 12 years old\" — with local contractor partners to help them serve homeowners better. This never includes your name, address, contact information, or any data that could identify you individually. We do not sell or share your specific asset records, service history, or any personally identifiable information with contractors under any circumstance, opted in or not. You can opt out at any time from Settings, and opting in or out has no effect on your access to any Steadwell feature."},
+    {t:"6. Data Retention",b:"Active accounts: data retained while your account is active. Deleted accounts: deletion begins within 30 days of account closure; permanent purge after the 30-day grace period. Encrypted backups: up to 90 days. Legal holds: as required by law."},
+    {t:"7. Security",b:"Row-level security ensures users cannot access each other\'s data. All data is encrypted in transit (TLS 1.2+) and at rest. Passwords are hashed and never stored in plain text."},
+    {t:"8. Your Rights",b:"You may access, correct, export, or delete your data at any time from your account Settings. To submit a data request, email privacy@trysteadwell.app. We respond within 45 days."},
+    {t:"9. California Privacy Rights (CCPA/CPRA)",b:"California residents have the right to know, delete, correct, and opt out of sale (we don\'t sell data). Submit a CCPA request to privacy@trysteadwell.app with subject line \"California Privacy Request.\" We do not discriminate against users who exercise their privacy rights."},
+    {t:"10. Children\'s Privacy",b:"Steadwell is for users 18 and older. We do not knowingly collect data from children under 13. If you believe we have, contact privacy@trysteadwell.app immediately."},
+    {t:"11. Changes to This Policy",b:"We will notify you of material changes via email or in-app notice at least 30 days before they take effect."},
   ];
   return (
     <div style={S.page}>
@@ -14712,7 +15220,7 @@ function PrivacyPage() {
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Privacy Policy</h1>
         <p style={S.meta}>Effective date: June 1, 2026 &nbsp;&middot;&nbsp; Last updated: June 1, 2026</p>
-        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> We store your home data to provide the service. We never sell it. Your documents are yours. California residents have CCPA rights. Delete your account and all data anytime from Settings.</div>
+        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> We store your home data to provide the service. We never sell it. There's an optional, off-by-default program to share anonymized area trends with contractors — your personal data is never part of it, and you control it from Settings. Your documents are yours. California residents have CCPA rights. Delete your account and all data anytime from Settings.</div>
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Privacy Questions?</h2>
@@ -15323,40 +15831,28 @@ const PLANS = {
     label: "Free", color: "free",
     maxDocs: 5, maxFiles: 5, maxFileMB: 10, maxProperties: 1,
     recurring: "basic",
-    reminders: "basic",
-    setupWizard: "hvac",
     healthScore: false,
     costForecast: false,
     aiScan: false,
     sharedAccess: false,
-    exportPrice: 9.99,
-    presalePrice: 19.99,
   },
   plus: {
     label: "Plus", color: "plus",
     maxDocs: 25, maxFiles: 25, maxFileMB: 25, maxProperties: 1,
     recurring: "full",
-    reminders: "full",
-    setupWizard: "full",
     healthScore: true,
     costForecast: true,
     aiScan: true,
     sharedAccess: false,
-    exportPrice: 0,
-    presalePrice: 9.99,
   },
   pro: {
     label: "Pro", color: "pro",
     maxDocs: Infinity, maxFiles: Infinity, maxFileMB: 50, maxProperties: 3,
     recurring: "full",
-    reminders: "full",
-    setupWizard: "full",
     healthScore: true,
     costForecast: true,
     aiScan: true,
     sharedAccess: true,
-    exportPrice: 0,
-    presalePrice: 0,
   },
 };
 
@@ -15772,13 +16268,13 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
         if (tErr) console.error("Task insert error:", tErr.message);
       }
 
-      // 3. Save selected projects — Plus/Pro only
-      const canCreateProjects = planData?.plan === "plus" || planData?.plan === "pro";
-      if (canCreateProjects) {
-        const projRows = generated.projects
-          .filter((_,i) => projectChecks[i])
-          .map(({ ...p }) => ({ ...p, user_id: userId, property_id: profile?.id }));
-        if (projRows.length) await supabase.from("projects").insert(projRows);
+      // 3. Save selected projects — free for all tiers, same as the rest of the wizard
+      const projRows = generated.projects
+        .filter((_,i) => projectChecks[i])
+        .map(({ ...p }) => ({ ...p, user_id: userId, property_id: profile?.id }));
+      if (projRows.length) {
+        const { error: pErr } = await supabase.from("projects").insert(projRows);
+        if (pErr) console.error("Project insert error:", pErr.message);
       }
 
       // Mark setup complete — write to DB (persists across devices) + localStorage (fast read)
@@ -15795,7 +16291,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
 
       const aCount = Object.values(assetChecks).filter(Boolean).length;
       const tCount = Object.values(taskChecks).filter(Boolean).length;
-      const pCount = canCreateProjects ? Object.values(projectChecks).filter(Boolean).length : 0;
+      const pCount = Object.values(projectChecks).filter(Boolean).length;
       const msg = `✓ Home profile set up — ${aCount} assets, ${tCount} tasks${pCount ? `, ${pCount} projects` : ""} created`;
       toast(msg);
       // Clear saved wizard state
@@ -16170,7 +16666,6 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     const selA = generated.assets.filter((_,i)  => assetChecks[i]);
     const selT = generated.tasks.filter((_,i)   => taskChecks[i]);
     const selP = generated.projects.filter((_,i) => projectChecks[i]);
-    const canCreateProjects = planData?.plan === "plus" || planData?.plan === "pro";
 
     const SECTIONS = [
       {
@@ -16186,7 +16681,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       {
         key:"projects", label:"Project suggestions", count:selP.length, total:generated.projects.length,
         icon:"📋", sub:"Bigger work items with budgets",
-        hint: canCreateProjects ? "Suggested projects based on your home's age. You can edit or delete these from the Money tab." : "Upgrade to Plus to track home improvement projects with budgets.",
+        hint: "Suggested projects based on your home's age. You can edit or delete these from the Money tab.",
       },
     ];
 
@@ -16330,20 +16825,18 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
                     generated.projects.length === 0 ? (
                       <div style={{padding:"1.25rem 1.1rem",fontSize:".82rem",color:"rgba(244,237,223,.35)"}}>No projects suggested — your systems look to be in good shape.</div>
                     ) : generated.projects.map((p,i) => {
-                      const locked = !canCreateProjects;
-                      const included = !locked && !!projectChecks[i];
+                      const included = !!projectChecks[i];
                       return (
                         <div key={i}
-                          onClick={()=>!locked && setProjectChecks(c=>({...c,[i]:!c[i]}))}
-                          style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1.1rem",borderBottom:"1px solid rgba(244,237,223,.06)",cursor:locked?"default":"pointer",opacity:included||locked?.9:0.4,transition:"opacity .15s"}}
+                          onClick={()=>setProjectChecks(c=>({...c,[i]:!c[i]}))}
+                          style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1.1rem",borderBottom:"1px solid rgba(244,237,223,.06)",cursor:"pointer",opacity:included?.9:0.4,transition:"opacity .15s"}}
                         >
-                          <div style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${locked?"rgba(193,97,64,.4)":included?"#C16140":"rgba(244,237,223,.18)"}`,background:locked?"rgba(193,97,64,.15)":included?"#C16140":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                            {locked ? <span style={{fontSize:".55rem",color:"#C16140",fontWeight:700}}>+</span>
-                              : included && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          <div style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${included?"#C16140":"rgba(244,237,223,.18)"}`,background:included?"#C16140":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                            {included && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:".88rem",fontWeight:600,color:"#F4EDDF",textDecoration:(!locked&&!included)?"line-through":"none"}}>{p.name}</div>
-                            <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)",marginTop:2}}>Budget: ${p.budget?.toLocaleString()}{locked?" · Plus feature":""}</div>
+                            <div style={{fontSize:".88rem",fontWeight:600,color:"#F4EDDF",textDecoration:!included?"line-through":"none"}}>{p.name}</div>
+                            <div style={{fontSize:".72rem",color:"rgba(244,237,223,.4)",marginTop:2}}>Budget: ${p.budget?.toLocaleString()}</div>
                           </div>
                         </div>
                       );
