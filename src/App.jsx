@@ -14611,6 +14611,7 @@ export default function App() {
   if (_path === "/ada" || _path === "/accessibility" || _path === "/ada/") return <ADAPage />;
   if (_path === "/blog" || _path === "/blog/") return <BlogIndex />;
   if (_path.startsWith("/blog/")) return <BlogPost slug={_path.replace("/blog/","")} />;
+  if (_path === "/guides" || _path === "/guides/") return <GuidesPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -15292,6 +15293,398 @@ export default function App() {
 }
 
 // ─── TERMS OF SERVICE PAGE ───────────────────────────────────────────────────
+
+// ─── FIRST-TIME HOMEBUYER GUIDES PAGE ────────────────────────────────────────
+const STATES = [
+  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+  "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
+  "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
+  "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
+  "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio",
+  "Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
+  "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+  "Wisconsin","Wyoming"
+];
+
+const STATE_FACTS = {
+  Florida:       { emoji:"🌴", tagline:"Sunshine State buyer programs, flood zones & hurricane prep" },
+  Texas:         { emoji:"⭐", tagline:"No income tax, large county assistance programs & disclosure laws" },
+  California:    { emoji:"🌉", tagline:"CalHFA programs, wildfire zones & earthquake disclosure" },
+  "New York":    { emoji:"🗽", tagline:"SONYMA programs, co-op vs condo rules & NYC transfer taxes" },
+  "North Carolina":{ emoji:"🌲", tagline:"NC Home Advantage, USDA-eligible areas & storm prep" },
+  Georgia:       { emoji:"🍑", tagline:"DCA programs, attorney-state closings & HOA laws" },
+  Arizona:       { emoji:"🌵", tagline:"HOA super-liens, desert climate maintenance & well/septic rules" },
+  Colorado:      { emoji:"🏔️", tagline:"CHFA programs, HOA disclosures & wildfire zone guidance" },
+  Washington:    { emoji:"🌲", tagline:"WSHFC programs, earthquake risk & radon in Eastern WA" },
+  Tennessee:     { emoji:"🎵", tagline:"THDA programs, attorney-state closings & no state income tax" },
+};
+
+function GuidesPage() {
+  const [selectedState, setSelectedState] = useState("Florida");
+  const [purchasing, setPurchasing] = useState(null);
+  const fact = STATE_FACTS[selectedState] || { emoji:"🏠", tagline:"State-specific buyer programs, disclosures & local guidance" };
+
+  useSEO({
+    title: "First-Time Homebuyer Guides — All 50 States",
+    description: "State-specific first-time homebuyer guides covering assistance programs, disclosure laws, inspection checklists, and county-level intelligence. Pick your state.",
+    canonical: "https://www.trysteadwell.app/guides",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Steadwell First-Time Homebuyer Guides",
+      "description": "State-specific homebuyer guides for all 50 US states",
+      "url": "https://www.trysteadwell.app/guides",
+      "numberOfItems": 50
+    }
+  });
+
+  const HM = () => (
+    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true">
+      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const handleBuy = (tier) => {
+    setPurchasing(tier);
+    // Stripe Checkout will be wired here once LLC + Stripe account is live
+    setTimeout(() => {
+      alert("Guides are launching soon — check back shortly!");
+      setPurchasing(null);
+    }, 300);
+  };
+
+  const S = {
+    page:    { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723" },
+    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:64, position:"sticky", top:0, zIndex:100 },
+    navBrand:{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" },
+    tile:    { width:32, height:32, borderRadius:9, background:"#C16140", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
+    wm:      { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"1.1rem", color:"#F4EDDF" },
+    navLink: { color:"rgba(244,237,223,.7)", textDecoration:"none", fontSize:".88rem", fontWeight:500 },
+    wrap:    { maxWidth:1080, margin:"0 auto", padding:"0 24px" },
+    hero:    { background:"#234A3D", padding:"72px 24px 80px", textAlign:"center" },
+    eyebrow: { fontSize:".72rem", fontWeight:700, letterSpacing:".18em", textTransform:"uppercase", color:"#D2876A", marginBottom:16 },
+    h1:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(2.2rem,5vw,3.4rem)", color:"#F4EDDF", lineHeight:1.06, letterSpacing:"-.025em", margin:"0 0 20px" },
+    heroSub: { fontSize:"1.05rem", color:"rgba(244,237,223,.65)", maxWidth:"36rem", margin:"0 auto 40px", lineHeight:1.6 },
+    pillRow: { display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap", marginBottom:8 },
+    pill:    { background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.14)", borderRadius:20, padding:"5px 14px", fontSize:".78rem", color:"rgba(244,237,223,.8)", fontWeight:500 },
+    section: { padding:"64px 24px" },
+    sectionDark: { padding:"64px 24px", background:"#EFE7D7" },
+    h2:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.6rem,3vw,2.2rem)", color:"#234A3D", letterSpacing:"-.02em", marginBottom:8 },
+    h2sub:   { fontSize:"1rem", color:"#7A7370", marginBottom:40, lineHeight:1.6 },
+    stateBar:{ background:"#fff", border:"1px solid #E6DECF", borderRadius:16, padding:"28px 32px", marginBottom:40, boxShadow:"0 2px 12px rgba(35,74,61,.06)" },
+    stateLabel:{ fontSize:".68rem", fontWeight:700, letterSpacing:".1em", textTransform:"uppercase", color:"#A8A09A", marginBottom:8 },
+    stateSelect:{ width:"100%", padding:".75rem 1rem", border:"1.5px solid #E6DECF", borderRadius:10, fontFamily:"'Hanken Grotesk',sans-serif", fontSize:"1rem", color:"#2A2723", background:"#fff", cursor:"pointer", outline:"none", appearance:"none", backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 5 4.5-5' stroke='%232A2723' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat:"no-repeat", backgroundPosition:"right 1rem center" },
+    stateFactBox:{ display:"flex", alignItems:"center", gap:12, marginTop:16, padding:"12px 16px", background:"rgba(35,74,61,.06)", borderRadius:10 },
+    stateEmoji:{ fontSize:"1.5rem", flexShrink:0 },
+    stateFactText:{ fontSize:".85rem", color:"#5E574F", lineHeight:1.5 },
+    cards:   { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, marginTop:8 },
+    card:    { background:"#fff", border:"1px solid #E6DECF", borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", transition:"box-shadow .2s,transform .2s", cursor:"default" },
+    cardFeatured: { background:"#234A3D", border:"1px solid transparent", borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 12px 40px rgba(35,74,61,.25)" },
+    cardTop: { padding:"24px 24px 0" },
+    cardTopFeatured: { padding:"24px 24px 0" },
+    badge:   { display:"inline-flex", alignItems:"center", fontSize:".65rem", fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", padding:"3px 10px", borderRadius:20, marginBottom:12 },
+    tier:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1.1rem", color:"#234A3D", marginBottom:4 },
+    tierFeatured: { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1.1rem", color:"#F4EDDF", marginBottom:4 },
+    price:   { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"2.6rem", color:"#234A3D", lineHeight:1, letterSpacing:"-.02em" },
+    priceFeatured: { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"2.6rem", color:"#F4EDDF", lineHeight:1, letterSpacing:"-.02em" },
+    priceNote:{ fontSize:".8rem", color:"#A8A09A", marginTop:4, marginBottom:20 },
+    priceNoteFeatured:{ fontSize:".8rem", color:"rgba(244,237,223,.5)", marginTop:4, marginBottom:20 },
+    divider: { height:1, background:"#E6DECF", margin:"0 24px" },
+    dividerFeatured: { height:1, background:"rgba(255,255,255,.1)", margin:"0 24px" },
+    feats:   { padding:"20px 24px", flex:1 },
+    feat:    { display:"flex", alignItems:"flex-start", gap:10, marginBottom:12, fontSize:".88rem", color:"#5E574F", lineHeight:1.5 },
+    featFeatured: { display:"flex", alignItems:"flex-start", gap:10, marginBottom:12, fontSize:".88rem", color:"rgba(244,237,223,.8)", lineHeight:1.5 },
+    check:   { width:18, height:18, borderRadius:"50%", background:"rgba(35,74,61,.1)", color:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".6rem", fontWeight:800, flexShrink:0, marginTop:1 },
+    checkFeatured: { width:18, height:18, borderRadius:"50%", background:"#C16140", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".6rem", fontWeight:800, flexShrink:0, marginTop:1 },
+    cardFoot:{ padding:"0 24px 24px" },
+    btn:     { display:"block", width:"100%", padding:".85rem", borderRadius:12, border:"none", fontFamily:"'Hanken Grotesk',sans-serif", fontSize:".92rem", fontWeight:700, cursor:"pointer", textAlign:"center", transition:"all .18s" },
+    btnPrimary:{ background:"#C16140", color:"#fff" },
+    btnOutline:{ background:"transparent", color:"#234A3D", border:"1.5px solid #E6DECF" },
+    btnFeatured:{ background:"#F4EDDF", color:"#234A3D" },
+    includes:{ fontSize:".72rem", color:"#A8A09A", textAlign:"center", marginTop:10 },
+    includesFeatured:{ fontSize:".72rem", color:"rgba(244,237,223,.4)", textAlign:"center", marginTop:10 },
+    whyGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 },
+    whyCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"24px" },
+    whyIcon: { fontSize:"1.6rem", marginBottom:12 },
+    whyTitle:{ fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1rem", color:"#234A3D", marginBottom:6 },
+    whyText: { fontSize:".85rem", color:"#7A7370", lineHeight:1.6 },
+    faqItem: { borderBottom:"1px solid #E6DECF", padding:"20px 0" },
+    faqQ:    { fontWeight:600, fontSize:".95rem", color:"#2A2723", marginBottom:8 },
+    faqA:    { fontSize:".88rem", color:"#7A7370", lineHeight:1.6 },
+    cta:     { background:"#234A3D", padding:"72px 24px", textAlign:"center" },
+    ctaH:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#F4EDDF", marginBottom:16, letterSpacing:"-.02em" },
+    ctaSub:  { fontSize:"1rem", color:"rgba(244,237,223,.65)", maxWidth:"32rem", margin:"0 auto 32px", lineHeight:1.6 },
+    ctaBtn:  { display:"inline-block", background:"#C16140", color:"#fff", textDecoration:"none", padding:".9rem 2rem", borderRadius:12, fontWeight:700, fontSize:".95rem", fontFamily:"'Hanken Grotesk',sans-serif", border:"none", cursor:"pointer" },
+    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem" },
+    footLinks:{ display:"flex", gap:24, flexWrap:"wrap" },
+    footA:   { color:"rgba(244,237,223,.55)", textDecoration:"none" },
+  };
+
+  const tiers = [
+    {
+      key:      "state",
+      label:    "State Guide",
+      price:    "$12",
+      note:     "One-time purchase · Instant PDF download",
+      featured: false,
+      badgeText:null,
+      badgeBg:  null,
+      features: [
+        "State-specific buyer assistance programs & grants",
+        "Step-by-step closing process & timeline",
+        "Disclosure laws explained plainly",
+        "Climate, seasonal maintenance & hazard guidance",
+        "Complete home inspection checklist",
+        "Homestead exemption & tax savings",
+        "Property viewing notes & comparison sheets",
+      ],
+      includes: `${selectedState} State Guide PDF`,
+    },
+    {
+      key:      "bundle",
+      label:    "Complete Bundle",
+      price:    "$29",
+      note:     "Best value · Instant PDF downloads",
+      featured: true,
+      badgeText:"Most Popular",
+      badgeBg:  "#C16140",
+      features: [
+        "Everything in the State Guide",
+        `All ${selectedState} counties covered in detail`,
+        "County-level median prices & market conditions",
+        "Local assistance programs by county",
+        "School district & flood zone data per county",
+        "Top neighborhoods & what to watch for",
+        "County-specific inspection tips & common issues",
+      ],
+      includes: `${selectedState} State Guide + County Intelligence Pack`,
+    },
+    {
+      key:      "county",
+      label:    "County Intelligence Pack",
+      price:    "$25",
+      note:     "One-time purchase · Instant PDF download",
+      featured: false,
+      badgeText:null,
+      badgeBg:  null,
+      features: [
+        `All ${selectedState} counties covered in detail`,
+        "County-level median prices & market conditions",
+        "Local down payment assistance by county",
+        "School district & flood zone overview per county",
+        "Top neighborhoods & what to watch out for",
+        "County-specific inspection tips",
+        "Infrastructure & commute notes per county",
+      ],
+      includes: `${selectedState} County Intelligence Pack PDF`,
+    },
+  ];
+
+  return (
+    <div style={S.page}>
+      <a href="#guides-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+
+      {/* ── NAV ── */}
+      <nav style={S.nav} role="banner">
+        <a href="/" style={S.navBrand} aria-label="Steadwell homepage">
+          <span style={S.tile}><HM /></span>
+          <span style={S.wm}>Steadwell</span>
+        </a>
+        <div style={{display:"flex",gap:24,alignItems:"center"}}>
+          <a href="/blog" style={S.navLink}>Blog</a>
+          <a href="/" style={{...S.navLink,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",padding:"6px 16px",borderRadius:20,color:"#F4EDDF",fontWeight:600}}>Sign in →</a>
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <section style={S.hero}>
+        <div style={{maxWidth:700,margin:"0 auto"}}>
+          <div style={S.eyebrow}>First-Time Homebuyer Guides · 2026 Edition</div>
+          <h1 style={S.h1}>Buy your first home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>with confidence.</em></h1>
+          <p style={S.heroSub}>State-specific guides covering every program, law, inspection, and trap first-time buyers face — written clearly, without the jargon.</p>
+          <div style={S.pillRow}>
+            {["All 50 States","Instant Download","2026 Edition","One-Time Purchase"].map(p=>(
+              <span key={p} style={S.pill}>{p}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── MAIN ── */}
+      <main id="guides-main" tabIndex={-1}>
+
+        {/* ── STATE PICKER + PRODUCT CARDS ── */}
+        <section style={S.section}>
+          <div style={S.wrap}>
+            <h2 style={S.h2}>Pick your state</h2>
+            <p style={S.h2sub}>Each guide is researched and written specifically for that state — programs, laws, climate, and county data are all local.</p>
+
+            <div style={S.stateBar}>
+              <div style={S.stateLabel}>Select your state</div>
+              <select
+                style={S.stateSelect}
+                value={selectedState}
+                onChange={e=>setSelectedState(e.target.value)}
+                aria-label="Select state"
+              >
+                {STATES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+              <div style={S.stateFactBox}>
+                <span style={S.stateEmoji}>{fact.emoji}</span>
+                <span style={S.stateFactText}><strong style={{color:"#234A3D"}}>{selectedState}:</strong> {fact.tagline}</span>
+              </div>
+            </div>
+
+            {/* Product cards */}
+            <div style={S.cards}>
+              {tiers.map(t => {
+                const isFeat = t.featured;
+                return (
+                  <div key={t.key}
+                    style={isFeat ? S.cardFeatured : S.card}
+                    onMouseEnter={e=>{ if(!isFeat){ e.currentTarget.style.boxShadow="0 8px 28px rgba(35,74,61,.1)"; e.currentTarget.style.transform="translateY(-2px)"; }}}
+                    onMouseLeave={e=>{ if(!isFeat){ e.currentTarget.style.boxShadow=""; e.currentTarget.style.transform=""; }}}
+                  >
+                    <div style={isFeat ? S.cardTopFeatured : S.cardTop}>
+                      {t.badgeText && (
+                        <div style={{marginBottom:12}}>
+                          <span style={{...S.badge,background:t.badgeBg,color:"#fff"}}>{t.badgeText}</span>
+                        </div>
+                      )}
+                      <div style={isFeat ? S.tierFeatured : S.tier}>{t.label}</div>
+                      <div style={isFeat ? S.priceFeatured : S.price}>{t.price}</div>
+                      <div style={isFeat ? S.priceNoteFeatured : S.priceNote}>{t.note}</div>
+                    </div>
+                    <div style={isFeat ? S.dividerFeatured : S.divider}/>
+                    <div style={S.feats}>
+                      {t.features.map((f,i)=>(
+                        <div key={i} style={isFeat ? S.featFeatured : S.feat}>
+                          <div style={isFeat ? S.checkFeatured : S.check}>✓</div>
+                          <span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={S.cardFoot}>
+                      <button
+                        style={{...S.btn,...(isFeat ? S.btnFeatured : t.key==="state" ? S.btnPrimary : S.btnOutline)}}
+                        onClick={()=>handleBuy(t.key)}
+                        disabled={purchasing===t.key}
+                        onMouseEnter={e=>{ e.currentTarget.style.opacity=".88"; e.currentTarget.style.transform="translateY(-1px)"; }}
+                        onMouseLeave={e=>{ e.currentTarget.style.opacity="1"; e.currentTarget.style.transform=""; }}
+                      >
+                        {purchasing===t.key ? "Loading…" : `Get the ${t.label} →`}
+                      </button>
+                      <div style={isFeat ? S.includesFeatured : S.includes}>📄 {t.includes}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── WHY THESE GUIDES ── */}
+        <section style={S.sectionDark}>
+          <div style={S.wrap}>
+            <h2 style={S.h2}>Why these guides exist</h2>
+            <p style={S.h2sub}>Most homebuyer resources are generic. These aren't.</p>
+            <div style={S.whyGrid}>
+              {[
+                { icon:"📍", title:"State-specific, not generic", text:"Every guide covers the programs, laws, climate risks, and inspection requirements specific to that state. Florida's sinkhole guidance doesn't belong in a Texas guide." },
+                { icon:"💰", title:"Every assistance program listed", text:"State housing finance programs, SHIP funds, down payment assistance, and mortgage credit certificates — all sourced and explained for your state." },
+                { icon:"🔍", title:"County-level intelligence", text:"The county pack goes deeper — median prices, local programs, school district overviews, flood zones, and neighborhood notes for every county in the state." },
+                { icon:"📋", title:"Checklists you'll actually use", text:"Property viewing sheets, inspection checklists, comparison tables, and disclosure law summaries. Print them, bring them, use them." },
+                { icon:"⚖️", title:"Disclosure laws explained plainly", text:"Know exactly what sellers are required to tell you — and what they aren't. Translated from legalese into plain language." },
+                { icon:"🏡", title:"Bridges to homeownership", text:"After you close, Steadwell tracks your maintenance, warranties, and costs automatically. Every guide ends with a walkthrough of what comes next." },
+              ].map((w,i)=>(
+                <div key={i} style={S.whyCard}>
+                  <div style={S.whyIcon}>{w.icon}</div>
+                  <div style={S.whyTitle}>{w.title}</div>
+                  <div style={S.whyText}>{w.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── WHAT'S INSIDE ── */}
+        <section style={S.section}>
+          <div style={S.wrap}>
+            <h2 style={S.h2}>What's inside every state guide</h2>
+            <p style={S.h2sub}>17 pages of state-specific content — not filler.</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
+              {[
+                ["01","Housing Market Overview","Median prices, regional breakdowns & state-specific challenges"],
+                ["02","Loan Types & Finances","FHA, VA, USDA, Conventional — limits & requirements for your state"],
+                ["03","Assistance Programs","Every state & local down payment program, grant & MCC available"],
+                ["04","The Buying Process","Step-by-step closing timeline, title vs. attorney states, cost breakdown"],
+                ["05","Disclosure Laws","What sellers must tell you — and what they don't have to"],
+                ["06","Climate & Maintenance","Seasonal maintenance calendar, natural hazard guidance"],
+                ["07","Pests & Hazards","State-specific environmental risks, species guides"],
+                ["08","Inspection Checklist","Room-by-room checklist tailored to your state's common issues"],
+                ["09","Tax Benefits","Homestead exemption, property tax caps, portability rules"],
+                ["10","Property Notes","5 viewing sheets + comparison table — print and bring"],
+              ].map(([num,title,desc])=>(
+                <div key={num} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"16px 18px",display:"flex",gap:14,alignItems:"flex-start"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:".85rem",color:"#C16140",flexShrink:0,marginTop:1}}>{num}</div>
+                  <div>
+                    <div style={{fontWeight:600,fontSize:".88rem",color:"#2A2723",marginBottom:3}}>{title}</div>
+                    <div style={{fontSize:".78rem",color:"#9E9690",lineHeight:1.5}}>{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section style={S.sectionDark}>
+          <div style={{...S.wrap,maxWidth:720}}>
+            <h2 style={S.h2}>Common questions</h2>
+            <p style={S.h2sub}>Everything you need to know before buying.</p>
+            {[
+              ["How do I receive my guide?","Immediately after purchase you'll receive an email with a secure download link. The link is valid for 24 hours. If you need it re-sent, email hello@trysteadwell.app."],
+              ["Are these guides updated for 2026?","Yes. Every guide reflects 2026 program limits, income thresholds, and state law changes — including new flood disclosure requirements and updated FHA loan limits."],
+              ["What's the difference between the State Guide and County Pack?","The State Guide covers statewide programs, laws, and processes. The County Intelligence Pack goes deeper — covering every county individually with local market data, county-specific assistance programs, and neighborhood notes."],
+              ["Can I get a refund?","Yes — if you're not satisfied within 7 days of purchase, email hello@trysteadwell.app for a full refund. No questions asked."],
+              ["Do I need a Steadwell account to buy?","No. You can purchase any guide as a guest. A Steadwell account isn't required — though we think you'll want one once you close on your home."],
+              ["Is this legal or financial advice?","No. These guides are educational resources. For legal advice consult a licensed real estate attorney. For financial advice consult a licensed advisor or HUD-approved housing counselor."],
+            ].map(([q,a],i)=>(
+              <div key={i} style={S.faqItem}>
+                <div style={S.faqQ}>{q}</div>
+                <div style={S.faqA}>{a}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── STEADWELL CTA ── */}
+        <section style={S.cta}>
+          <div style={{maxWidth:580,margin:"0 auto"}}>
+            <div style={{fontSize:"2rem",marginBottom:16}}>🏠</div>
+            <h2 style={S.ctaH}>After you close,<br/>Steadwell keeps you covered.</h2>
+            <p style={S.ctaSub}>Track maintenance schedules, warranties, repair costs, and documents — all in one place. Built for homeowners who want to stay ahead, not catch up.</p>
+            <a href="/" style={S.ctaBtn}>Try Steadwell free →</a>
+            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>Free to start · No credit card required</div>
+          </div>
+        </section>
+      </main>
+
+      {/* ── FOOTER ── */}
+      <footer role="contentinfo" style={S.foot}>
+        <span>© 2026 Steadwell, LLC. All rights reserved.</span>
+        <div style={S.footLinks}>
+          <a href="/terms" style={S.footA}>Terms</a>
+          <a href="/privacy" style={S.footA}>Privacy</a>
+          <a href="/ada" style={S.footA}>Accessibility</a>
+          <a href="mailto:hello@trysteadwell.app" style={S.footA}>Contact</a>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 function TermsPage() {
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:6,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>;
