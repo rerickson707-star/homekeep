@@ -2138,7 +2138,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$0<span> / month</span></div>
               <p className="pdesc">Everything you need to get started and stay organized.</p>
               <ul className="plist">
-                {["Unlimited tasks, assets & expenses","Warranty alerts & weekly digest","Safety recall alerts","Full Home Setup Wizard","Property auto-fill & data export","Contractor rolodex","5 documents · 1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Unlimited tasks, assets & expenses","Warranty alerts & weekly digest","Safety recall alerts","Full Home Setup Wizard","Property auto-fill & data export","Contractor rolodex","Essential document storage · 1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
@@ -2148,7 +2148,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$4.99<span> / month</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free","AI nameplate, receipt & policy scan","Smart Fill from model number","Home health score & cost forecast","Project ROI calculator","Home history report (PDF)","25 documents"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate, receipt & policy scan","Smart Fill from model number","Home health score & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $4.99/mo</button>
             </div>
@@ -2157,7 +2157,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$9.99<span> / month</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
-                {["Everything in Plus","Up to 3 properties","Unlimited documents","Shared household access — invite spouse/partner","50MB file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Plus","Up to 3 properties","Full home document vault","Shared household access — invite spouse/partner","Larger file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $9.99/mo</button>
             </div>
@@ -10290,7 +10290,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>Documents</div>
           {maxDocs !== Infinity && (
             <div style={{fontSize:".7rem",color: atLimit ? "#C16140" : documents.length >= maxDocs * 0.8 ? "#B8861E" : "#A8A09A",marginTop:1}}>
-              {documents.length} of {maxDocs} used{atLimit ? " — upgrade for more" : ""}
+              {atLimit ? "Storage limit reached — upgrade for more" : `${documents.length} document${documents.length !== 1 ? "s" : ""} stored`}
             </div>
           )}
         </div>
@@ -10307,7 +10307,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
       {atLimit && maxDocs !== Infinity && (
         <div style={{padding:".6rem 1rem",background:"#FBF0E6",borderBottom:"1px solid #F5D5B0",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexShrink:0}}>
           <span style={{fontSize:".78rem",color:"#A0511A"}}>
-            You've reached the {maxDocs}-document limit on Free.
+            You've reached the document limit on your current plan.
           </span>
           <button onClick={onUpgrade} style={{fontSize:".72rem",fontWeight:700,color:"#A0511A",background:"none",border:"1px solid #F5D5B0",borderRadius:"8px",padding:"3px 10px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Hanken Grotesk',sans-serif"}}>
             Upgrade to Plus
@@ -15278,12 +15278,12 @@ export default function App() {
                   {
                     plan:"Plus", price:"$4.99", period:"/month", color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7",
                     pitch:"Automation and intelligence for the serious homeowner.",
-                    features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","AI receipt, nameplate & policy scanning","Smart Fill model lookup","Daily task & warranty reminders","25 documents"],
+                    features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","AI receipt, nameplate & policy scanning","Smart Fill model lookup","Daily task & warranty reminders","Expanded document vault"],
                   },
                   {
                     plan:"Pro", price:"$9.99", period:"/month", color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0",
                     pitch:"Multiple properties, shared access, and the complete platform.",
-                    features:["Everything in Plus","Up to 3 properties","Unlimited documents","Shared home access — invite spouse/partner","Priority support"],
+                    features:["Everything in Plus","Up to 3 properties","Full home document vault","Shared home access — invite spouse/partner","Priority support"],
                   },
                 ].map(t => (
                   <div key={t.plan} style={{background:t.bg,border:`1.5px solid ${t.border}`,borderRadius:"14px",overflow:"hidden"}}>
@@ -15727,7 +15727,7 @@ function TermsPage() {
     {t:"2. Description of Service",b:"Steadwell is a web-based home management platform for tracking maintenance tasks, warranties, service records, home expenses, utility bills, documents, insurance policies, and publicly available property data. It is not a licensed real estate, financial advisory, legal, or professional home inspection service."},
     {t:"3. Account Registration",b:"You must register with a valid email address. You are responsible for your account credentials and all activity under your account. Contact hello@trysteadwell.app immediately if you suspect unauthorized access."},
     {t:"4. Acceptable Use",b:"You agree not to use the Service for unlawful purposes, upload content you don\'t have the right to share, attempt unauthorized access, reverse-engineer the Service, use automated scraping tools, or misrepresent your identity or property ownership. Violations may result in immediate account termination."},
-    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost, including unlimited asset and warranty tracking, the complete Home Setup Wizard, expiry reminders (30-day and 7-day), recall alerts, insurance and claim tracking, basic recurring tasks, and data export. Plus Plan: $4.99/month, adds AI receipt, nameplate, and policy document scanning, Smart Fill model lookup, full recurring task intervals, home health score, 5-year cost forecasting, the home history report, and expanded document storage. Pro Plan: $9.99/month, adds support for up to 3 properties, shared household access, larger file uploads, and unlimited document storage. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if paid features were not materially used. Payments processed by Stripe — we do not store card information."},
+    {t:"5. Subscriptions and Payments",b:"Free Plan: core features for one property at no cost, including unlimited asset and warranty tracking, the complete Home Setup Wizard, expiry reminders (30-day and 7-day), recall alerts, insurance and claim tracking, basic recurring tasks, data export, and essential document storage. Plus Plan: $4.99/month, adds AI receipt, nameplate, and policy document scanning, Smart Fill model lookup, full recurring task intervals, home health score, 5-year cost forecasting, the home history report, and an expanded document vault for receipts, warranties, and home records. Pro Plan: $9.99/month, adds support for up to 3 properties, shared household access, larger file uploads, and a full home document vault for every property and record. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from account settings; access continues through the end of the billing period. Refunds available within 7 days of initial subscription if paid features were not materially used. Payments processed by Stripe — we do not store card information."},
     {t:"6. Your Content and Data",b:"You retain full ownership of all content you create or upload. We store it solely to provide the Service. We do not sell your content. You may export or delete your data at any time from Settings."},
     {t:"7. Property Data Disclaimer",b:"Property value estimates come from third-party sources including Zillow (via APIllow) and are informational only. THEY ARE NOT APPRAISALS, BROKER PRICE OPINIONS, OR PROFESSIONAL VALUATIONS. Do not rely on Steadwell\'s data as the sole basis for any real estate, financial, insurance, or legal decision."},
     {t:"8. Third-Party Services",b:"The Service integrates with Supabase (database & auth), APIllow/Zillow (property data), Geoapify (address lookup), Resend (email delivery), and Stripe (payments). Your use is also subject to their respective terms."},
@@ -15996,7 +15996,7 @@ const BLOG_POSTS_FALLBACK = [
       <p>Both apps offer maintenance reminders. HomeZada's system is more comprehensive on paper — it covers a huge checklist of home systems. Steadwell's reminders are asset-specific and climate-aware: if you're in Florida, you won't get reminders about winterizing pipes. The reminders adapt to your home type, age, and region.</p>
 
       <h2>Pricing</h2>
-      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($4.99/month) adds AI scanning, smart fill, and document storage. Pro ($9.99/month) adds shared access for families or property managers and multi-property support.</p>
+      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($4.99/month) adds AI scanning, smart fill, and an expanded document vault. Pro ($9.99/month) adds shared access for families or property managers and multi-property support.</p>
 
       <h2>Who should use each</h2>
       <p>HomeZada is a better fit for homeowners who want a comprehensive home inventory system — tracking the value of every item in the house for insurance purposes, for example. Steadwell is the better choice if your primary goal is keeping your home well-maintained and having an accurate record of every appliance and system. If you've tried HomeZada and found it overwhelming to set up, Steadwell is worth a look.</p>
@@ -16021,7 +16021,7 @@ const BLOG_POSTS_FALLBACK = [
       <p>If you just closed on a home and want to get organized fast, Steadwell's guided onboarding — which asks about your home's age, type, and major systems — gets you to a meaningful maintenance calendar in under 15 minutes. HomeBinder is better if your realtor is already using it and you want continuity from the transaction into ownership.</p>
 
       <h2>Can you use both?</h2>
-      <p>Yes, and some homeowners do. HomeBinder for document storage and closing records; Steadwell for ongoing maintenance tracking and asset management. That said, Steadwell's document upload feature covers most of what HomeBinder offers, so many users find they can consolidate.</p>
+      <p>Yes, and some homeowners do. HomeBinder for document storage and closing records; Steadwell for ongoing maintenance tracking and asset management. That said, Steadwell's document vault covers most of what HomeBinder offers for home management records, so many users find they can consolidate.</p>
     `
   },
   {
