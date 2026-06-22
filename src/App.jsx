@@ -2209,7 +2209,7 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3rem",alignItems:"center"}}>
             <div>
               <div className="eyebrow" style={{color:"var(--terracotta-soft)"}}>First-Time Homebuyer Guides</div>
-              <h2 className="h2" style={{color:"#fff",marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta-soft)"}}>We've got a guide for that.</em></h2>
+              <h2 className="h2" style={{color:"#fff",marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta-soft)"}}>We&apos;ve got a guide for that.</em></h2>
               <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
               <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",alignItems:"center"}}>
                 <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
