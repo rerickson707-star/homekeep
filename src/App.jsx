@@ -2203,6 +2203,41 @@ function LandingPage({ onSignIn, onSignUp }) {
         </div>
       </section>
 
+      {/* ── BUYER GUIDES CALLOUT ── */}
+      <section style={{background:"var(--pine-deep)",padding:"clamp(56px,8vw,96px) 0"}}>
+        <div className="wrap">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3rem",alignItems:"center"}}>
+            <div>
+              <div className="eyebrow" style={{color:"var(--terracotta-soft)"}}>First-Time Homebuyer Guides</div>
+              <h2 className="h2" style={{color:"#fff",marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta-soft)"}}>We've got a guide for that.</em></h2>
+              <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
+              <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",alignItems:"center"}}>
+                <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
+                  onMouseEnter={e=>e.currentTarget.style.opacity=".88"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+                  Browse all 50 states <span aria-hidden="true">→</span>
+                </a>
+                <span style={{fontSize:".82rem",color:"rgba(244,237,223,.38)"}}>From $12 · Instant download</span>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".75rem"}}>
+              {[
+                {icon:"📍", label:"State-specific programs"},
+                {icon:"🏦", label:"Down payment assistance"},
+                {icon:"⚖️", label:"Disclosure laws explained"},
+                {icon:"🔍", label:"County-level intelligence"},
+                {icon:"📋", label:"Inspection checklists"},
+                {icon:"💰", label:"Tax savings & exemptions"},
+              ].map((f,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:".65rem",background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:".75rem 1rem"}}>
+                  <span style={{fontSize:"1.1rem"}}>{f.icon}</span>
+                  <span style={{fontSize:".82rem",color:"rgba(244,237,223,.75)",fontWeight:500,lineHeight:1.3}}>{f.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FINAL CTA ── */}
       <section className="final">
         <div className="glow" aria-hidden="true"/>
