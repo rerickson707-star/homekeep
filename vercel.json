@@ -1,7 +1,8 @@
-{
+﻿{
   "framework": "vite",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/guides", "destination": "/index.html" },
     { "source": "/blog/:slug", "destination": "/index.html" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
