@@ -1944,6 +1944,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             <a onClick={() => scrollTo("how")}>How it works</a>
             <a onClick={() => scrollTo("pricing")}>Pricing</a>
             <a href="/warranty-tracker">Warranty Tracker</a>
+            <a href="/guides">Buyer Guides</a>
             <a href="/blog">Blog</a>
           </div>
           <div className="lp-nav-cta">
@@ -1959,6 +1960,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a onClick={() => { scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
               <a onClick={() => { scrollTo("pricing"); setMobileMenuOpen(false); }}>Pricing</a>
               <a href="/warranty-tracker" onClick={() => setMobileMenuOpen(false)}>Warranty Tracker</a>
+              <a href="/guides" onClick={() => setMobileMenuOpen(false)}>Buyer Guides</a>
               <a href="/blog" onClick={() => setMobileMenuOpen(false)}>Blog</a>
               <div className="lp-mobile-menu-btns">
                 <button className="lp-signin" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>Sign in</button>
@@ -2225,6 +2227,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a onClick={() => scrollTo("features")}>Features</a>
               <a onClick={() => scrollTo("pricing")}>Pricing</a>
               <a href="/warranty-tracker">Warranty Tracker</a>
+              <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
               <a href="mailto:hello@trysteadwell.app">Contact</a>
               <a onClick={onSignIn}>Sign in</a>
