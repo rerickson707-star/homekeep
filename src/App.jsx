@@ -1826,19 +1826,10 @@ function LandingPage({ onSignIn, onSignUp }) {
   useSEO({
     title: "Free Home Maintenance & Warranty Tracker",
     description: "Track warranties, maintenance, insurance, and home value — all in one place. Free to start. Built for homeowners who want to stay ahead, not catch up.",
-    canonical: "https://www.trysteadwell.app",
-    jsonLd: {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Steadwell",
-      "url": "https://www.trysteadwell.app",
-      "logo": "https://www.trysteadwell.app/logo.png",
-      "sameAs": [
-        "https://www.instagram.com/trysteadwell",
-        "https://www.facebook.com/people/Steadwell/61590757207786/",
-        "https://linkedin.com/company/steadwell"
-      ]
-    }
+    canonical: "https://www.trysteadwell.app"
+    // Organization schema with sameAs already lives in index.html (static, loads before
+    // hydration — more reliable for crawlers). Not duplicating it here to avoid two
+    // competing Organization entries on the same page.
   });
 
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -2799,8 +2790,11 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
 }
 
 // ─── ACCOUNT MODAL ──────────────────────────────────────────────────────────────
+const DELETE_ACCOUNT_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/delete-account";
+
 function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow }) {
-  const [confirmDowngrade, setConfirmDowngrade] = useState(null); // target plan key, or null
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const plan = planData?.plan || "free";
   const planLabel = PLANS[plan]?.label || "Free";
@@ -2832,29 +2826,31 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   ];
   const tierOrder = { free:0, plus:1, pro:2 };
 
-  // Placeholder until Stripe is live — same pattern as the existing upgrade modal.
-  // When Stripe goes live, this becomes a real Checkout/Portal redirect; nothing
-  // else in this component needs to change.
+  // Plan changes are disabled until Stripe billing is fully wired up. Writing directly
+  // to profiles.plan here would desync the database from any real subscription once
+  // Stripe goes live (a user could "downgrade" in the UI while still being billed).
+  // Once Stripe is live, both branches below get replaced with real Checkout/Portal calls.
   const handlePlanChange = (targetKey) => {
-    if (tierOrder[targetKey] < tierOrder[plan]) {
-      // Downgrading — confirm first since it removes access to paid features
-      setConfirmDowngrade(targetKey);
-      return;
-    }
-    onUpgradeFlow ? onUpgradeFlow() : alert(`Stripe coming soon — ${PLANS[targetKey]?.label} at ${TIERS.find(t=>t.key===targetKey)?.price}/mo`);
+    const isUpgrade = tierOrder[targetKey] > tierOrder[plan];
+    if (isUpgrade && onUpgradeFlow) { onUpgradeFlow(); return; }
+    toast("Plan changes open soon — payments aren't live yet", "error");
   };
 
-  const confirmDowngradeNow = async () => {
-    const target = confirmDowngrade;
-    setConfirmDowngrade(null);
-    // Until Stripe billing is live, downgrades update the plan directly.
-    // Once live, this will instead redirect to the Stripe customer portal.
-    const { error } = await supabase.from("profiles").update({ plan: target }).eq("id", profile.id);
-    if (!error) {
-      setProfile(p => ({ ...p, plan: target }));
-      toast(`Switched to ${PLANS[target]?.label} ✓`);
-    } else {
-      toast("Could not update plan — try again", "error");
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const resp = await fetch(DELETE_ACCOUNT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: session.user.id }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || "Delete failed");
+      toast("Account scheduled for deletion. You'll be signed out now.");
+      setTimeout(() => supabase.auth.signOut(), 1500);
+    } catch (err) {
+      toast(err.message || "Could not delete account — try again", "error");
+      setDeleting(false);
     }
   };
 
@@ -2899,7 +2895,6 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
             {TIERS.map(t => {
               const isCurrent = t.key === plan;
               const isUpgrade = tierOrder[t.key] > tierOrder[plan];
-              const isDowngrade = tierOrder[t.key] < tierOrder[plan];
               return (
                 <div key={t.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".75rem .9rem",borderRadius:10,border:`1.5px solid ${isCurrent?t.border:"var(--stone)"}`,background:isCurrent?t.bg:"var(--white)"}}>
                   <div>
@@ -2909,8 +2904,8 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                   {!isCurrent && (
                     <button
                       onClick={()=>handlePlanChange(t.key)}
-                      style={{fontSize:".78rem",fontWeight:700,padding:".4rem .85rem",borderRadius:8,border:isUpgrade?"none":"1.5px solid var(--stone)",background:isUpgrade?t.color:"transparent",color:isUpgrade?"#fff":"#8A8178",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
-                      {isUpgrade ? "Upgrade →" : "Downgrade"}
+                      style={{fontSize:".78rem",fontWeight:700,padding:".4rem .85rem",borderRadius:8,border:isUpgrade?"none":"1.5px solid var(--stone)",background:isUpgrade?t.color:"transparent",color:isUpgrade?"#fff":"#A8A09A",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+                      {isUpgrade ? "Upgrade →" : "Coming soon"}
                     </button>
                   )}
                 </div>
@@ -2918,18 +2913,31 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
             })}
           </div>
 
-          <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690"}}>
+          <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",marginBottom:"1.25rem"}}>
             Cancel anytime · No long-term commitment · Secure payments via Stripe
+          </div>
+
+          {/* Danger zone */}
+          <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem"}}>
+            <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#B0432B",marginBottom:".6rem"}}>Danger zone</div>
+            <button
+              onClick={()=>setConfirmDelete(true)}
+              style={{width:"100%",padding:".75rem",borderRadius:10,border:"1.5px solid #E3B2A6",background:"#F7E0DA",color:"#B0432B",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+              Delete my account
+            </button>
+            <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".5rem",lineHeight:1.5}}>
+              Permanently deletes your account and all home data after a 30-day grace period. This cannot be undone.
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Downgrade confirmation */}
-      {confirmDowngrade && (
+      {/* Delete account confirmation */}
+      {confirmDelete && (
         <Confirm
-          message={`Switch to ${PLANS[confirmDowngrade]?.label}? You'll immediately lose access to ${plan==="pro"&&confirmDowngrade==="plus"?"multi-property and shared access":"AI scanning, Smart Fill, health score, and cost forecasting"} features.`}
-          onConfirm={confirmDowngradeNow}
-          onCancel={()=>setConfirmDowngrade(null)}
+          message="This will permanently delete your account and all data after a 30-day grace period. You'll be signed out immediately. Are you sure?"
+          onConfirm={()=>{setConfirmDelete(false);handleDeleteAccount();}}
+          onCancel={()=>setConfirmDelete(false)}
         />
       )}
     </div>
@@ -5389,7 +5397,50 @@ function PhotoUpload({ userId, currentUrl, onUploaded }) {
 }
 
 
-function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData }) {
+function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData, toast, warranties=[], onMoved }) {
+  const [showMovedFlow, setShowMovedFlow] = useState(false);
+  const [movedConfirming, setMovedConfirming] = useState(false);
+
+  const activeAssetCount = warranties.filter(w => !w.retired_at).length;
+
+  const handleConfirmMoved = async () => {
+    setMovedConfirming(true);
+    try {
+      // 1. Retire every currently-active asset for this property — preserves full
+      //    history (service logs, photos, warranties) but removes it from the
+      //    active list, exactly like the existing single-asset retire flow.
+      const today = localISO();
+      const activeIds = warranties.filter(w => !w.retired_at).map(w => w.id);
+      if (activeIds.length > 0) {
+        await supabase.from("warranties").update({ retired_at: today }).in("id", activeIds);
+      }
+
+      // 2. Reset the property's identity fields — anything that describes what
+      //    THIS house currently is. Financial/task history (expenses, tasks,
+      //    projects, utilities) is left alone since it's a true historical record
+      //    regardless of address.
+      const resetFields = {
+        address: "", type: "", year: "", sqft: "", bedrooms: "", bathrooms: "",
+        zestimate: "", rent_zestimate: "", tax_history: "", price_history: "", schools: "",
+        ins_company: "", ins_policy_number: "", ins_agent_name: "", ins_agent_phone: "",
+        ins_premium: "", ins_deductible: "", ins_dwelling_coverage: "", ins_personal_property: "",
+        ins_liability_coverage: "", ins_loss_of_use: "", ins_renewal_date: "", ins_notes: "",
+        ins_document_id: null, additional_policies: "[]", claim_log: "[]", checkin_data: "{}",
+        home_setup_complete: false,
+      };
+      const { error } = await supabase.from("profiles").update(resetFields).eq("id", data.id).eq("user_id", userId);
+      if (error) throw new Error(error.message);
+
+      onChange({ ...data, ...resetFields });
+      toast?.(`Moved! ${activeIds.length} item${activeIds.length!==1?"s":""} archived — your new home is ready to set up.`);
+      setShowMovedFlow(false);
+      onMoved?.();
+    } catch (err) {
+      toast?.("Could not complete the move — try again", "error");
+    }
+    setMovedConfirming(false);
+  };
+
   const f = (k,v) => onChange({...data,[k]:v});
   const [lookupAddr, setLookupAddr] = useState(data.address || "");
   const [lookupState, setLookupState] = useState("idle");
@@ -5654,10 +5705,57 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
       {/* ── Manual Fields ── */}
       <div className="fg">
         <div className="field s2"><label>Home Name / Nickname</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. The Johnson Home" /></div>
-        <div className="field s2"><label>Address</label><input value={data.address||""} onChange={e=>f("address",e.target.value)} placeholder="123 Main St, City, State ZIP" /></div>
+        <div className="field s2">
+          <label>Address</label>
+          <input value={data.address||""} onChange={e=>f("address",e.target.value)} placeholder="123 Main St, City, State ZIP" />
+          {data.id && (
+            <button type="button" onClick={()=>setShowMovedFlow(true)}
+              style={{marginTop:".4rem",fontSize:".75rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>
+              📦 I moved — set up my new home
+            </button>
+          )}
+        </div>
         <div className="field"><label>Home Type</label><select value={data.type||""} onChange={e=>f("type",e.target.value)}><option value="">Select…</option>{HOME_TYPES.map(h=><option key={h}>{h}</option>)}</select></div>
         <div className="field"><label>Year Built</label><input type="number" value={data.year||""} onChange={e=>f("year",e.target.value)} placeholder="e.g. 1998" /></div>
         <div className="field"><label>Square Footage</label><input value={data.sqft||""} onChange={e=>f("sqft",e.target.value)} placeholder="e.g. 2,150" /></div>
+
+      {/* ── "I moved" confirmation flow ── */}
+      {showMovedFlow && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&!movedConfirming&&setShowMovedFlow(false)}>
+          <div className="modal">
+            <div className="modal-hdr">
+              <span className="modal-title">📦 Moving to a new home?</span>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowMovedFlow(false)} disabled={movedConfirming}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{textAlign:"center",padding:"1rem 0 .5rem"}}>
+                <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🏡</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".75rem"}}>Here's what happens</div>
+                <div style={{textAlign:"left",background:"var(--cream)",borderRadius:12,padding:"1rem",marginBottom:"1.1rem"}}>
+                  <div style={{display:"flex",gap:".6rem",marginBottom:".75rem"}}>
+                    <span style={{fontSize:"1.1rem",flexShrink:0}}>✓</span>
+                    <div style={{fontSize:".85rem",color:"var(--dark)",lineHeight:1.5}}><strong>{activeAssetCount} asset{activeAssetCount!==1?"s":""}</strong> will be retired — all service history, photos, and warranties stay safe, just moved out of your active list.</div>
+                  </div>
+                  <div style={{display:"flex",gap:".6rem",marginBottom:".75rem"}}>
+                    <span style={{fontSize:"1.1rem",flexShrink:0}}>✓</span>
+                    <div style={{fontSize:".85rem",color:"var(--dark)",lineHeight:1.5}}>Your <strong>address, home details, and insurance policy</strong> will be cleared so you can set up your new home.</div>
+                  </div>
+                  <div style={{display:"flex",gap:".6rem"}}>
+                    <span style={{fontSize:"1.1rem",flexShrink:0}}>✓</span>
+                    <div style={{fontSize:".85rem",color:"var(--dark)",lineHeight:1.5}}><strong>Expenses, tasks, and projects</strong> stay exactly as they are — they're a true record of money and work, regardless of address.</div>
+                  </div>
+                </div>
+                <button className="btn btn-primary" style={{width:"100%",marginBottom:".65rem"}} disabled={movedConfirming} onClick={handleConfirmMoved}>
+                  {movedConfirming ? "Setting up your move…" : "Yes, I moved — start fresh"}
+                </button>
+                <button className="btn btn-ghost" style={{width:"100%"}} disabled={movedConfirming} onClick={()=>setShowMovedFlow(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
         <div className="field"><label>Bedrooms</label><input type="number" value={data.bedrooms||""} onChange={e=>f("bedrooms",e.target.value)} /></div>
         <div className="field"><label>Bathrooms</label><input type="number" value={data.bathrooms||""} onChange={e=>f("bathrooms",e.target.value)} /></div>
         <div className="field"><label>Lot Size</label><input value={data.lot_size||""} onChange={e=>f("lot_size",e.target.value)} placeholder="e.g. 8,500 sqft" /></div>
@@ -11726,7 +11824,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           <p style={{fontSize:".84rem",color:"#A8A09A",margin:".5rem 0 1.2rem",lineHeight:1.6}}>Add your address to auto-fill your home's details — year built, tax history, school ratings, and more</p>
           <button className="btn btn-primary" onClick={openEdit}>Get Started →</button>
         </div>
-        {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos}/></Modal>}
+        {modal && <Modal title="Edit Home Profile" onClose={()=>setModal(false)} onSave={save}><ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos} toast={toast} warranties={warranties} onMoved={()=>{setModal(false);setProfile(p=>({...p,...editData}));}}/></Modal>}
       </div>
     );
   }
@@ -12616,7 +12714,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               <button className="modal-close" onClick={()=>setEditModal(false)}>✕</button>
             </div>
             <div className="modal-body">
-              <ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos} planData={planData}/>
+              <ProfileForm data={editData} onChange={setEditData} userId={userId} photoPos={photoPos} onPhotoPos={handlePhotoPos} planData={planData} toast={toast} warranties={warranties} onMoved={()=>{setEditModal(false);setProfile(p=>({...p,...editData}));}}/>
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={()=>setEditModal(false)}>Cancel</button>
