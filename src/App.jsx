@@ -653,12 +653,12 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .asset-card-title{font-weight:700;font-size:.92rem;color:var(--dark);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .asset-card-meta{font-size:.7rem;color:#A8A09A;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
 .asset-card-actions{display:flex;gap:4px;flex-shrink:0}
-.asset-group-header{display:flex;align-items:center;gap:.6rem;padding:".4rem 0 .5rem";margin-bottom:.4rem;margin-top:.85rem}
+.asset-group-header{display:flex;align-items:center;gap:.6rem;padding:.4rem 0 .5rem;margin-bottom:.4rem;margin-top:.85rem}
 .asset-group-header:first-child{margin-top:0}
 .asset-group-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mid)}
-.asset-group-count{font-size:.65rem;fontWeight:600;padding:"1px 7px";borderRadius:10px;background:var(--stone);color:var(--mid)}
+.asset-group-count{font-size:.65rem;font-weight:600;padding:1px 7px;border-radius:10px;background:var(--stone);color:var(--mid)}
 .asset-recall-badge{display:inline-flex;align-items:center;gap:3px;font-size:.62rem;font-weight:700;padding:1px 6px;border-radius:6px;flex-shrink:0}
-.asset-pm-prompt{font-size:.68rem;color:"#92610A";font-style:italic}
+.asset-pm-prompt{font-size:.68rem;color:#92610A;font-style:italic}
 .asset-condition{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:700;border:1px solid;white-space:nowrap}
 .asset-lifespan-row{padding:.7rem 1.1rem;border-top:1px solid var(--stone);display:flex;flex-direction:column;gap:5px}
 .asset-lifespan-label{display:flex;justify-content:space-between;font-size:.68rem;color:#A8A09A;font-weight:500}
@@ -2567,7 +2567,7 @@ async function googlePlacesAutocomplete(input, key) {
 
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth, initialMode = "login" }) {
-  const [mode, setMode] = useState(initialMode); // login | signup | reset
+  const [mode, setMode] = useState(initialMode); // login | signup | reset | update
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -2606,6 +2606,19 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     setLoading(false);
     if (error) setError(error.message);
     else setSuccess("Password reset link sent! Check your email.");
+  };
+
+  const handleUpdatePassword = async () => {
+    clear();
+    if (!password) { setError("Enter a new password."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password !== confirm) { setError("Passwords don't match."); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (error) { setError(error.message); return; }
+    setSuccess("Password updated! Taking you to your home…");
+    setTimeout(() => onAuth(), 1500);
   };
 
   const switchMode = (m) => { setMode(m); clear(); setPassword(""); setConfirm(""); };
@@ -2684,6 +2697,26 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
             </button>
           </form>
           <div className="auth-switch"><button onClick={()=>switchMode("login")}>← Back to sign in</button></div>
+        </>}
+
+        {mode === "update" && <>
+          <div className="auth-title">Set new password</div>
+          <div className="auth-sub">Choose a strong password for your account</div>
+          {error && <div className="auth-error">{error}</div>}
+          {success && <div className="auth-success">{success}</div>}
+          <form onSubmit={e=>{e.preventDefault();handleUpdatePassword();}}>
+            <div className="auth-field">
+              <label>New password</label>
+              <input type="password" name="new-password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" />
+            </div>
+            <div className="auth-field">
+              <label>Confirm new password</label>
+              <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="••••••••" />
+            </div>
+            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+              {loading ? "Saving…" : "Set New Password"}
+            </button>
+          </form>
         </>}
       </div>
     </div>
@@ -14581,6 +14614,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
+  const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
   const [tab, setTabRaw] = useState(() => {
     try { return localStorage.getItem("sw_tab") || "dashboard"; } catch { return "dashboard"; }
   });
@@ -14662,8 +14696,15 @@ export default function App() {
       setSession(session);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // User clicked a reset link — hold the session but show the
+        // set-new-password screen instead of loading the app.
+        setSession(session);
+        setNeedsPasswordReset(true);
+      } else {
+        setSession(session);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -14814,6 +14855,20 @@ export default function App() {
             <div className="spinner" style={{margin:"0 auto",borderTopColor:"var(--rust)",borderColor:"rgba(255,255,255,.2)"}}/>
           </div>
         </div>
+      </>
+    );
+  }
+
+  // ── Password recovery — user arrived via reset link
+  if (needsPasswordReset) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <AuthScreen
+          onAuth={() => setNeedsPasswordReset(false)}
+          initialMode="update"
+        />
+        <Toasts toasts={toasts} />
       </>
     );
   }
