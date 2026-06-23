@@ -1,3 +1,4 @@
+// Steadwell v132 — 2026-06-23T00:24:53.052563
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2198,19 +2199,19 @@ function LandingPage({ onSignIn, onSignUp }) {
       </section>
 
       {/* ── BUYER GUIDES CALLOUT ── */}
-      <section style={{background:"var(--pine-deep)",padding:"clamp(56px,8vw,96px) 0"}}>
+      <section style={{background:"var(--linen)",borderTop:"1px solid rgba(35,74,61,.08)",padding:"clamp(56px,8vw,96px) 0"}}>
         <div className="wrap">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3rem",alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"clamp(2rem,5vw,4rem)",alignItems:"center"}}>
             <div>
-              <div className="eyebrow" style={{color:"var(--terracotta-soft)"}}>First-Time Homebuyer Guides</div>
-              <h2 className="h2" style={{color:"#fff",marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta-soft)"}}>We&apos;ve got a guide for that.</em></h2>
-              <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
+              <div className="eyebrow">First-Time Homebuyer Guides</div>
+              <h2 className="h2" style={{marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta)"}}>We&apos;ve got a guide for that.</em></h2>
+              <p style={{fontSize:"1rem",color:"var(--ink-soft)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
               <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",alignItems:"center"}}>
-                <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
+                <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--pine)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
                   onMouseEnter={e=>e.currentTarget.style.opacity=".88"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
                   Browse all 50 states <span aria-hidden="true">→</span>
                 </a>
-                <span style={{fontSize:".82rem",color:"rgba(244,237,223,.38)"}}>From $12 · Instant download</span>
+                <span style={{fontSize:".82rem",color:"var(--ink-soft)"}}>From $12 · Instant download</span>
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".75rem"}}>
@@ -2222,9 +2223,9 @@ function LandingPage({ onSignIn, onSignUp }) {
                 {icon:"📋", label:"Inspection checklists"},
                 {icon:"💰", label:"Tax savings & exemptions"},
               ].map((f,i) => (
-                <div key={i} style={{display:"flex",alignItems:"center",gap:".65rem",background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:".75rem 1rem"}}>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:".65rem",background:"#fff",border:"1px solid rgba(35,74,61,.1)",borderRadius:12,padding:".75rem 1rem"}}>
                   <span style={{fontSize:"1.1rem"}}>{f.icon}</span>
-                  <span style={{fontSize:".82rem",color:"rgba(244,237,223,.75)",fontWeight:500,lineHeight:1.3}}>{f.label}</span>
+                  <span style={{fontSize:".82rem",color:"var(--ink)",fontWeight:500,lineHeight:1.3}}>{f.label}</span>
                 </div>
               ))}
             </div>
@@ -2799,7 +2800,9 @@ function UserMenu({ user, onSignOut, onFeedback, onExport, onPrivacySettings, on
 // ─── PRIVACY SETTINGS MODAL ────────────────────────────────────────────────────
 function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
   const [saving, setSaving] = useState(false);
+  const [savingDigest, setSavingDigest] = useState(false);
   const optedIn = !!profile?.consent_contractor_insights;
+  const emailDigest = profile?.email_digest !== false; // default true
 
   const handleToggle = async () => {
     setSaving(true);
@@ -2812,6 +2815,19 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
       toast("Could not update — try again", "error");
     }
     setSaving(false);
+  };
+
+  const handleDigestToggle = async () => {
+    setSavingDigest(true);
+    const newVal = !emailDigest;
+    const { error } = await supabase.from("profiles").update({ email_digest: newVal }).eq("id", profile.id);
+    if (!error) {
+      setProfile(p => ({ ...p, email_digest: newVal }));
+      toast(newVal ? "Email reminders enabled ✓" : "Email reminders disabled ✓");
+    } else {
+      toast("Could not update — try again", "error");
+    }
+    setSavingDigest(false);
   };
 
   return (
@@ -2845,8 +2861,30 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
             </div>
           </div>
 
+          <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1.1rem",marginBottom:"1rem"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"1rem",marginBottom:".75rem"}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",marginBottom:".3rem"}}>Email Reminders & Digest</div>
+                <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55}}>
+                  Receive weekly home digests, task reminders, and warranty alerts by email. Time-sensitive alerts (7-day warranty expiry) are always sent regardless of this setting.
+                </div>
+              </div>
+              <button
+                onClick={handleDigestToggle}
+                disabled={savingDigest}
+                style={{flexShrink:0,width:48,height:28,borderRadius:14,border:"none",background:emailDigest?"var(--pine)":"var(--stone)",position:"relative",cursor:savingDigest?"default":"pointer",transition:"background .15s",opacity:savingDigest?.6:1}}
+                aria-label={emailDigest ? "Emails enabled — tap to disable" : "Emails disabled — tap to enable"}
+              >
+                <div style={{position:"absolute",top:3,left:emailDigest?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+              </button>
+            </div>
+            <div style={{fontSize:".75rem",fontWeight:700,color:emailDigest?"var(--ok)":"#A8A09A"}}>
+              {emailDigest ? "✓ Emails enabled" : "Emails disabled"}
+            </div>
+          </div>
+
           <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.6}}>
-            This setting has no effect on any Steadwell feature — free or paid. You can change it anytime. Full details in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{color:"var(--pine)",fontWeight:600}}>Privacy Policy</a>.
+            These settings have no effect on any Steadwell feature — free or paid. You can change them anytime. Full details in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{color:"var(--pine)",fontWeight:600}}>Privacy Policy</a>.
           </div>
         </div>
       </div>
@@ -14644,6 +14682,7 @@ export default function App() {
   if (_path === "/blog" || _path === "/blog/") return <BlogIndex />;
   if (_path.startsWith("/blog/")) return <BlogPost slug={_path.replace("/blog/","")} />;
   if (_path === "/guides" || _path === "/guides/") return <GuidesPage />;
+  if (_path === "/unsubscribe") return <UnsubscribePage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -15325,6 +15364,71 @@ export default function App() {
 }
 
 // ─── TERMS OF SERVICE PAGE ───────────────────────────────────────────────────
+
+// ─── UNSUBSCRIBE PAGE ─────────────────────────────────────────────────────────
+function UnsubscribePage() {
+  const [status, setStatus] = useState("loading"); // loading | success | error | already
+  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const userId = params?.get("token");
+
+  useEffect(() => {
+    if (!userId) { setStatus("error"); return; }
+    supabase
+      .from("profiles")
+      .update({ email_digest: false })
+      .eq("user_id", userId)
+      .then(({ error }) => {
+        if (error) setStatus("error");
+        else setStatus("success");
+      });
+  }, [userId]);
+
+  const S = {
+    page:   { minHeight:"100vh", background:"#F4EDDF", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Hanken Grotesk',sans-serif", padding:"2rem" },
+    card:   { background:"#fff", borderRadius:16, padding:"2.5rem 2rem", maxWidth:480, width:"100%", textAlign:"center", boxShadow:"0 4px 24px rgba(35,74,61,.08)" },
+    logo:   { width:48, height:48, borderRadius:13, background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem" },
+    h1:     { fontFamily:"'Fraunces',serif", fontSize:"1.6rem", fontWeight:500, color:"#234A3D", margin:"0 0 .75rem" },
+    p:      { fontSize:".95rem", color:"#7A7370", lineHeight:1.6, margin:"0 0 1.5rem" },
+    link:   { color:"#C16140", textDecoration:"none", fontWeight:600 },
+  };
+
+  const HouseSVG = () => (
+    <svg viewBox="0 0 48 48" fill="none" width="60%" height="60%" aria-hidden="true">
+      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+      <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
+    </svg>
+  );
+
+  return (
+    <div style={S.page}>
+      <div style={S.card}>
+        <div style={S.logo}><HouseSVG /></div>
+        {status === "loading" && (
+          <>
+            <h1 style={S.h1}>Unsubscribing...</h1>
+            <p style={S.p}>Just a moment while we update your preferences.</p>
+          </>
+        )}
+        {status === "success" && (
+          <>
+            <h1 style={S.h1}>You&apos;re unsubscribed</h1>
+            <p style={S.p}>You won&apos;t receive weekly digests or maintenance reminders from Steadwell. Warranty alerts for items expiring within 7 days will still be sent as they&apos;re time-sensitive.</p>
+            <p style={S.p}>Changed your mind? You can re-enable emails anytime in your <a href="https://www.trysteadwell.app" style={S.link}>account settings</a>.</p>
+          </>
+        )}
+        {status === "error" && (
+          <>
+            <h1 style={S.h1}>Something went wrong</h1>
+            <p style={S.p}>We couldn&apos;t process your unsubscribe request. Please email <a href="mailto:hello@trysteadwell.app" style={S.link}>hello@trysteadwell.app</a> and we&apos;ll remove you manually.</p>
+          </>
+        )}
+        <a href="https://www.trysteadwell.app" style={{...S.link, display:"inline-block", marginTop:".5rem", fontSize:".88rem"}}>← Back to Steadwell</a>
+      </div>
+    </div>
+  );
+}
 
 // ─── FIRST-TIME HOMEBUYER GUIDES PAGE ────────────────────────────────────────
 const STATES = [
