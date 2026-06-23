@@ -15373,13 +15373,8 @@ function UnsubscribePage() {
 
   useEffect(() => {
     if (!userId) { setStatus("error"); return; }
-    fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/unsubscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId }),
-    })
-      .then(r => r.json())
-      .then(d => setStatus(d.ok ? "success" : "error"))
+    supabase.rpc("unsubscribe_user", { p_user_id: userId })
+      .then(({ error }) => setStatus(error ? "error" : "success"))
       .catch(() => setStatus("error"));
   }, [userId]);
 
