@@ -15373,14 +15373,14 @@ function UnsubscribePage() {
 
   useEffect(() => {
     if (!userId) { setStatus("error"); return; }
-    supabase
-      .from("profiles")
-      .update({ email_digest: false })
-      .eq("user_id", userId)
-      .then(({ error }) => {
-        if (error) setStatus("error");
-        else setStatus("success");
-      });
+    fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/unsubscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    })
+      .then(r => r.json())
+      .then(d => setStatus(d.ok ? "success" : "error"))
+      .catch(() => setStatus("error"));
   }, [userId]);
 
   const S = {
