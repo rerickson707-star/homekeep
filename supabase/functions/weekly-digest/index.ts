@@ -26,7 +26,7 @@ serve(async (_req) => {
   if (userErr) return new Response(JSON.stringify({ error: userErr.message }), { status: 500 });
 
   // Build profile name map: user_id → first name
-  const { data: profiles } = await supabase.from("profiles").select("user_id, name");
+  const { data: profiles } = await supabase.from("profiles").select("user_id, name").neq("email_digest", false);
   const nameMap: Record<string, string> = {};
   for (const p of profiles || []) {
     if (p.name) nameMap[p.user_id] = p.name.split(" ")[0]; // first name only
@@ -135,7 +135,7 @@ serve(async (_req) => {
       </div>
     </div>
     <div style="padding:20px 40px;border-top:1px solid #E0D8C9;text-align:center;">
-      <p style="font-size:11px;color:#A8A09A;margin:0;">Steadwell · <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a></p>
+      <p style="font-size:11px;color:#A8A09A;margin:0;">Steadwell · <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a> · <a href="https://www.trysteadwell.app/unsubscribe?token=${userId}" style="color:#A8A09A;">Unsubscribe</a></p>
     </div>
   </div>
 </body>

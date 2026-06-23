@@ -146,7 +146,7 @@ function buildEmail(
     <div style="padding:16px 32px;border-top:1px solid #E0D8C9;text-align:center;">
       <p style="font-size:11px;color:#A8A09A;margin:0;">
         Steadwell &middot; <a href="${APP_URL}" style="color:#A8A09A;text-decoration:none;">trysteadwell.app</a>
-        &middot; <a href="${APP_URL}/unsubscribe" style="color:#A8A09A;text-decoration:none;">Unsubscribe</a>
+        &middot; <a href="${APP_URL}/unsubscribe?token=${userId}" style="color:#A8A09A;text-decoration:none;">Unsubscribe</a>
       </p>
     </div>
   </div>
@@ -195,7 +195,7 @@ serve(async (_req) => {
     for (const u of users) { if (u.email) emailMap[u.id] = u.email; }
 
     // Get first names from profiles
-    const { data: profiles } = await supabase.from("profiles").select("user_id, name");
+    const { data: profiles } = await supabase.from("profiles").select("user_id, name").neq("email_digest", false);
     const nameMap: Record<string, string> = {};
     for (const p of profiles || []) {
       if (p.name) nameMap[p.user_id] = p.name.split(" ")[0];
