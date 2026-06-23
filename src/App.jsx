@@ -2198,19 +2198,19 @@ function LandingPage({ onSignIn, onSignUp }) {
       </section>
 
       {/* ── BUYER GUIDES CALLOUT ── */}
-      <section style={{background:"var(--linen)",borderTop:"1px solid rgba(35,74,61,.08)",padding:"clamp(56px,8vw,96px) 0"}}>
+      <section style={{background:"var(--pine-deep)",padding:"clamp(56px,8vw,96px) 0"}}>
         <div className="wrap">
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"clamp(2rem,5vw,4rem)",alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3rem",alignItems:"center"}}>
             <div>
-              <div className="eyebrow">First-Time Homebuyer Guides</div>
-              <h2 className="h2" style={{marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta)"}}>We&apos;ve got a guide for that.</em></h2>
-              <p style={{fontSize:"1rem",color:"var(--ink-soft)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
+              <div className="eyebrow" style={{color:"var(--terracotta-soft)"}}>First-Time Homebuyer Guides</div>
+              <h2 className="h2" style={{color:"#fff",marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta-soft)"}}>We&apos;ve got a guide for that.</em></h2>
+              <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
               <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",alignItems:"center"}}>
-                <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--pine)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
+                <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
                   onMouseEnter={e=>e.currentTarget.style.opacity=".88"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
                   Browse all 50 states <span aria-hidden="true">→</span>
                 </a>
-                <span style={{fontSize:".82rem",color:"var(--ink-soft)"}}>From $12 · Instant download</span>
+                <span style={{fontSize:".82rem",color:"rgba(244,237,223,.38)"}}>From $12 · Instant download</span>
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".75rem"}}>
@@ -2222,9 +2222,9 @@ function LandingPage({ onSignIn, onSignUp }) {
                 {icon:"📋", label:"Inspection checklists"},
                 {icon:"💰", label:"Tax savings & exemptions"},
               ].map((f,i) => (
-                <div key={i} style={{display:"flex",alignItems:"center",gap:".65rem",background:"#fff",border:"1px solid rgba(35,74,61,.1)",borderRadius:12,padding:".75rem 1rem"}}>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:".65rem",background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:".75rem 1rem"}}>
                   <span style={{fontSize:"1.1rem"}}>{f.icon}</span>
-                  <span style={{fontSize:".82rem",color:"var(--ink)",fontWeight:500,lineHeight:1.3}}>{f.label}</span>
+                  <span style={{fontSize:".82rem",color:"rgba(244,237,223,.75)",fontWeight:500,lineHeight:1.3}}>{f.label}</span>
                 </div>
               ))}
             </div>
