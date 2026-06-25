@@ -1073,6 +1073,13 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .spot-grid>div{font-size:.72rem;color:var(--ink-soft);display:flex;flex-direction:column;gap:3px}
 .lp-root .spot-grid b{font-family:var(--display);font-size:1.15rem;font-weight:600;color:var(--ink)}
 .lp-root .feat.third{grid-column:auto}
+.lp-root .feat-drawer{display:none;padding:.9rem 0 .2rem;border-top:1px solid var(--line);margin-top:.9rem;font-size:.86rem;color:var(--ink-soft);line-height:1.65}
+.lp-root .feat-drawer.open{display:block}
+.lp-root .feat-drawer-cta{display:block;margin-top:.55rem;font-size:.78rem;font-weight:700;color:var(--terracotta)}
+.lp-root .feat-more{background:none;border:none;cursor:pointer;font-family:var(--body);font-size:.78rem;font-weight:700;color:var(--pine);padding:0;margin-top:.7rem;display:flex;align-items:center;gap:4px;transition:opacity .15s}
+.lp-root .feat-more:hover{opacity:.7}
+.lp-root .feat-more-chevron{display:inline-block;transition:transform .2s;font-size:.7rem}
+.lp-root .feat-more.open .feat-more-chevron{transform:rotate(180deg)}
 
 /* ---------- HOW ---------- */
 .lp-root .how{background:var(--pine-deep);color:var(--linen)}
@@ -1902,13 +1909,58 @@ function LandingPage({ onSignIn, onSignUp }) {
     </svg>
   );
 
+  const [openFeat, setOpenFeat] = React.useState(null);
+  const toggleFeat = (i) => setOpenFeat(prev => prev === i ? null : i);
+
   const features = [
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>, title: "Instant property lookup", desc: "Type your address and we pull your home's year built, sale history, tax records, and estimated value automatically. No forms, no manual entry.", tag: "Free" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>, title: "Warranty tracking, every category", desc: "Appliances, electronics, vehicles, tools, jewelry — every warranty in one place, with expiry alerts at 30 and 7 days. No paid app does this much for free.", tag: "Free" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, title: "Safety recall alerts", desc: "Every tracked appliance is checked against the federal recall database automatically. Most homeowners never find out their fridge or heater was recalled — you will.", tag: "Free" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>, title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home's age and systems — so nothing slips through.", tag: "Free" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M9 21V12h6v9"/></svg>, title: "Insurance & claim log", desc: "Policy details, coverage gap alerts, an annual photo check-in, and a running claim log — everything ready before you ever need to file.", tag: "Free" },
-    { ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>, title: "Costs & spending", desc: "See every dollar your home has cost you, broken down by category. Weigh it against what your home is worth.", tag: "Free" },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>,
+      title: "Warranty tracking", desc: "Every appliance, device, and system — with expiry alerts at 30 and 7 days.", tag: "Free",
+      drawer: "Track warranties across every category — appliances, electronics, vehicles, tools, jewelry, and roofing. Get email alerts before coverage expires. On Plus, scan a receipt with your camera and we fill in the warranty details automatically.",
+      drawerCta: "Free on all plans · AI scanning on Plus →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>,
+      title: "Safety recall alerts", desc: "Your appliances checked against the federal recall database automatically.", tag: "Free",
+      drawer: "Every tracked appliance is cross-referenced with the CPSC recall database. Most homeowners never find out their fridge or space heater was recalled — you will, automatically, the moment a recall is issued.",
+      drawerCta: "Free on all plans →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>,
+      title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home’s systems.", tag: "Free",
+      drawer: "Set recurring tasks for HVAC filters, gutter cleaning, smoke detector tests, and more. Get email reminders 3 days before anything is due. On Plus, unlock all recurrence intervals including monthly, quarterly, and seasonal schedules.",
+      drawerCta: "Free on all plans · Full intervals on Plus →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M9 21V12h6v9"/></svg>,
+      title: "Insurance & claims", desc: "Store policies, log claims, and get annual coverage check-in reminders.", tag: "Free",
+      drawer: "Keep policy details, coverage amounts, and agent contacts in one place. Log claims as they happen with amounts and outcomes. Get reminded each year to review your coverage as your home’s value changes.",
+      drawerCta: "Free on all plans →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>,
+      title: "Contractor rolodex", desc: "Save trusted pros, log every service visit, and track what each one cost.", tag: "Free",
+      drawer: "Build a personal database of plumbers, HVAC techs, roofers, and handymen you trust. Log every service visit with date, cost, and notes. Your home’s full service history, always one tap away when you need to call someone back.",
+      drawerCta: "Free on all plans →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>,
+      title: "Costs & 5-year forecast", desc: "Every dollar tracked, and a forecast of what your home will cost over the next 5 years.", tag: "Free",
+      drawer: "See every dollar your home has cost you, broken down by category and year. On Plus, unlock the 5-year cost forecast — based on your appliance ages and industry replacement data, so you can plan and budget ahead.",
+      drawerCta: "Expense tracking free · 5-year forecast on Plus →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17h7m-3.5-3.5v7"/></svg>,
+      title: "Projects & ROI", desc: "Track renovations and see your return on investment with Cost vs. Value data.", tag: "Free",
+      drawer: "Log any renovation project with budget, timeline, contractor, and photos. Free on all plans. On Plus and Pro, the ROI calculator uses industry Cost vs. Value report data to show exactly what each project adds to your home’s resale value.",
+      drawerCta: "Projects free · ROI calculator on Plus →"
+    },
+    {
+      ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>,
+      title: "Document vault", desc: "Deeds, permits, inspection reports, manuals — stored and searchable.", tag: "Free",
+      drawer: "Store any home document — deeds, permits, warranties, inspection reports, HOA docs, appliance manuals. Free plan includes essential storage. Plus gets an expanded vault, Pro gets the full document vault for multiple properties.",
+      drawerCta: "Essential storage free · Expanded on Plus · Full vault on Pro →"
+    },
   ];
 
   const comparisons = [
@@ -2047,27 +2099,39 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="bento">
             <div className="feat spot rv">
               <div>
-                <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-                <h3>Scan the nameplate. Done.</h3>
-                <p>Point your phone camera at any appliance tag — HVAC unit, water heater, fridge — and AI reads the model number, serial number, and brand in seconds. No typing, no searching.</p>
-                <span className="tag locked">Plus feature</span>
+                <div className="ic" style={{background:"rgba(255,255,255,.1)",color:"var(--terracotta-soft)"}}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M14.5 2a9 9 0 0 1 7.5 7.5"/><path d="M14.5 6A5 5 0 0 1 18 9.5"/></svg>
+                </div>
+                <h3>Forward an email. We do the rest.</h3>
+                <p>Send any receipt, invoice, or warranty card to your unique Steadwell address. We extract the details automatically and add them to your home records — no typing required.</p>
+                <span className="tag" style={{color:"var(--terracotta-soft)",background:"rgba(255,255,255,.1)"}}>Free for all plans</span>
               </div>
               <div className="spot-vis" aria-hidden="true">
-                <div className="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scanning nameplate…</div>
+                <div className="addr">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Forwarded to your capture address
+                </div>
                 <div className="spot-grid">
-                  <div>Brand<b>Carrier</b></div>
-                  <div>Model<b>24ACC636A003</b></div>
-                  <div>Serial<b>3819M12345</b></div>
-                  <div>Warranty<b>10 years</b></div>
+                  <div>Item<b>Samsung Fridge</b></div>
+                  <div>Amount<b>$1,299</b></div>
+                  <div>Warranty<b>2 years</b></div>
+                  <div>Type<b>Warranty ✓</b></div>
                 </div>
               </div>
             </div>
             {features.map((f, i) => (
-              <div key={i} className="feat third rv" style={{ transitionDelay: (i % 3 * 0.07) + "s" }}>
+              <div key={i} className="feat third rv" style={{transitionDelay:(i%3*0.07)+"s",cursor:"pointer"}} onClick={()=>toggleFeat(i)}>
                 <div className="ic">{f.ic}</div>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
                 <span className="tag">{f.tag}</span>
+                <button className={"feat-more"+(openFeat===i?" open":"")} aria-expanded={openFeat===i}>
+                  {openFeat===i?"Show less":"Learn more"} <span className="feat-more-chevron">{openFeat===i?"▲":"▼"}</span>
+                </button>
+                <div className={"feat-drawer"+(openFeat===i?" open":"")}>
+                  {f.drawer}
+                  <span className="feat-drawer-cta">{f.drawerCta}</span>
+                </div>
               </div>
             ))}
           </div>
