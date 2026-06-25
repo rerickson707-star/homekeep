@@ -1909,7 +1909,7 @@ function LandingPage({ onSignIn, onSignUp }) {
     </svg>
   );
 
-  const [openFeat, setOpenFeat] = React.useState(null);
+  const [openFeat, setOpenFeat] = useState(null);
   const toggleFeat = (i) => setOpenFeat(prev => prev === i ? null : i);
 
   const features = [
