@@ -15869,8 +15869,8 @@ function LPCard({ children, style={} }) {
   return <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 22px",...style}}>{children}</div>;
 }
 
-function LPGrid({ cols="repeat(auto-fit,minmax(220px,1fr))", gap=12, children }) {
-  return <div style={{display:"grid",gridTemplateColumns:cols,gap}}>{children}</div>;
+function LPGrid({ cols="repeat(auto-fit,minmax(220px,1fr))", gap=12, children, justify="start" }) {
+  return <div style={{display:"grid",gridTemplateColumns:cols,gap,justifyContent:justify}}>{children}</div>;
 }
 
 function LPHowStep({ num, title, text }) {
@@ -16089,7 +16089,7 @@ function MaintenanceTrackerPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every maintenance category covered" sub="From HVAC filters to roof inspections — every recurring task your home needs."/>
-          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={12}>
+          <LPGrid cols="repeat(auto-fill,minmax(240px,1fr))" gap={12}>
             {tasks.map((t,i)=>(
               <LPCard key={i}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
@@ -16340,7 +16340,7 @@ function HomeProjectsPage() {
             {[
               {icon:"📋",title:"Project details",fields:["Project name & description","Status (planning/active/complete)","Start and end dates","Budget vs. actual cost","Contractor name","Notes and updates"]},
               {icon:"📸",title:"Documentation",fields:["Before and after photos","Contractor invoices","Permit numbers","Material receipts","Warranty on work done","Inspection reports"]},
-              {icon:"📊",title:"ROI calculator (Plus)",fields:["Project category selection","Cost vs. Value report data","DIY vs. contractor toggle","Estimated value added","Percentage return on cost","Florida market-specific data"]},
+              {icon:"📊",title:"ROI calculator (Plus)",fields:["Project category selection","Cost vs. Value report data","DIY vs. contractor toggle","Estimated value added","Percentage return on cost","Regional market-specific data"]},
             ].map((s,i)=>(
               <LPCard key={i}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
