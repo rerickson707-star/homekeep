@@ -1923,7 +1923,8 @@ function LandingPage({ onSignIn, onSignUp }) {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>,
       title: "Safety recall alerts", desc: "Your appliances checked against the federal recall database automatically.", tag: "Free",
       drawer: "Every tracked appliance is cross-referenced with the CPSC recall database. Most homeowners never find out their fridge or space heater was recalled — you will, automatically, the moment a recall is issued.",
-      drawerCta: "Free on all plans →"
+      drawerCta: "Free on all plans →",
+      href: "/recall-alerts"
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>,
@@ -2125,13 +2126,19 @@ function LandingPage({ onSignIn, onSignUp }) {
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
                 <span className="tag">{f.tag}</span>
-                <button className={"feat-more"+(openFeat===i?" open":"")} aria-expanded={openFeat===i}>
-                  {openFeat===i?"Show less":"Learn more"} <span className="feat-more-chevron">{openFeat===i?"▲":"▼"}</span>
-                </button>
-                <div className={"feat-drawer"+(openFeat===i?" open":"")}>
-                  {f.drawer}
-                  <span className="feat-drawer-cta">{f.drawerCta}</span>
-                </div>
+                {f.href ? (
+                  <a href={f.href} className="feat-more" style={{textDecoration:"none"}} onClick={e=>e.stopPropagation()}>Learn more <span className="feat-more-chevron">▶</span></a>
+                ) : (
+                  <>
+                    <button className={"feat-more"+(openFeat===i?" open":"")} aria-expanded={openFeat===i}>
+                      {openFeat===i?"Show less":"Learn more"} <span className="feat-more-chevron">{openFeat===i?"▲":"▼"}</span>
+                    </button>
+                    <div className={"feat-drawer"+(openFeat===i?" open":"")}>
+                      {f.drawer}
+                      <span className="feat-drawer-cta">{f.drawerCta}</span>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -15012,6 +15019,7 @@ export default function App() {
   if (_path.startsWith("/blog/")) return <BlogPost slug={_path.replace("/blog/","")} />;
   if (_path === "/guides" || _path === "/guides/") return <GuidesPage />;
   if (_path === "/unsubscribe") return <UnsubscribePage />;
+  if (_path === "/recall-alerts" || _path === "/recall-alerts/") return <RecallAlertsPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -15755,6 +15763,280 @@ function UnsubscribePage() {
 }
 
 // ─── FIRST-TIME HOMEBUYER GUIDES PAGE ────────────────────────────────────────
+
+// ─── RECALL ALERTS PAGE ───────────────────────────────────────────────────────
+function RecallAlertsPage() {
+
+  useSEO({
+    title: "Product Safety Recall Alerts for Your Home | Steadwell",
+    description: "Find out if anything in your home has been recalled. Steadwell checks every tracked product against the CPSC database automatically — appliances, tools, electronics, safety devices, and more.",
+    canonical: "https://www.trysteadwell.app/recall-alerts",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Steadwell Recall Alerts",
+      "description": "Automatic CPSC product safety recall checking for every item in your home.",
+      "url": "https://www.trysteadwell.app/recall-alerts",
+      "applicationCategory": "HomeAndGarden",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+  });
+
+  const HM = () => (
+    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true">
+      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+      <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
+    </svg>
+  );
+
+  const CATEGORIES = [
+    { icon:"🍳", name:"Appliances", examples:"Refrigerators, dishwashers, ovens, washers, dryers" },
+    { icon:"🌡️", name:"HVAC systems", examples:"Furnaces, AC units, heat pumps, water heaters" },
+    { icon:"💻", name:"Electronics", examples:"Televisions, computers, chargers, batteries" },
+    { icon:"🔧", name:"Power tools", examples:"Drills, saws, sanders, pressure washers" },
+    { icon:"🌿", name:"Outdoor equipment", examples:"Lawn mowers, grills, generators, chainsaws" },
+    { icon:"🔒", name:"Safety devices", examples:"Smoke detectors, CO detectors, fire extinguishers" },
+    { icon:"💡", name:"Electrical", examples:"Circuit breakers, outlets, lighting fixtures" },
+    { icon:"🚿", name:"Plumbing fixtures", examples:"Water heaters, faucets, toilets, pipes" },
+  ];
+
+  const RECALLS = [
+    { brand:"Whirlpool", product:"Dishwasher (WDF520PADM)", issue:"Fire hazard — heating element can overheat", date:"2024", serious:true },
+    { brand:"Ryobi", product:"18V Cordless Drill Kit", issue:"Battery pack may overheat and catch fire", date:"2024", serious:true },
+    { brand:"Kidde", product:"Smoke & CO Detector", issue:"May fail to alert in emergency conditions", date:"2023", serious:true },
+    { brand:"Weber", product:"Genesis Gas Grill", issue:"Gas leak risk — burner valve may malfunction", date:"2024", serious:false },
+  ];
+
+  const S = {
+    page:    { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723" },
+    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:64, position:"sticky", top:0, zIndex:100 },
+    navBrand:{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" },
+    tile:    { width:32, height:32, borderRadius:9, background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, border:"1.5px solid rgba(244,237,223,.2)" },
+    wm:      { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"1.1rem", color:"#F4EDDF" },
+    navLink: { color:"rgba(244,237,223,.7)", textDecoration:"none", fontSize:".88rem", fontWeight:500 },
+    navCta:  { background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.15)", padding:"6px 16px", borderRadius:20, color:"#F4EDDF", fontWeight:600, fontSize:".88rem", textDecoration:"none" },
+    hero:    { background:"#234A3D", padding:"72px 24px 80px", textAlign:"center", position:"relative", overflow:"hidden" },
+    eyebrow: { fontSize:".72rem", fontWeight:700, letterSpacing:".18em", textTransform:"uppercase", color:"#D2876A", marginBottom:16 },
+    h1:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(2.2rem,5vw,3.4rem)", color:"#F4EDDF", lineHeight:1.06, letterSpacing:"-.025em", margin:"0 0 20px" },
+    heroSub: { fontSize:"1.05rem", color:"rgba(244,237,223,.65)", maxWidth:"38rem", margin:"0 auto 32px", lineHeight:1.6 },
+    statRow: { display:"flex", gap:24, justifyContent:"center", flexWrap:"wrap", marginBottom:8 },
+    stat:    { textAlign:"center" },
+    statNum: { fontFamily:"'Fraunces',serif", fontSize:"2rem", fontWeight:600, color:"#F4EDDF", lineHeight:1 },
+    statLbl: { fontSize:".72rem", color:"rgba(244,237,223,.5)", marginTop:4, textTransform:"uppercase", letterSpacing:".08em" },
+    wrap:    { maxWidth:1080, margin:"0 auto", padding:"0 24px" },
+    section: { padding:"64px 24px" },
+    sectionAlt: { padding:"64px 24px", background:"#EFE7D7" },
+    h2:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.6rem,3vw,2.2rem)", color:"#234A3D", letterSpacing:"-.02em", marginBottom:8 },
+    h2sub:   { fontSize:"1rem", color:"#7A7370", marginBottom:40, lineHeight:1.6 },
+    alertBox:{ background:"#fff", border:"1px solid #E6DECF", borderRadius:16, overflow:"hidden", marginBottom:12 },
+    alertHeader:{ display:"flex", alignItems:"center", gap:12, padding:"14px 18px" },
+    alertBrand:{ fontWeight:700, fontSize:".95rem", color:"#2A2723" },
+    alertProduct:{ fontSize:".82rem", color:"#7A7370" },
+    alertIssue:{ fontSize:".82rem", color:"#5E574F", padding:"0 18px 14px", lineHeight:1.5 },
+    alertDate:{ fontSize:".72rem", color:"#A8A09A", marginLeft:"auto" },
+    catGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:12 },
+    catCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"18px 20px", display:"flex", alignItems:"flex-start", gap:12 },
+    catIcon: { fontSize:"1.4rem", flexShrink:0, marginTop:2 },
+    catName: { fontWeight:700, fontSize:".9rem", color:"#234A3D", marginBottom:4 },
+    catEx:   { fontSize:".78rem", color:"#8A8178", lineHeight:1.5 },
+    howGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:20 },
+    howCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"22px" },
+    howNum:  { fontFamily:"'Fraunces',serif", fontSize:"1.8rem", fontWeight:600, color:"#C16140", marginBottom:8, lineHeight:1 },
+    howTitle:{ fontWeight:700, fontSize:".95rem", color:"#234A3D", marginBottom:6 },
+    howText: { fontSize:".85rem", color:"#7A7370", lineHeight:1.6 },
+    faqItem: { borderBottom:"1px solid #E6DECF", padding:"20px 0" },
+    faqQ:    { fontWeight:600, fontSize:".95rem", color:"#2A2723", marginBottom:8 },
+    faqA:    { fontSize:".88rem", color:"#7A7370", lineHeight:1.6 },
+    cta:     { background:"#234A3D", padding:"72px 24px", textAlign:"center" },
+    ctaH:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#F4EDDF", marginBottom:16, letterSpacing:"-.02em" },
+    ctaSub:  { fontSize:"1rem", color:"rgba(244,237,223,.65)", maxWidth:"32rem", margin:"0 auto 32px", lineHeight:1.6 },
+    ctaBtn:  { display:"inline-block", background:"#C16140", color:"#fff", textDecoration:"none", padding:".9rem 2rem", borderRadius:12, fontWeight:700, fontSize:".95rem", fontFamily:"'Hanken Grotesk',sans-serif", border:"none", cursor:"pointer" },
+    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem" },
+    footA:   { color:"rgba(244,237,223,.55)", textDecoration:"none" },
+  };
+
+  return (
+    <div style={S.page}>
+      <a href="#recall-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+
+      <nav style={S.nav} role="banner">
+        <a href="/" style={S.navBrand} aria-label="Steadwell homepage">
+          <span style={S.tile}><HM /></span>
+          <span style={S.wm}>Steadwell</span>
+        </a>
+        <div style={{display:"flex",gap:20,alignItems:"center"}}>
+          <a href="/warranty-tracker" style={S.navLink}>Warranty Tracker</a>
+          <a href="/guides" style={S.navLink}>Buyer Guides</a>
+          <a href="/" style={S.navCta}>Sign in →</a>
+        </div>
+      </nav>
+
+      <section style={S.hero}>
+        <div style={{maxWidth:700,margin:"0 auto"}}>
+          <div style={S.eyebrow}>CPSC Safety Recall Database</div>
+          <h1 style={S.h1}>Is anything in your home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>recalled right now?</em></h1>
+          <p style={S.heroSub}>Most homeowners never find out when their appliances, tools, or safety devices are recalled. Steadwell checks everything you own — automatically, every time you log in.</p>
+          <div style={S.statRow}>
+            {[
+              { num:"200+", lbl:"Recalls per year" },
+              { num:"900M+", lbl:"Products recalled since 1973" },
+              { num:"Free", lbl:"Always" },
+            ].map((s,i) => (
+              <div key={i} style={S.stat}>
+                <div style={S.statNum}>{s.num}</div>
+                <div style={S.statLbl}>{s.lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <main id="recall-main" tabIndex={-1}>
+
+        {/* ── RECENT RECALLS ── */}
+        <section style={S.section}>
+          <div style={S.wrap}>
+            <h2 style={S.h2}>Recent recalls that affect homeowners</h2>
+            <p style={S.h2sub}>These are real CPSC recalls from the past 24 months. Do you know if you own any of these?</p>
+            {RECALLS.map((r,i) => (
+              <div key={i} style={S.alertBox}>
+                <div style={S.alertHeader}>
+                  <div style={{width:36,height:36,borderRadius:9,background:r.serious?"#F7E0DA":"#FBF3DE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>
+                    {r.serious ? "🚨" : "⚠️"}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={S.alertBrand}>{r.brand}</div>
+                    <div style={S.alertProduct}>{r.product}</div>
+                  </div>
+                  <div style={S.alertDate}>{r.date}</div>
+                </div>
+                <div style={S.alertIssue}><strong>Issue:</strong> {r.issue}</div>
+              </div>
+            ))}
+            <div style={{marginTop:16,fontSize:".82rem",color:"#8A8178"}}>
+              Source: <a href="https://www.saferproducts.gov" target="_blank" rel="noopener noreferrer" style={{color:"#234A3D"}}>CPSC SaferProducts.gov</a> · Updated continuously
+            </div>
+          </div>
+        </section>
+
+        {/* ── WHAT WE CHECK ── */}
+        <section style={S.sectionAlt}>
+          <div style={S.wrap}>
+            <h2 style={S.h2}>We check everything in your home</h2>
+            <p style={S.h2sub}>Not just appliances — any product you track in Steadwell gets checked against the CPSC database.</p>
+            <div style={S.catGrid}>
+              {CATEGORIES.map((c,i) => (
+                <div key={i} style={S.catCard}>
+                  <div style={S.catIcon}>{c.icon}</div>
+                  <div>
+                    <div style={S.catName}>{c.name}</div>
+                    <div style={S.catEx}>{c.examples}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ── */}
+        <section style={S.section}>
+          <div style={S.wrap}>
+            <h2 style={S.h2}>How recall checking works</h2>
+            <p style={S.h2sub}>Automatic, passive, and free — no manual searching required.</p>
+            <div style={S.howGrid}>
+              {[
+                { num:"01", title:"Track your home items", text:"Add your appliances, tools, electronics, and safety devices to Steadwell. You can scan a nameplate with your camera or enter details manually." },
+                { num:"02", title:"We check automatically", text:"Every time you open Steadwell, your tracked items are cross-referenced against the CPSC recall database by brand, model, and product type." },
+                { num:"03", title:"Get alerted immediately", text:"If a match is found, you see a recall alert at the top of your dashboard with the full recall details, affected models, and what to do next." },
+                { num:"04", title:"Take action", text:"Each alert links directly to the CPSC recall notice with instructions for getting a repair, replacement, or refund from the manufacturer." },
+              ].map((h,i) => (
+                <div key={i} style={S.howCard}>
+                  <div style={S.howNum}>{h.num}</div>
+                  <div style={S.howTitle}>{h.title}</div>
+                  <div style={S.howText}>{h.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── WHY IT MATTERS ── */}
+        <section style={S.sectionAlt}>
+          <div style={S.wrap}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"3rem",alignItems:"center"}}>
+              <div>
+                <h2 style={S.h2}>Most recalled products are never returned</h2>
+                <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>The CPSC estimates that fewer than 30% of recalled products are ever repaired or returned. That means millions of potentially dangerous items remain in homes across the country — because their owners simply never found out.</p>
+                <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Recalls are announced through press releases and government websites that most people never visit. Unless you happen to see a news story or get a direct mailer from the manufacturer, you have no way of knowing.</p>
+                <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Steadwell changes that. The moment you track an item, it is permanently monitored. You will know.</p>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {[
+                  { pct:"70%", desc:"of recalled products are never returned or repaired" },
+                  { pct:"200+", desc:"new product recalls issued by the CPSC every year" },
+                  { pct:"$0", desc:"cost to check every item in your home with Steadwell" },
+                ].map((s,i) => (
+                  <div key={i} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 24px",display:"flex",alignItems:"center",gap:20}}>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1}}>{s.pct}</div>
+                    <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.5}}>{s.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section style={S.section}>
+          <div style={{...S.wrap,maxWidth:720}}>
+            <h2 style={S.h2}>Common questions</h2>
+            <p style={S.h2sub}>Everything you need to know about recall checking.</p>
+            {[
+              ["How does Steadwell check for recalls?", "Steadwell sends the brand, product type, and model number of each item you track to the CPSC SaferProducts.gov database. If a recall matches, it appears as an alert on your dashboard."],
+              ["What happens when a recall is found?", "You see a recall alert at the top of your dashboard with the full recall details — what the hazard is, which models are affected, and a direct link to the CPSC notice with instructions for getting a remedy."],
+              ["Do I need to check manually?", "No. Steadwell checks automatically every time you open the app. You do not need to search the CPSC website or sign up for any separate alert service."],
+              ["Is recall checking free?", "Yes, completely free on all Steadwell plans including the free tier. There is no limit on how many items are checked."],
+              ["What if my exact model isn't recalled but a similar one is?", "Steadwell checks by brand and product category, so you may see alerts for related models within the same product line. We always link to the official CPSC notice so you can confirm whether your specific model is affected."],
+              ["Can I report a product safety issue?", "Yes — you can report unsafe products directly to the CPSC at SaferProducts.gov. Steadwell links to the reporting form from every recall alert."],
+            ].map(([q,a],i) => (
+              <div key={i} style={S.faqItem}>
+                <div style={S.faqQ}>{q}</div>
+                <div style={S.faqA}>{a}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── CTA ── */}
+        <section style={S.cta}>
+          <div style={{maxWidth:580,margin:"0 auto"}}>
+            <div style={{fontSize:"2rem",marginBottom:16}}>🔔</div>
+            <h2 style={S.ctaH}>Start tracking.<br/>Stop wondering.</h2>
+            <p style={S.ctaSub}>Add your appliances, tools, and safety devices to Steadwell and we will check them against the CPSC recall database automatically — for free, forever.</p>
+            <a href="/" style={S.ctaBtn}>Track your home for free →</a>
+            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>Free to start · No credit card required</div>
+          </div>
+        </section>
+      </main>
+
+      <footer role="contentinfo" style={S.foot}>
+        <span>© 2026 Steadwell, LLC. All rights reserved.</span>
+        <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
+          <a href="/warranty-tracker" style={S.footA}>Warranty Tracker</a>
+          <a href="/guides" style={S.footA}>Buyer Guides</a>
+          <a href="/blog" style={S.footA}>Blog</a>
+          <a href="/terms" style={S.footA}>Terms</a>
+          <a href="/privacy" style={S.footA}>Privacy</a>
+          <a href="mailto:hello@trysteadwell.app" style={S.footA}>Contact</a>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 const STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
   "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
