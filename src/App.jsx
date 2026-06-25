@@ -2289,7 +2289,7 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"clamp(2rem,5vw,4rem)",alignItems:"center"}}>
             <div>
               <div className="eyebrow">First-Time Homebuyer Guides</div>
-              <h2 className="h2" style={{marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta)"}}>We&apos;ve got a guide for that.</em></h2>
+              <h2 className="h2" style={{marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta)"}}>We&#39;ve got a guide for that.</em></h2>
               <p style={{fontSize:"1rem",color:"var(--ink-soft)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
               <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",alignItems:"center"}}>
                 <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--pine)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
@@ -15767,15 +15767,15 @@ function UnsubscribePage() {
         )}
         {status === "success" && (
           <>
-            <h1 style={S.h1}>You&apos;re unsubscribed</h1>
-            <p style={S.p}>You won&apos;t receive weekly digests or maintenance reminders from Steadwell. Warranty alerts for items expiring within 7 days will still be sent as they&apos;re time-sensitive.</p>
+            <h1 style={S.h1}>You&#39;re unsubscribed</h1>
+            <p style={S.p}>You won&#39;t receive weekly digests or maintenance reminders from Steadwell. Warranty alerts for items expiring within 7 days will still be sent as they&#39;re time-sensitive.</p>
             <p style={S.p}>Changed your mind? You can re-enable emails anytime in your <a href="https://www.trysteadwell.app" style={S.link}>account settings</a>.</p>
           </>
         )}
         {status === "error" && (
           <>
             <h1 style={S.h1}>Something went wrong</h1>
-            <p style={S.p}>We couldn&apos;t process your unsubscribe request. Please email <a href="mailto:hello@trysteadwell.app" style={S.link}>hello@trysteadwell.app</a> and we&apos;ll remove you manually.</p>
+            <p style={S.p}>We couldn&#39;t process your unsubscribe request. Please email <a href="mailto:hello@trysteadwell.app" style={S.link}>hello@trysteadwell.app</a> and we&#39;ll remove you manually.</p>
           </>
         )}
         <a href="https://www.trysteadwell.app" style={{...S.link, display:"inline-block", marginTop:".5rem", fontSize:".88rem"}}>← Back to Steadwell</a>
@@ -16030,7 +16030,7 @@ function EmailCapturePage() {
           </LPGrid>
         </LPSection>
         <LPSection>
-          <LPSectionHead h2="Why this matters" sub="The friction of logging is why most people don&apos;t track their home."/>
+          <LPSectionHead h2="Why this matters" sub="The friction of logging is why most people don&#39;t track their home."/>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"3rem",alignItems:"center"}}>
             <div>
               <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Most home management apps require you to open the app, navigate to the right section, and manually type in every detail. It takes 5 minutes per receipt. Nobody does it.</p>
@@ -16125,7 +16125,7 @@ function MaintenanceTrackerPage() {
             ["Can I track tasks across multiple properties?","Yes — Pro users can track maintenance for up to 3 properties, each with their own task list and history."],
           ]}/>
         </LPSection>
-        <LPCTA h2="Your home won&apos;t maintain itself." sub="Start tracking maintenance tasks today and build a complete service history for your home." btnLabel="Start for free →"/>
+        <LPCTA h2="Your home won&#39;t maintain itself." sub="Start tracking maintenance tasks today and build a complete service history for your home." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
     </div>
@@ -16267,10 +16267,10 @@ function HomeExpenseTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
-      <LPHero eyebrow="Home Expense Tracker" h1="See every dollar." h1em="Plan for what&apos;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." stats={[{num:"Free",lbl:"Expense tracking"},{num:"5 years",lbl:"Cost forecast"},{num:"100%",lbl:"Your data"}]}/>
+      <LPHero eyebrow="Home Expense Tracker" h1="See every dollar." h1em="Plan for what&#39;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." stats={[{num:"Free",lbl:"Expense tracking"},{num:"5 years",lbl:"Cost forecast"},{num:"100%",lbl:"Your data"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
-          <LPSectionHead h2="What you track and what we forecast" sub="Historical spending plus a forward-looking view of what&apos;s coming."/>
+          <LPSectionHead h2="What you track and what we forecast" sub="Historical spending plus a forward-looking view of what&#39;s coming."/>
           <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
             {[
               {icon:"💳",title:"Expense tracking (Free)",badge:"All plans",fields:["Expense description","Amount","Category","Date","Vendor or contractor","Receipt or invoice attachment","Notes"]},
@@ -16314,7 +16314,7 @@ function HomeExpenseTrackerPage() {
             ["Can I export my expense data?","Yes — Steadwell includes a data export feature on all plans."],
           ]}/>
         </LPSection>
-        <LPCTA h2="Know what&apos;s coming before it arrives." sub="Track your home expenses and get a 5-year cost forecast based on your actual appliances." btnLabel="Start for free →"/>
+        <LPCTA h2="Know what&#39;s coming before it arrives." sub="Track your home expenses and get a 5-year cost forecast based on your actual appliances." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
     </div>
@@ -16325,7 +16325,7 @@ function HomeExpenseTrackerPage() {
 function HomeProjectsPage() {
   useSEO({
     title:"Home Renovation Tracker with ROI Calculator | Steadwell",
-    description:"Track every home renovation project with budgets, timelines, and a Cost vs. Value ROI calculator. See what each project adds to your home&apos;s resale value.",
+    description:"Track every home renovation project with budgets, timelines, and a Cost vs. Value ROI calculator. See what each project adds to your home&#39;s resale value.",
     canonical:"https://www.trysteadwell.app/home-projects",
   });
   return (
