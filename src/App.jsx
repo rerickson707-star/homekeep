@@ -1918,6 +1918,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       title: "Warranty tracking", desc: "Every appliance, device, and system — with expiry alerts at 30 and 7 days.", tag: "Free",
       drawer: "Track warranties across every category — appliances, electronics, vehicles, tools, jewelry, and roofing. Get email alerts before coverage expires. On Plus, scan a receipt with your camera and we fill in the warranty details automatically.",
       drawerCta: "Free on all plans · AI scanning on Plus →"
+      href: "/warranty-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>,
@@ -1931,42 +1932,49 @@ function LandingPage({ onSignIn, onSignUp }) {
       title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home’s systems.", tag: "Free",
       drawer: "Set recurring tasks for HVAC filters, gutter cleaning, smoke detector tests, and more. Get email reminders 3 days before anything is due. On Plus, unlock all recurrence intervals including monthly, quarterly, and seasonal schedules.",
       drawerCta: "Free on all plans · Full intervals on Plus →"
+      href: "/home-maintenance-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M9 21V12h6v9"/></svg>,
       title: "Insurance & claims", desc: "Store policies, log claims, and get annual coverage check-in reminders.", tag: "Free",
       drawer: "Keep policy details, coverage amounts, and agent contacts in one place. Log claims as they happen with amounts and outcomes. Get reminded each year to review your coverage as your home’s value changes.",
       drawerCta: "Free on all plans →"
+      href: "/home-insurance-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>,
       title: "Contractor rolodex", desc: "Save trusted pros, log every service visit, and track what each one cost.", tag: "Free",
       drawer: "Build a personal database of plumbers, HVAC techs, roofers, and handymen you trust. Log every service visit with date, cost, and notes. Your home’s full service history, always one tap away when you need to call someone back.",
       drawerCta: "Free on all plans →"
+      href: "/contractor-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>,
       title: "Costs & 5-year forecast", desc: "Every dollar tracked, and a forecast of what your home will cost over the next 5 years.", tag: "Free",
       drawer: "See every dollar your home has cost you, broken down by category and year. On Plus, unlock the 5-year cost forecast — based on your appliance ages and industry replacement data, so you can plan and budget ahead.",
       drawerCta: "Expense tracking free · 5-year forecast on Plus →"
+      href: "/home-expense-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17h7m-3.5-3.5v7"/></svg>,
       title: "Projects & ROI", desc: "Track renovations and see your return on investment with Cost vs. Value data.", tag: "Free",
       drawer: "Log any renovation project with budget, timeline, contractor, and photos. Free on all plans. On Plus and Pro, the ROI calculator uses industry Cost vs. Value report data to show exactly what each project adds to your home’s resale value.",
       drawerCta: "Projects free · ROI calculator on Plus →"
+      href: "/home-projects",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>,
       title: "Document vault", desc: "Deeds, permits, inspection reports, manuals — stored and searchable.", tag: "Free",
       drawer: "Store any home document — deeds, permits, warranties, inspection reports, HOA docs, appliance manuals. Free plan includes essential storage. Plus gets an expanded vault, Pro gets the full document vault for multiple properties.",
       drawerCta: "Essential storage free · Expanded on Plus · Full vault on Pro →"
+      href: "/home-document-vault",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
       title: "AI receipt & nameplate scan", desc: "Point your camera at a receipt or appliance label — we fill in the rest.", tag: "Plus",
       drawer: "Scan a receipt and Claude extracts the item, price, model number, and warranty period automatically. Scan an appliance nameplate and Smart Fill looks up the full spec sheet. No typing, no searching, no manual entry.",
       drawerCta: "Available on Plus and Pro →"
+      href: "/ai-scan",
     },
   ];
 
@@ -15026,6 +15034,14 @@ export default function App() {
   if (_path === "/guides" || _path === "/guides/") return <GuidesPage />;
   if (_path === "/unsubscribe") return <UnsubscribePage />;
   if (_path === "/recall-alerts" || _path === "/recall-alerts/") return <RecallAlertsPage />;
+  if (_path === "/ai-scan" || _path === "/ai-scan/") return <AIScanPage />;
+  if (_path === "/email-capture" || _path === "/email-capture/") return <EmailCapturePage />;
+  if (_path === "/home-maintenance-tracker" || _path === "/home-maintenance-tracker/") return <MaintenanceTrackerPage />;
+  if (_path === "/contractor-tracker" || _path === "/contractor-tracker/") return <ContractorTrackerPage />;
+  if (_path === "/home-insurance-tracker" || _path === "/home-insurance-tracker/") return <InsuranceTrackerPage />;
+  if (_path === "/home-expense-tracker" || _path === "/home-expense-tracker/") return <HomeExpenseTrackerPage />;
+  if (_path === "/home-projects" || _path === "/home-projects/") return <HomeProjectsPage />;
+  if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -15769,6 +15785,668 @@ function UnsubscribePage() {
 }
 
 // ─── FIRST-TIME HOMEBUYER GUIDES PAGE ────────────────────────────────────────
+
+// ─── SHARED LP NAV/FOOTER HELPERS ────────────────────────────────────────────
+function LPNav({ links=[] }) {
+  const HM = () => (
+    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true">
+      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+      <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
+    </svg>
+  );
+  return (
+    <nav style={{background:"#234A3D",padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:64,position:"sticky",top:0,zIndex:100}} role="banner">
+      <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage">
+        <span style={{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1.5px solid rgba(244,237,223,.2)"}}><HM/></span>
+        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#F4EDDF"}}>Steadwell</span>
+      </a>
+      <div style={{display:"flex",gap:20,alignItems:"center"}}>
+        {links.map((l,i)=><a key={i} href={l.href} style={{color:"rgba(244,237,223,.7)",textDecoration:"none",fontSize:".88rem",fontWeight:500}}>{l.label}</a>)}
+        <a href="/" style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",padding:"6px 16px",borderRadius:20,color:"#F4EDDF",fontWeight:600,fontSize:".88rem",textDecoration:"none"}}>Sign in →</a>
+      </div>
+    </nav>
+  );
+}
+
+function LPFooter() {
+  return (
+    <footer role="contentinfo" style={{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14,fontSize:".82rem"}}>
+      <span>© 2026 Steadwell, LLC. All rights reserved.</span>
+      <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
+        {[{h:"/warranty-tracker",l:"Warranty Tracker"},{h:"/recall-alerts",l:"Recall Alerts"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"mailto:hello@trysteadwell.app",l:"Contact"}].map((a,i)=>(
+          <a key={i} href={a.h} style={{color:"rgba(244,237,223,.55)",textDecoration:"none"}}>{a.l}</a>
+        ))}
+      </div>
+    </footer>
+  );
+}
+
+function LPHero({ eyebrow, h1, h1em, sub, stats=[], badge }) {
+  return (
+    <section style={{background:"#234A3D",padding:"72px 24px 80px",textAlign:"center"}}>
+      <div style={{maxWidth:700,margin:"0 auto"}}>
+        {eyebrow && <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:16}}>{eyebrow}</div>}
+        <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.2rem,5vw,3.4rem)",color:"#F4EDDF",lineHeight:1.06,letterSpacing:"-.025em",margin:"0 0 20px"}}>
+          {h1}{h1em && <><br/><em style={{fontStyle:"italic",color:"#D2876A"}}>{h1em}</em></>}
+        </h1>
+        {sub && <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.65)",maxWidth:"38rem",margin:"0 auto 32px",lineHeight:1.6}}>{sub}</p>}
+        {badge && <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".78rem",color:"rgba(244,237,223,.8)",fontWeight:500,marginBottom:stats.length?24:0}}>{badge}</div>}
+        {stats.length>0 && (
+          <div style={{display:"flex",gap:32,justifyContent:"center",flexWrap:"wrap"}}>
+            {stats.map((s,i)=>(
+              <div key={i} style={{textAlign:"center"}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{s.num}</div>
+                <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",marginTop:4,textTransform:"uppercase",letterSpacing:".08em"}}>{s.lbl}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LPSection({ children, alt=false, narrow=false }) {
+  return (
+    <section style={{padding:"64px 24px",background:alt?"#EFE7D7":"#F4EDDF"}}>
+      <div style={{maxWidth:narrow?720:1080,margin:"0 auto"}}>{children}</div>
+    </section>
+  );
+}
+
+function LPSectionHead({ h2, sub }) {
+  return (
+    <>
+      <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:8}}>{h2}</h2>
+      {sub && <p style={{fontSize:"1rem",color:"#7A7370",marginBottom:40,lineHeight:1.6}}>{sub}</p>}
+    </>
+  );
+}
+
+function LPCard({ children, style={} }) {
+  return <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 22px",...style}}>{children}</div>;
+}
+
+function LPGrid({ cols="repeat(auto-fit,minmax(220px,1fr))", gap=12, children }) {
+  return <div style={{display:"grid",gridTemplateColumns:cols,gap}}>{children}</div>;
+}
+
+function LPHowStep({ num, title, text }) {
+  return (
+    <LPCard>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.8rem",fontWeight:600,color:"#C16140",marginBottom:8,lineHeight:1}}>{num}</div>
+      <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",marginBottom:6}}>{title}</div>
+      <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.6}}>{text}</div>
+    </LPCard>
+  );
+}
+
+function LPFAQ({ items }) {
+  return items.map(([q,a],i)=>(
+    <div key={i} style={{borderBottom:"1px solid #E6DECF",padding:"20px 0"}}>
+      <div style={{fontWeight:600,fontSize:".95rem",color:"#2A2723",marginBottom:8}}>{q}</div>
+      <div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.6}}>{a}</div>
+    </div>
+  ));
+}
+
+function LPCTA({ h2, sub, btnLabel="Try it free →", note="Free to start · No credit card required" }) {
+  return (
+    <section style={{background:"#234A3D",padding:"72px 24px",textAlign:"center"}}>
+      <div style={{maxWidth:580,margin:"0 auto"}}>
+        <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.8rem,4vw,2.8rem)",color:"#F4EDDF",marginBottom:16,letterSpacing:"-.02em"}}>{h2}</h2>
+        <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",maxWidth:"32rem",margin:"0 auto 32px",lineHeight:1.6}}>{sub}</p>
+        <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>{btnLabel}</a>
+        <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>{note}</div>
+      </div>
+    </section>
+  );
+}
+
+// ─── AI SCAN PAGE ─────────────────────────────────────────────────────────────
+function AIScanPage() {
+  useSEO({
+    title:"AI Receipt & Nameplate Scanner for Home Management | Steadwell",
+    description:"Scan any receipt, appliance nameplate, or insurance document with your camera. Steadwell AI extracts the details automatically — no typing required.",
+    canonical:"https://www.trysteadwell.app/ai-scan",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="AI-Powered Scanning" h1="Point. Scan." h1em="Done." sub="Take a photo of any receipt, appliance nameplate, or insurance declaration page and Steadwell fills in all the details automatically. No typing, no searching, no manual entry." badge="Plus & Pro feature"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Three scans. Every home record covered." sub="Each scan type is trained to extract exactly what you need from that document."/>
+          <LPGrid cols="repeat(auto-fit,minmax(300px,1fr))" gap={16}>
+            {[
+              { icon:"🧾", title:"Receipt scan", badge:"Warranty", fields:["Item name & description","Brand and manufacturer","Model number","Purchase price","Purchase date","Store or vendor","Warranty period"], desc:"Scan any paper or digital receipt. We create the warranty record and log the expense automatically." },
+              { icon:"🏷️", title:"Nameplate scan", badge:"Asset", fields:["Brand and manufacturer","Model number","Serial number","Product category","Manufacture date","Capacity or voltage specs","Warranty expiry if shown"], desc:"Point your camera at the label on any appliance, HVAC unit, water heater, or tool. No barcode needed." },
+              { icon:"📄", title:"Insurance scan", badge:"Insurance", fields:["Insurance company","Policy number","Agent name & phone","Annual premium","Deductible amount","Dwelling coverage","Personal property coverage","Liability coverage","Loss of use coverage","Renewal date"], desc:"Upload your declarations page (the first 1-5 pages of your policy) and we populate your entire insurance profile." },
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                  <span style={{fontSize:"1.5rem"}}>{s.icon}</span>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:"1rem",color:"#234A3D"}}>{s.title}</div>
+                    <span style={{background:"rgba(193,97,64,.1)",color:"#C16140",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>Creates a {s.badge} record</span>
+                  </div>
+                </div>
+                <div style={{fontSize:".8rem",color:"#7A7370",marginBottom:12,lineHeight:1.5}}>{s.desc}</div>
+                <div style={{borderTop:"1px solid #E6DECF",paddingTop:12}}>
+                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#A8A09A",marginBottom:8}}>Fields extracted</div>
+                  {s.fields.map((f,j)=>(
+                    <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,fontSize:".82rem",color:"#5E574F"}}>
+                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How it works" sub="Powered by Claude — Anthropic's AI model."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Take a photo or upload a file",text:"Use your phone camera directly in the app, or upload an image or PDF. Receipts, nameplates, labels, and insurance declaration pages all work."},
+              {num:"02",title:"Claude reads the document",text:"Our AI model analyzes the image and extracts every relevant field — brand, model, serial number, price, dates, coverage amounts, and more."},
+              {num:"03",title:"Review and confirm",text:"The extracted fields are pre-filled in the form for you to review. Edit anything that needs correcting, then save with one tap."},
+              {num:"04",title:"Record created automatically",text:"A warranty record, asset entry, or insurance profile is created with all the details. The original document is saved to your vault."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["What file types does the scanner accept?","The scanner accepts JPG, PNG, HEIC, WebP, and PDF files up to 50MB. For insurance policies, upload just the declarations page rather than the full policy packet."],
+            ["How accurate is the AI extraction?","Very accurate for clear, well-lit photos of standard receipts and nameplates. You always review the extracted fields before saving, so any errors are easy to catch and correct."],
+            ["Does it work on old receipts or faded labels?","It works best on clear, legible documents. Faded thermal receipts or worn nameplates may produce incomplete results — you can always fill in missing fields manually."],
+            ["Is AI scanning available on the free plan?","AI scanning is available on Plus and Pro plans. The free plan includes manual entry for all record types."],
+            ["Can I scan items that aren't appliances?","Yes — the nameplate scanner works on any labeled product including tools, outdoor equipment, electronics, and HVAC systems."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Stop typing. Start scanning." sub="Upgrade to Plus and scan your first appliance nameplate or receipt in under 60 seconds." btnLabel="Upgrade to Plus →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── EMAIL CAPTURE PAGE ───────────────────────────────────────────────────────
+function EmailCapturePage() {
+  useSEO({
+    title:"Forward Receipts to Steadwell — Automatic Home Record Capture | Steadwell",
+    description:"Forward any receipt, invoice, or warranty document to your unique Steadwell address. We extract the details and file them automatically. Free for all plans.",
+    canonical:"https://www.trysteadwell.app/email-capture",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/ai-scan",label:"AI Scanning"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Email Capture" h1="Forward an email." h1em="We do the rest." sub="Every user gets a unique Steadwell email address. Forward any receipt, invoice, warranty card, or home document and we automatically extract the details and add them to your records." badge="Free for all plans"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="What you can forward" sub="Anything home-related. Our AI figures out what it is and files it correctly."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            {[
+              { icon:"🧾", title:"Purchase receipts", creates:"Warranty + Expense", fields:["Item name","Brand & model","Purchase price","Purchase date","Store or vendor","Warranty period"], desc:"Forward a receipt from Home Depot, Best Buy, Amazon, or any retailer. We create the warranty record and log the expense." },
+              { icon:"📋", title:"Contractor invoices", creates:"Expense record", fields:["Vendor/contractor name","Service description","Amount","Date of service","Notes"], desc:"Forward any invoice from a plumber, HVAC tech, roofer, or handyman. It gets logged as an expense and linked to your home." },
+              { icon:"📄", title:"Home documents", creates:"Document vault entry", fields:["Document type","Document name","Date","Any expiry date"], desc:"Forward inspection reports, HOA notices, permits, manuals, or any home document. It goes straight to your document vault." },
+              { icon:"🔖", title:"Warranty cards & registrations", creates:"Warranty record", fields:["Item & brand","Model number","Purchase date","Warranty expiry","Serial number"], desc:"Forward warranty registration emails or scanned warranty cards. We track the coverage and alert you before it expires." },
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                  <span style={{fontSize:"1.4rem"}}>{s.icon}</span>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
+                    <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>Creates: {s.creates}</span>
+                  </div>
+                </div>
+                <div style={{fontSize:".8rem",color:"#7A7370",marginBottom:12,lineHeight:1.5}}>{s.desc}</div>
+                <div style={{borderTop:"1px solid #E6DECF",paddingTop:10}}>
+                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#A8A09A",marginBottom:8}}>Fields extracted</div>
+                  {s.fields.map((f,j)=>(
+                    <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,fontSize:".82rem",color:"#5E574F"}}>
+                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How it works" sub="Set up once. Works forever."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Get your capture address",text:"Every Steadwell account gets a unique email address like robert-a1b2c3@in.trysteadwell.app. Find it in your home toolbox under Email Inbox."},
+              {num:"02",title:"Forward anything home-related",text:"Get a receipt from Home Depot? Forward it. Contractor sends an invoice? Forward it. Warranty registration? Forward it. Takes 3 seconds."},
+              {num:"03",title:"AI extracts the details",text:"Claude reads the email and any attachments, extracts the relevant fields, and determines whether it's a warranty, expense, or document."},
+              {num:"04",title:"Review in your Email Inbox",text:"Every capture lands in your Email Inbox as pending. Review the pre-filled details, edit if needed, and save to your records with one tap."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection>
+          <LPSectionHead h2="Why this matters" sub="The friction of logging is why most people don&apos;t track their home."/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"3rem",alignItems:"center"}}>
+            <div>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Most home management apps require you to open the app, navigate to the right section, and manually type in every detail. It takes 5 minutes per receipt. Nobody does it.</p>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>The email forward takes 3 seconds. You do it from wherever you are, on whatever device you have. The record appears in Steadwell automatically.</p>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Over time, your home builds a complete financial and maintenance history without you ever sitting down to enter data.</p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {[
+                {stat:"3 sec",desc:"to forward a receipt vs 5 minutes of manual entry"},
+                {stat:"Free",desc:"for all Steadwell plans — no upgrade required"},
+                {stat:"100%",desc:"of forwarded emails reviewed by you before saving"},
+              ].map((s,i)=>(
+                <LPCard key={i} style={{display:"flex",alignItems:"center",gap:20}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1}}>{s.stat}</div>
+                  <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.5}}>{s.desc}</div>
+                </LPCard>
+              ))}
+            </div>
+          </div>
+        </LPSection>
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Where do I find my capture address?","Log into Steadwell, go to the My Home tab, and open the Email Inbox card in your Home Toolbox. Your unique capture address is shown at the top with a copy button."],
+            ["Does every property get its own address?","Yes — each property you track in Steadwell gets its own unique capture address. Forwarded emails are automatically routed to the correct property."],
+            ["What happens after I forward an email?","The email lands in your Email Inbox as a pending capture. You receive a confirmation email, then review the AI-extracted details in the app before saving."],
+            ["Is the email capture secure?","Yes. Your capture address is uniquely generated and not guessable. Only emails forwarded to your specific address are processed."],
+            ["What if Claude can't parse the email?","Every email appears in your inbox regardless of parse confidence. Low-confidence captures are flagged so you can review and correct the details manually."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Never manually enter a receipt again." sub="Get your unique capture address and start forwarding receipts, invoices, and home documents today." btnLabel="Get started free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── MAINTENANCE TRACKER PAGE ─────────────────────────────────────────────────
+function MaintenanceTrackerPage() {
+  useSEO({
+    title:"Home Maintenance Schedule App — Never Miss a Task | Steadwell",
+    description:"Track every home maintenance task with reminders, recurring schedules, and a complete service history. Free for all plans.",
+    canonical:"https://www.trysteadwell.app/home-maintenance-tracker",
+  });
+  const tasks = [
+    {cat:"HVAC",icon:"🌡️",items:["Replace air filter every 90 days","Annual HVAC tune-up","Clean dryer vent yearly","Check refrigerant levels"]},
+    {cat:"Plumbing",icon:"🚿",items:["Flush water heater annually","Check for leaks under sinks","Clean garbage disposal monthly","Test sump pump before rainy season"]},
+    {cat:"Exterior",icon:"🏚️",items:["Clean gutters twice a year","Inspect roof after major storms","Caulk windows and doors annually","Power wash driveway and siding"]},
+    {cat:"Safety",icon:"🔒",items:["Test smoke detectors monthly","Replace CO detector batteries","Check fire extinguisher annually","Inspect garage door sensors"]},
+  ];
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Home Maintenance Tracker" h1="Nothing falls through" h1em="the cracks." sub="Set recurring maintenance tasks tuned to your home's age and systems. Get email reminders 3 days before anything is due. Build a complete service history automatically." stats={[{num:"Free",lbl:"Always"},{num:"3 days",lbl:"Advance notice"},{num:"∞",lbl:"Task history"}]}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Every maintenance category covered" sub="From HVAC filters to roof inspections — every recurring task your home needs."/>
+          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={12}>
+            {tasks.map((t,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:"1.3rem"}}>{t.icon}</span>
+                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{t.cat}</div>
+                </div>
+                {t.items.map((item,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",marginTop:2}}>✓</span>{item}
+                  </div>
+                ))}
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How maintenance tracking works" sub="Set it once. Steadwell handles the rest."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Add a task",text:"Create any maintenance task with a due date, category, and priority. Add notes for contractors or yourself."},
+              {num:"02",title:"Set a recurrence",text:"Make it repeat — daily, weekly, monthly, quarterly, or annually. The next task is created automatically when you mark one complete."},
+              {num:"03",title:"Get reminded",text:"Receive an email reminder 3 days before anything is due. Plus users get the full range of reminder intervals."},
+              {num:"04",title:"Log it as done",text:"Mark tasks complete with one tap. Your service history builds automatically — a permanent record of everything done to your home."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Is maintenance tracking free?","Yes, completely free on all plans including the free tier. Plus unlocks the full range of recurrence intervals."],
+            ["Can I set tasks for specific contractors?","Yes — you can add contractor notes to any task and link it to a saved contractor in your rolodex."],
+            ["Does Steadwell suggest maintenance tasks?","The setup wizard asks about your home's systems and age, and we recommend common tasks based on that information."],
+            ["Can I track tasks across multiple properties?","Yes — Pro users can track maintenance for up to 3 properties, each with their own task list and history."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Your home won&apos;t maintain itself." sub="Start tracking maintenance tasks today and build a complete service history for your home." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── CONTRACTOR TRACKER PAGE ──────────────────────────────────────────────────
+function ContractorTrackerPage() {
+  useSEO({
+    title:"Home Contractor Tracker — Save Trusted Pros | Steadwell",
+    description:"Save your trusted contractors, log every service visit, and track what each one has cost. Free for all plans.",
+    canonical:"https://www.trysteadwell.app/contractor-tracker",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Contractor Tracker" h1="Your trusted pros," h1em="always at hand." sub="Save the plumber who didn't upsell you, the HVAC tech who showed up on time, and every contractor who earned your trust. Log every visit, track every dollar spent." badge="Free for all plans"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Everything you track for each contractor" sub="A complete record of every pro who has worked on your home."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            {[
+              {icon:"👤",title:"Contractor profile",fields:["Name and company","Phone and email","Trade or specialty","License number","Insurance status","Rating and notes"]},
+              {icon:"📋",title:"Service history",fields:["Date of each visit","Work performed","Cost of each visit","Parts used or replaced","Warranty on work done","Follow-up notes"]},
+              {icon:"💰",title:"Cost tracking",fields:["Total spent per contractor","Cost per visit breakdown","Year-over-year spending","Cost by trade category","Comparison across contractors"]},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
+                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
+                </div>
+                {s.fields.map((f,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  </div>
+                ))}
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How contractor tracking works"/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Save a contractor",text:"Add any pro — plumber, HVAC tech, roofer, electrician, handyman. Store their contact info, specialty, and any license details."},
+              {num:"02",title:"Log each service visit",text:"After every job, log the date, work done, and cost. Attach an invoice or scan it with AI to fill in the details automatically."},
+              {num:"03",title:"Build a service history",text:"Every logged visit becomes part of your home's permanent service record — useful when selling, for insurance claims, or when hiring the same pro again."},
+              {num:"04",title:"Share with your household",text:"Pro users can share contractor access with a spouse or partner, so everyone always knows who to call."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Is contractor tracking free?","Yes, completely free on all Steadwell plans."],
+            ["Can I log contractor invoices automatically?","Yes — forward any invoice to your Steadwell capture address and it will be automatically linked as a service log entry."],
+            ["Can I share my contractor list?","Pro users can share household access with a spouse or partner, giving them access to the contractor rolodex."],
+            ["How is this different from keeping contacts in my phone?","Steadwell links each contractor to your home's service history, tracks total spending per trade, and keeps work notes and receipts alongside contact info."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Never lose a good contractor again." sub="Save your trusted pros and build a complete service history for your home." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── INSURANCE TRACKER PAGE ───────────────────────────────────────────────────
+function InsuranceTrackerPage() {
+  useSEO({
+    title:"Home Insurance Organizer — Track Policies & Claims | Steadwell",
+    description:"Store your home insurance policies, log claims, and get annual renewal reminders. Everything ready before you ever need to file.",
+    canonical:"https://www.trysteadwell.app/home-insurance-tracker",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Home Insurance Organizer" h1="Everything ready" h1em="before you need it." sub="Store your policies, log claims, track coverage amounts, and get reminded when it is time to renew. When something goes wrong, the last thing you want to be doing is searching for your policy number." badge="Free for all plans"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="What Steadwell tracks for your insurance" sub="Scan your declarations page and we fill in everything automatically."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            {[
+              {icon:"🛡️",title:"Policy details",fields:["Insurance company","Policy number","Agent name & phone","Annual premium","Deductible amount","Renewal date"]},
+              {icon:"🏠",title:"Coverage amounts",fields:["Dwelling coverage","Personal property coverage","Liability coverage","Loss of use coverage","Medical payments","Additional structures"]},
+              {icon:"📋",title:"Claims history",fields:["Date of claim","Type of claim","Amount claimed","Amount paid","Claim status","Outcome notes"]},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
+                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
+                </div>
+                {s.fields.map((f,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  </div>
+                ))}
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How insurance tracking works"/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Scan your declarations page",text:"Upload the first 1-5 pages of your policy packet. AI extracts your company, policy number, agent, coverage amounts, deductible, and renewal date automatically."},
+              {num:"02",title:"Get renewal reminders",text:"Steadwell alerts you 30 days before your policy renews — giving you time to shop around, review your coverage, and make changes before auto-renewing."},
+              {num:"03",title:"Log claims as they happen",text:"When something goes wrong, log the claim immediately with date, type, and amount. Track it through to resolution with outcome notes."},
+              {num:"04",title:"Annual coverage check-in",text:"Each year, Steadwell reminds you to review your coverage as your home's value changes — so you're never underinsured."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Is insurance tracking free?","Yes, completely free on all Steadwell plans."],
+            ["Can I track multiple policies?","Yes — track your homeowners policy plus flood, umbrella, and any other additional policies separately."],
+            ["Is my policy information secure?","Yes. Your data is stored securely in Supabase with row-level security. Only you can access your insurance information."],
+            ["What if my coverage changes mid-year?","You can update your coverage amounts anytime. Steadwell keeps a history of changes."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Know your coverage before you need it." sub="Store your policy details and claims history in one place — always ready when you need to file." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── EXPENSE TRACKER PAGE ─────────────────────────────────────────────────────
+function HomeExpenseTrackerPage() {
+  useSEO({
+    title:"Home Expense Tracker & 5-Year Cost Forecast | Steadwell",
+    description:"Track every dollar your home costs you and see a 5-year forecast of upcoming expenses based on your appliance ages. Free to start.",
+    canonical:"https://www.trysteadwell.app/home-expense-tracker",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Home Expense Tracker" h1="See every dollar." h1em="Plan for what&apos;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." stats={[{num:"Free",lbl:"Expense tracking"},{num:"5 years",lbl:"Cost forecast"},{num:"100%",lbl:"Your data"}]}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="What you track and what we forecast" sub="Historical spending plus a forward-looking view of what&apos;s coming."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            {[
+              {icon:"💳",title:"Expense tracking (Free)",badge:"All plans",fields:["Expense description","Amount","Category","Date","Vendor or contractor","Receipt or invoice attachment","Notes"]},
+              {icon:"📊",title:"5-year cost forecast (Plus)",badge:"Plus & Pro",fields:["Projected HVAC replacement cost & year","Water heater replacement timeline","Appliance end-of-life estimates","Roof replacement projection","Total 5-year cost estimate","Month-by-month forecast chart"]},
+              {icon:"📈",title:"Spending analytics (Free)",badge:"All plans",fields:["Total spend all-time","Spend by year","Spend by category","Spend by contractor","Cost vs. home value ratio","Year-over-year comparison"]},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
+                    <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
+                  </div>
+                  <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".62rem",fontWeight:700,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{s.badge}</span>
+                </div>
+                {s.fields.map((f,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  </div>
+                ))}
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How the 5-year forecast works" sub="Based on your actual appliances, not generic estimates."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Track your appliances",text:"Add your HVAC system, water heater, appliances, and roof to Steadwell with their installation dates."},
+              {num:"02",title:"We calculate remaining life",text:"Using industry average lifespans, we calculate how many years each system has left based on when it was installed."},
+              {num:"03",title:"Forecast replacement costs",text:"We apply current industry replacement cost data to project when each system will need replacing and what it will cost."},
+              {num:"04",title:"Plan your budget",text:"See a year-by-year breakdown of projected expenses so you can start saving before the HVAC gives out."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Is expense tracking free?","Yes, expense tracking and spending analytics are free on all plans. The 5-year cost forecast requires Plus or Pro."],
+            ["How accurate is the cost forecast?","The forecast uses industry average replacement costs and lifespans. Actual costs vary by region, brand, and contractor — use it as a planning guide, not a guarantee."],
+            ["Can I log expenses automatically?","Yes — forward any invoice or receipt to your Steadwell capture address and it is logged as an expense automatically."],
+            ["Can I export my expense data?","Yes — Steadwell includes a data export feature on all plans."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Know what&apos;s coming before it arrives." sub="Track your home expenses and get a 5-year cost forecast based on your actual appliances." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── PROJECTS PAGE ────────────────────────────────────────────────────────────
+function HomeProjectsPage() {
+  useSEO({
+    title:"Home Renovation Tracker with ROI Calculator | Steadwell",
+    description:"Track every home renovation project with budgets, timelines, and a Cost vs. Value ROI calculator. See what each project adds to your home&apos;s resale value.",
+    canonical:"https://www.trysteadwell.app/home-projects",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Home Projects & ROI" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator shows exactly what each project adds to your home's resale value using industry Cost vs. Value data." badge="Projects free · ROI calculator on Plus"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="What you track for each project" sub="From a $200 faucet replacement to a $50,000 kitchen remodel."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            {[
+              {icon:"📋",title:"Project details",fields:["Project name & description","Status (planning/active/complete)","Start and end dates","Budget vs. actual cost","Contractor name","Notes and updates"]},
+              {icon:"📸",title:"Documentation",fields:["Before and after photos","Contractor invoices","Permit numbers","Material receipts","Warranty on work done","Inspection reports"]},
+              {icon:"📊",title:"ROI calculator (Plus)",fields:["Project category selection","Cost vs. Value report data","DIY vs. contractor toggle","Estimated value added","Percentage return on cost","Florida market-specific data"]},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
+                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
+                </div>
+                {s.fields.map((f,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  </div>
+                ))}
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How the ROI calculator works" sub="Based on the annual Cost vs. Value Report — the industry standard for renovation ROI."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Log your project",text:"Add the project type, total cost, and whether you did it yourself or hired a contractor."},
+              {num:"02",title:"Select your project category",text:"Choose from kitchen remodel, bathroom addition, deck, roof replacement, window replacement, and more."},
+              {num:"03",title:"Get your ROI",text:"We apply the Cost vs. Value report data for your region to calculate the estimated resale value added and your return on investment."},
+              {num:"04",title:"Make smarter decisions",text:"Before starting a project, see which renovations return the most in your area — so you spend where it matters most."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Is project tracking free?","Yes, project tracking is free on all plans. The ROI calculator requires Plus or Pro."],
+            ["What is the Cost vs. Value Report?","The Cost vs. Value Report is an annual study by Remodeling Magazine that tracks the average cost and resale value of common home improvement projects across US markets."],
+            ["How accurate is the ROI estimate?","ROI estimates are based on regional averages from the Cost vs. Value Report. Actual returns vary based on your specific home, neighborhood, and market conditions."],
+            ["Can I track multiple projects at once?","Yes — track as many projects as you like simultaneously, each with their own budget, timeline, and contractor."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Renovate smarter." sub="Track your projects and know the ROI before you spend a dollar." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── DOCUMENT VAULT PAGE ──────────────────────────────────────────────────────
+function DocumentVaultPage() {
+  useSEO({
+    title:"Home Document Vault — Store Deeds, Permits & More | Steadwell",
+    description:"Store every important home document in one secure place. Deeds, permits, inspection reports, manuals, HOA documents — always findable when you need them.",
+    canonical:"https://www.trysteadwell.app/home-document-vault",
+  });
+  const docTypes = [
+    {icon:"📜",name:"Deeds & titles",examples:"Purchase deed, title insurance, survey"},
+    {icon:"🔨",name:"Permits & inspections",examples:"Building permits, inspection reports, CO certificates"},
+    {icon:"📋",name:"HOA documents",examples:"CC&Rs, bylaws, meeting minutes, assessments"},
+    {icon:"🔧",name:"Appliance manuals",examples:"HVAC, refrigerator, washer, dryer, dishwasher"},
+    {icon:"🛡️",name:"Insurance policies",examples:"Homeowners, flood, umbrella, title insurance"},
+    {icon:"🔖",name:"Warranties",examples:"Appliance warranties, contractor work guarantees"},
+    {icon:"💼",name:"Contracts",examples:"Contractor agreements, service contracts, leases"},
+    {icon:"🏛️",name:"Tax documents",examples:"Property tax bills, homestead exemption, assessments"},
+  ];
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Home Document Vault" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="Essential storage free · Expanded on Plus · Full vault on Pro"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Every type of home document" sub="If it matters to your home, it belongs in your vault."/>
+          <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={12}>
+            {docTypes.map((d,i)=>(
+              <LPCard key={i} style={{display:"flex",alignItems:"flex-start",gap:12}}>
+                <span style={{fontSize:"1.3rem",flexShrink:0,marginTop:2}}>{d.icon}</span>
+                <div>
+                  <div style={{fontWeight:700,fontSize:".88rem",color:"#234A3D",marginBottom:4}}>{d.name}</div>
+                  <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.5}}>{d.examples}</div>
+                </div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt>
+          <LPSectionHead h2="How the document vault works"/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Upload any document",text:"Upload PDFs, images, or scan physical documents with your camera. Supported formats include PDF, JPG, PNG, HEIC, and Word documents."},
+              {num:"02",title:"Categorize and tag",text:"Assign a category, link to an asset or room, add a description and expiry date. Find anything instantly with search."},
+              {num:"03",title:"Access from anywhere",text:"Your documents are available from any device — phone, tablet, or computer. No more digging through filing cabinets."},
+              {num:"04",title:"Share with your household",text:"Pro users can share document access with a spouse or partner — so everyone has the deed, not just whoever filed it."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["What file types can I upload?","PDF, JPG, PNG, HEIC, DOC, and DOCX files up to 50MB per file."],
+            ["Is the document vault secure?","Yes. Documents are stored in Supabase Storage with row-level security. Only you (and household members you invite) can access your documents."],
+            ["What's the difference between the storage tiers?","Free includes essential storage for core documents. Plus gets an expanded vault for receipts, warranties, and home records. Pro gets the full vault for multiple properties."],
+            ["Can I share documents with a contractor?","You can download any document and share it directly. Contractors do not have direct access to your vault."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Stop losing important documents." sub="Store every home document in one secure, searchable vault — always accessible when you need it." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
 
 // ─── RECALL ALERTS PAGE ───────────────────────────────────────────────────────
 function RecallAlertsPage() {
