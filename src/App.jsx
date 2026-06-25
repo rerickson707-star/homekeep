@@ -1917,7 +1917,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>,
       title: "Warranty tracking", desc: "Every appliance, device, and system — with expiry alerts at 30 and 7 days.", tag: "Free",
       drawer: "Track warranties across every category — appliances, electronics, vehicles, tools, jewelry, and roofing. Get email alerts before coverage expires. On Plus, scan a receipt with your camera and we fill in the warranty details automatically.",
-      drawerCta: "Free on all plans · AI scanning on Plus →"
+      drawerCta: "Free on all plans · AI scanning on Plus →",
       href: "/warranty-tracker",
     },
     {
@@ -1931,49 +1931,49 @@ function LandingPage({ onSignIn, onSignUp }) {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>,
       title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home’s systems.", tag: "Free",
       drawer: "Set recurring tasks for HVAC filters, gutter cleaning, smoke detector tests, and more. Get email reminders 3 days before anything is due. On Plus, unlock all recurrence intervals including monthly, quarterly, and seasonal schedules.",
-      drawerCta: "Free on all plans · Full intervals on Plus →"
+      drawerCta: "Free on all plans · Full intervals on Plus →",
       href: "/home-maintenance-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M9 21V12h6v9"/></svg>,
       title: "Insurance & claims", desc: "Store policies, log claims, and get annual coverage check-in reminders.", tag: "Free",
       drawer: "Keep policy details, coverage amounts, and agent contacts in one place. Log claims as they happen with amounts and outcomes. Get reminded each year to review your coverage as your home’s value changes.",
-      drawerCta: "Free on all plans →"
+      drawerCta: "Free on all plans →",
       href: "/home-insurance-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>,
       title: "Contractor rolodex", desc: "Save trusted pros, log every service visit, and track what each one cost.", tag: "Free",
       drawer: "Build a personal database of plumbers, HVAC techs, roofers, and handymen you trust. Log every service visit with date, cost, and notes. Your home’s full service history, always one tap away when you need to call someone back.",
-      drawerCta: "Free on all plans →"
+      drawerCta: "Free on all plans →",
       href: "/contractor-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>,
       title: "Costs & 5-year forecast", desc: "Every dollar tracked, and a forecast of what your home will cost over the next 5 years.", tag: "Free",
       drawer: "See every dollar your home has cost you, broken down by category and year. On Plus, unlock the 5-year cost forecast — based on your appliance ages and industry replacement data, so you can plan and budget ahead.",
-      drawerCta: "Expense tracking free · 5-year forecast on Plus →"
+      drawerCta: "Expense tracking free · 5-year forecast on Plus →",
       href: "/home-expense-tracker",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17h7m-3.5-3.5v7"/></svg>,
       title: "Projects & ROI", desc: "Track renovations and see your return on investment with Cost vs. Value data.", tag: "Free",
       drawer: "Log any renovation project with budget, timeline, contractor, and photos. Free on all plans. On Plus and Pro, the ROI calculator uses industry Cost vs. Value report data to show exactly what each project adds to your home’s resale value.",
-      drawerCta: "Projects free · ROI calculator on Plus →"
+      drawerCta: "Projects free · ROI calculator on Plus →",
       href: "/home-projects",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>,
       title: "Document vault", desc: "Deeds, permits, inspection reports, manuals — stored and searchable.", tag: "Free",
       drawer: "Store any home document — deeds, permits, warranties, inspection reports, HOA docs, appliance manuals. Free plan includes essential storage. Plus gets an expanded vault, Pro gets the full document vault for multiple properties.",
-      drawerCta: "Essential storage free · Expanded on Plus · Full vault on Pro →"
+      drawerCta: "Essential storage free · Expanded on Plus · Full vault on Pro →",
       href: "/home-document-vault",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
       title: "AI receipt & nameplate scan", desc: "Point your camera at a receipt or appliance label — we fill in the rest.", tag: "Plus",
       drawer: "Scan a receipt and Claude extracts the item, price, model number, and warranty period automatically. Scan an appliance nameplate and Smart Fill looks up the full spec sheet. No typing, no searching, no manual entry.",
-      drawerCta: "Available on Plus and Pro →"
+      drawerCta: "Available on Plus and Pro →",
       href: "/ai-scan",
     },
   ];
