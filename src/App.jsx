@@ -6899,21 +6899,6 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
 }
 
 function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup }) {
-  const [emailCaptures, setEmailCaptures] = useState([]);
-  const [showEmailInbox, setShowEmailInbox] = useState(false);
-
-  useEffect(() => {
-    if (!userId || !profile?.id) return;
-    supabase.from("email_captures")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("property_id", profile.id)
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data }) => { if (data) setEmailCaptures(data); });
-  }, [userId, profile?.id]);
-
-  const pendingCaptures = emailCaptures.filter(c => c.status === "pending");
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
@@ -11882,6 +11867,21 @@ function RecallCheckPanel({ warranties }) {
 }
 
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+  const [emailCaptures, setEmailCaptures] = useState([]);
+  const [showEmailInbox, setShowEmailInbox] = useState(false);
+
+  useEffect(() => {
+    if (!userId || !profile?.id) return;
+    supabase.from("email_captures")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("property_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => { if (data) setEmailCaptures(data); });
+  }, [userId, profile?.id]);
+
+  const pendingCaptures = emailCaptures.filter(c => c.status === "pending");
   const [editModal, setEditModal] = useState(false);
   const [editTab, setEditTab]     = useState("property");
   const [modal, setModal]         = useState(false);
@@ -12902,6 +12902,19 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {editPolicyModal && <Modal title="Edit Policy" onClose={()=>setEditPolicyModal(false)} onSave={saveEditPolicy}><AdditionalPolicyForm data={policyData} onChange={setPolicyData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
       {addClaimModal && <Modal title="Log Claim Entry" onClose={()=>setAddClaimModal(false)} onSave={saveClaimEntry}><ClaimEntryForm data={claimData} onChange={setClaimData}/></Modal>}
 
+      {/* ── EMAIL INBOX MODAL ── */}
+      {showEmailInbox && (
+        <EmailInboxModal
+          captures={emailCaptures}
+          profile={profile}
+          userId={userId}
+          onClose={() => setShowEmailInbox(false)}
+          onUpdate={(id, updates) => setEmailCaptures(prev =>
+            prev.map(c => c.id === id ? { ...c, ...updates } : c)
+          )}
+        />
+      )}
+
       {/* ── HOME TOOLBOX ── */}
       {!showSetup && (
         <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
@@ -12956,19 +12969,6 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             </div>
           )}
         </div>
-      )}
-
-      {/* ── EMAIL INBOX MODAL ── */}
-      {showEmailInbox && (
-        <EmailInboxModal
-          captures={emailCaptures}
-          profile={profile}
-          userId={userId}
-          onClose={() => setShowEmailInbox(false)}
-          onUpdate={(id, updates) => setEmailCaptures(prev =>
-            prev.map(c => c.id === id ? { ...c, ...updates } : c)
-          )}
-        />
       )}
 
       {/* ── FINANCIAL HISTORY ── */}
