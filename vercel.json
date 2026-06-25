@@ -4,6 +4,7 @@
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/guides", "destination": "/index.html" },
     { "source": "/unsubscribe", "destination": "/index.html" },
+    { "source": "/recall-alerts", "destination": "/index.html" },
     { "source": "/blog/:slug", "destination": "/index.html" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
@@ -12,15 +13,11 @@
   "headers": [
     {
       "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
     },
     {
       "source": "/assets/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
   ]
 }
