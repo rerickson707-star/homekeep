@@ -6662,7 +6662,258 @@ function useRecallAlerts(assets) {
   return { recalls, checking, checked, recallError, runCheck: () => runCheck(assets) };
 }
 
+
+// ─── EMAIL INBOX MODAL ────────────────────────────────────────────────────────
+function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
+  const [selected, setSelected] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState({});
+
+  const pending = captures.filter(c => c.status === "pending");
+  const saved   = captures.filter(c => c.status === "saved");
+
+  const openCapture = (c) => {
+    setSelected(c);
+    setEditData(c.extracted_data || {});
+  };
+
+  const handleSave = async () => {
+    if (!selected) return;
+    setSaving(true);
+    const finalData = { ...editData };
+
+    // Write to the appropriate table based on type
+    if (selected.extracted_type === "warranty") {
+      await supabase.from("warranties").insert({
+        user_id:      userId,
+        property_id:  profile.id,
+        item:         finalData.item || selected.subject,
+        brand:        finalData.brand || null,
+        model:        finalData.model || null,
+        category:     finalData.category || "Other",
+        purchase_date: finalData.purchase_date || null,
+        expiry_date:  finalData.expiry_date || null,
+        cost:         finalData.amount || null,
+        notes:        finalData.notes || null,
+        serial_number: finalData.serial_number || null,
+      });
+    } else if (selected.extracted_type === "expense") {
+      await supabase.from("expenses").insert({
+        user_id:     userId,
+        property_id: profile.id,
+        description: finalData.item || selected.subject,
+        amount:      finalData.amount || 0,
+        date:        finalData.purchase_date || new Date().toISOString().slice(0, 10),
+        category:    finalData.category || "Other",
+        notes:       finalData.notes || null,
+        vendor:      finalData.vendor || null,
+      });
+    }
+    // document and asset types saved as-is in email_captures for now
+
+    // Mark capture as saved
+    const { error } = await supabase.from("email_captures")
+      .update({ status: "saved", final_data: finalData, reviewed_at: new Date().toISOString() })
+      .eq("id", selected.id);
+
+    if (!error) {
+      onUpdate(selected.id, { status: "saved", final_data: finalData });
+      setSelected(null);
+    }
+    setSaving(false);
+  };
+
+  const handleDismiss = async () => {
+    if (!selected) return;
+    await supabase.from("email_captures")
+      .update({ status: "dismissed", reviewed_at: new Date().toISOString() })
+      .eq("id", selected.id);
+    onUpdate(selected.id, { status: "dismissed" });
+    setSelected(null);
+  };
+
+  const typeColor = { warranty:"var(--pine)", expense:"#B8861E", document:"#3B5EA6", asset:"var(--rust)", unknown:"#8A8178" };
+  const typeLabel = { warranty:"Warranty", expense:"Expense", document:"Document", asset:"Asset", unknown:"Unknown" };
+
+  const FieldRow = ({ label, field, type="text" }) => (
+    <div style={{marginBottom:".75rem"}}>
+      <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".3rem"}}>{label}</div>
+      <input
+        type={type}
+        value={editData[field] || ""}
+        onChange={e => setEditData(d => ({ ...d, [field]: e.target.value }))}
+        style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}
+      />
+    </div>
+  );
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget){onClose();}}}>
+      <div style={{background:"var(--cream)",borderRadius:"18px 18px 0 0",width:"100%",maxWidth:540,maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1.1rem 1.25rem",borderBottom:"1px solid var(--stone)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".55rem"}}>
+            <span style={{fontSize:"1.2rem"}}>📬</span>
+            <div>
+              <div style={{fontWeight:700,fontSize:"1rem"}}>Email Inbox</div>
+              <div style={{fontSize:".75rem",color:"#8A8178"}}>
+                {profile?.inbound_email || "No capture address set"}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:"1.3rem",cursor:"pointer",color:"#8A8178",padding:4}}>✕</button>
+        </div>
+
+        {/* Capture address banner */}
+        <div style={{padding:".75rem 1.25rem",background:"rgba(35,74,61,.06)",borderBottom:"1px solid var(--stone)",display:"flex",alignItems:"center",gap:".75rem"}}>
+          <span style={{fontSize:"1rem"}}>📮</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)"}}>Your capture address</div>
+            <div style={{fontSize:".78rem",color:"#5A534B",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.inbound_email}</div>
+          </div>
+          <button
+            onClick={() => { navigator.clipboard?.writeText(profile?.inbound_email || ""); }}
+            style={{background:"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:8,padding:"4px 10px",fontSize:".72rem",fontWeight:700,cursor:"pointer",flexShrink:0}}>
+            Copy
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{flex:1,overflow:"auto",padding:"1rem 1.25rem"}}>
+
+          {selected ? (
+            /* Detail view */
+            <div>
+              <button onClick={() => setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--pine)",fontWeight:600,fontSize:".85rem",padding:0,marginBottom:".75rem",display:"flex",alignItems:"center",gap:4}}>
+                ← Back
+              </button>
+              <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:1}}>
+                <span style={{background:typeColor[selected.extracted_type]||"#8A8178",color:"#fff",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>
+                  {typeLabel[selected.extracted_type]||"Unknown"}
+                </span>
+                <span style={{fontSize:".65rem",color:selected.confidence==="high"?"var(--pine)":selected.confidence==="medium"?"#B8861E":"var(--rust)",fontWeight:700}}>
+                  {selected.confidence==="high"?"✓ High confidence":selected.confidence==="medium"?"~ Medium confidence":"⚠ Low confidence"}
+                </span>
+              </div>
+              <div style={{fontSize:".82rem",color:"#8A8178",marginBottom:"1rem"}}>{selected.subject}</div>
+
+              <div style={{background:"var(--white)",borderRadius:10,padding:"1rem",marginBottom:"1rem",border:"1px solid var(--stone)"}}>
+                <FieldRow label="Item name" field="item" />
+                <FieldRow label="Brand" field="brand" />
+                <FieldRow label="Model" field="model" />
+                <FieldRow label="Category" field="category" />
+                {(selected.extracted_type==="warranty"||selected.extracted_type==="expense") && (
+                  <FieldRow label="Amount ($)" field="amount" type="number" />
+                )}
+                <FieldRow label="Vendor / Store" field="vendor" />
+                {selected.extracted_type==="warranty" && (
+                  <>
+                    <FieldRow label="Purchase date" field="purchase_date" type="date" />
+                    <FieldRow label="Warranty expiry" field="expiry_date" type="date" />
+                    <FieldRow label="Serial number" field="serial_number" />
+                  </>
+                )}
+                {selected.extracted_type==="expense" && (
+                  <FieldRow label="Date" field="purchase_date" type="date" />
+                )}
+                <FieldRow label="Notes" field="notes" />
+              </div>
+
+              {selected.body_text && (
+                <div style={{background:"var(--cream2)",borderRadius:8,padding:".75rem",marginBottom:"1rem",fontSize:".78rem",color:"#5A534B",lineHeight:1.6,maxHeight:120,overflow:"auto"}}>
+                  <div style={{fontWeight:700,marginBottom:4,fontSize:".7rem",textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178"}}>Original email</div>
+                  {selected.body_text}
+                </div>
+              )}
+
+              <div style={{display:"flex",gap:".65rem"}}>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{flex:1,padding:".85rem",background:"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:10,fontFamily:"inherit",fontSize:".92rem",fontWeight:700,cursor:saving?"default":"pointer",opacity:saving?.6:1}}>
+                  {saving ? "Saving…" : "Save to Steadwell ✓"}
+                </button>
+                <button
+                  onClick={handleDismiss}
+                  style={{padding:".85rem 1rem",background:"none",color:"#8A8178",border:"1.5px solid var(--stone)",borderRadius:10,fontFamily:"inherit",fontSize:".88rem",cursor:"pointer"}}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* List view */
+            <>
+              {pending.length === 0 && saved.length === 0 && (
+                <div style={{textAlign:"center",padding:"2.5rem 1rem",color:"#8A8178"}}>
+                  <div style={{fontSize:"2rem",marginBottom:".75rem"}}>📭</div>
+                  <div style={{fontWeight:600,marginBottom:".5rem"}}>No emails yet</div>
+                  <div style={{fontSize:".82rem",lineHeight:1.6}}>Forward receipts, warranties, and invoices to your capture address and they will appear here.</div>
+                </div>
+              )}
+
+              {pending.length > 0 && (
+                <>
+                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#8A8178",marginBottom:".5rem"}}>Needs review ({pending.length})</div>
+                  {pending.map(c => (
+                    <div key={c.id} onClick={() => openCapture(c)}
+                      style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:10,padding:".85rem 1rem",marginBottom:".5rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".75rem",transition:"border-color .15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor="var(--pine)"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor="var(--stone)"}>
+                      <div style={{width:36,height:36,borderRadius:9,background:typeColor[c.extracted_type]||"#8A8178",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:".75rem",fontWeight:700,flexShrink:0}}>
+                        {(typeLabel[c.extracted_type]||"?")[0]}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:".88rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.extracted_data?.item || c.subject}</div>
+                        <div style={{fontSize:".75rem",color:"#8A8178"}}>{new Date(c.created_at).toLocaleDateString()} · {c.from_address}</div>
+                      </div>
+                      <span style={{fontSize:".7rem",fontWeight:700,color:"#B8861E",background:"#FBF3DE",padding:"2px 8px",borderRadius:6,flexShrink:0}}>Review</span>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {saved.length > 0 && (
+                <>
+                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#8A8178",marginBottom:".5rem",marginTop:pending.length>0?"1rem":0}}>Saved ({saved.length})</div>
+                  {saved.map(c => (
+                    <div key={c.id} onClick={() => openCapture(c)}
+                      style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:10,padding:".85rem 1rem",marginBottom:".5rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".75rem",opacity:.75}}>
+                      <div style={{width:36,height:36,borderRadius:9,background:"var(--stone)",display:"flex",alignItems:"center",justifyContent:"center",color:"#8A8178",fontSize:".75rem",fontWeight:700,flexShrink:0}}>
+                        ✓
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:".88rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.extracted_data?.item || c.subject}</div>
+                        <div style={{fontSize:".75rem",color:"#8A8178"}}>{new Date(c.created_at).toLocaleDateString()} · Saved</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup }) {
+  const [emailCaptures, setEmailCaptures] = useState([]);
+  const [showEmailInbox, setShowEmailInbox] = useState(false);
+
+  useEffect(() => {
+    if (!userId || !profile?.id) return;
+    supabase.from("email_captures")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("property_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => { if (data) setEmailCaptures(data); });
+  }, [userId, profile?.id]);
+
+  const pendingCaptures = emailCaptures.filter(c => c.status === "pending");
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
@@ -12664,6 +12915,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks});}},
               {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
+              {ico:"📬", name:"Email inbox",      desc:pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
               {ico:"🏡", name:"Refresh data",     desc:"Re-pull schools, tax & value",              action:async()=>{
                 if(!profile?.address){toast("Add your address first","error");return;}
                 toast("Fetching property data…");
@@ -12704,6 +12956,19 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             </div>
           )}
         </div>
+      )}
+
+      {/* ── EMAIL INBOX MODAL ── */}
+      {showEmailInbox && (
+        <EmailInboxModal
+          captures={emailCaptures}
+          profile={profile}
+          userId={userId}
+          onClose={() => setShowEmailInbox(false)}
+          onUpdate={(id, updates) => setEmailCaptures(prev =>
+            prev.map(c => c.id === id ? { ...c, ...updates } : c)
+          )}
+        />
       )}
 
       {/* ── FINANCIAL HISTORY ── */}
