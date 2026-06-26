@@ -15802,9 +15802,11 @@ function LPNav({ links=[] }) {
         <span style={{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1.5px solid rgba(244,237,223,.2)"}}><HM/></span>
         <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#F4EDDF"}}>Steadwell</span>
       </a>
-      <div style={{display:"flex",gap:20,alignItems:"center"}}>
-        {links.map((l,i)=><a key={i} href={l.href} style={{color:"rgba(244,237,223,.7)",textDecoration:"none",fontSize:".88rem",fontWeight:500}}>{l.label}</a>)}
-        <a href="/" style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",padding:"6px 16px",borderRadius:20,color:"#F4EDDF",fontWeight:600,fontSize:".88rem",textDecoration:"none"}}>Sign in →</a>
+      <div style={{display:"flex",gap:16,alignItems:"center"}}>
+        <div style={{display:"flex",gap:16,alignItems:"center"}}>
+          {links.map((l,i)=><a key={i} href={l.href} style={{color:"rgba(244,237,223,.7)",textDecoration:"none",fontSize:".88rem",fontWeight:500,display:"var(--lp-nav-link-display, inline)"}}>{l.label}</a>)}
+        </div>
+        <a href="/" style={{background:"#C16140",border:"none",padding:"8px 18px",borderRadius:20,color:"#fff",fontWeight:700,fontSize:".88rem",textDecoration:"none",whiteSpace:"nowrap"}}>Get started free</a>
       </div>
     </nav>
   );
@@ -15825,7 +15827,7 @@ function LPFooter() {
 
 function LPHero({ eyebrow, h1, h1em, sub, stats=[], badge }) {
   return (
-    <section style={{background:"#234A3D",padding:"72px 24px 80px",textAlign:"center"}}>
+    <section style={{background:"#234A3D",padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)",textAlign:"center"}}>
       <div style={{maxWidth:700,margin:"0 auto"}}>
         {eyebrow && <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:16}}>{eyebrow}</div>}
         <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.2rem,5vw,3.4rem)",color:"#F4EDDF",lineHeight:1.06,letterSpacing:"-.025em",margin:"0 0 20px"}}>
@@ -15866,10 +15868,10 @@ function LPSectionHead({ h2, sub }) {
 }
 
 function LPCard({ children, style={} }) {
-  return <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 22px",...style}}>{children}</div>;
+  return <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 22px",textAlign:"left",...style}}>{children}</div>;
 }
 
-function LPGrid({ cols="repeat(auto-fit,minmax(220px,1fr))", gap=12, children, justify="start" }) {
+function LPGrid({ cols="repeat(auto-fill,minmax(min(100%,220px),1fr))", gap=12, children, justify="start" }) {
   return <div style={{display:"grid",gridTemplateColumns:cols,gap,justifyContent:justify}}>{children}</div>;
 }
 
@@ -15939,7 +15941,7 @@ function AIScanPage() {
                   <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#A8A09A",marginBottom:8}}>Fields extracted</div>
                   {s.fields.map((f,j)=>(
                     <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,fontSize:".82rem",color:"#5E574F"}}>
-                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -16010,7 +16012,7 @@ function EmailCapturePage() {
                   <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#A8A09A",marginBottom:8}}>Fields extracted</div>
                   {s.fields.map((f,j)=>(
                     <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,fontSize:".82rem",color:"#5E574F"}}>
-                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -16031,7 +16033,7 @@ function EmailCapturePage() {
         </LPSection>
         <LPSection>
           <LPSectionHead h2="Why this matters" sub="The friction of logging is why most people don&#39;t track their home."/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"3rem",alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:"2rem",alignItems:"start"}}>
             <div>
               <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Most home management apps require you to open the app, navigate to the right section, and manually type in every detail. It takes 5 minutes per receipt. Nobody does it.</p>
               <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>The email forward takes 3 seconds. You do it from wherever you are, on whatever device you have. The record appears in Steadwell automatically.</p>
@@ -16097,8 +16099,9 @@ function MaintenanceTrackerPage() {
                   <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{t.cat}</div>
                 </div>
                 {t.items.map((item,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",marginTop:2}}>✓</span>{item}
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",marginTop:2,flexShrink:0}}>✓</span>
+                    <span style={{flex:1}}>{item}</span>
                   </div>
                 ))}
               </LPCard>
@@ -16159,8 +16162,8 @@ function ContractorTrackerPage() {
                   <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
                 </div>
                 {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
                   </div>
                 ))}
               </LPCard>
@@ -16221,8 +16224,8 @@ function InsuranceTrackerPage() {
                   <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
                 </div>
                 {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
                   </div>
                 ))}
               </LPCard>
@@ -16286,8 +16289,8 @@ function HomeExpenseTrackerPage() {
                   <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".62rem",fontWeight:700,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{s.badge}</span>
                 </div>
                 {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
                   </div>
                 ))}
               </LPCard>
@@ -16348,8 +16351,8 @@ function HomeProjectsPage() {
                   <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
                 </div>
                 {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem"}}>✓</span>{f}
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
                   </div>
                 ))}
               </LPCard>
@@ -16506,7 +16509,7 @@ function RecallAlertsPage() {
     eyebrow: { fontSize:".72rem", fontWeight:700, letterSpacing:".18em", textTransform:"uppercase", color:"#D2876A", marginBottom:16 },
     h1:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(2.2rem,5vw,3.4rem)", color:"#F4EDDF", lineHeight:1.06, letterSpacing:"-.025em", margin:"0 0 20px" },
     heroSub: { fontSize:"1.05rem", color:"rgba(244,237,223,.65)", maxWidth:"38rem", margin:"0 auto 32px", lineHeight:1.6 },
-    statRow: { display:"flex", gap:24, justifyContent:"center", flexWrap:"wrap", marginBottom:8 },
+    statRow: { display:"flex", gap:24, justifyContent:"center", flexWrap:"wrap", marginBottom:8, padding:"0 16px" },
     stat:    { textAlign:"center" },
     statNum: { fontFamily:"'Fraunces',serif", fontSize:"2rem", fontWeight:600, color:"#F4EDDF", lineHeight:1 },
     statLbl: { fontSize:".72rem", color:"rgba(244,237,223,.5)", marginTop:4, textTransform:"uppercase", letterSpacing:".08em" },
@@ -16516,17 +16519,17 @@ function RecallAlertsPage() {
     h2:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.6rem,3vw,2.2rem)", color:"#234A3D", letterSpacing:"-.02em", marginBottom:8 },
     h2sub:   { fontSize:"1rem", color:"#7A7370", marginBottom:40, lineHeight:1.6 },
     alertBox:{ background:"#fff", border:"1px solid #E6DECF", borderRadius:16, overflow:"hidden", marginBottom:12 },
-    alertHeader:{ display:"flex", alignItems:"center", gap:12, padding:"14px 18px" },
+    alertHeader:{ display:"flex", alignItems:"flex-start", gap:12, padding:"14px 18px", flexWrap:"wrap" },
     alertBrand:{ fontWeight:700, fontSize:".95rem", color:"#2A2723" },
     alertProduct:{ fontSize:".82rem", color:"#7A7370" },
     alertIssue:{ fontSize:".82rem", color:"#5E574F", padding:"0 18px 14px", lineHeight:1.5 },
     alertDate:{ fontSize:".72rem", color:"#A8A09A", marginLeft:"auto" },
-    catGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:12 },
+    catGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,220px),1fr))", gap:12 },
     catCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"18px 20px", display:"flex", alignItems:"flex-start", gap:12 },
     catIcon: { fontSize:"1.4rem", flexShrink:0, marginTop:2 },
     catName: { fontWeight:700, fontSize:".9rem", color:"#234A3D", marginBottom:4 },
     catEx:   { fontSize:".78rem", color:"#8A8178", lineHeight:1.5 },
-    howGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:20 },
+    howGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,220px),1fr))", gap:16 },
     howCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"22px" },
     howNum:  { fontFamily:"'Fraunces',serif", fontSize:"1.8rem", fontWeight:600, color:"#C16140", marginBottom:8, lineHeight:1 },
     howTitle:{ fontWeight:700, fontSize:".95rem", color:"#234A3D", marginBottom:6 },
@@ -16538,7 +16541,7 @@ function RecallAlertsPage() {
     ctaH:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#F4EDDF", marginBottom:16, letterSpacing:"-.02em" },
     ctaSub:  { fontSize:"1rem", color:"rgba(244,237,223,.65)", maxWidth:"32rem", margin:"0 auto 32px", lineHeight:1.6 },
     ctaBtn:  { display:"inline-block", background:"#C16140", color:"#fff", textDecoration:"none", padding:".9rem 2rem", borderRadius:12, fontWeight:700, fontSize:".95rem", fontFamily:"'Hanken Grotesk',sans-serif", border:"none", cursor:"pointer" },
-    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem" },
+    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem", textAlign:"left" },
     footA:   { color:"rgba(244,237,223,.55)", textDecoration:"none" },
   };
 
@@ -16558,15 +16561,15 @@ function RecallAlertsPage() {
         </div>
       </nav>
 
-      <section style={S.hero}>
+      <section style={{...S.hero, padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)"}}>
         <div style={{maxWidth:700,margin:"0 auto"}}>
           <div style={S.eyebrow}>CPSC Safety Recall Database</div>
           <h1 style={S.h1}>Is anything in your home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>recalled right now?</em></h1>
           <p style={S.heroSub}>Most homeowners never find out when their appliances, tools, or safety devices are recalled. Steadwell checks everything you own — automatically, every time you log in.</p>
           <div style={S.statRow}>
             {[
-              { num:"200+", lbl:"Recalls per year" },
-              { num:"900M+", lbl:"Products recalled since 1973" },
+              { num:"300+", lbl:"Recalls issued in 2023" },
+              { num:"15,000+", lbl:"Product types monitored by CPSC" },
               { num:"Free", lbl:"Always" },
             ].map((s,i) => (
               <div key={i} style={S.stat}>
@@ -16650,7 +16653,7 @@ function RecallAlertsPage() {
         {/* ── WHY IT MATTERS ── */}
         <section style={S.sectionAlt}>
           <div style={S.wrap}>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"3rem",alignItems:"center"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:"2rem",alignItems:"start"}}>
               <div>
                 <h2 style={S.h2}>Most recalled products are never returned</h2>
                 <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>The CPSC estimates that fewer than 30% of recalled products are ever repaired or returned. That means millions of potentially dangerous items remain in homes across the country — because their owners simply never found out.</p>
@@ -16660,7 +16663,7 @@ function RecallAlertsPage() {
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {[
                   { pct:"70%", desc:"of recalled products are never returned or repaired" },
-                  { pct:"200+", desc:"new product recalls issued by the CPSC every year" },
+                  { pct:"300+", desc:"consumer product recalls issued by the CPSC in fiscal year 2023 alone" },
                   { pct:"$0", desc:"cost to check every item in your home with Steadwell" },
                 ].map((s,i) => (
                   <div key={i} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 24px",display:"flex",alignItems:"center",gap:20}}>
@@ -16844,7 +16847,7 @@ function GuidesPage() {
     ctaH:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#F4EDDF", marginBottom:16, letterSpacing:"-.02em" },
     ctaSub:  { fontSize:"1rem", color:"rgba(244,237,223,.65)", maxWidth:"32rem", margin:"0 auto 32px", lineHeight:1.6 },
     ctaBtn:  { display:"inline-block", background:"#C16140", color:"#fff", textDecoration:"none", padding:".9rem 2rem", borderRadius:12, fontWeight:700, fontSize:".95rem", fontFamily:"'Hanken Grotesk',sans-serif", border:"none", cursor:"pointer" },
-    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem" },
+    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem", textAlign:"left" },
     footLinks:{ display:"flex", gap:24, flexWrap:"wrap" },
     footA:   { color:"rgba(244,237,223,.55)", textDecoration:"none" },
   };
@@ -16926,7 +16929,7 @@ function GuidesPage() {
       </nav>
 
       {/* ── HERO ── */}
-      <section style={S.hero}>
+      <section style={{...S.hero, padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)"}}>
         <div style={{maxWidth:700,margin:"0 auto"}}>
           <div style={S.eyebrow}>First-Time Homebuyer Guides · 2026 Edition</div>
           <h1 style={S.h1}>Buy your first home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>with confidence.</em></h1>
