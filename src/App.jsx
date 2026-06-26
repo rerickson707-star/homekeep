@@ -5464,7 +5464,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       <div className="field s2"><label>Project Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Kitchen Remodel" /></div>
       <div className="field s2">
         <label>Project Type <span style={{fontWeight:400,color:"#A8A09A"}}>(for cost estimate)</span></label>
-        <select value={data.roi_category||""} onChange={e=>{f("roi_category",e.target.value);f("roi_scope","");}}>
+        <select value={data.roi_category||""} onChange={e=>onChange({...data, roi_category:e.target.value, roi_scope:""})}>
           <option value="">Select project type…</option>
           {Object.entries(PROJECT_ROI_DATA).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
         </select>
