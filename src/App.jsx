@@ -5346,26 +5346,32 @@ function computeProjectROI(categoryKey, actualSpend, isDIY, scopeKey) {
   const info = PROJECT_ROI_DATA[categoryKey];
   if (!info || info.roi === null) return null;
 
-  // Get scope-specific data if available
   const scope = info.scopes?.find(s => s.key === scopeKey) || null;
   const roi = scope ? scope.roi : info.roi;
   const laborShare = info.laborShare;
 
-  // Use midpoint of contractor range as reference cost if scope is set
-  const scopeRefCost = scope
-    ? (scope.contractorCost ? Math.round((scope.contractorCost[0] + scope.contractorCost[1]) / 2) : null)
+  // Value added is anchored to the typical CONTRACTOR cost for this scope —
+  // because that's what the Cost vs. Value ROI% was measured against.
+  // A finished bathroom is worth the same to a buyer regardless of who installed it.
+  const contractorMidpoint = scope?.contractorCost
+    ? Math.round((scope.contractorCost[0] + scope.contractorCost[1]) / 2)
+    : info.avgCost;
+
+  // Value added is the same whether DIY or contractor
+  const valueAdded = Math.round(contractorMidpoint * (roi / 100));
+
+  // What the user actually spends depends on DIY vs contractor
+  const diySidpoint = scope?.diyCost
+    ? Math.round((scope.diyCost[0] + scope.diyCost[1]) / 2)
     : null;
 
-  const spend = Number(actualSpend) > 0
-    ? Number(actualSpend)
-    : (scopeRefCost || info.avgCost);
+  const defaultSpend = isDIY && diySidpoint ? diySidpoint : contractorMidpoint;
+  const spend = Number(actualSpend) > 0 ? Number(actualSpend) : defaultSpend;
 
-  const contractorEquivCost = isDIY ? spend / (1 - laborShare) : spend;
-  const valueAdded = Math.round(contractorEquivCost * (roi / 100));
   const netCost = spend - valueAdded;
   const effectiveROI = spend > 0 ? Math.round((valueAdded / spend) * 100) : roi;
 
-  const refCost = scopeRefCost || info.avgCost;
+  const refCost = contractorMidpoint || info.avgCost;
   const deviationRatio = refCost ? spend / refCost : 1;
   const lowConfidence = !scope && (deviationRatio < 0.4 || deviationRatio > 2.5);
 
