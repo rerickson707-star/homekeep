@@ -7257,47 +7257,32 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 
       {/* ── WHAT'S POSSIBLE — 30-day feature discovery ── */}
       {showWhatsNew && !wpDismissed && (
-        <div style={{margin:".75rem 1.25rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-md)",overflow:"hidden"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .75rem"}}>
-            <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-              <span style={{fontSize:"1rem"}}>✨</span>
-              <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>What&#39;s possible</div>
-              {daysLeft > 0 && <span style={{fontSize:".68rem",color:"#A8A09A",background:"var(--cream2)",padding:"2px 8px",borderRadius:10}}>{daysLeft}d left</span>}
-            </div>
-            <button onClick={dismissWP} style={{background:"none",border:"none",cursor:"pointer",color:"#A8A09A",fontSize:"1rem",padding:"0 2px",lineHeight:1}} aria-label="Dismiss">✕</button>
+        <div style={{margin:".75rem 1.25rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-md)",padding:".65rem .85rem"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".55rem"}}>
+            <span style={{fontSize:".82rem"}}>✨</span>
+            <span style={{fontWeight:700,fontSize:".78rem",color:"var(--dark)"}}>Explore Steadwell</span>
+            <span style={{fontSize:".68rem",color:"#A8A09A",marginLeft:"auto"}}>{usedCount}/8</span>
+            <button onClick={dismissWP} style={{background:"none",border:"none",cursor:"pointer",color:"#C0BAB2",fontSize:".85rem",padding:"0 0 0 4px",lineHeight:1}} aria-label="Dismiss">✕</button>
           </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:1,borderTop:"1px solid var(--stone)"}}>
+          <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
             {[
-              { key:"email",       icon:"📬", label:"Email capture",   desc:"Forward receipts to Steadwell", action:()=>onNavigate("profile"), done: usedFeatures.email },
-              { key:"warranties",  icon:"🔖", label:"Warranties",      desc:"Track expiry dates & alerts",   action:()=>onNavigate("warranties"), done: usedFeatures.warranties },
-              { key:"tasks",       icon:"✓",  label:"Maintenance",     desc:"Schedule recurring tasks",      action:()=>onNavigate("tasks"), done: usedFeatures.tasks },
-              { key:"recall",      icon:"🔔", label:"Recall alerts",   desc:"Check your appliances now",     action:()=>{ runCheck && runCheck(); }, done: checked },
-              { key:"contractors", icon:"👷", label:"Contractors",     desc:"Save your trusted pros",        action:()=>onNavigate("profile"), done: usedFeatures.contractors },
-              { key:"insurance",   icon:"🛡️", label:"Insurance",       desc:"Store your policies",           action:()=>onNavigate("profile"), done: usedFeatures.insurance },
-              { key:"expenses",    icon:"💸", label:"Expense tracking",desc:"Log what your home costs",      action:()=>onNavigate("expenses"), done: usedFeatures.expenses },
-              { key:"projects",    icon:"🏗️", label:"Projects",        desc:"Track renovations & ROI",       action:()=>onNavigate("expenses"), done: false },
+              { key:"email",       icon:"📬", label:"Email",       action:()=>onNavigate("profile"),    done: usedFeatures.email },
+              { key:"warranties",  icon:"🔖", label:"Warranties",  action:()=>onNavigate("warranties"), done: usedFeatures.warranties },
+              { key:"tasks",       icon:"📋", label:"Maintenance", action:()=>onNavigate("tasks"),      done: usedFeatures.tasks },
+              { key:"recall",      icon:"🔔", label:"Recalls",     action:()=>{ runCheck && runCheck(); }, done: checked },
+              { key:"contractors", icon:"👷", label:"Contractors", action:()=>onNavigate("profile"),    done: usedFeatures.contractors },
+              { key:"insurance",   icon:"🛡️", label:"Insurance",   action:()=>onNavigate("profile"),    done: usedFeatures.insurance },
+              { key:"expenses",    icon:"💸", label:"Expenses",    action:()=>onNavigate("expenses"),   done: usedFeatures.expenses },
+              { key:"projects",    icon:"🏗️", label:"Projects",    action:()=>onNavigate("expenses"),   done: false },
             ].map(f => (
               <button key={f.key} onClick={f.action}
-                style={{display:"flex",alignItems:"center",gap:".6rem",padding:".75rem .85rem",background:f.done?"var(--cream2)":"var(--white)",border:"none",borderBottom:"1px solid var(--stone)",cursor:"pointer",textAlign:"left",fontFamily:"inherit",transition:"background .12s"}}
-                onMouseEnter={e=>!f.done&&(e.currentTarget.style.background="var(--cream)")}
-                onMouseLeave={e=>!f.done&&(e.currentTarget.style.background="var(--white)")}>
-                <div style={{width:32,height:32,borderRadius:8,background:f.done?"var(--ok-bg)":"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0,position:"relative"}}>
-                  {f.done ? <span style={{fontSize:".8rem",color:"var(--ok)",fontWeight:700}}>✓</span> : f.icon}
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:".82rem",fontWeight:600,color:f.done?"#A8A09A":"var(--dark)",marginBottom:1}}>{f.label}</div>
-                  <div style={{fontSize:".72rem",color:"#A8A09A",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.done?"Explored":"→ "+f.desc}</div>
-                </div>
+                style={{display:"flex",alignItems:"center",gap:".3rem",padding:"4px 10px",borderRadius:20,border:"1.5px solid",borderColor:f.done?"transparent":"var(--stone)",background:f.done?"var(--ok-bg)":"var(--cream)",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}
+                onMouseEnter={e=>!f.done&&(e.currentTarget.style.borderColor="var(--pine)")}
+                onMouseLeave={e=>!f.done&&(e.currentTarget.style.borderColor="var(--stone)")}>
+                <span style={{fontSize:".75rem"}}>{f.done?"✓":f.icon}</span>
+                <span style={{fontSize:".72rem",fontWeight:600,color:f.done?"var(--ok)":"var(--dark)"}}>{f.label}</span>
               </button>
             ))}
-          </div>
-
-          <div style={{padding:".6rem 1rem",borderTop:"1px solid var(--stone)",display:"flex",alignItems:"center",gap:".5rem"}}>
-            <div style={{flex:1,height:3,background:"var(--cream2)",borderRadius:2,overflow:"hidden"}}>
-              <div style={{height:"100%",background:"var(--pine)",borderRadius:2,width:`${Math.round((usedCount/8)*100)}%`,transition:"width .3s"}}/>
-            </div>
-            <span style={{fontSize:".7rem",color:"#A8A09A",flexShrink:0,fontWeight:500}}>{usedCount} of 8 explored</span>
           </div>
         </div>
       )}
