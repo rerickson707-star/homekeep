@@ -10520,16 +10520,17 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           <div style={{background:"var(--white)",borderRadius:"20px 20px 0 0",padding:"1.25rem 1rem 2rem",maxWidth:480,margin:"0 auto",width:"100%",transform:"translateZ(0)"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:36,height:4,borderRadius:2,background:"var(--stone)",margin:"0 auto .85rem"}}/>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,marginBottom:"1.1rem",textAlign:"center"}}>What would you like to add?</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
               {[
-                { icon:"💸", label:"Expense",     sub:"Receipt, invoice, or any cost",   action:()=>{setAddSheet(false);openNew();} },
-                { icon:"⚡", label:"Utility bill", sub:"Scan or enter your monthly bill", action:()=>{
+                { icon:"💸", label:"Expense",        sub:"Receipt, invoice, or any cost",   action:()=>{setAddSheet(false);openNew();} },
+                { icon:"⚡", label:"Utility bill",    sub:"Scan or enter your monthly bill", action:()=>{
                   setAddSheet(false);
                   if(utilities.length===0){openNewUtil();}
                   else if(utilities.length===1){openNewBill(utilities[0].id);}
                   else{setView("utilities");}
                 }},
-                { icon:"🔨", label:"Project expense", sub:"Link a cost to a project",    action:()=>{
+                { icon:"🏗️", label:"New project",    sub:"Track a renovation or improvement", action:()=>{setAddSheet(false);openNewProject();} },
+                { icon:"🔨", label:"Project expense", sub:"Link a cost to an existing project", action:()=>{
                   setAddSheet(false);
                   if(projects.length===0){openNewProject();}
                   else{setEditData({date:localISO(),project_id:projects[0].id});setEditId(null);setModal(true);}
