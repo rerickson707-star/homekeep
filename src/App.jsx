@@ -5235,22 +5235,99 @@ const PROJECT_STATUSES = ["Planning","In Progress","Completed","On Hold"];
 // Sourced from industry data putting labor at ~35-60% of total cost depending on trade
 // complexity; simple swaps (garage door) skew lower, structural/mechanical work skews higher.
 const PROJECT_ROI_DATA = {
-  garage_door:   { label:"Garage Door Replacement",     avgCost:4500,  roi:194, icon:"🚪", laborShare:0.35 },
-  stone_veneer:  { label:"Manufactured Stone Veneer",   avgCost:11000, roi:153, icon:"🧱", laborShare:0.55 },
-  entry_door:    { label:"Entry Door Replacement",      avgCost:2200,  roi:136, icon:"🚪", laborShare:0.40 },
-  siding:        { label:"Siding Replacement",          avgCost:17500, roi:114, icon:"🏠", laborShare:0.45 },
-  minor_kitchen: { label:"Minor Kitchen Remodel",       avgCost:28000, roi:113, icon:"🍳", laborShare:0.45 },
-  hvac:          { label:"HVAC Replacement",            avgCost:13000, roi:90,  icon:"🌡️", laborShare:0.40 },
-  windows:       { label:"Window Replacement",          avgCost:21000, roi:85,  icon:"🪟", laborShare:0.40 },
-  deck:          { label:"Deck Addition (wood)",        avgCost:19000, roi:80,  icon:"🪵", laborShare:0.50 },
-  roof:          { label:"Roof Replacement",            avgCost:31000, roi:68,  icon:"🏚️", laborShare:0.40 },
-  bathroom:      { label:"Bathroom Remodel",             avgCost:27000, roi:66,  icon:"🚿", laborShare:0.55 },
-  major_kitchen: { label:"Major Kitchen Remodel",       avgCost:80000, roi:58,  icon:"🍳", laborShare:0.50 },
-  primary_suite: { label:"Primary Suite Addition",      avgCost:160000,roi:33,  icon:"🛏️", laborShare:0.55 },
-  pool:          { label:"Swimming Pool",               avgCost:65000, roi:30,  icon:"🏊", laborShare:0.50 },
-  other:         { label:"Other / Custom Project",      avgCost:null,  roi:null, icon:"🔨", laborShare:0.45 },
+  // Each entry can have optional `scopes` array for scope-based estimation
+  // scope: { label, contractorCost, diyCost, roi, includes }
+  kitchen: {
+    label:"Kitchen Remodel", icon:"🍳", laborShare:0.50, avgCost:55000, roi:76,
+    scopes:[
+      { key:"full",  label:"Full gut remodel",        contractorCost:[70000,120000], diyCost:[30000,55000], roi:58, includes:"New layout, appliances, cabinets, countertops, flooring, lighting" },
+      { key:"mid",   label:"Mid-range update",         contractorCost:[25000,50000],  diyCost:[12000,25000], roi:76, includes:"New cabinets, countertops, appliances, updated fixtures" },
+      { key:"minor", label:"Cosmetic refresh",         contractorCost:[8000,18000],   diyCost:[3000,8000],   roi:96, includes:"Paint, hardware, new fixtures, minor cosmetic updates" },
+    ]
+  },
+  bathroom: {
+    label:"Bathroom Remodel", icon:"🚿", laborShare:0.55, avgCost:27000, roi:66,
+    scopes:[
+      { key:"full",  label:"Full renovation",          contractorCost:[20000,40000],  diyCost:[9000,18000],  roi:66, includes:"New tile, vanity, fixtures, tub/shower, flooring" },
+      { key:"mid",   label:"Mid-range update",         contractorCost:[10000,20000],  diyCost:[4000,9000],   roi:78, includes:"New vanity, fixtures, toilet, paint, updated hardware" },
+      { key:"minor", label:"Cosmetic refresh",         contractorCost:[3000,8000],    diyCost:[1000,3500],   roi:92, includes:"Paint, new fixtures, lighting, hardware updates" },
+    ]
+  },
+  deck: {
+    label:"Deck / Patio Addition", icon:"🪵", laborShare:0.50, avgCost:19000, roi:80,
+    scopes:[
+      { key:"large", label:"Large deck (500+ sq ft)",  contractorCost:[25000,50000],  diyCost:[10000,22000], roi:72, includes:"Composite or hardwood, built-in seating, lighting" },
+      { key:"mid",   label:"Standard deck (200–500 sq ft)", contractorCost:[12000,25000], diyCost:[5000,12000], roi:80, includes:"Pressure-treated wood or composite, basic railing" },
+      { key:"patio", label:"Patio / concrete slab",    contractorCost:[4000,12000],   diyCost:[1500,5000],   roi:88, includes:"Concrete or paver patio, basic landscaping border" },
+    ]
+  },
+  roof: {
+    label:"Roof Replacement", icon:"🏚️", laborShare:0.40, avgCost:31000, roi:68,
+    scopes:[
+      { key:"full",  label:"Full tear-off & replace",  contractorCost:[20000,45000],  diyCost:null,          roi:68, includes:"Full tear-off, new sheathing if needed, new shingles" },
+      { key:"partial",label:"Partial replacement",     contractorCost:[8000,18000],   diyCost:null,          roi:72, includes:"Damaged section replacement, matched shingles" },
+    ]
+  },
+  windows: {
+    label:"Window Replacement", icon:"🪟", laborShare:0.40, avgCost:21000, roi:85,
+    scopes:[
+      { key:"full",  label:"Full house (10+ windows)", contractorCost:[15000,30000],  diyCost:[7000,15000],  roi:85, includes:"Double-pane vinyl or wood, all rooms" },
+      { key:"partial",label:"Partial (3–6 windows)",  contractorCost:[4000,10000],   diyCost:[1800,5000],   roi:82, includes:"Priority rooms or damaged windows only" },
+    ]
+  },
+  siding: {
+    label:"Siding Replacement", icon:"🏠", laborShare:0.45, avgCost:17500, roi:114,
+    scopes:[
+      { key:"full",  label:"Full exterior",            contractorCost:[12000,25000],  diyCost:[5000,12000],  roi:114, includes:"Vinyl, fiber cement, or engineered wood, full exterior" },
+      { key:"partial",label:"Partial or accent",       contractorCost:[4000,10000],   diyCost:[1500,5000],   roi:95,  includes:"Front facade or damaged sections only" },
+    ]
+  },
+  hvac: {
+    label:"HVAC Replacement", icon:"🌡️", laborShare:0.40, avgCost:13000, roi:90,
+    scopes:[
+      { key:"full",  label:"Full system (AC + furnace)",contractorCost:[10000,20000], diyCost:null,          roi:90, includes:"New central AC unit, furnace or heat pump, installation" },
+      { key:"ac",    label:"AC unit only",              contractorCost:[4500,9000],   diyCost:null,          roi:85, includes:"Central AC replacement, existing ducts" },
+      { key:"mini",  label:"Mini-split system",         contractorCost:[3000,8000],   diyCost:[1500,4000],   roi:80, includes:"Ductless mini-split, 1–3 zones" },
+    ]
+  },
+  garage_door: {
+    label:"Garage Door Replacement", icon:"🚪", laborShare:0.35, avgCost:4500, roi:194,
+    scopes:[
+      { key:"standard",label:"Standard replacement",   contractorCost:[1200,2500],   diyCost:[700,1500],    roi:194, includes:"Steel or aluminum door, new opener" },
+      { key:"upscale", label:"Upscale / custom",       contractorCost:[2500,6000],   diyCost:[1200,3000],   roi:168, includes:"Carriage style, wood or glass panels, smart opener" },
+    ]
+  },
+  entry_door: {
+    label:"Entry Door Replacement", icon:"🚪", laborShare:0.40, avgCost:2200, roi:136,
+    scopes:[
+      { key:"standard",label:"Standard steel door",    contractorCost:[800,1800],    diyCost:[400,900],     roi:136, includes:"Insulated steel door, new hardware, weatherstripping" },
+      { key:"upscale", label:"Fiberglass or wood",     contractorCost:[1800,4500],   diyCost:[800,2000],    roi:112, includes:"Fiberglass or solid wood, sidelights, upgraded hardware" },
+    ]
+  },
+  primary_suite: {
+    label:"Primary Suite Addition", icon:"🛏️", laborShare:0.55, avgCost:160000, roi:33,
+    scopes:[
+      { key:"addition",label:"New room addition",      contractorCost:[120000,200000],diyCost:null,          roi:33, includes:"New square footage, full bath, closet, HVAC extension" },
+      { key:"conversion",label:"Existing space conversion",contractorCost:[40000,80000],diyCost:[15000,35000],roi:45,includes:"Convert garage, attic, or bonus room to primary suite" },
+    ]
+  },
+  pool: {
+    label:"Swimming Pool", icon:"🏊", laborShare:0.50, avgCost:65000, roi:30,
+    scopes:[
+      { key:"inground",label:"In-ground pool",         contractorCost:[45000,90000],  diyCost:null,          roi:30, includes:"Gunite or fiberglass, basic decking, equipment" },
+      { key:"above",   label:"Above-ground pool",      contractorCost:[3000,8000],    diyCost:[1500,4000],   roi:20, includes:"Above-ground frame pool, basic decking" },
+    ]
+  },
+  stone_veneer: {
+    label:"Stone Veneer (Exterior)", icon:"🧱", laborShare:0.55, avgCost:11000, roi:153,
+    scopes:[
+      { key:"full",  label:"Full front facade",        contractorCost:[8000,16000],   diyCost:[3000,7000],   roi:153, includes:"Manufactured stone veneer, full front of home" },
+      { key:"accent",label:"Accent only",              contractorCost:[3000,7000],    diyCost:[1200,3000],   roi:130, includes:"Foundation, columns, or entryway accent only" },
+    ]
+  },
+  other: { label:"Other / Custom Project", icon:"🔨", laborShare:0.45, avgCost:null, roi:null, scopes:null },
 };
-const PROJECT_ROI_SOURCE = "Cost vs. Value Report — national averages, actual results vary by region and home price tier";
+const PROJECT_ROI_SOURCE = "Based on national Cost vs. Value Report averages. Actual costs and returns vary by region, home price tier, and project quality.";
 
 // Computes the ROI estimate accounting for: whether the work is DIY or contractor,
 // and how far the actual/budgeted spend deviates from the category's typical cost.
@@ -5265,39 +5342,43 @@ const PROJECT_ROI_SOURCE = "Cost vs. Value Report — national averages, actual 
 // Scope deviation: the published ROI is itself an average across small and large jobs
 // in that category. A spend far outside the typical range is less reliable to project
 // from — we flag this with a confidence note rather than silently extrapolating.
-function computeProjectROI(categoryKey, actualSpend, isDIY) {
+function computeProjectROI(categoryKey, actualSpend, isDIY, scopeKey) {
   const info = PROJECT_ROI_DATA[categoryKey];
   if (!info || info.roi === null) return null;
 
-  const spend = Number(actualSpend) > 0 ? Number(actualSpend) : info.avgCost;
+  // Get scope-specific data if available
+  const scope = info.scopes?.find(s => s.key === scopeKey) || null;
+  const roi = scope ? scope.roi : info.roi;
   const laborShare = info.laborShare;
 
-  // Estimate what this would have cost at full contractor rate, so we can anchor
-  // "value added" to the category's typical finished-result value regardless of
-  // who did the labor.
-  // If DIY: the user's spend is assumed to be ~materials-only, so the equivalent
-  // contractor-installed cost would be spend / (1 - laborShare).
+  // Use midpoint of contractor range as reference cost if scope is set
+  const scopeRefCost = scope
+    ? (scope.contractorCost ? Math.round((scope.contractorCost[0] + scope.contractorCost[1]) / 2) : null)
+    : null;
+
+  const spend = Number(actualSpend) > 0
+    ? Number(actualSpend)
+    : (scopeRefCost || info.avgCost);
+
   const contractorEquivCost = isDIY ? spend / (1 - laborShare) : spend;
-
-  // Value added scales with the contractor-equivalent cost (this is what the
-  // Cost vs. Value ROI% was actually measured against).
-  const valueAdded = Math.round(contractorEquivCost * (info.roi / 100));
+  const valueAdded = Math.round(contractorEquivCost * (roi / 100));
   const netCost = spend - valueAdded;
-  const effectiveROI = spend > 0 ? Math.round((valueAdded / spend) * 100) : info.roi;
+  const effectiveROI = spend > 0 ? Math.round((valueAdded / spend) * 100) : roi;
 
-  // Scope deviation confidence check — how far is actual spend from the category average?
-  const deviationRatio = info.avgCost ? spend / info.avgCost : 1;
-  const lowConfidence = deviationRatio < 0.4 || deviationRatio > 2.5;
+  const refCost = scopeRefCost || info.avgCost;
+  const deviationRatio = refCost ? spend / refCost : 1;
+  const lowConfidence = !scope && (deviationRatio < 0.4 || deviationRatio > 2.5);
 
   return {
     spend,
     valueAdded,
     netCost,
     effectiveROI,
-    publishedROI: info.roi,
+    publishedROI: roi,
     isDIY,
     lowConfidence,
     laborShare,
+    scope,
   };
 }
 
@@ -5367,6 +5448,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
   const status = data.status || "Planning";
   const roiInfo = data.roi_category ? PROJECT_ROI_DATA[data.roi_category] : null;
   const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
+  const activeScope = roiInfo?.scopes?.find(s => s.key === data.roi_scope) || null;
 
   // Which photo slots to show based on status
   const slots = [
@@ -5375,46 +5457,105 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
     { key:"photo_after",    label:"After",        emoji:"✅", hide: status==="Planning" || status==="In Progress" },
   ].filter(s => !s.hide);
 
+  const fmt = n => "$"+Number(n).toLocaleString();
+
   return (
     <div className="fg">
       <div className="field s2"><label>Project Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Kitchen Remodel" /></div>
       <div className="field s2">
-        <label>Project Type <span style={{fontWeight:400,color:"#A8A09A"}}>(for ROI estimate)</span> {!isPaid && <span style={{fontSize:".6rem",background:"rgba(193,97,64,.15)",color:"var(--rust)",fontWeight:700,padding:"1px 6px",borderRadius:6,marginLeft:4}}>Plus</span>}</label>
-        {isPaid ? (
-          <select value={data.roi_category||""} onChange={e=>f("roi_category",e.target.value)}>
-            <option value="">Select if you want a value estimate…</option>
-            {Object.entries(PROJECT_ROI_DATA).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
-          </select>
-        ) : (
-          <button type="button" onClick={onUpgrade}
-            style={{width:"100%",textAlign:"left",padding:".7rem .85rem",borderRadius:10,border:"1.5px dashed var(--stone)",background:"var(--cream)",cursor:"pointer",fontFamily:"inherit",fontSize:".85rem",color:"#8A8178",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span>See estimated resale value for this project</span>
-            <span style={{fontWeight:700,color:"var(--rust)"}}>Upgrade →</span>
-          </button>
-        )}
+        <label>Project Type <span style={{fontWeight:400,color:"#A8A09A"}}>(for cost estimate)</span></label>
+        <select value={data.roi_category||""} onChange={e=>{f("roi_category",e.target.value);f("roi_scope","");}}>
+          <option value="">Select project type…</option>
+          {Object.entries(PROJECT_ROI_DATA).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
+        </select>
       </div>
 
-      {/* DIY vs contractor toggle — only shown once a category is picked, paid plans only */}
-      {isPaid && roiInfo && roiInfo.roi !== null && (
+      {/* Scope selector — free for all plans */}
+      {roiInfo?.scopes && (
         <div className="field s2">
-          <label>Who's doing the work?</label>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
-            <button type="button" onClick={()=>f("roi_diy",false)}
-              style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${!data.roi_diy?"var(--pine)":"var(--stone)"}`,background:!data.roi_diy?"var(--pine)":"var(--white)",color:!data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
-              👷 Contractor
-            </button>
-            <button type="button" onClick={()=>f("roi_diy",true)}
-              style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${data.roi_diy?"var(--pine)":"var(--stone)"}`,background:data.roi_diy?"var(--pine)":"var(--white)",color:data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
-              🔧 DIY
-            </button>
+          <label>Project scope</label>
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+            {roiInfo.scopes.map(s => (
+              <button key={s.key} type="button" onClick={()=>f("roi_scope", s.key)}
+                style={{textAlign:"left",padding:".75rem 1rem",borderRadius:10,border:`1.5px solid ${data.roi_scope===s.key?"var(--pine)":"var(--stone)"}`,background:data.roi_scope===s.key?"rgba(35,74,61,.05)":"var(--white)",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
+                <div style={{fontWeight:700,fontSize:".88rem",color:data.roi_scope===s.key?"var(--pine)":"var(--dark)",marginBottom:3}}>{s.label}</div>
+                <div style={{fontSize:".75rem",color:"#8A8178",lineHeight:1.4}}>{s.includes}</div>
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ROI preview — shown once a category with real data is picked, paid plans only */}
-      {isPaid && roiInfo && roiInfo.roi !== null && (() => {
+      {/* Cost estimate card — free for all plans */}
+      {activeScope && (
+        <div className="field s2">
+          <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:14,padding:"1rem 1.1rem"}}>
+            <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#8A8178",marginBottom:".65rem"}}>Typical cost range</div>
+            <div style={{display:"grid",gridTemplateColumns:activeScope.diyCost?"1fr 1fr":"1fr",gap:".75rem",marginBottom:".75rem"}}>
+              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:10,padding:".75rem"}}>
+                <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:4}}>👷 Contractor</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"var(--dark)"}}>{fmt(activeScope.contractorCost[0])} – {fmt(activeScope.contractorCost[1])}</div>
+              </div>
+              {activeScope.diyCost && (
+                <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:10,padding:".75rem"}}>
+                  <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:4}}>🔧 DIY</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"var(--dark)"}}>{fmt(activeScope.diyCost[0])} – {fmt(activeScope.diyCost[1])}</div>
+                </div>
+              )}
+              {!activeScope.diyCost && (
+                <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:10,padding:".75rem",opacity:.6}}>
+                  <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:4}}>🔧 DIY</div>
+                  <div style={{fontSize:".82rem",color:"#8A8178"}}>Professional install recommended</div>
+                </div>
+              )}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".65rem .75rem",background:"rgba(35,74,61,.06)",borderRadius:8}}>
+              <span style={{fontSize:".9rem"}}>📈</span>
+              <div>
+                <span style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>~{activeScope.roi}% ROI </span>
+                <span style={{fontSize:".75rem",color:"#8A8178"}}>national average · adds ~{fmt(Math.round((activeScope.contractorCost[0]+activeScope.contractorCost[1])/2 * activeScope.roi/100))} in resale value</span>
+              </div>
+            </div>
+            <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:".6rem",lineHeight:1.5}}>{PROJECT_ROI_SOURCE}</div>
+          </div>
+        </div>
+      )}
+
+      {/* DIY vs contractor toggle — free for all plans */}
+      {activeScope && (
+        <div className="field s2">
+          <label>Who&#39;s doing the work?</label>
+          <div style={{display:"grid",gridTemplateColumns:`1fr${activeScope.diyCost?" 1fr":""}`,gap:".5rem"}}>
+            <button type="button" onClick={()=>f("roi_diy",false)}
+              style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${!data.roi_diy?"var(--pine)":"var(--stone)"}`,background:!data.roi_diy?"var(--pine)":"var(--white)",color:!data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
+              👷 Contractor
+            </button>
+            {activeScope.diyCost && (
+              <button type="button" onClick={()=>f("roi_diy",true)}
+                style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${data.roi_diy?"var(--pine)":"var(--stone)"}`,background:data.roi_diy?"var(--pine)":"var(--white)",color:data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
+                🔧 DIY
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ROI result — Plus/Pro only */}
+      {activeScope && !isPaid && (
+        <div className="field s2">
+          <button type="button" onClick={onUpgrade}
+            style={{width:"100%",textAlign:"left",padding:".85rem 1rem",borderRadius:10,border:"1.5px dashed var(--stone)",background:"var(--cream)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem"}}>
+            <div>
+              <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",marginBottom:2}}>See your estimated ROI & value added</div>
+              <div style={{fontSize:".75rem",color:"#8A8178"}}>Upgrade to Plus to see value added, net cost, and personalized return</div>
+            </div>
+            <span style={{fontWeight:700,color:"var(--rust)",flexShrink:0,fontSize:".85rem"}}>Upgrade →</span>
+          </button>
+        </div>
+      )}
+      {activeScope && isPaid && (() => {
         const useBudget = Number(data.budget) > 0 ? Number(data.budget) : null;
-        const calc = computeProjectROI(data.roi_category, useBudget, !!data.roi_diy);
+        const calc = computeProjectROI(data.roi_category, useBudget, !!data.roi_diy, data.roi_scope);
         if (!calc) return null;
         const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
         return (
@@ -5422,12 +5563,12 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
             <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:14,padding:"1rem 1.1rem"}}>
               <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".7rem"}}>
                 <span style={{fontSize:"1rem"}}>📊</span>
-                <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Estimated return</span>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"#F4EDDF"}}>Your estimated return</span>
                 {calc.isDIY && <span style={{fontSize:".6rem",background:"rgba(125,203,161,.2)",color:"#7DCBA1",fontWeight:700,padding:"2px 7px",borderRadius:8}}>DIY adjusted</span>}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".6rem",marginBottom:".7rem"}}>
                 <div>
-                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Your est. ROI</div>
+                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>ROI</div>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:calc.effectiveROI>=100?"#7DCBA1":calc.effectiveROI>=70?"#F0CE7A":"#E8A57F"}}>{calc.effectiveROI}%</div>
                 </div>
                 <div>
@@ -5440,14 +5581,13 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
                 </div>
               </div>
               <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
-                Based on {useBudget?"a $"+calc.spend.toLocaleString()+" budget":"the national average $"+roiInfo.avgCost.toLocaleString()+" cost"} ({calc.isDIY?"DIY":"contractor"}).
-                {calc.isDIY && ` The published ${calc.publishedROI}% ROI assumes contractor installation — since the finished result is worth about the same either way, doing it yourself typically means a higher return on what you actually spend.`}
-                {pctOfHome && ` About ${pctOfHome}% of your home's estimated value.`}
-                {" "}{PROJECT_ROI_SOURCE}.
+                {useBudget ? `Based on your $${calc.spend.toLocaleString()} budget` : `Based on typical ${activeScope.label.toLowerCase()} cost`} · {calc.isDIY?"DIY":"contractor"}.
+                {calc.isDIY && ` DIY saves on labor — the finished result adds similar value either way.`}
+                {pctOfHome && ` About ${pctOfHome}% of your home's value.`}
               </div>
               {calc.lowConfidence && (
                 <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
-                  ⚠ Your {useBudget?"budget":"cost"} is far from the typical range for this project type — treat this estimate as rougher than usual.
+                  ⚠ Your budget is outside the typical range — treat this estimate as a rough guide.
                 </div>
               )}
             </div>
@@ -9885,7 +10025,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         );
                       }
 
-                      const calc = computeProjectROI(p.roi_category, spent, !!p.roi_diy);
+                      const calc = computeProjectROI(p.roi_category, spent, !!p.roi_diy, p.roi_scope);
                       if (!calc) return null;
                       const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
                       const isComplete = p.status === "Completed";
