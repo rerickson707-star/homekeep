@@ -17359,7 +17359,7 @@ function TermsPage() {
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Terms of Service</h1>
         <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last updated: July 9, 2026</p>
-        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell, LLC is a Florida home management platform for US homeowners 18+. You own your data and can delete it anytime. AI features extract data for your review — verify before saving. Property values are estimates, not appraisals. Free plan is genuinely free. Plus is $4.99/month, Pro is $9.99/month. Florida law and individual arbitration govern disputes.</div>
+        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell, LLC is a home management platform for US homeowners 18+ — available nationwide, incorporated in Florida. You own your data and can delete it anytime. AI features extract data for your review — verify before saving. Property values are estimates, not appraisals. Free plan is genuinely free. Plus is $4.99/month, Pro is $9.99/month. Florida law and individual arbitration govern disputes.</div>
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Questions About These Terms?</h2>
