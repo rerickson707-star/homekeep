@@ -2231,21 +2231,23 @@ function LandingPage({ onSignIn, onSignUp }) {
             <div className="pcard plus rv" style={{transitionDelay:".06s"}}>
               <span className="pbadge">Most popular</span>
               <div className="plan">Plus</div>
-              <div className="price">$4.99<span> / month</span></div>
+              <div className="price">$7.99<span> / month</span></div>
+              <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>2 months free</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
                 {["Everything in Free","AI nameplate, receipt & policy scan","Smart Fill from model number","Home health score & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $4.99/mo</button>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $7.99/mo</button>
             </div>
             <div className="pcard prem rv" style={{transitionDelay:".12s"}}>
               <div className="plan">Pro</div>
-              <div className="price">$9.99<span> / month</span></div>
+              <div className="price">$14.99<span> / month</span></div>
+              <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $119.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>2 months free</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
                 {["Everything in Plus","Up to 3 properties","Full home document vault","Shared household access — invite spouse/partner","Larger file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
-              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $9.99/mo</button>
+              <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $14.99/mo</button>
             </div>
           </div>
         </div>
@@ -3010,10 +3012,11 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
 
   const TIERS = [
     { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border },
-    { key:"plus", label:"Plus", price:"$4.99", period:"/month", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border },
-    { key:"pro",  label:"Pro",  price:"$9.99", period:"/month", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border },
+    { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/month", periodAnnual:"/year", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border },
+    { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/month", periodAnnual:"/year", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border },
   ];
   const tierOrder = { free:0, plus:1, pro:2 };
+  const [billingAnnual, setBillingAnnual] = useState(false);
 
   // Plan changes are disabled until Stripe billing is fully wired up. Writing directly
   // to profiles.plan here would desync the database from any real subscription once
@@ -3073,13 +3076,21 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
             {plan !== "free" && (
               <div style={{textAlign:"right"}}>
                 <div style={{fontSize:".68rem",color:pc.color,opacity:.7}}>Billed monthly</div>
-                <div style={{fontSize:".82rem",fontWeight:700,color:pc.color}}>{TIERS.find(t=>t.key===plan)?.price}/mo</div>
+                <div style={{fontSize:".82rem",fontWeight:700,color:pc.color}}>{billingAnnual ? (TIERS.find(t=>t.key===plan)?.priceAnnual || TIERS.find(t=>t.key===plan)?.price + "/mo") : TIERS.find(t=>t.key===plan)?.price+"/mo"}</div>
               </div>
             )}
           </div>
 
           {/* Plan switcher */}
-          <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#A8A09A",marginBottom:".6rem"}}>Switch plan</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".6rem"}}>
+            <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#A8A09A"}}>Switch plan</div>
+            <div style={{display:"inline-flex",alignItems:"center",background:"var(--cream2)",borderRadius:16,padding:2,gap:2}}>
+              <button onClick={()=>setBillingAnnual(false)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:!billingAnnual?"var(--white)":"transparent",color:!billingAnnual?"var(--dark)":"var(--mid)",fontWeight:!billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none"}}>Monthly</button>
+              <button onClick={()=>setBillingAnnual(true)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:billingAnnual?"var(--white)":"transparent",color:billingAnnual?"var(--dark)":"var(--mid)",fontWeight:billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:4}}>
+                Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 free</span>
+              </button>
+            </div>
+          </div>
           <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginBottom:"1rem"}}>
             {TIERS.map(t => {
               const isCurrent = t.key === plan;
@@ -3088,7 +3099,10 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                 <div key={t.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".75rem .9rem",borderRadius:10,border:`1.5px solid ${isCurrent?t.border:"var(--stone)"}`,background:isCurrent?t.bg:"var(--white)"}}>
                   <div>
                     <div style={{fontSize:".88rem",fontWeight:700,color:isCurrent?t.color:"var(--dark)"}}>{t.label}{isCurrent && <span style={{fontSize:".68rem",fontWeight:700,marginLeft:6,color:t.color}}>· Current</span>}</div>
-                    <div style={{fontSize:".75rem",color:"#A8A09A"}}>{t.price} {t.period}</div>
+                    <div style={{fontSize:".75rem",color:"#A8A09A"}}>
+                      {billingAnnual && t.priceAnnual ? t.priceAnnual + " " + t.periodAnnual : t.price + " " + t.period}
+                      {billingAnnual && t.priceAnnual && <span style={{marginLeft:6,fontSize:".65rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 months free</span>}
+                    </div>
                   </div>
                   {!isCurrent && (
                     <button
@@ -15889,12 +15903,12 @@ export default function App() {
               <div style={{padding:"1.1rem 1.25rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
                 {[
                   {
-                    plan:"Plus", price:"$4.99", period:"/month", color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7",
+                    plan:"Plus", price:"$7.99", period:"/month", color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7",
                     pitch:"Automation and intelligence for the serious homeowner.",
                     features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","AI receipt, nameplate & policy scanning","Smart Fill model lookup","Daily task & warranty reminders","Expanded document vault"],
                   },
                   {
-                    plan:"Pro", price:"$9.99", period:"/month", color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0",
+                    plan:"Pro", price:"$14.99", period:"/month", color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0",
                     pitch:"Multiple properties, shared access, and the complete platform.",
                     features:["Everything in Plus","Up to 3 properties","Full home document vault","Shared home access — invite spouse/partner","Priority support"],
                   },
@@ -16009,8 +16023,10 @@ function AffiliatesPage() {
   });
 
   const tiers = [
-    { plan:"Plus", price:"$4.99/mo", commission:"30%", monthly:"$1.50/mo", annual:"~$18 per referral" },
-    { plan:"Pro",  price:"$9.99/mo", commission:"30%", monthly:"$3.00/mo", annual:"~$36 per referral" },
+    { plan:"Plus monthly", price:"$7.99/mo", commission:"30%", monthly:"$2.40/mo", annual:"~$29 total" },
+    { plan:"Plus annual", price:"$63.99/yr", commission:"40%", monthly:"~$25.60 once", annual:"One-time payout" },
+    { plan:"Pro monthly", price:"$14.99/mo", commission:"30%", monthly:"$4.50/mo", annual:"~$54 total" },
+    { plan:"Pro annual", price:"$119.99/yr", commission:"40%", monthly:"~$48 once", annual:"One-time payout" },
     { plan:"State Guide", price:"$14.99", commission:"25%", monthly:"~$3.75/sale", annual:"One-time" },
     { plan:"County Pack", price:"$29.99", commission:"25%", monthly:"~$7.50/sale", annual:"One-time" },
     { plan:"Bundle", price:"$37.99", commission:"25%", monthly:"~$9.50/sale", annual:"One-time" },
@@ -16169,7 +16185,7 @@ function AffiliateAgreementPage() {
     {t:"1. Parties",b:"This Affiliate Agreement (the &quot;Agreement&quot;) is between Steadwell, LLC, a Florida limited liability company (&quot;Steadwell&quot;, &quot;we&quot;, &quot;us&quot;) and the individual or entity that completes the affiliate application (&quot;Affiliate&quot;, &quot;you&quot;). By submitting an application and participating in the Steadwell Affiliate Program (the &quot;Program&quot;), you agree to be bound by this Agreement."},
     {t:"2. Program Overview",b:"The Program allows approved Affiliates to earn commissions by referring new paying customers to Steadwell's subscription plans and digital product store. Referrals are tracked via a unique affiliate link assigned to each Affiliate upon approval."},
     {t:"3. Application and Approval",b:"Participation in the Program requires prior written approval from Steadwell. We review applications within 3 business days. We reserve the right to approve or reject any application at our sole discretion, without obligation to provide a reason. Approval may be revoked at any time for violation of this Agreement or for any other reason."},
-    {t:"4. Commission Structure",b:"Approved Affiliates earn the following commissions on net revenue (after Stripe processing fees): Plus Plan ($4.99/month) — 30% recurring for up to 12 months per referred subscriber. Pro Plan ($9.99/month) — 30% recurring for up to 12 months per referred subscriber. PDF Guides — 25% of the net sale price per completed purchase. Commissions are calculated on confirmed, non-refunded revenue only. If a referred subscriber cancels or requests a refund, any associated unpaid commission is forfeited."},
+    {t:"4. Commission Structure",b:"Approved Affiliates earn the following commissions on net revenue (after Stripe processing fees): Plus Plan ($7.99/month) — 30% recurring for up to 12 months per referred subscriber. Plus Plan annual ($63.99/year) — 40% one-time commission (~$25.60) paid the following month. Pro Plan ($14.99/month) — 30% recurring for up to 12 months per referred subscriber. Pro Plan annual ($119.99/year) — 40% one-time commission (~$48.00) paid the following month. PDF Guides — 25% of the net sale price per completed purchase. Commissions are calculated on confirmed, non-refunded revenue only. If a referred subscriber cancels or requests a refund, any associated unpaid commission is forfeited."},
     {t:"5. Cookie Window and Attribution",b:"A 30-day tracking cookie is set when a user clicks your affiliate link. If that user completes a paid subscription or purchase within 30 days of clicking your link, you receive credit for the referral. Last-click attribution applies — if a user clicks multiple affiliate links, the most recent click receives the commission."},
     {t:"6. Payouts",b:"Commissions are paid monthly via PayPal or bank transfer. Payments are issued within 15 days of the end of each calendar month for commissions earned in the prior month. A minimum balance of $50.00 USD is required before a payout is issued. Balances below $50.00 roll over to the following month. You are responsible for any taxes, duties, or fees associated with commission income. Steadwell will issue a 1099-NEC to US-based affiliates whose annual earnings exceed $600."},
     {t:"7. Prohibited Conduct",b:"You may not: (a) bid on Steadwell-branded keywords (including 'Steadwell', 'trysteadwell', or any variation) in paid search advertising without prior written approval; (b) create websites, social accounts, or email addresses that impersonate Steadwell or could be confused with official Steadwell accounts; (c) use spam, unsolicited email, or deceptive marketing practices to promote Steadwell; (d) make false or misleading claims about Steadwell's features, pricing, or results; (e) offer cash rebates, unauthorized discounts, or incentives to referred users; (f) self-refer — you may not use your own affiliate link to create a paid Steadwell account for yourself; (g) promote Steadwell through content that violates any applicable law or our Terms of Service."},
@@ -17605,7 +17621,7 @@ function TermsPage() {
     {t:"2. What Steadwell Does",b:"Steadwell is a web-based platform that helps homeowners track home systems, maintenance tasks, warranties, service records, expenses, documents, insurance policies, contractors, and safety recall alerts. It is a personal organization tool — not a licensed real estate service, financial advisory, legal counsel, home inspection service, or insurance provider. Nothing in the Service constitutes professional advice of any kind."},
     {t:"3. Your Account",b:"You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. Use a strong, unique password. Contact us immediately at hello@trysteadwell.app if you suspect unauthorized access. One account per person. You may not share your account with others unless you use the Shared Household Access feature on an eligible plan."},
     {t:"4. Acceptable Use",b:"You agree to use the Service only for lawful purposes and in a manner that does not infringe the rights of others. You may not: (a) upload content you do not have the right to share; (b) attempt to gain unauthorized access to any part of the Service or its infrastructure; (c) reverse-engineer, decompile, or disassemble the Service; (d) use automated bots, scrapers, or crawlers; (e) impersonate another person or misrepresent your identity or property ownership; (f) transmit malware or code designed to damage systems; or (g) use the Service in any way that could harm Steadwell or its users. We reserve the right to suspend or terminate accounts that violate these terms at our sole discretion."},
-    {t:"5. Plans and Pricing",b:"Free Plan — no cost, one property: home setup wizard, unlimited asset and warranty tracking, 30-day and 7-day expiry alerts, safety recall alerts, maintenance scheduling, basic recurring tasks, insurance and claim tracking, contractor rolodex, expense tracking, email inbox capture, essential document storage, and email reminders. Plus Plan — $4.99/month, one property: everything in Free, plus AI receipt and nameplate scanning, Smart Fill model lookup, full recurring task intervals, home health score, 5-year cost forecast, expanded document vault, and project ROI calculator. Pro Plan — $9.99/month, up to 3 properties: everything in Plus, plus multi-property support, shared household access, and a full home document vault across all properties. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from Account Settings; access continues through the end of the current billing period. No prorated refunds for partial months. If you believe you were charged in error, contact hello@trysteadwell.app within 48 hours of the charge and we will review it. We do not offer refunds based on non-use or change of mind. Payments processed by Stripe — we do not store your card information."},
+    {t:"5. Plans and Pricing",b:"Free Plan — no cost, one property: home setup wizard, unlimited asset and warranty tracking, 30-day and 7-day expiry alerts, safety recall alerts, maintenance scheduling, basic recurring tasks, insurance and claim tracking, contractor rolodex, expense tracking, email inbox capture, essential document storage, and email reminders. Plus Plan — $7.99/month or $63.99/year, one property: everything in Free, plus AI receipt and nameplate scanning, Smart Fill model lookup, full recurring task intervals, home health score, 5-year cost forecast, expanded document vault, and project ROI calculator. Pro Plan — $14.99/month or $119.99/year, up to 3 properties: everything in Plus, plus multi-property support, shared household access, and a full home document vault across all properties. Paid plans are billed monthly and auto-renew until cancelled. Cancel anytime from Account Settings; access continues through the end of the current billing period. No prorated refunds for partial months. If you believe you were charged in error, contact hello@trysteadwell.app within 48 hours of the charge and we will review it. We do not offer refunds based on non-use or change of mind. Payments processed by Stripe — we do not store your card information."},
     {t:"6. Digital Products — Homebuyer Guides",b:"Steadwell sells downloadable PDF guides (\"Digital Products\") through our Guides store at trysteadwell.app/guides. By purchasing a Digital Product, you receive a personal, non-exclusive, non-transferable license to download, save, and use the guide for your own personal, non-commercial purposes. All sales of Digital Products are final and non-refundable. Because digital files can be downloaded and retained immediately upon purchase, we do not offer refunds under any circumstances except where the file is technically defective (corrupted, blank, or unreadable) and we are unable to deliver a working replacement — in which case contact hello@trysteadwell.app within 48 hours of purchase with a description of the issue. Refunds are not available on the basis of content, format preference, or change of mind. By completing your purchase you acknowledge and accept this no-refund policy. You may not reproduce, redistribute, resell, sublicense, or share Digital Products with others. Digital Products are delivered via a secure, time-limited download link sent to your email address after purchase. Links expire after 24 hours; contact us if you need a new link. Steadwell guides are researched and written with the assistance of AI, including Claude by Anthropic, and reviewed for accuracy prior to publication. They are provided for general informational purposes only and do not constitute legal, financial, real estate, or professional advice. AI-generated content may contain errors, omissions, or outdated information. Local laws, programs, incentives, and market conditions change frequently — always verify information with licensed real estate professionals, attorneys, lenders, and local housing authorities in your area before making any home purchase or financial decision. Steadwell, LLC makes no representations or warranties as to the accuracy, completeness, or currentness of any guide."},
     {t:"7. Your Content",b:"You own everything you upload, create, or store in Steadwell — your documents, photos, records, and data are yours. We store your content solely to provide the Service. We do not sell, license, or share your content with third parties except as described in our Privacy Policy. You may export or permanently delete your data at any time from Account Settings. When you delete your account, we begin permanent deletion of your content within 30 days."},
     {t:"8. AI-Powered Features",b:"Steadwell uses Claude, an AI model developed by Anthropic, to power document scanning, email receipt parsing, and appliance nameplate recognition. AI-extracted data is provided for your convenience and review — it may be incomplete or incorrect. You are responsible for reviewing and confirming all AI-extracted data before saving it to your records. We make no warranty about the accuracy of AI outputs."},
@@ -17633,7 +17649,7 @@ function TermsPage() {
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Terms of Service</h1>
         <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last updated: July 9, 2026</p>
-        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell, LLC is a home management platform for US homeowners 18+ — available nationwide, incorporated in Florida. You own your data and can delete it anytime. AI features extract data for your review — verify before saving. Property values are estimates, not appraisals. Free plan is genuinely free. Plus is $4.99/month, Pro is $9.99/month. Florida law and individual arbitration govern disputes.</div>
+        <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> Steadwell, LLC is a home management platform for US homeowners 18+ — available nationwide, incorporated in Florida. You own your data and can delete it anytime. AI features extract data for your review — verify before saving. Property values are estimates, not appraisals. Free plan is genuinely free. Plus is $7.99/month or $63.99/year. Pro is $14.99/month or $119.99/year. Florida law and individual arbitration govern disputes.</div>
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Questions About These Terms?</h2>
@@ -17883,7 +17899,7 @@ const BLOG_POSTS_FALLBACK = [
       <p>Both apps offer maintenance reminders. HomeZada's system is more comprehensive on paper — it covers a huge checklist of home systems. Steadwell's reminders are asset-specific and climate-aware: if you're in Florida, you won't get reminders about winterizing pipes. The reminders adapt to your home type, age, and region.</p>
 
       <h2>Pricing</h2>
-      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($4.99/month) adds AI scanning, smart fill, and an expanded document vault. Pro ($9.99/month) adds shared access for families or property managers and multi-property support.</p>
+      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($7.99/month or $63.99/year) adds AI scanning, smart fill, and an expanded document vault. Pro ($14.99/month or $119.99/year) adds shared access for families or property managers and multi-property support.</p>
 
       <h2>Who should use each</h2>
       <p>HomeZada is a better fit for homeowners who want a comprehensive home inventory system — tracking the value of every item in the house for insurance purposes, for example. Steadwell is the better choice if your primary goal is keeping your home well-maintained and having an accurate record of every appliance and system. If you've tried HomeZada and found it overwhelming to set up, Steadwell is worth a look.</p>
