@@ -16589,7 +16589,7 @@ function HomeProjectsPage() {
             <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto 28px",lineHeight:1.6}}>Pick a project type below and see the typical cost range and resale value return — then sign up to run the full calculator with your own numbers.</p>
           </div>
           {(()=>{
-            const [sel,setSel]=React.useState(null);
+            const [sel,setSel]=useState(null);
             const projects=[
               {key:"kitchen",label:"Kitchen remodel",scope:"Mid-range update",roi:76,contractor:"$25k – $50k",diy:"$12k – $25k"},
               {key:"bathroom",label:"Bathroom remodel",scope:"Full renovation",roi:66,contractor:"$20k – $40k",diy:"$9k – $18k"},
