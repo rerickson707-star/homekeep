@@ -2242,7 +2242,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             <div className="pcard prem rv" style={{transitionDelay:".12s"}}>
               <div className="plan">Pro</div>
               <div className="price">$14.99<span> / month</span></div>
-              <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $119.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>2 months free</span></div>
+              <div style={{fontSize:".75rem",color:"#8A6A5A",marginBottom:".5rem"}}>or $119.99/year <span style={{background:"rgba(193,97,64,.12)",color:"#C16140",padding:"1px 7px",borderRadius:10,fontWeight:700}}>2 months free</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
                 {["Everything in Plus","Up to 3 properties","Full home document vault","Shared household access — invite spouse/partner","Larger file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
