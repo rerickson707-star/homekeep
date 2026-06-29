@@ -15999,7 +15999,7 @@ function UnsubscribePage() {
 }
 
 
-// ─── AFFILIATES PAGE ──────────────────────────────────────────────────────────
+// ─── AFFILIATES PAGE v2 ────────────────────────────────────────────────────────
 function AffiliatesPage() {
   useSEO({
     title:"Steadwell Affiliate Program — Earn Recurring Commissions",
@@ -16163,7 +16163,7 @@ function AffiliateAgreementPage() {
   };
 
   const sections = [
-    {t:"1. Parties",b:"This Affiliate Agreement (the "Agreement") is between Steadwell, LLC, a Florida limited liability company ("Steadwell", "we", "us") and the individual or entity that completes the affiliate application ("Affiliate", "you"). By submitting an application and participating in the Steadwell Affiliate Program (the "Program"), you agree to be bound by this Agreement."},
+    {t:"1. Parties",b:"This Affiliate Agreement (the &quot;Agreement&quot;) is between Steadwell, LLC, a Florida limited liability company (&quot;Steadwell&quot;, &quot;we&quot;, &quot;us&quot;) and the individual or entity that completes the affiliate application (&quot;Affiliate&quot;, &quot;you&quot;). By submitting an application and participating in the Steadwell Affiliate Program (the &quot;Program&quot;), you agree to be bound by this Agreement."},
     {t:"2. Program Overview",b:"The Program allows approved Affiliates to earn commissions by referring new paying customers to Steadwell's subscription plans and digital product store. Referrals are tracked via a unique affiliate link assigned to each Affiliate upon approval."},
     {t:"3. Application and Approval",b:"Participation in the Program requires prior written approval from Steadwell. We review applications within 3 business days. We reserve the right to approve or reject any application at our sole discretion, without obligation to provide a reason. Approval may be revoked at any time for violation of this Agreement or for any other reason."},
     {t:"4. Commission Structure",b:"Approved Affiliates earn the following commissions on net revenue (after Stripe processing fees): Plus Plan ($4.99/month) — 30% recurring for up to 12 months per referred subscriber. Pro Plan ($9.99/month) — 30% recurring for up to 12 months per referred subscriber. PDF Guides — 25% of the net sale price per completed purchase. Commissions are calculated on confirmed, non-refunded revenue only. If a referred subscriber cancels or requests a refund, any associated unpaid commission is forfeited."},
@@ -16173,7 +16173,7 @@ function AffiliateAgreementPage() {
     {t:"8. Content and Brand Guidelines",b:"You may use Steadwell's name, logo, and approved marketing materials solely for the purpose of promoting the Program in accordance with this Agreement. We reserve the right to request removal of any content that misrepresents the product, uses outdated materials, or violates our brand guidelines. Steadwell-provided creative assets are provided for affiliate use only and may not be sublicensed or resold."},
     {t:"9. Relationship of Parties",b:"You are an independent contractor, not an employee, partner, or agent of Steadwell. You have no authority to make commitments on behalf of Steadwell or to bind Steadwell in any way. You are responsible for your own taxes, insurance, and business expenses."},
     {t:"10. Modification and Termination",b:"Steadwell may modify the commission structure, cookie window, or other Program terms at any time with 30 days written notice to active affiliates. Changes to prohibited conduct provisions may take effect immediately. Either party may terminate this Agreement at any time with written notice. Upon termination, unpaid commissions for confirmed, non-refunded referrals made prior to the termination date will be paid at the next regular payout date."},
-    {t:"11. Disclaimers and Limitation of Liability",b:"THE PROGRAM IS PROVIDED 'AS IS.' STEADWELL MAKES NO WARRANTIES ABOUT COMMISSION EARNINGS, CONVERSION RATES, OR THE CONTINUED AVAILABILITY OF THE PROGRAM. TO THE FULLEST EXTENT PERMITTED BY LAW, STEADWELL'S LIABILITY TO ANY AFFILIATE SHALL NOT EXCEED THE TOTAL COMMISSIONS PAID TO THAT AFFILIATE IN THE 3 MONTHS PRECEDING THE CLAIM."},
+    {t:"11. Disclaimers and Limitation of Liability",b:"THE PROGRAM IS PROVIDED AS IS. STEADWELL MAKES NO WARRANTIES ABOUT COMMISSION EARNINGS, CONVERSION RATES, OR THE CONTINUED AVAILABILITY OF THE PROGRAM. TO THE FULLEST EXTENT PERMITTED BY LAW, STEADWELL'S LIABILITY TO ANY AFFILIATE SHALL NOT EXCEED THE TOTAL COMMISSIONS PAID TO THAT AFFILIATE IN THE 3 MONTHS PRECEDING THE CLAIM."},
     {t:"12. Governing Law",b:"This Agreement is governed by the laws of the State of Florida. Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Pinellas County, Florida."},
     {t:"13. Contact",b:"Affiliate program questions: affiliates@trysteadwell.app · Steadwell, LLC · St. Petersburg, Florida"},
   ];
