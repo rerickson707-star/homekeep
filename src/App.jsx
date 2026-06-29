@@ -3025,7 +3025,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const handlePlanChange = (targetKey) => {
     const isUpgrade = tierOrder[targetKey] > tierOrder[plan];
     if (isUpgrade && onUpgradeFlow) { onUpgradeFlow(); return; }
-    toast("Plan changes open soon — payments aren't live yet", "error");
+    openWaitlist(targetKey === "plus" ? "Plus" : "Pro");
   };
 
   const handleDeleteAccount = async () => {
@@ -4795,7 +4795,7 @@ function ProUpgradeModal({ onClose }) {
           ))}
         </div>
         <button className="pro-modal-cta" onClick={() => {
-          alert("Pro subscriptions are coming soon! We'll notify you when they launch.");
+          openWaitlist("Pro");
           onClose();
         }}>
           Join the Pro waitlist →
@@ -15321,6 +15321,33 @@ export default function App() {
   const [pendingSelectedAsset, setPendingSelectedAsset] = useState(null);
   const [showWarrantyModule, setShowWarrantyModule] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [waitlistPlan, setWaitlistPlan] = useState("Plus");
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistSent, setWaitlistSent] = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+
+  const submitWaitlist = async () => {
+    if (!waitlistEmail || !waitlistEmail.includes("@")) return;
+    setWaitlistLoading(true);
+    try {
+      await supabase.from("waitlist").insert({
+        email: waitlistEmail,
+        plan: waitlistPlan,
+        source: "upgrade_modal",
+        created_at: new Date().toISOString(),
+      });
+    } catch (_) {}
+    setWaitlistSent(true);
+    setWaitlistLoading(false);
+  };
+
+  const openWaitlist = (plan) => {
+    setWaitlistPlan(plan);
+    setWaitlistSent(false);
+    setWaitlistEmail("");
+    setShowWaitlist(true);
+  };
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
   const [showContractors, setShowContractors] = useState(false);
@@ -15933,7 +15960,7 @@ export default function App() {
                     </div>
                     <div style={{padding:"0 1rem .9rem"}}>
                       <button style={{width:"100%",padding:".7rem",background:t.color,border:"none",borderRadius:"10px",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:700,cursor:"pointer"}}
-                        onClick={()=>{alert(`Stripe coming soon — ${t.plan} at ${t.price}/mo`);setShowUpgrade(false);}}>
+                        onClick={()=>{openWaitlist(t.plan);setShowUpgrade(false);}}>
                         Get {t.plan} →
                       </button>
                     </div>
@@ -15942,6 +15969,60 @@ export default function App() {
                 <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
                   Cancel anytime · No long-term commitment · Secure payments via Stripe
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── WAITLIST MODAL ── */}
+        {showWaitlist && (
+          <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.8)",zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",padding:"1.25rem",backdropFilter:"blur(8px)"}}
+            onClick={e=>e.target===e.currentTarget&&setShowWaitlist(false)}>
+            <div style={{background:"var(--white)",borderRadius:20,width:"100%",maxWidth:420,boxShadow:"0 24px 80px rgba(0,0,0,.35)",overflow:"hidden"}}>
+              <div style={{background:"var(--pine)",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
+                <button onClick={()=>setShowWaitlist(false)} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>✕</button>
+                <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".14em",textTransform:"uppercase",color:"#D2876A",marginBottom:8}}>Coming soon</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:400,color:"#F4EDDF",lineHeight:1.2,marginBottom:".4rem"}}>{waitlistPlan} is almost here.</div>
+                <div style={{fontSize:".82rem",color:"rgba(244,237,223,.6)",lineHeight:1.5}}>We&#39;re finishing up payments. Drop your email and you&#39;ll be the first to know when {waitlistPlan} goes live.</div>
+              </div>
+              <div style={{padding:"1.5rem"}}>
+                {!waitlistSent ? (
+                  <>
+                    <div style={{marginBottom:"1rem"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,padding:".75rem 1rem",background:"var(--cream)",borderRadius:10,border:"1.5px solid var(--stone)"}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,fontSize:".9rem",color:"var(--pine)"}}>{waitlistPlan}</div>
+                          <div style={{fontSize:".75rem",color:"var(--mid)"}}>{waitlistPlan==="Plus"?"$7.99/mo or $63.99/yr":"$14.99/mo or $119.99/yr"}</div>
+                        </div>
+                        <div style={{fontSize:".7rem",background:"rgba(35,74,61,.08)",color:"var(--pine)",fontWeight:700,padding:"3px 10px",borderRadius:20}}>2 months free annually</div>
+                      </div>
+                    </div>
+                    <div style={{marginBottom:"1rem"}}>
+                      <label style={{display:"block",fontSize:".78rem",fontWeight:600,color:"var(--dark)",marginBottom:6}}>Your email</label>
+                      <input
+                        type="email"
+                        value={waitlistEmail}
+                        onChange={e=>setWaitlistEmail(e.target.value)}
+                        onKeyDown={e=>e.key==="Enter"&&submitWaitlist()}
+                        placeholder="you@example.com"
+                        style={{width:"100%",padding:".75rem 1rem",borderRadius:10,border:"1.5px solid var(--stone)",fontFamily:"inherit",fontSize:".9rem",outline:"none",boxSizing:"border-box"}}
+                        autoFocus
+                      />
+                    </div>
+                    <button onClick={submitWaitlist} disabled={waitlistLoading||!waitlistEmail.includes("@")}
+                      style={{width:"100%",padding:".85rem",background:"var(--rust)",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:700,cursor:"pointer",opacity:waitlistLoading||!waitlistEmail.includes("@")?.6:1,transition:"opacity .15s"}}>
+                      {waitlistLoading?"Saving…":"Notify me when it&#39;s live →"}
+                    </button>
+                    <div style={{fontSize:".7rem",color:"#A8A09A",textAlign:"center",marginTop:".75rem"}}>No spam. One email when {waitlistPlan} launches.</div>
+                  </>
+                ) : (
+                  <div style={{textAlign:"center",padding:"1rem 0"}}>
+                    <div style={{fontSize:"2rem",marginBottom:12}}>🎉</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:400,color:"var(--pine)",marginBottom:8}}>You&#39;re on the list!</div>
+                    <div style={{fontSize:".85rem",color:"var(--mid)",lineHeight:1.6,marginBottom:"1.25rem"}}>We&#39;ll email you the moment {waitlistPlan} is available — you&#39;ll be first.</div>
+                    <button onClick={()=>setShowWaitlist(false)} style={{padding:".7rem 1.75rem",background:"var(--pine)",border:"none",borderRadius:10,color:"#F4EDDF",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer"}}>Got it →</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
