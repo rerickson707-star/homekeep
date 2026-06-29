@@ -17373,18 +17373,19 @@ function GuidesPage() {
       key:      "bundle",
       label:    "Complete Bundle",
       price:    "$37.99",
-      note:     "Best value · Save $7 · Instant PDF downloads",
+      wasPrice: "$44.98",
+      note:     "Save $7 vs buying separately · Instant PDF downloads",
       featured: true,
-      badgeText:"Most Popular",
+      badgeText:"Best Value",
       badgeBg:  "#C16140",
       features: [
         "Everything in the State Guide",
-        `All ${selectedState} counties covered in detail`,
-        "County-level median prices & market conditions",
-        "Local assistance programs by county",
-        "School district & flood zone data per county",
-        "Top neighborhoods & what to watch for",
-        "County-specific inspection tips & common issues",
+        `All ${selectedState} counties — special tax districts & CDD fees`,
+        "City-by-city breakdown: income, millage rates & key notes",
+        "Opportunity Zones & Community Redevelopment Areas",
+        "Housing stock age analysis with insurance implications",
+        "Local down payment programs by county",
+        "Environmental restrictions & flood zone guidance by county",
       ],
       includes: `${selectedState} State Guide + County Intelligence Pack`,
     },
@@ -17432,7 +17433,7 @@ function GuidesPage() {
           <h1 style={S.h1}>Buy your first home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>with confidence.</em></h1>
           <p style={S.heroSub}>State-specific guides covering every program, law, inspection, and trap first-time buyers face — written clearly, without the jargon.</p>
           <div style={S.pillRow}>
-            {["All 50 States","Instant Download","2026 Edition","One-Time Purchase"].map(p=>(
+            {["All 50 States","Instant Download","2026 Edition","One-Time Purchase","No Subscription"].map(p=>(
               <span key={p} style={S.pill}>{p}</span>
             ))}
           </div>
@@ -17481,7 +17482,10 @@ function GuidesPage() {
                         </div>
                       )}
                       <div style={isFeat ? S.tierFeatured : S.tier}>{t.label}</div>
-                      <div style={isFeat ? S.priceFeatured : S.price}>{t.price}</div>
+                      <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                        <div style={isFeat ? S.priceFeatured : S.price}>{t.price}</div>
+                        {t.wasPrice && <div style={{fontSize:".9rem",color:"rgba(244,237,223,.4)",textDecoration:"line-through"}}>{t.wasPrice}</div>}
+                      </div>
                       <div style={isFeat ? S.priceNoteFeatured : S.priceNote}>{t.note}</div>
                     </div>
                     <div style={isFeat ? S.dividerFeatured : S.divider}/>
@@ -17508,6 +17512,37 @@ function GuidesPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── APP UPSELL ── */}
+        <section style={{background:"#234A3D",padding:"48px 24px"}}>
+          <div style={{maxWidth:960,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,420px),1fr))",gap:"2.5rem",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#D2876A",marginBottom:12}}>After you close</div>
+              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#F4EDDF",lineHeight:1.15,letterSpacing:"-.02em",marginBottom:12}}>Then track your home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>for free.</em></h2>
+              <p style={{fontSize:"1rem",color:"rgba(244,237,223,.6)",lineHeight:1.7,marginBottom:24}}>Once you close, Steadwell keeps your home running. Warranties, maintenance, contractors, documents, and costs — all in one place. Free to start, no credit card required.</p>
+              <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:700,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Try Steadwell free →</a>
+                <a href="/#pricing" style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:600,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>See Plus & Pro plans</a>
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {[
+                {icon:"🔖",title:"Warranty tracking",desc:"Scan your first receipt and we track the warranty automatically"},
+                {icon:"🔔",title:"Safety recall alerts",desc:"Every appliance checked against the CPSC recall database"},
+                {icon:"📋",title:"Maintenance schedules",desc:"Reminders 3 days before anything is due"},
+                {icon:"💸",title:"5-year cost forecast",desc:"Know what your home will cost before it surprises you"},
+              ].map((f,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 16px",background:"rgba(244,237,223,.05)",borderRadius:10,border:"1px solid rgba(244,237,223,.08)"}}>
+                  <span style={{fontSize:"1.1rem",flexShrink:0,marginTop:2}}>{f.icon}</span>
+                  <div>
+                    <div style={{fontSize:".88rem",fontWeight:700,color:"#F4EDDF",marginBottom:2}}>{f.title}</div>
+                    <div style={{fontSize:".78rem",color:"rgba(244,237,223,.45)",lineHeight:1.5}}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
