@@ -15227,6 +15227,15 @@ if ("serviceWorker" in navigator) {
 }
 
 export default function App() {
+  // Rewardful affiliate tracking — capture ?via= param and store in cookie
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const via = params.get("via");
+    if (via) {
+      document.cookie = `rw_via=${encodeURIComponent(via)};max-age=${60*60*24*30};path=/;SameSite=Lax`;
+    }
+  }, []);
+
   // URL-based routing for legal pages — check before any hooks
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
   if (_path === "/terms" || _path === "/terms.html") return <TermsPage />;
@@ -15245,6 +15254,8 @@ export default function App() {
   if (_path === "/home-expense-tracker" || _path === "/home-expense-tracker/") return <HomeExpenseTrackerPage />;
   if (_path === "/home-projects" || _path === "/home-projects/") return <HomeProjectsPage />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
+  if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
+  if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("landing"); // landing | login | signup
@@ -15987,6 +15998,211 @@ function UnsubscribePage() {
   );
 }
 
+
+// ─── AFFILIATES PAGE ──────────────────────────────────────────────────────────
+function AffiliatesPage() {
+  useSEO({
+    title:"Steadwell Affiliate Program — Earn Recurring Commissions",
+    description:"Partner with Steadwell and earn 30% recurring commissions for 12 months on every paid plan you refer. Built for home improvement creators, real estate agents, and personal finance writers.",
+    canonical:"https://www.trysteadwell.app/affiliates",
+  });
+
+  const tiers = [
+    { plan:"Plus", price:"$4.99/mo", commission:"30%", monthly:"$1.50/mo", annual:"~$18 per referral" },
+    { plan:"Pro",  price:"$9.99/mo", commission:"30%", monthly:"$3.00/mo", annual:"~$36 per referral" },
+    { plan:"PDF Guides", price:"Varies", commission:"25%", monthly:"Per sale", annual:"One-time per guide" },
+  ];
+
+  const faqs = [
+    ["How does the 30-day cookie work?","When someone clicks your affiliate link, a 30-day cookie is set in their browser. If they sign up for a paid plan within 30 days, you receive credit for the referral — even if they don't convert immediately."],
+    ["When do I get paid?","Commissions are paid monthly via PayPal or bank transfer once your balance reaches the $50 minimum payout threshold. Payments are issued within 15 days of the end of each month."],
+    ["How long do I earn commissions?","You earn 30% of each referred subscriber's monthly payment for 12 months from their signup date, as long as they remain a paying subscriber."],
+    ["What if someone upgrades from Plus to Pro?","Your commission adjusts to reflect the new plan amount from the date of the upgrade forward."],
+    ["Can I promote Steadwell on paid ads?","You may not bid on Steadwell-branded keywords (e.g. 'Steadwell', 'trysteadwell') in paid search. All other paid promotion is permitted with prior written approval."],
+    ["How do I track my referrals?","Once approved, you'll receive access to an affiliate dashboard showing clicks, signups, active subscribers, and commission earnings in real time."],
+    ["Is there a cost to join?","No — the Steadwell affiliate program is free to join. We review applications within 3 business days."],
+    ["What content performs best?","Homeowner audiences respond well to warranty tracking and the project ROI calculator. Content that shows a specific problem (expired warranty, missed recall) and then the solution tends to convert best."],
+  ];
+
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/recall-alerts",label:"Recall Alerts"},{href:"/guides",label:"Buyer Guides"}]}/>
+
+      {/* Hero */}
+      <section style={{background:"#234A3D",padding:"clamp(56px,8vw,80px) 24px",textAlign:"center"}}>
+        <div style={{maxWidth:680,margin:"0 auto"}}>
+          <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:16}}>Affiliate Program</div>
+          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.2rem,5vw,3.2rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 20px"}}>
+            Earn 30% recurring commissions<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>for referring homeowners.</em>
+          </h1>
+          <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.65)",maxWidth:"38rem",margin:"0 auto 36px",lineHeight:1.6}}>Every homeowner is a potential Steadwell user. Share your unique link and earn 30% of every paid subscription for 12 months — automatically.</p>
+          <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
+            <a href="https://steadwell.rewardful.com/signup" target="_blank" rel="noopener noreferrer"
+              style={{background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+              Apply to join →
+            </a>
+            <a href="/affiliate-agreement"
+              style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:600,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+              Read the agreement
+            </a>
+          </div>
+          <div style={{display:"flex",gap:32,justifyContent:"center",flexWrap:"wrap",marginTop:40}}>
+            {[{num:"30%",lbl:"Commission rate"},{num:"12 mo",lbl:"Recurring period"},{num:"30 days",lbl:"Cookie window"},{num:"$50",lbl:"Min. payout"}].map((s,i)=>(
+              <div key={i} style={{textAlign:"center"}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.8rem",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{s.num}</div>
+                <div style={{fontSize:".72rem",color:"rgba(244,237,223,.45)",marginTop:4,textTransform:"uppercase",letterSpacing:".08em"}}>{s.lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <main id="main" tabIndex={-1}>
+        {/* Commission table */}
+        <LPSection>
+          <LPSectionHead h2="What you earn" sub="Commissions are calculated on net revenue after Stripe fees and applied automatically."/>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:480}}>
+              <thead>
+                <tr style={{borderBottom:"2px solid #E6DECF"}}>
+                  {["Plan","Price","Your commission","Per month","Over 12 months"].map((h,i)=>(
+                    <th key={i} style={{padding:"10px 16px",textAlign:i===0?"left":"center",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#A8A09A"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tiers.map((t,i)=>(
+                  <tr key={i} style={{borderBottom:"1px solid #E6DECF",background:i===1?"rgba(35,74,61,.03)":"transparent"}}>
+                    <td style={{padding:"14px 16px",fontWeight:700,color:"#234A3D",fontSize:".95rem"}}>{t.plan}</td>
+                    <td style={{padding:"14px 16px",textAlign:"center",fontSize:".9rem",color:"#5A534B"}}>{t.price}</td>
+                    <td style={{padding:"14px 16px",textAlign:"center",fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"#C16140"}}>{t.commission}</td>
+                    <td style={{padding:"14px 16px",textAlign:"center",fontSize:".9rem",color:"#5A534B"}}>{t.monthly}</td>
+                    <td style={{padding:"14px 16px",textAlign:"center",fontSize:".88rem",fontWeight:600,color:"#234A3D"}}>{t.annual}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:12,lineHeight:1.6}}>Commissions are paid monthly on confirmed, non-refunded subscriptions. PDF guide commissions are paid on completed purchases after the refund window.</p>
+        </LPSection>
+
+        {/* Who it's for */}
+        <LPSection alt>
+          <LPSectionHead h2="Who this program is built for" sub="If your audience includes homeowners, Steadwell converts."/>
+          <LPGrid cols="repeat(auto-fill,minmax(min(100%,200px),1fr))" gap={12}>
+            {[
+              {icon:"📝",title:"Home improvement bloggers",desc:"Your readers are already planning projects and maintenance. The ROI calculator is a natural fit."},
+              {icon:"🏡",title:"Real estate agents",desc:"Every buyer you close is a new homeowner who needs exactly what Steadwell offers."},
+              {icon:"💰",title:"Personal finance writers",desc:"Home costs are one of the biggest financial blind spots. Steadwell gives your audience a concrete tool."},
+              {icon:"🎥",title:"YouTube creators",desc:"How-to and home maintenance channels convert well. Show the product in action."},
+              {icon:"🎓",title:"First-time buyer educators",desc:"New homeowners are the highest-value segment. They need everything Steadwell offers."},
+              {icon:"🏦",title:"Mortgage brokers",desc:"You're already talking to buyers. A Steadwell referral link in your closing packet converts passively."},
+            ].map((c,i)=>(
+              <LPCard key={i}>
+                <div style={{fontSize:"1.4rem",marginBottom:8}}>{c.icon}</div>
+                <div style={{fontWeight:700,fontSize:".9rem",color:"#234A3D",marginBottom:6}}>{c.title}</div>
+                <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.5}}>{c.desc}</div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        {/* How it works */}
+        <LPSection>
+          <LPSectionHead h2="How it works" sub="Apply once. Earn passively."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Apply and get approved",text:"Submit your application with your website or social profile. We review within 3 business days. Approved affiliates receive a unique tracking link and dashboard access."},
+              {num:"02",title:"Share your link",text:"Add it to your content, email list, or social profiles. When someone clicks and signs up for a paid plan within 30 days, the referral is tracked automatically."},
+              {num:"03",title:"Earn every month",text:"You earn 30% of every monthly payment your referrals make, for up to 12 months per subscriber. Earnings accumulate in your dashboard in real time."},
+              {num:"04",title:"Get paid",text:"Once your balance reaches $50, we pay out monthly via PayPal or bank transfer within 15 days of month end."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        {/* FAQ */}
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={faqs}/>
+        </LPSection>
+
+        {/* Final CTA */}
+        <section style={{background:"#234A3D",padding:"72px 24px",textAlign:"center"}}>
+          <div style={{maxWidth:540,margin:"0 auto"}}>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.8rem,4vw,2.6rem)",color:"#F4EDDF",marginBottom:16,letterSpacing:"-.02em"}}>Ready to start earning?</h2>
+            <p style={{fontSize:"1rem",color:"rgba(244,237,223,.6)",maxWidth:"30rem",margin:"0 auto 32px",lineHeight:1.6}}>Applications are reviewed within 3 business days. No cost to join, no minimum traffic requirements.</p>
+            <a href="https://steadwell.rewardful.com/signup" target="_blank" rel="noopener noreferrer"
+              style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",marginBottom:12}}>
+              Apply to join →
+            </a>
+            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.3)",marginTop:14}}>Questions? Email <a href="mailto:affiliates@trysteadwell.app" style={{color:"rgba(244,237,223,.5)"}}>affiliates@trysteadwell.app</a></div>
+          </div>
+        </section>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── AFFILIATE AGREEMENT PAGE ─────────────────────────────────────────────────
+function AffiliateAgreementPage() {
+  useSEO({
+    title:"Affiliate Agreement | Steadwell",
+    description:"Steadwell affiliate program terms — commission rates, cookie window, payout schedule, and prohibited promotion methods.",
+    canonical:"https://www.trysteadwell.app/affiliate-agreement",
+  });
+
+  const S = {
+    wrap:  { maxWidth:720, margin:"0 auto", padding:"48px 24px 80px" },
+    h1:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.4rem)", color:"#234A3D", letterSpacing:"-.02em", marginBottom:8 },
+    meta:  { fontSize:".82rem", color:"#A8A09A", marginBottom:40 },
+    h2:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1.2rem", color:"#234A3D", margin:"36px 0 10px" },
+    p:     { fontSize:".95rem", color:"#5A534B", lineHeight:1.75, marginBottom:14 },
+    li:    { fontSize:".93rem", color:"#5A534B", lineHeight:1.7, marginBottom:8 },
+  };
+
+  const sections = [
+    {t:"1. Parties",b:"This Affiliate Agreement (the "Agreement") is between Steadwell, LLC, a Florida limited liability company ("Steadwell", "we", "us") and the individual or entity that completes the affiliate application ("Affiliate", "you"). By submitting an application and participating in the Steadwell Affiliate Program (the "Program"), you agree to be bound by this Agreement."},
+    {t:"2. Program Overview",b:"The Program allows approved Affiliates to earn commissions by referring new paying customers to Steadwell's subscription plans and digital product store. Referrals are tracked via a unique affiliate link assigned to each Affiliate upon approval."},
+    {t:"3. Application and Approval",b:"Participation in the Program requires prior written approval from Steadwell. We review applications within 3 business days. We reserve the right to approve or reject any application at our sole discretion, without obligation to provide a reason. Approval may be revoked at any time for violation of this Agreement or for any other reason."},
+    {t:"4. Commission Structure",b:"Approved Affiliates earn the following commissions on net revenue (after Stripe processing fees): Plus Plan ($4.99/month) — 30% recurring for up to 12 months per referred subscriber. Pro Plan ($9.99/month) — 30% recurring for up to 12 months per referred subscriber. PDF Guides — 25% of the net sale price per completed purchase. Commissions are calculated on confirmed, non-refunded revenue only. If a referred subscriber cancels or requests a refund, any associated unpaid commission is forfeited."},
+    {t:"5. Cookie Window and Attribution",b:"A 30-day tracking cookie is set when a user clicks your affiliate link. If that user completes a paid subscription or purchase within 30 days of clicking your link, you receive credit for the referral. Last-click attribution applies — if a user clicks multiple affiliate links, the most recent click receives the commission."},
+    {t:"6. Payouts",b:"Commissions are paid monthly via PayPal or bank transfer. Payments are issued within 15 days of the end of each calendar month for commissions earned in the prior month. A minimum balance of $50.00 USD is required before a payout is issued. Balances below $50.00 roll over to the following month. You are responsible for any taxes, duties, or fees associated with commission income. Steadwell will issue a 1099-NEC to US-based affiliates whose annual earnings exceed $600."},
+    {t:"7. Prohibited Conduct",b:"You may not: (a) bid on Steadwell-branded keywords (including 'Steadwell', 'trysteadwell', or any variation) in paid search advertising without prior written approval; (b) create websites, social accounts, or email addresses that impersonate Steadwell or could be confused with official Steadwell accounts; (c) use spam, unsolicited email, or deceptive marketing practices to promote Steadwell; (d) make false or misleading claims about Steadwell's features, pricing, or results; (e) offer cash rebates, unauthorized discounts, or incentives to referred users; (f) self-refer — you may not use your own affiliate link to create a paid Steadwell account for yourself; (g) promote Steadwell through content that violates any applicable law or our Terms of Service."},
+    {t:"8. Content and Brand Guidelines",b:"You may use Steadwell's name, logo, and approved marketing materials solely for the purpose of promoting the Program in accordance with this Agreement. We reserve the right to request removal of any content that misrepresents the product, uses outdated materials, or violates our brand guidelines. Steadwell-provided creative assets are provided for affiliate use only and may not be sublicensed or resold."},
+    {t:"9. Relationship of Parties",b:"You are an independent contractor, not an employee, partner, or agent of Steadwell. You have no authority to make commitments on behalf of Steadwell or to bind Steadwell in any way. You are responsible for your own taxes, insurance, and business expenses."},
+    {t:"10. Modification and Termination",b:"Steadwell may modify the commission structure, cookie window, or other Program terms at any time with 30 days written notice to active affiliates. Changes to prohibited conduct provisions may take effect immediately. Either party may terminate this Agreement at any time with written notice. Upon termination, unpaid commissions for confirmed, non-refunded referrals made prior to the termination date will be paid at the next regular payout date."},
+    {t:"11. Disclaimers and Limitation of Liability",b:"THE PROGRAM IS PROVIDED 'AS IS.' STEADWELL MAKES NO WARRANTIES ABOUT COMMISSION EARNINGS, CONVERSION RATES, OR THE CONTINUED AVAILABILITY OF THE PROGRAM. TO THE FULLEST EXTENT PERMITTED BY LAW, STEADWELL'S LIABILITY TO ANY AFFILIATE SHALL NOT EXCEED THE TOTAL COMMISSIONS PAID TO THAT AFFILIATE IN THE 3 MONTHS PRECEDING THE CLAIM."},
+    {t:"12. Governing Law",b:"This Agreement is governed by the laws of the State of Florida. Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Pinellas County, Florida."},
+    {t:"13. Contact",b:"Affiliate program questions: affiliates@trysteadwell.app · Steadwell, LLC · St. Petersburg, Florida"},
+  ];
+
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+      <LPNav links={[{href:"/affiliates",label:"Affiliate Program"},{href:"/terms",label:"Terms"},{href:"/privacy",label:"Privacy"}]}/>
+      <div style={S.wrap}>
+        <h1 style={S.h1}>Affiliate Agreement</h1>
+        <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Steadwell, LLC</p>
+        {sections.map((s,i)=>(
+          <div key={i}>
+            <h2 style={S.h2}>{s.t}</h2>
+            <p style={S.p}>{s.b}</p>
+          </div>
+        ))}
+      </div>
+      <footer style={{background:"#234A3D",padding:"28px 24px",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:12,fontSize:".82rem"}}>
+        <span style={{color:"rgba(244,237,223,.5)"}}>© 2026 Steadwell, LLC. All rights reserved.</span>
+        <div style={{display:"flex",gap:20}}>
+          <a href="/affiliates" style={{color:"rgba(244,237,223,.55)",textDecoration:"none"}}>Affiliate Program</a>
+          <a href="/terms" style={{color:"rgba(244,237,223,.55)",textDecoration:"none"}}>Terms</a>
+          <a href="/privacy" style={{color:"rgba(244,237,223,.55)",textDecoration:"none"}}>Privacy</a>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 // ─── FIRST-TIME HOMEBUYER GUIDES PAGE ────────────────────────────────────────
 
 // ─── SHARED LP NAV/FOOTER HELPERS ────────────────────────────────────────────
@@ -16020,7 +16236,7 @@ function LPFooter() {
     <footer role="contentinfo" style={{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14,fontSize:".82rem"}}>
       <span>© 2026 Steadwell, LLC. All rights reserved.</span>
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
-        {[{h:"/warranty-tracker",l:"Warranty Tracker"},{h:"/recall-alerts",l:"Recall Alerts"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"mailto:hello@trysteadwell.app",l:"Contact"}].map((a,i)=>(
+        {[{h:"/warranty-tracker",l:"Warranty Tracker"},{h:"/recall-alerts",l:"Recall Alerts"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/affiliates",l:"Affiliates"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"mailto:hello@trysteadwell.app",l:"Contact"}].map((a,i)=>(
           <a key={i} href={a.h} style={{color:"rgba(244,237,223,.55)",textDecoration:"none"}}>{a.l}</a>
         ))}
       </div>
