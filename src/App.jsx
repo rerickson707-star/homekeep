@@ -16011,7 +16011,9 @@ function AffiliatesPage() {
   const tiers = [
     { plan:"Plus", price:"$4.99/mo", commission:"30%", monthly:"$1.50/mo", annual:"~$18 per referral" },
     { plan:"Pro",  price:"$9.99/mo", commission:"30%", monthly:"$3.00/mo", annual:"~$36 per referral" },
-    { plan:"PDF Guides", price:"Varies", commission:"25%", monthly:"Per sale", annual:"One-time per guide" },
+    { plan:"State Guide", price:"$14.99", commission:"25%", monthly:"~$3.75/sale", annual:"One-time" },
+    { plan:"County Pack", price:"$29.99", commission:"25%", monthly:"~$7.50/sale", annual:"One-time" },
+    { plan:"Bundle", price:"$37.99", commission:"25%", monthly:"~$9.50/sale", annual:"One-time" },
   ];
 
   const faqs = [
@@ -17335,7 +17337,7 @@ function GuidesPage() {
     {
       key:      "state",
       label:    "State Guide",
-      price:    "$12",
+      price:    "$14.99",
       note:     "One-time purchase · Instant PDF download",
       featured: false,
       badgeText:null,
@@ -17354,8 +17356,8 @@ function GuidesPage() {
     {
       key:      "bundle",
       label:    "Complete Bundle",
-      price:    "$29",
-      note:     "Best value · Instant PDF downloads",
+      price:    "$37.99",
+      note:     "Best value · Save $7 · Instant PDF downloads",
       featured: true,
       badgeText:"Most Popular",
       badgeBg:  "#C16140",
@@ -17373,7 +17375,7 @@ function GuidesPage() {
     {
       key:      "county",
       label:    "County Intelligence Pack",
-      price:    "$25",
+      price:    "$29.99",
       note:     "One-time purchase · Instant PDF download",
       featured: false,
       badgeText:null,
