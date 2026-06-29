@@ -13,6 +13,8 @@
     { "source": "/home-expense-tracker", "destination": "/index.html" },
     { "source": "/home-projects", "destination": "/index.html" },
     { "source": "/home-document-vault", "destination": "/index.html" },
+    { "source": "/affiliates", "destination": "/index.html" },
+    { "source": "/affiliate-agreement", "destination": "/index.html" },
     { "source": "/blog/:slug", "destination": "/index.html" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
