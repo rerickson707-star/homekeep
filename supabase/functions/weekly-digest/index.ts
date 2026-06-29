@@ -116,9 +116,11 @@ serve(async (_req) => {
   <div style="max-width:580px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
     <div style="background:#234A3D;padding:28px 40px;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#C16140;border-radius:9px;display:flex;align-items:center;justify-content:center;">
-        <svg viewBox="0 0 48 48" fill="none" width="20" height="20">
-          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" stroke-width="3" stroke-linecap="round"/>
+        <svg viewBox="0 0 48 48" fill="none" width="19" height="19">
+          <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 33 L21 27 A3 3 0 0 1 27 27 L27 33" stroke="#F4EDDF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11 34 L37 34" stroke="#F4EDDF" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="24" cy="18.5" r="1.8" fill="#C16140"/>
         </svg>
       </div>
       <span style="color:#F4EDDF;font-size:20px;font-weight:700;">Steadwell</span>

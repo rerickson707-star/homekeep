@@ -25,7 +25,7 @@ serve(async (req) => {
     .wrap { max-width: 580px; margin: 40px auto; background: #FBF7EE; border-radius: 16px; overflow: hidden; }
     .header { background: #234A3D; padding: 32px 40px; }
     .header-brand { display: flex; align-items: center; gap: 12px; }
-    .header-logo { width: 38px; height: 38px; background: #C16140; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .header-logo { width: 38px; height: 38px; background: #234A3D; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
     .header-name { color: #F4EDDF; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
     .body { padding: 40px; }
     h1 { font-size: 26px; color: #234A3D; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.4px; }
@@ -49,8 +49,10 @@ serve(async (req) => {
       <div class="header-brand">
         <div class="header-logo">
           <svg viewBox="0 0 48 48" fill="none" width="22" height="22">
-            <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" stroke-width="3" stroke-linecap="round"/>
+            <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 33 L21 27 A3 3 0 0 1 27 27 L27 33" stroke="#F4EDDF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M11 34 L37 34" stroke="#F4EDDF" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="24" cy="18.5" r="1.8" fill="#C16140"/>
           </svg>
         </div>
         <span class="header-name">Steadwell</span>
