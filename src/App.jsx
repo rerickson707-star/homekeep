@@ -3166,7 +3166,7 @@ function FeedbackModal({ user, userId, currentTab, onClose }) {
           message: message.trim(),
           page:    currentTab,
         }),
-      }).then(r => r.json()).then(d => console.log("Feedback email:", d)).catch(err => console.warn("Feedback email failed:", err));
+      }).then(r => r.json()).catch(() => {});
 
       setDone(true);
       setTimeout(onClose, 2500);
@@ -4947,10 +4947,8 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
       });
 
       const data = await resp.json();
-      console.log("[Scan] status:", resp.status, "response:", JSON.stringify(data));
       if (!resp.ok || !data.ok) throw new Error(data.error || "Scan failed");
 
-      console.log("[Scan] fields:", JSON.stringify(data.fields));
 
       // Save the original document into the shared Documents vault (home_documents)
       // rather than a loose storage file — this makes it visible in the Documents tab
@@ -8232,11 +8230,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         setAssets([...assets, newAsset]);
         if (hasBrandModel && isPlus) {
           toast("Asset saved — running Smart Fill…");
-          console.log("[SmartFill] Triggering after save:", { brand: payload.brand, model: payload.model, id: newAsset.id });
           runSmartFillAfterSave(newAsset.id, payload);
         } else {
           toast("Asset added ✓");
-          console.log("[SmartFill] Skipped:", { hasBrandModel, isPlus, plan: planData?.plan, brand: payload.brand, model: payload.model });
           if (hasMissing && isPlus) {
             setTimeout(() => toast(
               hasBrandOnly  ? "💡 Add a model number to enable Smart Fill & full PM schedule" :
