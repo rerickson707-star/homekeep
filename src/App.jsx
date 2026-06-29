@@ -16582,7 +16582,66 @@ function HomeProjectsPage() {
             ["Can I track multiple projects at once?","Yes — track as many projects as you like simultaneously, each with their own budget, timeline, and contractor."],
           ]}/>
         </LPSection>
-        <LPCTA h2="Renovate smarter." sub="Track your projects and know the ROI before you spend a dollar." btnLabel="Start for free →"/>
+        <LPSection alt narrow>
+          <div style={{textAlign:"center",marginBottom:32}}>
+            <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#C16140",marginBottom:12}}>Free estimate — no account required</div>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>What will your project return?</h2>
+            <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto 28px",lineHeight:1.6}}>Pick a project type below and see the typical cost range and resale value return — then sign up to run the full calculator with your own numbers.</p>
+          </div>
+          {(()=>{
+            const [sel,setSel]=React.useState(null);
+            const projects=[
+              {key:"kitchen",label:"Kitchen remodel",scope:"Mid-range update",roi:76,contractor:"$25k – $50k",diy:"$12k – $25k"},
+              {key:"bathroom",label:"Bathroom remodel",scope:"Full renovation",roi:66,contractor:"$20k – $40k",diy:"$9k – $18k"},
+              {key:"deck",label:"Deck addition",scope:"Standard deck",roi:80,contractor:"$12k – $25k",diy:"$5k – $12k"},
+              {key:"roof",label:"Roof replacement",scope:"Full tear-off",roi:68,contractor:"$20k – $45k",diy:null},
+              {key:"windows",label:"Window replacement",scope:"Full house",roi:85,contractor:"$15k – $30k",diy:"$7k – $15k"},
+              {key:"garage",label:"Garage door",scope:"Standard replacement",roi:194,contractor:"$1.2k – $2.5k",diy:"$700 – $1.5k"},
+              {key:"entry",label:"Entry door",scope:"Steel replacement",roi:136,contractor:"$800 – $1.8k",diy:"$400 – $900"},
+              {key:"siding",label:"Siding replacement",scope:"Full exterior",roi:114,contractor:"$12k – $25k",diy:"$5k – $12k"},
+            ];
+            const active = projects.find(p=>p.key===sel);
+            return (
+              <div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:20}}>
+                  {projects.map(p=>(
+                    <button key={p.key} onClick={()=>setSel(p.key===sel?null:p.key)}
+                      style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${sel===p.key?"#234A3D":"#E6DECF"}`,background:sel===p.key?"#234A3D":"#fff",color:sel===p.key?"#F4EDDF":"#2A2723",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                {active && (
+                  <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:14,padding:"24px 28px",maxWidth:480,margin:"0 auto 24px"}}>
+                    <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C16140",marginBottom:6}}>{active.scope}</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#234A3D",marginBottom:16}}>{active.label}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
+                      <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,color:"#234A3D"}}>{active.roi}%</div>
+                        <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Avg ROI</div>
+                      </div>
+                      <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:"#234A3D",lineHeight:1.2}}>{active.contractor}</div>
+                        <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Contractor</div>
+                      </div>
+                      <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10,opacity:active.diy?1:.5}}>
+                        <div style={{fontFamily:"'Fraunces',serif",fontSize:active.diy?".95rem":".8rem",fontWeight:600,color:"#234A3D",lineHeight:1.2}}>{active.diy||"Pro install"}</div>
+                        <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>DIY</div>
+                      </div>
+                    </div>
+                    <p style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.6,margin:"0 0 16px"}}>The finished result adds the same value to your home whether you hire a contractor or do it yourself. DIY means lower spend — so the same value added produces a higher return.</p>
+                    <a href="/" style={{display:"block",textAlign:"center",background:"#C16140",color:"#fff",textDecoration:"none",padding:"12px",borderRadius:10,fontWeight:700,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Run the full calculator free →</a>
+                  </div>
+                )}
+                {!active && (
+                  <div style={{textAlign:"center",color:"#A8A09A",fontSize:".88rem",marginBottom:24}}>Select a project above to see the estimate</div>
+                )}
+                <p style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",lineHeight:1.6}}>Based on national Cost vs. Value Report averages. Actual returns vary by region and project quality.</p>
+              </div>
+            );
+          })()}
+        </LPSection>
+        <LPCTA h2="Renovate smarter." sub="Track every project, know the ROI, and build a complete renovation history for your home." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
     </div>
