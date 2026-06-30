@@ -16103,26 +16103,59 @@ function AffiliatesPage() {
     canonical:"https://www.trysteadwell.app/affiliates",
   });
 
+  const [form, setForm] = useState({ name:"", email:"", website:"", audience:"", why:"" });
+  const [formState, setFormState] = useState("idle"); // idle | loading | success | error
+  const f = (k,v) => setForm(p => ({...p,[k]:v}));
+
+  const submitApplication = async () => {
+    if (!form.name || !form.email || !form.website) return;
+    setFormState("loading");
+    try {
+      const res = await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/affiliate-application", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        setFormState("success");
+      } else {
+        setFormState("error");
+      }
+    } catch {
+      setFormState("error");
+    }
+  };
+
   const tiers = [
-    { plan:"Plus monthly", price:"$7.99/mo", commission:"30%", monthly:"$2.40/mo", annual:"~$29 total" },
-    { plan:"Plus annual", price:"$63.99/yr", commission:"40%", monthly:"~$25.60 once", annual:"One-time payout" },
-    { plan:"Pro monthly", price:"$14.99/mo", commission:"30%", monthly:"$4.50/mo", annual:"~$54 total" },
-    { plan:"Pro annual", price:"$119.99/yr", commission:"40%", monthly:"~$48 once", annual:"One-time payout" },
-    { plan:"State Guide", price:"$14.99", commission:"25%", monthly:"~$3.75/sale", annual:"One-time" },
-    { plan:"County Pack", price:"$29.99", commission:"25%", monthly:"~$7.50/sale", annual:"One-time" },
-    { plan:"Bundle", price:"$37.99", commission:"25%", monthly:"~$9.50/sale", annual:"One-time" },
+    { plan:"Plus monthly",  price:"$7.99/mo",    commission:"30%", earn:"$2.40/mo",    note:"12 months" },
+    { plan:"Plus annual",   price:"$63.99/yr",   commission:"40%", earn:"~$25.60",     note:"One-time" },
+    { plan:"Pro monthly",   price:"$14.99/mo",   commission:"30%", earn:"$4.50/mo",    note:"12 months" },
+    { plan:"Pro annual",    price:"$119.99/yr",  commission:"40%", earn:"~$48.00",     note:"One-time" },
+    { plan:"State Guide",   price:"$14.99",      commission:"25%", earn:"~$3.75",      note:"Per sale" },
+    { plan:"County Pack",   price:"$29.99",      commission:"25%", earn:"~$7.50",      note:"Per sale" },
+    { plan:"Bundle",        price:"$37.99",      commission:"25%", earn:"~$9.50",      note:"Per sale" },
   ];
 
   const faqs = [
-    ["How does the 30-day cookie work?","When someone clicks your affiliate link, a 30-day cookie is set in their browser. If they sign up for a paid plan within 30 days, you receive credit for the referral — even if they don't convert immediately."],
-    ["When do I get paid?","Commissions are paid monthly via PayPal or bank transfer once your balance reaches the $50 minimum payout threshold. Payments are issued within 15 days of the end of each month."],
-    ["How long do I earn commissions?","You earn 30% of each referred subscriber's monthly payment for 12 months from their signup date, as long as they remain a paying subscriber."],
-    ["What if someone upgrades from Plus to Pro?","Your commission adjusts to reflect the new plan amount from the date of the upgrade forward."],
-    ["Can I promote Steadwell on paid ads?","You may not bid on Steadwell-branded keywords (e.g. 'Steadwell', 'trysteadwell') in paid search. All other paid promotion is permitted with prior written approval."],
-    ["How do I track my referrals?","Once approved, you'll receive access to an affiliate dashboard showing clicks, signups, active subscribers, and commission earnings in real time."],
-    ["Is there a cost to join?","No — the Steadwell affiliate program is free to join. We review applications within 3 business days."],
-    ["What content performs best?","Homeowner audiences respond well to warranty tracking and the project ROI calculator. Content that shows a specific problem (expired warranty, missed recall) and then the solution tends to convert best."],
+    ["How does the 30-day cookie work?","When someone clicks your affiliate link, a 30-day cookie is set in their browser. If they sign up for a paid plan within 30 days, you receive credit — even if they don't convert immediately."],
+    ["When do I get paid?","Commissions are paid monthly via PayPal or bank transfer once your balance reaches $50. Payments issue within 15 days of month end."],
+    ["How long do I earn commissions?","You earn 30% of each referred subscriber's monthly payment for 12 months. Annual plan commissions are paid as a single 40% payment the following month."],
+    ["Is there a cost to join?","No — free to join. We review applications within 3 business days."],
+    ["Can I promote Steadwell with paid ads?","You may not bid on branded keywords ('Steadwell', 'trysteadwell'). All other paid promotion is permitted with prior written approval."],
+    ["What content performs best?","Warranty tracking, recall alerts, and the project ROI calculator convert well. Content that shows a real problem and then the solution tends to work best."],
   ];
+
+  const inputStyle = {
+    width:"100%", padding:".75rem 1rem", borderRadius:10,
+    border:"1.5px solid #E6DECF", fontFamily:"inherit",
+    fontSize:".9rem", outline:"none", boxSizing:"border-box",
+    background:"#fff", color:"#2A2723",
+  };
+
+  const labelStyle = {
+    display:"block", fontSize:".78rem", fontWeight:600,
+    color:"#5A534B", marginBottom:6,
+  };
 
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -16130,28 +16163,19 @@ function AffiliatesPage() {
       <LPNav links={[{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/recall-alerts",label:"Recall Alerts"},{href:"/guides",label:"Buyer Guides"}]}/>
 
       {/* Hero */}
-      <section style={{background:"#234A3D",padding:"clamp(56px,8vw,80px) 24px",textAlign:"center"}}>
-        <div style={{maxWidth:680,margin:"0 auto"}}>
-          <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:16}}>Affiliate Program</div>
-          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.2rem,5vw,3.2rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 20px"}}>
-            Earn 30% recurring commissions<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>for referring homeowners.</em>
+      <section style={{background:"#234A3D",padding:"clamp(48px,8vw,80px) 24px",textAlign:"center"}}>
+        <div style={{maxWidth:640,margin:"0 auto"}}>
+          <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:14}}>Affiliate Program</div>
+          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2rem,6vw,3.2rem)",color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.025em",margin:"0 0 18px"}}>
+            Earn recurring commissions<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>for referring homeowners.</em>
           </h1>
-          <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.65)",maxWidth:"38rem",margin:"0 auto 36px",lineHeight:1.6}}>Every homeowner is a potential Steadwell user. Share your unique link and earn 30% of every paid subscription for 12 months — automatically.</p>
-          <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
-            <a href="https://steadwell.rewardful.com/signup" target="_blank" rel="noopener noreferrer"
-              style={{background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>
-              Apply to join →
-            </a>
-            <a href="/affiliate-agreement"
-              style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:600,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>
-              Read the agreement
-            </a>
-          </div>
-          <div style={{display:"flex",gap:32,justifyContent:"center",flexWrap:"wrap",marginTop:40}}>
+          <p style={{fontSize:"clamp(.9rem,2.5vw,1.05rem)",color:"rgba(244,237,223,.65)",margin:"0 auto 32px",lineHeight:1.65,maxWidth:"36rem"}}>Every homeowner is a potential Steadwell user. Share your unique link and earn 30% of every paid subscription for 12 months — automatically.</p>
+          <a href="#apply" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Apply now — it's free →</a>
+          <div style={{display:"flex",gap:"clamp(16px,4vw,40px)",justifyContent:"center",flexWrap:"wrap",marginTop:36}}>
             {[{num:"30%",lbl:"Commission rate"},{num:"12 mo",lbl:"Recurring period"},{num:"30 days",lbl:"Cookie window"},{num:"$50",lbl:"Min. payout"}].map((s,i)=>(
               <div key={i} style={{textAlign:"center"}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.8rem",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{s.num}</div>
-                <div style={{fontSize:".72rem",color:"rgba(244,237,223,.45)",marginTop:4,textTransform:"uppercase",letterSpacing:".08em"}}>{s.lbl}</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.4rem,3vw,1.8rem)",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{s.num}</div>
+                <div style={{fontSize:".68rem",color:"rgba(244,237,223,.4)",marginTop:4,textTransform:"uppercase",letterSpacing:".08em"}}>{s.lbl}</div>
               </div>
             ))}
           </div>
@@ -16159,50 +16183,44 @@ function AffiliatesPage() {
       </section>
 
       <main id="main" tabIndex={-1}>
-        {/* Commission table */}
+
+        {/* Commission table — mobile: cards, desktop: table */}
         <LPSection>
-          <LPSectionHead h2="What you earn" sub="Commissions are calculated on net revenue after Stripe fees and applied automatically."/>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",minWidth:480}}>
-              <thead>
-                <tr style={{borderBottom:"2px solid #E6DECF"}}>
-                  {["Plan","Price","Your commission","Per month","Over 12 months"].map((h,i)=>(
-                    <th key={i} style={{padding:"10px 16px",textAlign:i===0?"left":"center",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#A8A09A"}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tiers.map((t,i)=>(
-                  <tr key={i} style={{borderBottom:"1px solid #E6DECF",background:i===1?"rgba(35,74,61,.03)":"transparent"}}>
-                    <td style={{padding:"14px 16px",fontWeight:700,color:"#234A3D",fontSize:".95rem"}}>{t.plan}</td>
-                    <td style={{padding:"14px 16px",textAlign:"center",fontSize:".9rem",color:"#5A534B"}}>{t.price}</td>
-                    <td style={{padding:"14px 16px",textAlign:"center",fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"#C16140"}}>{t.commission}</td>
-                    <td style={{padding:"14px 16px",textAlign:"center",fontSize:".9rem",color:"#5A534B"}}>{t.monthly}</td>
-                    <td style={{padding:"14px 16px",textAlign:"center",fontSize:".88rem",fontWeight:600,color:"#234A3D"}}>{t.annual}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <LPSectionHead h2="What you earn" sub="Commissions calculated on net revenue after Stripe fees."/>
+          {/* Mobile cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,300px),1fr))",gap:10}}>
+            {tiers.map((t,i)=>(
+              <div key={i} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",gap:14}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:".9rem",color:"#234A3D"}}>{t.plan}</div>
+                  <div style={{fontSize:".78rem",color:"#A8A09A"}}>{t.price}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:600,color:"#C16140"}}>{t.earn}</div>
+                  <div style={{fontSize:".68rem",color:"#A8A09A"}}>{t.note}</div>
+                </div>
+                <div style={{background:"rgba(193,97,64,.1)",color:"#C16140",fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:10,flexShrink:0}}>{t.commission}</div>
+              </div>
+            ))}
           </div>
-          <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:12,lineHeight:1.6}}>Commissions are paid monthly on confirmed, non-refunded subscriptions. PDF guide commissions are paid on completed purchases after the refund window.</p>
+          <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:14,lineHeight:1.6}}>Annual plan commissions are paid as a single one-time payment the month after the subscription is confirmed.</p>
         </LPSection>
 
         {/* Who it's for */}
         <LPSection alt>
-          <LPSectionHead h2="Who this program is built for" sub="If your audience includes homeowners, Steadwell converts."/>
-          <LPGrid cols="repeat(auto-fill,minmax(min(100%,200px),1fr))" gap={12}>
+          <LPSectionHead h2="Who this program is for" sub="If your audience includes homeowners, Steadwell converts."/>
+          <LPGrid cols="repeat(auto-fill,minmax(min(100%,220px),1fr))" gap={12}>
             {[
-              {icon:"📝",title:"Home improvement bloggers",desc:"Your readers are already planning projects and maintenance. The ROI calculator is a natural fit."},
-              {icon:"🏡",title:"Real estate agents",desc:"Every buyer you close is a new homeowner who needs exactly what Steadwell offers."},
-              {icon:"💰",title:"Personal finance writers",desc:"Home costs are one of the biggest financial blind spots. Steadwell gives your audience a concrete tool."},
-              {icon:"🎥",title:"YouTube creators",desc:"How-to and home maintenance channels convert well. Show the product in action."},
-              {icon:"🎓",title:"First-time buyer educators",desc:"New homeowners are the highest-value segment. They need everything Steadwell offers."},
-              {icon:"🏦",title:"Mortgage brokers",desc:"You're already talking to buyers. A Steadwell referral link in your closing packet converts passively."},
+              {title:"Home improvement bloggers",desc:"Your readers are already planning projects and maintenance. The ROI calculator is a natural fit."},
+              {title:"Real estate agents",desc:"Every buyer you close is a new homeowner who needs exactly what Steadwell offers."},
+              {title:"Personal finance writers",desc:"Home costs are one of the biggest financial blind spots. Steadwell gives your audience a concrete tool."},
+              {title:"YouTube creators",desc:"Home improvement and how-to channels convert well. Show the product in action."},
+              {title:"First-time buyer educators",desc:"New homeowners need everything Steadwell offers. High intent, high conversion."},
+              {title:"Mortgage brokers",desc:"You're already talking to buyers. A Steadwell link in your closing packet converts passively."},
             ].map((c,i)=>(
               <LPCard key={i}>
-                <div style={{fontSize:"1.4rem",marginBottom:8}}>{c.icon}</div>
-                <div style={{fontWeight:700,fontSize:".9rem",color:"#234A3D",marginBottom:6}}>{c.title}</div>
-                <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.5}}>{c.desc}</div>
+                <div style={{fontWeight:700,fontSize:".9rem",color:"#234A3D",marginBottom:6,textAlign:"left"}}>{c.title}</div>
+                <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.5,textAlign:"left"}}>{c.desc}</div>
               </LPCard>
             ))}
           </LPGrid>
@@ -16211,32 +16229,81 @@ function AffiliatesPage() {
         {/* How it works */}
         <LPSection>
           <LPSectionHead h2="How it works" sub="Apply once. Earn passively."/>
-          <LPGrid gap={16}>
+          <LPGrid gap={14}>
             {[
-              {num:"01",title:"Apply and get approved",text:"Submit your application with your website or social profile. We review within 3 business days. Approved affiliates receive a unique tracking link and dashboard access."},
-              {num:"02",title:"Share your link",text:"Add it to your content, email list, or social profiles. When someone clicks and signs up for a paid plan within 30 days, the referral is tracked automatically."},
-              {num:"03",title:"Earn every month",text:"You earn 30% of every monthly payment your referrals make, for up to 12 months per subscriber. Earnings accumulate in your dashboard in real time."},
-              {num:"04",title:"Get paid",text:"Once your balance reaches $50, we pay out monthly via PayPal or bank transfer within 15 days of month end."},
+              {num:"01",title:"Apply below",text:"Fill out the short application. We review within 3 business days and email you when you're approved."},
+              {num:"02",title:"Get your unique link",text:"Once approved, you receive a unique tracking link. Add it to your content, bio, email list, or anywhere your audience sees it."},
+              {num:"03",title:"Earn every month",text:"When someone signs up through your link within 30 days, you earn 30% of their monthly payment for up to 12 months. Annual plans pay 40% upfront."},
+              {num:"04",title:"Get paid",text:"Once your balance hits $50, we pay out monthly via PayPal or bank transfer within 15 days of month end."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
 
+        {/* APPLICATION FORM */}
+        <LPSection alt id="apply">
+          <div style={{maxWidth:560,margin:"0 auto"}}>
+            <LPSectionHead h2="Apply to join" sub="Free to join. No minimum traffic requirements. We review every application personally."/>
+            {formState === "success" ? (
+              <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"36px 32px",textAlign:"center"}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:400,color:"#234A3D",marginBottom:10}}>Application received.</div>
+                <p style={{fontSize:".95rem",color:"#5A534B",lineHeight:1.7,marginBottom:0}}>Thanks {form.name.split(" ")[0]} — we'll review your application and email you at <strong>{form.email}</strong> within 3 business days.</p>
+              </div>
+            ) : (
+              <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:16,padding:"clamp(20px,4vw,32px)"}}>
+                <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,200px),1fr))",gap:14}}>
+                    <div>
+                      <label style={labelStyle}>Full name *</label>
+                      <input style={inputStyle} value={form.name} onChange={e=>f("name",e.target.value)} placeholder="Jane Smith"/>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Email address *</label>
+                      <input style={inputStyle} type="email" value={form.email} onChange={e=>f("email",e.target.value)} placeholder="jane@example.com"/>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Website or social profile *</label>
+                    <input style={inputStyle} value={form.website} onChange={e=>f("website",e.target.value)} placeholder="https://yourblog.com or @yourhandle"/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>How would you describe your audience?</label>
+                    <input style={inputStyle} value={form.audience} onChange={e=>f("audience",e.target.value)} placeholder="e.g. First-time homebuyers in Florida, home improvement enthusiasts"/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Why do you want to promote Steadwell?</label>
+                    <textarea style={{...inputStyle,minHeight:90,resize:"vertical"}} value={form.why} onChange={e=>f("why",e.target.value)} placeholder="Tell us a bit about how you plan to promote Steadwell and why it fits your audience."/>
+                  </div>
+                  {formState === "error" && (
+                    <div style={{background:"#FEF2F2",border:"1px solid #FCA5A5",borderRadius:8,padding:"10px 14px",fontSize:".85rem",color:"#B91C1C"}}>
+                      Something went wrong. Please email us at <a href="mailto:affiliates@trysteadwell.app" style={{color:"#B91C1C"}}>affiliates@trysteadwell.app</a> instead.
+                    </div>
+                  )}
+                  <button
+                    onClick={submitApplication}
+                    disabled={formState==="loading"||!form.name||!form.email||!form.website}
+                    style={{padding:".9rem",background:"#C16140",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem",fontWeight:700,cursor:"pointer",opacity:formState==="loading"||!form.name||!form.email||!form.website?.6:1,transition:"opacity .15s"}}>
+                    {formState==="loading"?"Submitting…":"Submit application →"}
+                  </button>
+                  <p style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",margin:0}}>By applying you agree to the <a href="/affiliate-agreement" style={{color:"#234A3D"}}>Affiliate Agreement</a>. We review every application personally and respond within 3 business days.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </LPSection>
+
         {/* FAQ */}
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={faqs}/>
         </LPSection>
 
-        {/* Final CTA */}
-        <section style={{background:"#234A3D",padding:"72px 24px",textAlign:"center"}}>
-          <div style={{maxWidth:540,margin:"0 auto"}}>
-            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.8rem,4vw,2.6rem)",color:"#F4EDDF",marginBottom:16,letterSpacing:"-.02em"}}>Ready to start earning?</h2>
-            <p style={{fontSize:"1rem",color:"rgba(244,237,223,.6)",maxWidth:"30rem",margin:"0 auto 32px",lineHeight:1.6}}>Applications are reviewed within 3 business days. No cost to join, no minimum traffic requirements.</p>
-            <a href="https://steadwell.rewardful.com/signup" target="_blank" rel="noopener noreferrer"
-              style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",marginBottom:12}}>
-              Apply to join →
-            </a>
-            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.3)",marginTop:14}}>Questions? Email <a href="mailto:affiliates@trysteadwell.app" style={{color:"rgba(244,237,223,.5)"}}>affiliates@trysteadwell.app</a></div>
+        {/* Footer CTA */}
+        <section style={{background:"#234A3D",padding:"clamp(48px,8vw,72px) 24px",textAlign:"center"}}>
+          <div style={{maxWidth:500,margin:"0 auto"}}>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.7rem,4vw,2.4rem)",color:"#F4EDDF",marginBottom:14,letterSpacing:"-.02em"}}>Ready to start earning?</h2>
+            <p style={{fontSize:".95rem",color:"rgba(244,237,223,.55)",margin:"0 auto 28px",lineHeight:1.65}}>Applications are free, reviewed personally, and answered within 3 business days.</p>
+            <a href="#apply" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",marginBottom:14}}>Apply now →</a>
+            <div style={{fontSize:".75rem",color:"rgba(244,237,223,.28)"}}>Questions? <a href="mailto:affiliates@trysteadwell.app" style={{color:"rgba(244,237,223,.45)"}}>affiliates@trysteadwell.app</a></div>
           </div>
         </section>
       </main>
