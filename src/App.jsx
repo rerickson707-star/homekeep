@@ -16103,7 +16103,7 @@ function AffiliatesPage() {
     canonical:"https://www.trysteadwell.app/affiliates",
   });
 
-  const [form, setForm] = useState({ name:"", email:"", website:"", audience:"", why:"" });
+  const [form, setForm] = useState({ name:"", email:"", website:"", audience:"", why:"", contentType:"", reach:"", otherProfiles:"", payoutMethod:"" });
   const [formState, setFormState] = useState("idle"); // idle | loading | success | error
   const f = (k,v) => setForm(p => ({...p,[k]:v}));
 
@@ -16262,16 +16262,52 @@ function AffiliatesPage() {
                     </div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Website or social profile *</label>
+                    <label style={labelStyle}>Primary website or profile *</label>
                     <input style={inputStyle} value={form.website} onChange={e=>f("website",e.target.value)} placeholder="https://yourblog.com or @yourhandle"/>
                   </div>
-                  <div>
-                    <label style={labelStyle}>How would you describe your audience?</label>
-                    <input style={inputStyle} value={form.audience} onChange={e=>f("audience",e.target.value)} placeholder="e.g. First-time homebuyers in Florida, home improvement enthusiasts"/>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,200px),1fr))",gap:14}}>
+                    <div>
+                      <label style={labelStyle}>Content type *</label>
+                      <select style={{...inputStyle,cursor:"pointer"}} value={form.contentType||""} onChange={e=>f("contentType",e.target.value)}>
+                        <option value="">Select one…</option>
+                        <option>Blog / Website</option>
+                        <option>YouTube channel</option>
+                        <option>Instagram</option>
+                        <option>TikTok</option>
+                        <option>Podcast</option>
+                        <option>Email newsletter</option>
+                        <option>Real estate agent</option>
+                        <option>Mortgage broker</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Monthly reach (approx.)</label>
+                      <select style={{...inputStyle,cursor:"pointer"}} value={form.reach||""} onChange={e=>f("reach",e.target.value)}>
+                        <option value="">Select one…</option>
+                        <option>Under 1,000</option>
+                        <option>1,000 – 5,000</option>
+                        <option>5,000 – 25,000</option>
+                        <option>25,000 – 100,000</option>
+                        <option>100,000+</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Why do you want to promote Steadwell?</label>
-                    <textarea style={{...inputStyle,minHeight:90,resize:"vertical"}} value={form.why} onChange={e=>f("why",e.target.value)} placeholder="Tell us a bit about how you plan to promote Steadwell and why it fits your audience."/>
+                    <label style={labelStyle}>Audience description *</label>
+                    <input style={inputStyle} value={form.audience} onChange={e=>f("audience",e.target.value)} placeholder="e.g. First-time homebuyers in Florida, home improvement DIYers, personal finance followers"/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Any other relevant profiles or channels?</label>
+                    <input style={inputStyle} value={form.otherProfiles||""} onChange={e=>f("otherProfiles",e.target.value)} placeholder="Additional links (optional)"/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>How do you plan to promote Steadwell? *</label>
+                    <textarea style={{...inputStyle,minHeight:100,resize:"vertical"}} value={form.why} onChange={e=>f("why",e.target.value)} placeholder="Describe how Steadwell fits your audience and how you plan to promote it — blog posts, videos, email, social, etc."/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>PayPal email or preferred payout method</label>
+                    <input style={inputStyle} value={form.payoutMethod||""} onChange={e=>f("payoutMethod",e.target.value)} placeholder="paypal@example.com or 'bank transfer'"/>
                   </div>
                   {formState === "error" && (
                     <div style={{background:"#FEF2F2",border:"1px solid #FCA5A5",borderRadius:8,padding:"10px 14px",fontSize:".85rem",color:"#B91C1C"}}>
@@ -16280,7 +16316,7 @@ function AffiliatesPage() {
                   )}
                   <button
                     onClick={submitApplication}
-                    disabled={formState==="loading"||!form.name||!form.email||!form.website}
+                    disabled={formState==="loading"||!form.name||!form.email||!form.website||!form.audience||!form.why||!form.contentType}
                     style={{padding:".9rem",background:"#C16140",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem",fontWeight:700,cursor:"pointer",opacity:formState==="loading"||!form.name||!form.email||!form.website?.6:1,transition:"opacity .15s"}}>
                     {formState==="loading"?"Submitting…":"Submit application →"}
                   </button>
@@ -16436,9 +16472,9 @@ function LPHero({ eyebrow, h1, h1em, sub, stats=[], badge }) {
   );
 }
 
-function LPSection({ children, alt=false, narrow=false }) {
+function LPSection({ children, alt=false, narrow=false, id }) {
   return (
-    <section style={{padding:"64px 24px",background:alt?"#EFE7D7":"#F4EDDF"}}>
+    <section id={id} style={{padding:"clamp(40px,6vw,64px) 24px",background:alt?"#EFE7D7":"#F4EDDF",scrollMarginTop:"80px"}}>
       <div style={{maxWidth:narrow?720:1080,margin:"0 auto"}}>{children}</div>
     </section>
   );

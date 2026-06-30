@@ -18,7 +18,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { name, email, website, audience, why } = await req.json();
+    const { name, email, website, audience, why, contentType, reach, otherProfiles, payoutMethod } = await req.json();
 
     if (!name || !email || !website) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -33,8 +33,12 @@ serve(async (req) => {
 
     await supabase.from("affiliate_applications").insert({
       name, email, website,
+      content_type: contentType || null,
+      reach: reach || null,
       audience: audience || null,
+      other_profiles: otherProfiles || null,
       why: why || null,
+      payout_method: payoutMethod || null,
       status: "pending",
       created_at: new Date().toISOString(),
     });
@@ -67,16 +71,32 @@ serve(async (req) => {
           <td style="padding:12px 0;font-size:15px;color:#2A2723;"><a href="mailto:${email}" style="color:#234A3D;">${email}</a></td>
         </tr>
         <tr style="border-bottom:1px solid #E6DECF;">
-          <td style="padding:12px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Website</td>
-          <td style="padding:12px 0;font-size:15px;color:#2A2723;"><a href="${website}" style="color:#234A3D;">${website}</a></td>
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;width:140px;text-transform:uppercase;letter-spacing:.06em;">Website</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;"><a href="${website}" style="color:#234A3D;">${website}</a></td>
         </tr>
         <tr style="border-bottom:1px solid #E6DECF;">
-          <td style="padding:12px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Audience</td>
-          <td style="padding:12px 0;font-size:15px;color:#2A2723;">${audience || "Not provided"}</td>
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Content type</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;">${contentType || "Not specified"}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #E6DECF;">
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Monthly reach</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;">${reach || "Not specified"}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #E6DECF;">
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Audience</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;">${audience || "Not provided"}</td>
+        </tr>
+        ${otherProfiles ? `<tr style="border-bottom:1px solid #E6DECF;">
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Other profiles</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;">${otherProfiles}</td>
+        </tr>` : ""}
+        <tr style="border-bottom:1px solid #E6DECF;">
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;vertical-align:top;">Promotion plan</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;line-height:1.6;">${why || "Not provided"}</td>
         </tr>
         <tr>
-          <td style="padding:12px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;vertical-align:top;">Why Steadwell</td>
-          <td style="padding:12px 0;font-size:15px;color:#2A2723;line-height:1.6;">${why || "Not provided"}</td>
+          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#9A9088;text-transform:uppercase;letter-spacing:.06em;">Payout method</td>
+          <td style="padding:10px 0;font-size:15px;color:#2A2723;">${payoutMethod || "Not provided"}</td>
         </tr>
       </table>
       <div style="margin-top:28px;padding:16px 20px;background:rgba(35,74,61,.06);border-radius:10px;border-left:3px solid #234A3D;">
