@@ -6956,7 +6956,6 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
       // Find or create a matching utility record for this property
       const utilityName = finalData.vendor || finalData.item || "Unknown Utility";
       const utilityType = finalData.utility_type || "electric";
-      // Try to find existing utility by name
       const { data: existingUtils } = await supabase
         .from("utilities")
         .select("id")
@@ -6965,7 +6964,6 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
         .ilike("name", utilityName)
         .limit(1);
       let utilityId = existingUtils?.[0]?.id || null;
-      // If no matching utility exists, create one
       if (!utilityId) {
         const { data: newUtil } = await supabase
           .from("utilities")
@@ -9469,7 +9467,7 @@ function BillForm({ data, onChange, utility, userId }) {
           label="Scan bill with AI"
           description="Photo or PDF — fills amount, date & usage automatically"
           scanType="utility_bill"
-          useCamera={true}
+          useCamera={false}
         />
         <div className="scan-divider">or fill in manually</div>
       </div>
