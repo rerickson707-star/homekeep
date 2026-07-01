@@ -16410,7 +16410,9 @@ function AffiliateAgreementPage() {
 
 // ─── SHARED LP NAV/FOOTER HELPERS ────────────────────────────────────────────
 function LPNav({ links=[] }) {
-  const HM = () => (
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const Logo = () => (
     <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true">
       <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -16418,18 +16420,65 @@ function LPNav({ links=[] }) {
       <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
     </svg>
   );
+
   return (
-    <nav style={{background:"#234A3D",padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:64,position:"sticky",top:0,zIndex:100}} role="banner">
-      <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage">
-        <span style={{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1.5px solid rgba(244,237,223,.2)"}}><HM/></span>
-        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#F4EDDF"}}>Steadwell</span>
-      </a>
-      <div style={{display:"flex",gap:16,alignItems:"center"}}>
-        <div style={{display:"flex",gap:16,alignItems:"center"}}>
-          {links.map((l,i)=><a key={i} href={l.href} style={{color:"rgba(244,237,223,.7)",textDecoration:"none",fontSize:".88rem",fontWeight:500,display:"var(--lp-nav-link-display, inline)"}}>{l.label}</a>)}
+    <nav style={{background:"#234A3D",position:"sticky",top:0,zIndex:200}} role="banner">
+      {/* Main bar */}
+      <div style={{padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:60}}>
+        {/* Brand */}
+        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none",flexShrink:0}} aria-label="Steadwell homepage">
+          <span style={{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1.5px solid rgba(244,237,223,.2)"}}><Logo/></span>
+          <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#F4EDDF",letterSpacing:"-.01em"}}>Steadwell</span>
+        </a>
+
+        {/* Desktop links — hidden on mobile via media-query class */}
+        <div style={{display:"flex",alignItems:"center",gap:20}}>
+          <div className="lp-nav-links" style={{display:"flex",gap:20,alignItems:"center"}}>
+            {links.map((l,i)=>(
+              <a key={i} href={l.href} style={{color:"rgba(244,237,223,.7)",textDecoration:"none",fontSize:".88rem",fontWeight:500,whiteSpace:"nowrap"}}>{l.label}</a>
+            ))}
+          </div>
+          <a href="/" className="lp-nav-cta" style={{background:"#C16140",padding:"7px 16px",borderRadius:20,color:"#fff",fontWeight:700,fontSize:".85rem",textDecoration:"none",whiteSpace:"nowrap",flexShrink:0}}>Get started free</a>
+          {/* Hamburger — only visible on mobile */}
+          {links.length > 0 && (
+            <button
+              className="lp-nav-burger"
+              onClick={()=>setMenuOpen(o=>!o)}
+              aria-label={menuOpen?"Close menu":"Open menu"}
+              style={{display:"none",background:"none",border:"none",cursor:"pointer",padding:4,flexShrink:0}}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F4EDDF" strokeWidth="2" strokeLinecap="round">
+                {menuOpen
+                  ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                  : <><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></>
+                }
+              </svg>
+            </button>
+          )}
         </div>
-        <a href="/" style={{background:"#C16140",border:"none",padding:"8px 18px",borderRadius:20,color:"#fff",fontWeight:700,fontSize:".88rem",textDecoration:"none",whiteSpace:"nowrap"}}>Get started free</a>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {menuOpen && (
+        <div style={{background:"#1D3D32",borderTop:"1px solid rgba(244,237,223,.1)",padding:"8px 0 16px"}}>
+          {links.map((l,i)=>(
+            <a key={i} href={l.href} onClick={()=>setMenuOpen(false)}
+              style={{display:"block",padding:"12px 24px",color:"rgba(244,237,223,.8)",textDecoration:"none",fontSize:".95rem",fontWeight:500,borderBottom:"1px solid rgba(244,237,223,.06)"}}>
+              {l.label}
+            </a>
+          ))}
+          <div style={{padding:"14px 24px 0"}}>
+            <a href="/" style={{display:"block",textAlign:"center",background:"#C16140",padding:"11px",borderRadius:12,color:"#fff",fontWeight:700,fontSize:".9rem",textDecoration:"none"}}>Get started free</a>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @media (max-width: 640px) {
+          .lp-nav-links { display: none !important; }
+          .lp-nav-cta { display: none !important; }
+          .lp-nav-burger { display: flex !important; }
+        }
+      `}</style>
     </nav>
   );
 }
