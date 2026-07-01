@@ -1,4 +1,4 @@
-// Steadwell v132 — 2026-06-23T00:24:53.052563
+// Steadwell v143 — 2026-07-01T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6952,8 +6952,40 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
         notes:       finalData.notes || null,
         vendor:      finalData.vendor || null,
       });
+    } else if (selected.extracted_type === "utility_bill") {
+      // Find or create a matching utility record for this property
+      const utilityName = finalData.vendor || finalData.item || "Unknown Utility";
+      const utilityType = finalData.utility_type || "electric";
+      // Try to find existing utility by name
+      const { data: existingUtils } = await supabase
+        .from("utilities")
+        .select("id")
+        .eq("property_id", profile.id)
+        .eq("user_id", userId)
+        .ilike("name", utilityName)
+        .limit(1);
+      let utilityId = existingUtils?.[0]?.id || null;
+      // If no matching utility exists, create one
+      if (!utilityId) {
+        const { data: newUtil } = await supabase
+          .from("utilities")
+          .insert({ user_id: userId, property_id: profile.id, name: utilityName, type: utilityType })
+          .select("id")
+          .single();
+        utilityId = newUtil?.id || null;
+      }
+      if (utilityId) {
+        await supabase.from("utility_bills").insert({
+          user_id:     userId,
+          utility_id:  utilityId,
+          bill_date:   finalData.bill_date || finalData.purchase_date || new Date().toISOString().slice(0, 10),
+          amount:      finalData.amount || 0,
+          usage:       finalData.usage || null,
+          usage_unit:  finalData.usage_unit || null,
+          notes:       finalData.notes || null,
+        });
+      }
     }
-    // document and asset types saved as-is in email_captures for now
 
     // Mark capture as saved
     const { error } = await supabase.from("email_captures")
@@ -6976,8 +7008,8 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
     setSelected(null);
   };
 
-  const typeColor = { warranty:"var(--pine)", expense:"#B8861E", document:"#3B5EA6", asset:"var(--rust)", unknown:"#8A8178" };
-  const typeLabel = { warranty:"Warranty", expense:"Expense", document:"Document", asset:"Asset", unknown:"Unknown" };
+  const typeColor = { warranty:"var(--pine)", expense:"#B8861E", document:"#3B5EA6", asset:"var(--rust)", utility_bill:"#3B8A6E", unknown:"#8A8178" };
+  const typeLabel = { warranty:"Warranty", expense:"Expense", document:"Document", asset:"Asset", utility_bill:"Utility Bill", unknown:"Unknown" };
 
   const FieldRow = ({ label, field, type="text" }) => (
     <div style={{marginBottom:".75rem"}}>
@@ -7043,14 +7075,20 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
               <div style={{fontSize:".82rem",color:"#8A8178",marginBottom:"1rem"}}>{selected.subject}</div>
 
               <div style={{background:"var(--white)",borderRadius:10,padding:"1rem",marginBottom:"1rem",border:"1px solid var(--stone)"}}>
-                <FieldRow label="Item name" field="item" />
-                <FieldRow label="Brand" field="brand" />
-                <FieldRow label="Model" field="model" />
-                <FieldRow label="Category" field="category" />
+                {selected.extracted_type !== "utility_bill" && (
+                  <>
+                    <FieldRow label="Item name" field="item" />
+                    <FieldRow label="Brand" field="brand" />
+                    <FieldRow label="Model" field="model" />
+                    <FieldRow label="Category" field="category" />
+                  </>
+                )}
                 {(selected.extracted_type==="warranty"||selected.extracted_type==="expense") && (
                   <FieldRow label="Amount ($)" field="amount" type="number" />
                 )}
-                <FieldRow label="Vendor / Store" field="vendor" />
+                {selected.extracted_type !== "utility_bill" && (
+                  <FieldRow label="Vendor / Store" field="vendor" />
+                )}
                 {selected.extracted_type==="warranty" && (
                   <>
                     <FieldRow label="Purchase date" field="purchase_date" type="date" />
@@ -7060,6 +7098,15 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                 )}
                 {selected.extracted_type==="expense" && (
                   <FieldRow label="Date" field="purchase_date" type="date" />
+                )}
+                {selected.extracted_type==="utility_bill" && (
+                  <>
+                    <FieldRow label="Utility / Provider" field="vendor" />
+                    <FieldRow label="Bill date" field="bill_date" type="date" />
+                    <FieldRow label="Amount ($)" field="amount" type="number" />
+                    <FieldRow label="Usage" field="usage" type="number" />
+                    <FieldRow label="Usage unit (kWh, therms, gal…)" field="usage_unit" />
+                  </>
                 )}
                 <FieldRow label="Notes" field="notes" />
               </div>
