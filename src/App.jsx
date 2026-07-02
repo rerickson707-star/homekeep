@@ -1,4 +1,4 @@
-// Steadwell v151 — 2026-07-02T00:00:00.000Z
+// Steadwell v153 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12442,6 +12442,28 @@ function RecallCheckPanel({ warranties }) {
 }
 
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+  const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+  const [streetViewUrl, setStreetViewUrl] = useState(null);
+  // Google's Street View Static API returns HTTP 200 with a gray "no imagery"
+  // placeholder for addresses with no coverage — it does not error. So we check
+  // the free Metadata endpoint first and only show the image if status is OK.
+  useEffect(() => {
+    if (!profile?.address || !GMAPS_KEY) { setStreetViewUrl(null); return; }
+    let cancelled = false;
+    const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${encodeURIComponent(profile.address)}&key=${GMAPS_KEY}`;
+    fetch(metaUrl)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data.status === "OK") {
+          setStreetViewUrl(`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(profile.address)}&fov=80&key=${GMAPS_KEY}`);
+        } else {
+          setStreetViewUrl(null);
+        }
+      })
+      .catch(() => { if (!cancelled) setStreetViewUrl(null); });
+    return () => { cancelled = true; };
+  }, [profile?.address, GMAPS_KEY]);
   const [emailCaptures, setEmailCaptures] = useState([]);
   const [showEmailInbox, setShowEmailInbox] = useState(false);
 
@@ -12787,8 +12809,21 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:`center ${photoPos}%`,opacity:.78}}
               onError={e=>{if(e.target.src!==profile.photo_url)e.target.src=profile.photo_url;else e.target.style.display="none";}}
             />
+          ) : streetViewUrl ? (
+            <img
+              src={streetViewUrl}
+              alt="Street view of your home"
+              style={{width:"100%",height:"100%",objectFit:"cover",opacity:.78}}
+              onError={()=>setStreetViewUrl(null)}
+            />
           ) : (
-            <div style={{width:"100%",height:"100%",background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"4rem",opacity:.25}}>🏠</div>
+            <button onClick={openEdit} style={{width:"100%",height:"100%",background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:".6rem",padding:0}}>
+              <span style={{fontSize:"2.4rem",opacity:.4}}>📷</span>
+              <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,color:"rgba(244,237,223,.75)"}}>Add a photo of your home</span>
+              {profile?.address && (
+                <span style={{fontSize:".72rem",color:"rgba(244,237,223,.4)"}}>No street view available for this address</span>
+              )}
+            </button>
           )}
           {/* Gradient overlay */}
           <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(23,48,38,.1) 0%,rgba(23,48,38,.88) 100%)"}}/>
