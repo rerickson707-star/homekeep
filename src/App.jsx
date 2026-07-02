@@ -1,4 +1,4 @@
-// Steadwell v143 — 2026-07-01T00:00:00.000Z
+// Steadwell v144 — 2026-07-01T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2981,11 +2981,14 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
 }
 
 // ─── ACCOUNT MODAL ──────────────────────────────────────────────────────────────
-const DELETE_ACCOUNT_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/delete-account";
+const DELETE_ACCOUNT_URL      = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/delete-account";
+const CANCEL_SUBSCRIPTION_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/cancel-subscription";
 
 function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const plan = planData?.plan || "free";
   const planLabel = PLANS[plan]?.label || "Free";
@@ -3025,7 +3028,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const handlePlanChange = (targetKey) => {
     const isUpgrade = tierOrder[targetKey] > tierOrder[plan];
     if (isUpgrade && onUpgradeFlow) { onUpgradeFlow(); return; }
-    openWaitlist(targetKey === "plus" ? "Plus" : "Pro");
+    // Downgrades handled at end of billing period via cancellation
   };
 
   const handleDeleteAccount = async () => {
@@ -3119,6 +3122,58 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",marginBottom:"1.25rem"}}>
             Cancel anytime · No long-term commitment · Secure payments via Stripe
           </div>
+
+          {/* Cancel subscription */}
+          {plan !== "free" && !profile?.plan_cancel_at && (
+            <div style={{marginBottom:"1rem"}}>
+              {!confirmCancel ? (
+                <button
+                  onClick={()=>setConfirmCancel(true)}
+                  style={{width:"100%",padding:".65rem",borderRadius:10,border:"1.5px solid var(--stone)",background:"transparent",color:"#A8A09A",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                  Cancel subscription
+                </button>
+              ) : (
+                <div style={{background:"#FFF8F6",border:"1.5px solid #F5D5B0",borderRadius:10,padding:".9rem 1rem"}}>
+                  <div style={{fontSize:".85rem",fontWeight:700,color:"#A0511A",marginBottom:".3rem"}}>Cancel your subscription?</div>
+                  <div style={{fontSize:".78rem",color:"#7A7370",lineHeight:1.5,marginBottom:".75rem"}}>You'll keep access until the end of your current billing period. No refunds for partial periods.</div>
+                  <div style={{display:"flex",gap:".5rem"}}>
+                    <button onClick={()=>setConfirmCancel(false)}
+                      style={{flex:1,padding:".6rem",borderRadius:8,border:"1.5px solid var(--stone)",background:"var(--white)",color:"var(--dark)",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                      Keep plan
+                    </button>
+                    <button
+                      disabled={cancelling}
+                      onClick={async ()=>{
+                        setCancelling(true);
+                        try {
+                          const { data: { session: s } } = await supabase.auth.getSession();
+                          const resp = await fetch(CANCEL_SUBSCRIPTION_URL, {
+                            method:"POST",
+                            headers:{"Content-Type":"application/json","Authorization":`Bearer ${s.access_token}`},
+                          });
+                          const data = await resp.json();
+                          if (!resp.ok || !data.ok) throw new Error(data.error || "Cancel failed");
+                          setProfile(p => ({...p, plan_cancel_at: data.expires_at}));
+                          toast("Subscription cancelled — access continues until " + new Date(data.expires_at).toLocaleDateString());
+                          setConfirmCancel(false);
+                        } catch(err) {
+                          toast(err.message || "Could not cancel — contact hello@trysteadwell.app", "error");
+                        }
+                        setCancelling(false);
+                      }}
+                      style={{flex:1,padding:".6rem",borderRadius:8,border:"none",background:"#C16140",color:"#fff",fontSize:".82rem",fontWeight:700,cursor:cancelling?"default":"pointer",opacity:cancelling?.6:1,fontFamily:"inherit"}}>
+                      {cancelling ? "Cancelling…" : "Yes, cancel"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {profile?.plan_cancel_at && plan !== "free" && (
+            <div style={{background:"#FFF8F6",border:"1.5px solid #F5D5B0",borderRadius:10,padding:".75rem 1rem",marginBottom:"1rem",fontSize:".8rem",color:"#A0511A",lineHeight:1.5}}>
+              ⚠ Your subscription is cancelled. Access continues until <strong>{new Date(profile.plan_cancel_at).toLocaleDateString()}</strong>.
+            </div>
+          )}
 
           {/* Danger zone */}
           <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem"}}>
@@ -4768,6 +4823,109 @@ function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[] })
 }
 
 // ─── PRO UPGRADE MODAL ───────────────────────────────────────────────────────
+// ─── UPGRADE MODAL (Stripe-connected) ────────────────────────────────────────
+function UpgradeModal({ onClose, onCheckout, checkoutLoading }) {
+  const [annual, setAnnual] = useState(false);
+
+  const tiers = [
+    {
+      key: "plus", label: "Plus",
+      monthly: "$7.99", annual: "$63.99",
+      color: "#3B5FBF", bg: "#EEF4FF", border: "#C5D5F7",
+      pitch: "Automation and intelligence for the serious homeowner.",
+      features: [
+        "Full recurring task engine — all intervals",
+        "Home health score + factor breakdown",
+        "5-year cost forecasting",
+        "AI receipt, nameplate & policy scanning",
+        "Smart Fill model lookup",
+        "Daily task & warranty reminders",
+        "Expanded document vault",
+      ],
+    },
+    {
+      key: "pro", label: "Pro",
+      monthly: "$14.99", annual: "$119.99",
+      color: "#A0511A", bg: "#FBF0E6", border: "#F5D5B0",
+      pitch: "Multiple properties, shared access, and the complete platform.",
+      features: [
+        "Everything in Plus",
+        "Up to 3 properties",
+        "Full home document vault",
+        "Shared home access — invite spouse/partner",
+        "Priority support",
+      ],
+    },
+  ];
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",backdropFilter:"blur(6px)"}}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"var(--linen)",borderRadius:"20px",width:"100%",maxWidth:"520px",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
+        {/* Header */}
+        <div style={{background:"var(--pine)",borderRadius:"20px 20px 0 0",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
+          <button onClick={onClose} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".25rem"}}>Upgrade Steadwell</div>
+          <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>Unlock automation, intelligence, and the full platform for your home.</div>
+        </div>
+
+        {/* Billing toggle */}
+        <div style={{display:"flex",justifyContent:"center",padding:"1rem 1.25rem .5rem"}}>
+          <div style={{display:"flex",background:"var(--stone)",borderRadius:20,padding:3,gap:2}}>
+            <button onClick={()=>setAnnual(false)}
+              style={{padding:"4px 16px",borderRadius:16,border:"none",background:!annual?"var(--white)":"transparent",color:!annual?"var(--dark)":"var(--mid)",fontWeight:!annual?700:400,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!annual?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
+              Monthly
+            </button>
+            <button onClick={()=>setAnnual(true)}
+              style={{padding:"4px 16px",borderRadius:16,border:"none",background:annual?"var(--white)":"transparent",color:annual?"var(--dark)":"var(--mid)",fontWeight:annual?700:400,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:annual?"0 1px 3px rgba(0,0,0,.1)":"none",display:"flex",alignItems:"center",gap:5}}>
+              Annual
+              <span style={{fontSize:".65rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 months free</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Plan cards */}
+        <div style={{padding:".75rem 1.25rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
+          {tiers.map(t => (
+            <div key={t.key} style={{background:t.bg,border:`1.5px solid ${t.border}`,borderRadius:"14px",overflow:"hidden"}}>
+              <div style={{padding:".85rem 1rem",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+                <div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:t.color}}>{t.label}</div>
+                  <div style={{fontSize:".75rem",color:"rgba(0,0,0,.45)",marginTop:"1px"}}>{t.pitch}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0,marginLeft:".75rem"}}>
+                  <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:600,color:t.color}}>
+                    {annual ? t.annual : t.monthly}
+                  </span>
+                  <span style={{fontSize:".72rem",color:"rgba(0,0,0,.4)"}}>{annual ? "/yr" : "/mo"}</span>
+                </div>
+              </div>
+              <div style={{padding:"0 1rem .75rem",display:"flex",flexDirection:"column",gap:".3rem"}}>
+                {t.features.map(f => (
+                  <div key={f} style={{display:"flex",gap:".5rem",fontSize:".78rem",color:"#3A3530",alignItems:"flex-start"}}>
+                    <span style={{color:t.color,flexShrink:0,marginTop:"1px"}}>✓</span>{f}
+                  </div>
+                ))}
+              </div>
+              <div style={{padding:"0 1rem .9rem"}}>
+                <button
+                  disabled={checkoutLoading}
+                  style={{width:"100%",padding:".7rem",background:t.color,border:"none",borderRadius:"10px",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:700,cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.7:1,transition:"opacity .15s"}}
+                  onClick={()=>onCheckout(t.key, annual ? "annual" : "monthly")}>
+                  {checkoutLoading ? "Loading…" : `Get ${t.label} →`}
+                </button>
+              </div>
+            </div>
+          ))}
+          <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
+            Cancel anytime · No long-term commitment · Secure payments via Stripe
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProUpgradeModal({ onClose }) {
   return (
     <div className="pro-modal-wrap" onClick={e => e.target===e.currentTarget && onClose()}>
@@ -4795,10 +4953,11 @@ function ProUpgradeModal({ onClose }) {
           ))}
         </div>
         <button className="pro-modal-cta" onClick={() => {
-          openWaitlist("Pro");
           onClose();
+          // Trigger upgrade modal with Pro pre-selected
+          if (window.__steadwellUpgrade) window.__steadwellUpgrade("pro");
         }}>
-          Join the Pro waitlist →
+          Upgrade to Pro →
         </button>
         <button className="pro-modal-dismiss" onClick={onClose}>
           Maybe later
@@ -15366,32 +15525,31 @@ export default function App() {
   const [pendingSelectedAsset, setPendingSelectedAsset] = useState(null);
   const [showWarrantyModule, setShowWarrantyModule] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [showWaitlist, setShowWaitlist] = useState(false);
-  const [waitlistPlan, setWaitlistPlan] = useState("Plus");
-  const [waitlistEmail, setWaitlistEmail] = useState("");
-  const [waitlistSent, setWaitlistSent] = useState(false);
-  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const submitWaitlist = async () => {
-    if (!waitlistEmail || !waitlistEmail.includes("@")) return;
-    setWaitlistLoading(true);
+  const startCheckout = async (plan, interval) => {
+    if (checkoutLoading) return;
+    setCheckoutLoading(true);
     try {
-      await supabase.from("waitlist").insert({
-        email: waitlistEmail,
-        plan: waitlistPlan,
-        source: "upgrade_modal",
-        created_at: new Date().toISOString(),
-      });
-    } catch (_) {}
-    setWaitlistSent(true);
-    setWaitlistLoading(false);
-  };
-
-  const openWaitlist = (plan) => {
-    setWaitlistPlan(plan);
-    setWaitlistSent(false);
-    setWaitlistEmail("");
-    setShowWaitlist(true);
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const resp = await fetch(
+        "https://hjkyameroqufaojuerns.supabase.co/functions/v1/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authSession.access_token}`,
+          },
+          body: JSON.stringify({ plan, interval }),
+        }
+      );
+      const data = await resp.json();
+      if (!resp.ok || !data.url) throw new Error(data.error || "Could not start checkout");
+      window.location.href = data.url;
+    } catch (err) {
+      toast(err.message || "Checkout failed — please try again", "error");
+      setCheckoutLoading(false);
+    }
   };
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
@@ -15526,10 +15684,21 @@ export default function App() {
     }
     loadData();
 
-    // ── Handle shared invite accept from email link
+    // ── Handle return from Stripe Checkout
     const urlParams = new URLSearchParams(window.location.search);
     const sharedInvite = urlParams.get("shared_invite");
     const inviteEmail  = urlParams.get("email");
+    const upgraded     = urlParams.get("upgraded");
+
+    if (upgraded === "1") {
+      // Reload profile to pick up the plan change written by the webhook
+      setTimeout(async () => {
+        const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
+        if (data) { setPrimaryProfile(data); }
+        toast("🎉 Welcome to " + (data?.plan === "pro" ? "Pro" : "Plus") + "! Your plan is now active.");
+      }, 1500); // small delay to allow webhook to process
+      window.history.replaceState({}, "", "/");
+    }
     if (sharedInvite && inviteEmail && session.user.email?.toLowerCase() === inviteEmail.toLowerCase()) {
       supabase.from("home_members")
         .update({ member_id: uid, status: "accepted", accepted_at: new Date().toISOString() })
@@ -15961,117 +16130,7 @@ export default function App() {
             }}
           />
         )}
-        {showUpgrade && (
-          <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",backdropFilter:"blur(6px)"}}
-            onClick={e=>e.target===e.currentTarget&&setShowUpgrade(false)}>
-            <div style={{background:"var(--linen)",borderRadius:"20px",width:"100%",maxWidth:"520px",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
-              {/* Header */}
-              <div style={{background:"var(--pine)",borderRadius:"20px 20px 0 0",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
-                <button onClick={()=>setShowUpgrade(false)} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".25rem"}}>Upgrade Steadwell</div>
-                <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>Unlock automation, intelligence, and the full platform for your home.</div>
-              </div>
-              {/* Tiers */}
-              <div style={{padding:"1.1rem 1.25rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
-                {[
-                  {
-                    plan:"Plus", price:"$7.99", period:"/month", color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7",
-                    pitch:"Automation and intelligence for the serious homeowner.",
-                    features:["Full recurring task engine — all intervals","Home health score + factor breakdown","5-year cost forecasting","AI receipt, nameplate & policy scanning","Smart Fill model lookup","Daily task & warranty reminders","Expanded document vault"],
-                  },
-                  {
-                    plan:"Pro", price:"$14.99", period:"/month", color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0",
-                    pitch:"Multiple properties, shared access, and the complete platform.",
-                    features:["Everything in Plus","Up to 3 properties","Full home document vault","Shared home access — invite spouse/partner","Priority support"],
-                  },
-                ].map(t => (
-                  <div key={t.plan} style={{background:t.bg,border:`1.5px solid ${t.border}`,borderRadius:"14px",overflow:"hidden"}}>
-                    <div style={{padding:".85rem 1rem",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-                      <div>
-                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:t.color}}>{t.plan}</div>
-                        <div style={{fontSize:".75rem",color:"rgba(0,0,0,.45)",marginTop:"1px"}}>{t.pitch}</div>
-                      </div>
-                      <div style={{textAlign:"right",flexShrink:0,marginLeft:".75rem"}}>
-                        <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:600,color:t.color}}>{t.price}</span>
-                        <span style={{fontSize:".72rem",color:"rgba(0,0,0,.4)"}}>{t.period}</span>
-                      </div>
-                    </div>
-                    <div style={{padding:"0 1rem .75rem",display:"flex",flexDirection:"column",gap:".3rem"}}>
-                      {t.features.map(f => (
-                        <div key={f} style={{display:"flex",gap:".5rem",fontSize:".78rem",color:"#3A3530",alignItems:"flex-start"}}>
-                          <span style={{color:t.color,flexShrink:0,marginTop:"1px"}}>✓</span>{f}
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{padding:"0 1rem .9rem"}}>
-                      <button style={{width:"100%",padding:".7rem",background:t.color,border:"none",borderRadius:"10px",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:700,cursor:"pointer"}}
-                        onClick={()=>{openWaitlist(t.plan);setShowUpgrade(false);}}>
-                        Get {t.plan} →
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
-                  Cancel anytime · No long-term commitment · Secure payments via Stripe
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── WAITLIST MODAL ── */}
-        {showWaitlist && (
-          <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.8)",zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",padding:"1.25rem",backdropFilter:"blur(8px)"}}
-            onClick={e=>e.target===e.currentTarget&&setShowWaitlist(false)}>
-            <div style={{background:"var(--white)",borderRadius:20,width:"100%",maxWidth:420,boxShadow:"0 24px 80px rgba(0,0,0,.35)",overflow:"hidden"}}>
-              <div style={{background:"var(--pine)",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
-                <button onClick={()=>setShowWaitlist(false)} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>✕</button>
-                <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".14em",textTransform:"uppercase",color:"#D2876A",marginBottom:8}}>Coming soon</div>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:400,color:"#F4EDDF",lineHeight:1.2,marginBottom:".4rem"}}>{waitlistPlan} is almost here.</div>
-                <div style={{fontSize:".82rem",color:"rgba(244,237,223,.6)",lineHeight:1.5}}>We&#39;re finishing up payments. Drop your email and you&#39;ll be the first to know when {waitlistPlan} goes live.</div>
-              </div>
-              <div style={{padding:"1.5rem"}}>
-                {!waitlistSent ? (
-                  <>
-                    <div style={{marginBottom:"1rem"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,padding:".75rem 1rem",background:"var(--cream)",borderRadius:10,border:"1.5px solid var(--stone)"}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700,fontSize:".9rem",color:"var(--pine)"}}>{waitlistPlan}</div>
-                          <div style={{fontSize:".75rem",color:"var(--mid)"}}>{waitlistPlan==="Plus"?"$7.99/mo or $63.99/yr":"$14.99/mo or $119.99/yr"}</div>
-                        </div>
-                        <div style={{fontSize:".7rem",background:"rgba(35,74,61,.08)",color:"var(--pine)",fontWeight:700,padding:"3px 10px",borderRadius:20}}>2 months free annually</div>
-                      </div>
-                    </div>
-                    <div style={{marginBottom:"1rem"}}>
-                      <label style={{display:"block",fontSize:".78rem",fontWeight:600,color:"var(--dark)",marginBottom:6}}>Your email</label>
-                      <input
-                        type="email"
-                        value={waitlistEmail}
-                        onChange={e=>setWaitlistEmail(e.target.value)}
-                        onKeyDown={e=>e.key==="Enter"&&submitWaitlist()}
-                        placeholder="you@example.com"
-                        style={{width:"100%",padding:".75rem 1rem",borderRadius:10,border:"1.5px solid var(--stone)",fontFamily:"inherit",fontSize:".9rem",outline:"none",boxSizing:"border-box"}}
-                        autoFocus
-                      />
-                    </div>
-                    <button onClick={submitWaitlist} disabled={waitlistLoading||!waitlistEmail.includes("@")}
-                      style={{width:"100%",padding:".85rem",background:"var(--rust)",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:700,cursor:"pointer",opacity:waitlistLoading||!waitlistEmail.includes("@")?.6:1,transition:"opacity .15s"}}>
-                      {waitlistLoading?"Saving…":"Notify me when it&#39;s live →"}
-                    </button>
-                    <div style={{fontSize:".7rem",color:"#A8A09A",textAlign:"center",marginTop:".75rem"}}>No spam. One email when {waitlistPlan} launches.</div>
-                  </>
-                ) : (
-                  <div style={{textAlign:"center",padding:"1rem 0"}}>
-                    <div style={{fontSize:"2rem",marginBottom:12}}>🎉</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:400,color:"var(--pine)",marginBottom:8}}>You&#39;re on the list!</div>
-                    <div style={{fontSize:".85rem",color:"var(--mid)",lineHeight:1.6,marginBottom:"1.25rem"}}>We&#39;ll email you the moment {waitlistPlan} is available — you&#39;ll be first.</div>
-                    <button onClick={()=>setShowWaitlist(false)} style={{padding:".7rem 1.75rem",background:"var(--pine)",border:"none",borderRadius:10,color:"#F4EDDF",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer"}}>Got it →</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} />}
       </div>
     </>
   );
