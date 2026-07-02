@@ -1,4 +1,4 @@
-// Steadwell v153 — 2026-07-02T00:00:00.000Z
+// Steadwell v154 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12444,6 +12444,10 @@ function RecallCheckPanel({ warranties }) {
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [streetViewUrl, setStreetViewUrl] = useState(null);
+  const [primaryPhotoFailed, setPrimaryPhotoFailed] = useState(false);
+  const primaryPhotoUrl = profile?.user_photo_url || profile?.photo_url || null;
+  // Reset failure flags whenever the underlying source changes (new address, new upload, switched property)
+  useEffect(() => { setPrimaryPhotoFailed(false); }, [primaryPhotoUrl]);
   // Google's Street View Static API returns HTTP 200 with a gray "no imagery"
   // placeholder for addresses with no coverage — it does not error. So we check
   // the free Metadata endpoint first and only show the image if status is OK.
@@ -12802,12 +12806,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {/* ── HERO: home photo with address + value overlaid ── */}
       {!showSetup && (
         <div style={{position:"relative",height:300,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
-          {(profile?.user_photo_url||profile?.photo_url) ? (
+          {(primaryPhotoUrl && !primaryPhotoFailed) ? (
             <img
-              src={profile.user_photo_url||profile.photo_url}
+              src={primaryPhotoUrl}
               alt="Your home"
               style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:`center ${photoPos}%`,opacity:.78}}
-              onError={e=>{if(e.target.src!==profile.photo_url)e.target.src=profile.photo_url;else e.target.style.display="none";}}
+              onError={()=>setPrimaryPhotoFailed(true)}
             />
           ) : streetViewUrl ? (
             <img
