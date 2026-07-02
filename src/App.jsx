@@ -1,4 +1,4 @@
-// Steadwell v150 — 2026-07-02T00:00:00.000Z
+// Steadwell v151 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2233,7 +2233,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <span className="pbadge">Most popular</span>
               <div className="plan">Plus</div>
               <div className="price">$7.99<span> / month</span></div>
-              <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>2 months free</span></div>
+              <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
                 {["Everything in Free","AI nameplate, receipt & policy scan","Smart Fill from model number","Home health score & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
@@ -2243,7 +2243,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             <div className="pcard prem rv" style={{transitionDelay:".12s"}}>
               <div className="plan">Pro</div>
               <div className="price">$14.99<span> / month</span></div>
-              <div style={{fontSize:".75rem",color:"#8A6A5A",marginBottom:".5rem"}}>or $119.99/year <span style={{background:"rgba(193,97,64,.12)",color:"#C16140",padding:"1px 7px",borderRadius:10,fontWeight:700}}>2 months free</span></div>
+              <div style={{fontSize:".75rem",color:"#8A6A5A",marginBottom:".5rem"}}>or $119.99/year <span style={{background:"rgba(193,97,64,.12)",color:"#C16140",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
                 {["Everything in Plus","Up to 3 properties","Full home document vault","Shared household access — invite spouse/partner","Larger file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
@@ -3122,7 +3122,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                     <div style={{display:"inline-flex",background:"var(--cream2)",borderRadius:16,padding:2,gap:2}}>
                       <button onClick={()=>setBillingAnnual(false)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:!billingAnnual?"var(--white)":"transparent",color:!billingAnnual?"var(--dark)":"var(--mid)",fontWeight:!billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none"}}>Monthly</button>
                       <button onClick={()=>setBillingAnnual(true)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:billingAnnual?"var(--white)":"transparent",color:billingAnnual?"var(--dark)":"var(--mid)",fontWeight:billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:4}}>
-                        Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 free</span>
+                        Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>Save 33%</span>
                       </button>
                     </div>
                   </div>
@@ -4955,7 +4955,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
             <button onClick={()=>setAnnual(true)}
               style={{padding:"3px 14px",borderRadius:16,border:"none",background:annual?"var(--white)":"transparent",color:annual?"var(--dark)":"var(--mid)",fontWeight:annual?700:400,fontSize:".74rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:annual?"0 1px 3px rgba(0,0,0,.1)":"none",display:"flex",alignItems:"center",gap:5}}>
               Annual
-              <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 free</span>
+              <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>Save 33%</span>
             </button>
           </div>
         </div>
