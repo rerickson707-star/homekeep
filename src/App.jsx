@@ -1,4 +1,4 @@
-// Steadwell v147 — 2026-07-02T00:00:00.000Z
+// Steadwell v148 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2985,7 +2985,7 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
 const DELETE_ACCOUNT_URL      = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/delete-account";
 const CANCEL_SUBSCRIPTION_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/cancel-subscription";
 
-function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow }) {
+function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow, onCheckout, checkoutLoading }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -2995,8 +2995,8 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const planLabel = PLANS[plan]?.label || "Free";
   const planColors = {
     free: { color:"#6B6259", bg:"var(--cream2)", border:"var(--stone)" },
-    plus: { color:"#3B5FBF", bg:"#EEF4FF", border:"#C5D5F7" },
-    pro:  { color:"#A0511A", bg:"#FBF0E6", border:"#F5D5B0" },
+    plus: { color:"var(--pine)", bg:"#E9F0ED", border:"#C3D6CE" },
+    pro:  { color:"var(--rust)", bg:"#FBEEE8", border:"#F0C9B4" },
   };
   const pc = planColors[plan] || planColors.free;
 
@@ -3015,21 +3015,23 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   })();
 
   const TIERS = [
-    { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border },
-    { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/month", periodAnnual:"/year", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border },
-    { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/month", periodAnnual:"/year", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border },
+    { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border, pitch:"Core tracking, no cost." },
+    { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/month", periodAnnual:"/year", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border, pitch:"Automation, AI scanning & forecasting." },
+    { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/month", periodAnnual:"/year", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border, pitch:"Multiple properties & shared access." },
   ];
   const tierOrder = { free:0, plus:1, pro:2 };
   const [billingAnnual, setBillingAnnual] = useState(false);
 
-  // Plan changes are disabled until Stripe billing is fully wired up. Writing directly
-  // to profiles.plan here would desync the database from any real subscription once
-  // Stripe goes live (a user could "downgrade" in the UI while still being billed).
-  // Once Stripe is live, both branches below get replaced with real Checkout/Portal calls.
+  // Upgrades go straight to Stripe Checkout for the specific tier + interval clicked —
+  // no extra modal, no re-selecting. Downgrades are handled via cancellation (access
+  // continues until the current billing period ends, then reverts to Free automatically).
   const handlePlanChange = (targetKey) => {
     const isUpgrade = tierOrder[targetKey] > tierOrder[plan];
-    if (isUpgrade && onUpgradeFlow) { onUpgradeFlow(); return; }
-    // Downgrades handled at end of billing period via cancellation
+    if (isUpgrade && onCheckout) {
+      onCheckout(targetKey, billingAnnual ? "annual" : "monthly");
+    } else if (isUpgrade && onUpgradeFlow) {
+      onUpgradeFlow(); // fallback if onCheckout wasn't passed in
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -3079,8 +3081,14 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
             </div>
             {plan !== "free" && (
               <div style={{textAlign:"right"}}>
-                <div style={{fontSize:".68rem",color:pc.color,opacity:.7}}>Billed monthly</div>
-                <div style={{fontSize:".82rem",fontWeight:700,color:pc.color}}>{billingAnnual ? (TIERS.find(t=>t.key===plan)?.priceAnnual || TIERS.find(t=>t.key===plan)?.price + "/mo") : TIERS.find(t=>t.key===plan)?.price+"/mo"}</div>
+                <div style={{fontSize:".68rem",color:pc.color,opacity:.7}}>
+                  {profile?.plan_interval === "annual" ? "Billed annually" : "Billed monthly"}
+                </div>
+                <div style={{fontSize:".82rem",fontWeight:700,color:pc.color}}>
+                  {profile?.plan_interval === "annual"
+                    ? (TIERS.find(t=>t.key===plan)?.priceAnnual || "—") + "/yr"
+                    : (TIERS.find(t=>t.key===plan)?.price || "—") + "/mo"}
+                </div>
               </div>
             )}
           </div>
@@ -3095,30 +3103,54 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
               </button>
             </div>
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginBottom:"1rem"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1rem"}}>
             {TIERS.map(t => {
               const isCurrent = t.key === plan;
               const isUpgrade = tierOrder[t.key] > tierOrder[plan];
+              const isDowngrade = tierOrder[t.key] < tierOrder[plan];
               return (
-                <div key={t.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".75rem .9rem",borderRadius:10,border:`1.5px solid ${isCurrent?t.border:"var(--stone)"}`,background:isCurrent?t.bg:"var(--white)"}}>
-                  <div>
-                    <div style={{fontSize:".88rem",fontWeight:700,color:isCurrent?t.color:"var(--dark)"}}>{t.label}{isCurrent && <span style={{fontSize:".68rem",fontWeight:700,marginLeft:6,color:t.color}}>· Current</span>}</div>
-                    <div style={{fontSize:".75rem",color:"#A8A09A"}}>
-                      {billingAnnual && t.priceAnnual ? t.priceAnnual + " " + t.periodAnnual : t.price + " " + t.period}
-                      {billingAnnual && t.priceAnnual && <span style={{marginLeft:6,fontSize:".65rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 months free</span>}
+                <div key={t.key} style={{
+                  display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:".8rem .95rem",borderRadius:12,
+                  border:`1.5px solid ${isCurrent?t.border:"var(--stone)"}`,
+                  background:isCurrent?t.bg:"var(--white)",
+                  opacity: isDowngrade ? .55 : 1,
+                  transition:"opacity .15s",
+                }}>
+                  <div style={{minWidth:0,flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:1}}>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:isCurrent?t.color:"var(--dark)"}}>{t.label}</span>
+                      {isCurrent && (
+                        <span style={{fontSize:".62rem",fontWeight:700,color:"#fff",background:t.color,padding:"1px 7px",borderRadius:8,letterSpacing:".02em"}}>CURRENT</span>
+                      )}
                     </div>
+                    <div style={{fontSize:".75rem",color:"#A8A09A",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      <span>
+                        {billingAnnual && t.priceAnnual ? t.priceAnnual + " " + t.periodAnnual : t.price + " " + t.period}
+                      </span>
+                      {billingAnnual && t.priceAnnual && (
+                        <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 months free</span>
+                      )}
+                    </div>
+                    <div style={{fontSize:".72rem",color:"#B5AEA5",marginTop:2}}>{t.pitch}</div>
                   </div>
-                  {!isCurrent && (
+                  {isUpgrade && (
                     <button
+                      disabled={checkoutLoading}
                       onClick={()=>handlePlanChange(t.key)}
-                      style={{fontSize:".78rem",fontWeight:700,padding:".4rem .85rem",borderRadius:8,border:isUpgrade?"none":"1.5px solid var(--stone)",background:isUpgrade?t.color:"transparent",color:isUpgrade?"#fff":"#A8A09A",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
-                      {isUpgrade ? "Upgrade →" : "Coming soon"}
+                      style={{fontSize:".78rem",fontWeight:700,padding:".5rem .95rem",borderRadius:9,border:"none",background:t.color,color:"#fff",cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.6:1,fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap",marginLeft:10}}>
+                      {checkoutLoading ? "…" : "Upgrade →"}
                     </button>
                   )}
                 </div>
               );
             })}
           </div>
+          {plan !== "free" && (
+            <div style={{fontSize:".72rem",color:"#B5AEA5",textAlign:"center",marginTop:"-.5rem",marginBottom:"1rem"}}>
+              To downgrade, cancel below — you'll keep your current plan until the billing period ends.
+            </div>
+          )}
 
           <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",marginBottom:"1.25rem"}}>
             Cancel anytime · No long-term commitment · Secure payments via Stripe
@@ -4832,7 +4864,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
     {
       key: "plus", label: "Plus",
       monthly: "$7.99", annual: "$63.99",
-      color: "#3B5FBF", bg: "#EEF4FF", border: "#C5D5F7",
+      color: "var(--pine)", bg: "#E9F0ED", border: "#C3D6CE",
       pitch: "Automation and intelligence for the serious homeowner.",
       features: [
         "Full recurring task engine — all intervals",
@@ -4847,7 +4879,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
     {
       key: "pro", label: "Pro",
       monthly: "$14.99", annual: "$119.99",
-      color: "#A0511A", bg: "#FBF0E6", border: "#F5D5B0",
+      color: "var(--rust)", bg: "#FBEEE8", border: "#F0C9B4",
       pitch: "Multiple properties, shared access, and the complete platform.",
       features: [
         "Everything in Plus",
@@ -16123,6 +16155,8 @@ export default function App() {
             toast={toast}
             onClose={()=>setShowAccount(false)}
             onUpgradeFlow={()=>{setShowAccount(false);setShowUpgrade(true);}}
+            onCheckout={startCheckout}
+            checkoutLoading={checkoutLoading}
           />
         )}
         {showExport && (
