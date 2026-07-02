@@ -1,4 +1,4 @@
-// Steadwell v144 — 2026-07-01T00:00:00.000Z
+// Steadwell v145 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4824,7 +4824,7 @@ function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[] })
 
 // ─── PRO UPGRADE MODAL ───────────────────────────────────────────────────────
 // ─── UPGRADE MODAL (Stripe-connected) ────────────────────────────────────────
-function UpgradeModal({ onClose, onCheckout, checkoutLoading }) {
+function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false }) {
   const [annual, setAnnual] = useState(false);
 
   const tiers = [
@@ -4862,11 +4862,22 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading }) {
     <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",backdropFilter:"blur(6px)"}}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{background:"var(--linen)",borderRadius:"20px",width:"100%",maxWidth:"520px",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
-        {/* Header */}
+
+        {/* Header — contextual for post-setup vs regular */}
         <div style={{background:"var(--pine)",borderRadius:"20px 20px 0 0",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
           <button onClick={onClose} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".25rem"}}>Upgrade Steadwell</div>
-          <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>Unlock automation, intelligence, and the full platform for your home.</div>
+          {postSetup ? (
+            <>
+              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#D2876A",marginBottom:".4rem"}}>Your home is set up ✓</div>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".35rem",lineHeight:1.2}}>Unlock the full platform</div>
+              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>You're on Free — upgrade anytime to get AI scanning, health scoring, cost forecasting, and more.</div>
+            </>
+          ) : (
+            <>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".25rem"}}>Upgrade Steadwell</div>
+              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>Unlock automation, intelligence, and the full platform for your home.</div>
+            </>
+          )}
         </div>
 
         {/* Billing toggle */}
@@ -4917,9 +4928,18 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading }) {
               </div>
             </div>
           ))}
-          <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
-            Cancel anytime · No long-term commitment · Secure payments via Stripe
-          </div>
+
+          {/* Free dismiss — only shown post-setup */}
+          {postSetup ? (
+            <button onClick={onClose}
+              style={{width:"100%",padding:".65rem",borderRadius:10,border:"1.5px solid var(--stone)",background:"transparent",color:"#A8A09A",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",textAlign:"center"}}>
+              Continue with Free for now
+            </button>
+          ) : (
+            <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
+              Cancel anytime · No long-term commitment · Secure payments via Stripe
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -12703,7 +12723,11 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             toast={toast}
             userId={userId}
             planData={planData}
-            onComplete={()=>setShowSetup(false)}
+            onComplete={() => {
+              setShowSetup(false);
+              // Show upgrade modal after a beat — user has just seen the product
+              setTimeout(() => setShowUpgrade("post-setup"), 600);
+            }}
           />
         </div>
       )}
@@ -16130,7 +16154,7 @@ export default function App() {
             }}
           />
         )}
-        {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} />}
+        {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} postSetup={showUpgrade === "post-setup"} />}
       </div>
     </>
   );
