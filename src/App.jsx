@@ -1,4 +1,4 @@
-// Steadwell v148 — 2026-07-02T00:00:00.000Z
+// Steadwell v149 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3015,12 +3015,16 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   })();
 
   const TIERS = [
-    { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border, pitch:"Core tracking, no cost." },
-    { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/month", periodAnnual:"/year", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border, pitch:"Automation, AI scanning & forecasting." },
-    { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/month", periodAnnual:"/year", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border, pitch:"Multiple properties & shared access." },
+    { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border, pitch:"Core tracking, no cost.",
+      features:["Core maintenance tracking","Basic task reminders","1 property"] },
+    { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/mo", periodAnnual:"/yr", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border, pitch:"Automation and intelligence for your home.",
+      features:["Full recurring task engine","Home health score","AI receipt and bill scanning","5-year cost forecasting"] },
+    { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/mo", periodAnnual:"/yr", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border, pitch:"Multiple properties, shared access.",
+      features:["Everything in Plus","Up to 3 properties","Shared home access","Priority support"] },
   ];
   const tierOrder = { free:0, plus:1, pro:2 };
   const [billingAnnual, setBillingAnnual] = useState(false);
+  const [viewPlan, setViewPlan] = useState(plan); // which tier is showing in the segmented card — defaults to current plan
 
   // Upgrades go straight to Stripe Checkout for the specific tier + interval clicked —
   // no extra modal, no re-selecting. Downgrades are handled via cancellation (access
@@ -3073,84 +3077,88 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
             </div>
           </div>
 
-          {/* Current plan */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",background:pc.bg,border:`1.5px solid ${pc.border}`,borderRadius:"var(--r-sm)",marginBottom:"1.1rem"}}>
-            <div>
-              <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:pc.color,opacity:.75,marginBottom:2}}>Current plan</div>
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:600,color:pc.color}}>{planLabel}</div>
-            </div>
-            {plan !== "free" && (
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:".68rem",color:pc.color,opacity:.7}}>
-                  {profile?.plan_interval === "annual" ? "Billed annually" : "Billed monthly"}
-                </div>
-                <div style={{fontSize:".82rem",fontWeight:700,color:pc.color}}>
-                  {profile?.plan_interval === "annual"
-                    ? (TIERS.find(t=>t.key===plan)?.priceAnnual || "—") + "/yr"
-                    : (TIERS.find(t=>t.key===plan)?.price || "—") + "/mo"}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Segmented plan card — native app style */}
+          {(() => {
+            const viewTier = TIERS.find(t => t.key === viewPlan) || TIERS[0];
+            const isViewingCurrent = viewPlan === plan;
+            const isUpgradeTier = tierOrder[viewPlan] > tierOrder[plan];
+            return (
+              <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:16,overflow:"hidden",marginBottom:".85rem"}}>
 
-          {/* Plan switcher */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".6rem"}}>
-            <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#A8A09A"}}>Switch plan</div>
-            <div style={{display:"inline-flex",alignItems:"center",background:"var(--cream2)",borderRadius:16,padding:2,gap:2}}>
-              <button onClick={()=>setBillingAnnual(false)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:!billingAnnual?"var(--white)":"transparent",color:!billingAnnual?"var(--dark)":"var(--mid)",fontWeight:!billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none"}}>Monthly</button>
-              <button onClick={()=>setBillingAnnual(true)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:billingAnnual?"var(--white)":"transparent",color:billingAnnual?"var(--dark)":"var(--mid)",fontWeight:billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:4}}>
-                Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 free</span>
-              </button>
-            </div>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1rem"}}>
-            {TIERS.map(t => {
-              const isCurrent = t.key === plan;
-              const isUpgrade = tierOrder[t.key] > tierOrder[plan];
-              const isDowngrade = tierOrder[t.key] < tierOrder[plan];
-              return (
-                <div key={t.key} style={{
-                  display:"flex",alignItems:"center",justifyContent:"space-between",
-                  padding:".8rem .95rem",borderRadius:12,
-                  border:`1.5px solid ${isCurrent?t.border:"var(--stone)"}`,
-                  background:isCurrent?t.bg:"var(--white)",
-                  opacity: isDowngrade ? .55 : 1,
-                  transition:"opacity .15s",
-                }}>
-                  <div style={{minWidth:0,flex:1}}>
-                    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:1}}>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:isCurrent?t.color:"var(--dark)"}}>{t.label}</span>
-                      {isCurrent && (
-                        <span style={{fontSize:".62rem",fontWeight:700,color:"#fff",background:t.color,padding:"1px 7px",borderRadius:8,letterSpacing:".02em"}}>CURRENT</span>
-                      )}
-                    </div>
-                    <div style={{fontSize:".75rem",color:"#A8A09A",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                      <span>
-                        {billingAnnual && t.priceAnnual ? t.priceAnnual + " " + t.periodAnnual : t.price + " " + t.period}
-                      </span>
-                      {billingAnnual && t.priceAnnual && (
-                        <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 months free</span>
-                      )}
-                    </div>
-                    <div style={{fontSize:".72rem",color:"#B5AEA5",marginTop:2}}>{t.pitch}</div>
+                {/* Segmented selector */}
+                <div style={{padding:"1rem 1rem 0"}}>
+                  <div style={{display:"flex",background:"rgba(35,74,61,.08)",borderRadius:14,padding:3,gap:2}}>
+                    {TIERS.map(t => {
+                      const isSel = viewPlan === t.key;
+                      return (
+                        <button key={t.key} onClick={()=>setViewPlan(t.key)}
+                          style={{flex:1,border:"none",background:isSel?t.color:"transparent",padding:"9px 0",fontSize:".82rem",fontWeight:600,color:isSel?"#fff":"#7A7370",cursor:"pointer",borderRadius:11,fontFamily:"inherit",position:"relative",transition:"background .15s,color .15s"}}>
+                          {t.label}
+                          {t.key===plan && (
+                            <span style={{position:"absolute",top:5,right:9,width:5,height:5,borderRadius:"50%",background:isSel?"#fff":t.color}}/>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {isUpgrade && (
-                    <button
-                      disabled={checkoutLoading}
-                      onClick={()=>handlePlanChange(t.key)}
-                      style={{fontSize:".78rem",fontWeight:700,padding:".5rem .95rem",borderRadius:9,border:"none",background:t.color,color:"#fff",cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.6:1,fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap",marginLeft:10}}>
-                      {checkoutLoading ? "…" : "Upgrade →"}
-                    </button>
+                </div>
+
+                {/* Price + pitch — updates with selected segment */}
+                <div style={{textAlign:"center",padding:"1.4rem 1.5rem .2rem"}}>
+                  <div style={{width:0,height:0,borderLeft:"7px solid transparent",borderRight:"7px solid transparent",borderBottom:`7px solid ${viewTier.color}`,margin:"0 auto 12px"}}/>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",color:"var(--dark)"}}>
+                    {billingAnnual && viewTier.priceAnnual ? viewTier.priceAnnual : viewTier.price}
+                    <span style={{fontSize:".8rem",color:"#8A8178"}}> {billingAnnual && viewTier.priceAnnual ? viewTier.periodAnnual : viewTier.period}</span>
+                  </div>
+                  <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2}}>{viewTier.pitch}</div>
+                  {isViewingCurrent && (
+                    <div style={{display:"inline-block",marginTop:9,fontSize:".64rem",fontWeight:700,color:"#fff",background:viewTier.color,padding:"2px 9px",borderRadius:8,letterSpacing:".02em"}}>YOUR CURRENT PLAN</div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-          {plan !== "free" && (
-            <div style={{fontSize:".72rem",color:"#B5AEA5",textAlign:"center",marginTop:"-.5rem",marginBottom:"1rem"}}>
-              To downgrade, cancel below — you'll keep your current plan until the billing period ends.
-            </div>
-          )}
+
+                {/* Billing toggle — only relevant for paid tiers */}
+                {viewPlan !== "free" && (
+                  <div style={{display:"flex",justifyContent:"center",padding:".7rem 1.5rem 0"}}>
+                    <div style={{display:"inline-flex",background:"var(--cream2)",borderRadius:16,padding:2,gap:2}}>
+                      <button onClick={()=>setBillingAnnual(false)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:!billingAnnual?"var(--white)":"transparent",color:!billingAnnual?"var(--dark)":"var(--mid)",fontWeight:!billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none"}}>Monthly</button>
+                      <button onClick={()=>setBillingAnnual(true)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:billingAnnual?"var(--white)":"transparent",color:billingAnnual?"var(--dark)":"var(--mid)",fontWeight:billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:4}}>
+                        Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 free</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feature list — updates with selected segment */}
+                <div style={{padding:"1.1rem 1.5rem 0",display:"flex",flexDirection:"column",gap:7}}>
+                  {viewTier.features.map(f => (
+                    <div key={f} style={{display:"flex",gap:8,fontSize:".82rem",color:"#3A3530"}}>
+                      <span style={{color:viewTier.color,flexShrink:0}}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA — contextual to what's being viewed */}
+                <div style={{padding:"1.2rem 1.5rem 1.4rem"}}>
+                  {isViewingCurrent ? (
+                    <div style={{textAlign:"center",fontSize:".78rem",color:"#A8A09A"}}>
+                      {plan === "free" ? "You're all set on Free" : "Manage billing or cancel below"}
+                    </div>
+                  ) : isUpgradeTier ? (
+                    <button
+                      disabled={checkoutLoading}
+                      onClick={()=>handlePlanChange(viewPlan)}
+                      style={{width:"100%",padding:".8rem",background:viewTier.color,border:"none",borderRadius:12,color:"#fff",fontSize:".88rem",fontWeight:700,cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.6:1,fontFamily:"inherit"}}>
+                      {checkoutLoading ? "Loading…" : `Upgrade to ${viewTier.label} →`}
+                    </button>
+                  ) : (
+                    <div style={{textAlign:"center",fontSize:".76rem",color:"#A8A09A",lineHeight:1.5}}>
+                      To switch to {viewTier.label}, cancel your current plan below first.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",marginBottom:"1.25rem"}}>
             Cancel anytime · No long-term commitment · Secure payments via Stripe
