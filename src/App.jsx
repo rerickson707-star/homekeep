@@ -1,4 +1,4 @@
-// Steadwell v149 — 2026-07-02T00:00:00.000Z
+// Steadwell v150 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4867,12 +4867,13 @@ function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[] })
 // ─── UPGRADE MODAL (Stripe-connected) ────────────────────────────────────────
 function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false }) {
   const [annual, setAnnual] = useState(false);
+  const [viewPlan, setViewPlan] = useState("plus");
 
   const tiers = [
     {
       key: "plus", label: "Plus",
       monthly: "$7.99", annual: "$63.99",
-      color: "var(--pine)", bg: "#E9F0ED", border: "#C3D6CE",
+      color: "var(--pine)",
       pitch: "Automation and intelligence for the serious homeowner.",
       features: [
         "Full recurring task engine — all intervals",
@@ -4887,7 +4888,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
     {
       key: "pro", label: "Pro",
       monthly: "$14.99", annual: "$119.99",
-      color: "var(--rust)", bg: "#FBEEE8", border: "#F0C9B4",
+      color: "var(--rust)",
       pitch: "Multiple properties, shared access, and the complete platform.",
       features: [
         "Everything in Plus",
@@ -4899,86 +4900,92 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
     },
   ];
 
+  const t = tiers.find(x => x.key === viewPlan) || tiers[0];
+
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(35,30,25,.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",backdropFilter:"blur(6px)"}}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{background:"var(--linen)",borderRadius:"20px",width:"100%",maxWidth:"520px",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
+      <div style={{background:"var(--linen)",borderRadius:"20px",width:"100%",maxWidth:"420px",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
 
         {/* Header — contextual for post-setup vs regular */}
-        <div style={{background:"var(--pine)",borderRadius:"20px 20px 0 0",padding:"1.5rem 1.5rem 1.25rem",position:"relative"}}>
-          <button onClick={onClose} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:"50%",cursor:"pointer",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        <div style={{background:"var(--pine)",borderRadius:"20px 20px 0 0",padding:"1.35rem 1.35rem 1.1rem",position:"relative"}}>
+          <button onClick={onClose} style={{position:"absolute",top:".9rem",right:".9rem",background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:".8rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
           {postSetup ? (
             <>
-              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#D2876A",marginBottom:".4rem"}}>Your home is set up ✓</div>
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".35rem",lineHeight:1.2}}>Unlock the full platform</div>
-              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>You're on Free — upgrade anytime to get AI scanning, health scoring, cost forecasting, and more.</div>
+              <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#D2876A",marginBottom:".35rem"}}>Your home is set up ✓</div>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.2}}>Unlock the full platform</div>
             </>
           ) : (
-            <>
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#F4EDDF",marginBottom:".25rem"}}>Upgrade Steadwell</div>
-              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.65)",lineHeight:1.5}}>Unlock automation, intelligence, and the full platform for your home.</div>
-            </>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:500,color:"#F4EDDF"}}>Upgrade Steadwell</div>
           )}
         </div>
 
+        {/* Segmented plan selector */}
+        <div style={{padding:"1rem 1.1rem 0"}}>
+          <div style={{display:"flex",background:"rgba(35,74,61,.08)",borderRadius:14,padding:3,gap:2}}>
+            {tiers.map(tier => {
+              const isSel = viewPlan === tier.key;
+              return (
+                <button key={tier.key} onClick={()=>setViewPlan(tier.key)}
+                  style={{flex:1,border:"none",background:isSel?tier.color:"transparent",padding:"9px 0",fontSize:".84rem",fontWeight:600,color:isSel?"#fff":"#7A7370",cursor:"pointer",borderRadius:11,fontFamily:"inherit",transition:"background .15s,color .15s"}}>
+                  {tier.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Price + pitch — updates with selected segment */}
+        <div style={{textAlign:"center",padding:"1.25rem 1.5rem .2rem"}}>
+          <div style={{width:0,height:0,borderLeft:"7px solid transparent",borderRight:"7px solid transparent",borderBottom:`7px solid ${t.color}`,margin:"0 auto 10px"}}/>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",color:"var(--dark)"}}>
+            {annual ? t.annual : t.monthly}
+            <span style={{fontSize:".78rem",color:"#8A8178"}}> {annual ? "/yr" : "/mo"}</span>
+          </div>
+          <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2}}>{t.pitch}</div>
+        </div>
+
         {/* Billing toggle */}
-        <div style={{display:"flex",justifyContent:"center",padding:"1rem 1.25rem .5rem"}}>
+        <div style={{display:"flex",justifyContent:"center",padding:".7rem 1.25rem 0"}}>
           <div style={{display:"flex",background:"var(--stone)",borderRadius:20,padding:3,gap:2}}>
             <button onClick={()=>setAnnual(false)}
-              style={{padding:"4px 16px",borderRadius:16,border:"none",background:!annual?"var(--white)":"transparent",color:!annual?"var(--dark)":"var(--mid)",fontWeight:!annual?700:400,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!annual?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
+              style={{padding:"3px 14px",borderRadius:16,border:"none",background:!annual?"var(--white)":"transparent",color:!annual?"var(--dark)":"var(--mid)",fontWeight:!annual?700:400,fontSize:".74rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!annual?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
               Monthly
             </button>
             <button onClick={()=>setAnnual(true)}
-              style={{padding:"4px 16px",borderRadius:16,border:"none",background:annual?"var(--white)":"transparent",color:annual?"var(--dark)":"var(--mid)",fontWeight:annual?700:400,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:annual?"0 1px 3px rgba(0,0,0,.1)":"none",display:"flex",alignItems:"center",gap:5}}>
+              style={{padding:"3px 14px",borderRadius:16,border:"none",background:annual?"var(--white)":"transparent",color:annual?"var(--dark)":"var(--mid)",fontWeight:annual?700:400,fontSize:".74rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:annual?"0 1px 3px rgba(0,0,0,.1)":"none",display:"flex",alignItems:"center",gap:5}}>
               Annual
-              <span style={{fontSize:".65rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 months free</span>
+              <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>2 free</span>
             </button>
           </div>
         </div>
 
-        {/* Plan cards */}
-        <div style={{padding:".75rem 1.25rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
-          {tiers.map(t => (
-            <div key={t.key} style={{background:t.bg,border:`1.5px solid ${t.border}`,borderRadius:"14px",overflow:"hidden"}}>
-              <div style={{padding:".85rem 1rem",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
-                <div>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:t.color}}>{t.label}</div>
-                  <div style={{fontSize:".75rem",color:"rgba(0,0,0,.45)",marginTop:"1px"}}>{t.pitch}</div>
-                </div>
-                <div style={{textAlign:"right",flexShrink:0,marginLeft:".75rem"}}>
-                  <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:600,color:t.color}}>
-                    {annual ? t.annual : t.monthly}
-                  </span>
-                  <span style={{fontSize:".72rem",color:"rgba(0,0,0,.4)"}}>{annual ? "/yr" : "/mo"}</span>
-                </div>
-              </div>
-              <div style={{padding:"0 1rem .75rem",display:"flex",flexDirection:"column",gap:".3rem"}}>
-                {t.features.map(f => (
-                  <div key={f} style={{display:"flex",gap:".5rem",fontSize:".78rem",color:"#3A3530",alignItems:"flex-start"}}>
-                    <span style={{color:t.color,flexShrink:0,marginTop:"1px"}}>✓</span>{f}
-                  </div>
-                ))}
-              </div>
-              <div style={{padding:"0 1rem .9rem"}}>
-                <button
-                  disabled={checkoutLoading}
-                  style={{width:"100%",padding:".7rem",background:t.color,border:"none",borderRadius:"10px",color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:700,cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.7:1,transition:"opacity .15s"}}
-                  onClick={()=>onCheckout(t.key, annual ? "annual" : "monthly")}>
-                  {checkoutLoading ? "Loading…" : `Get ${t.label} →`}
-                </button>
-              </div>
+        {/* Feature list — updates with selected segment */}
+        <div style={{padding:"1.1rem 1.5rem 0",display:"flex",flexDirection:"column",gap:7}}>
+          {t.features.map(f => (
+            <div key={f} style={{display:"flex",gap:8,fontSize:".82rem",color:"#3A3530",alignItems:"flex-start"}}>
+              <span style={{color:t.color,flexShrink:0,marginTop:1}}>✓</span>{f}
             </div>
           ))}
+        </div>
 
-          {/* Free dismiss — only shown post-setup */}
+        {/* CTA */}
+        <div style={{padding:"1.25rem 1.5rem 1.4rem"}}>
+          <button
+            disabled={checkoutLoading}
+            style={{width:"100%",padding:".8rem",background:t.color,border:"none",borderRadius:12,color:"#fff",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:700,cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.7:1,transition:"opacity .15s"}}
+            onClick={()=>onCheckout(t.key, annual ? "annual" : "monthly")}>
+            {checkoutLoading ? "Loading…" : `Get ${t.label} →`}
+          </button>
+
           {postSetup ? (
             <button onClick={onClose}
-              style={{width:"100%",padding:".65rem",borderRadius:10,border:"1.5px solid var(--stone)",background:"transparent",color:"#A8A09A",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",textAlign:"center"}}>
+              style={{width:"100%",padding:".6rem",marginTop:".6rem",borderRadius:10,border:"none",background:"transparent",color:"#A8A09A",fontSize:".8rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",textAlign:"center"}}>
               Continue with Free for now
             </button>
           ) : (
-            <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",padding:".25rem 0 .5rem"}}>
-              Cancel anytime · No long-term commitment · Secure payments via Stripe
+            <div style={{textAlign:"center",fontSize:".7rem",color:"#9E9690",marginTop:".7rem"}}>
+              Cancel anytime · Secure payments via Stripe
             </div>
           )}
         </div>
