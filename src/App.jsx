@@ -1,4 +1,4 @@
-// Steadwell v146 — 2026-07-02T00:00:00.000Z
+// Steadwell v147 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -183,6 +183,7 @@ const CSS = `
   --cream:#F4EDDF; --cream2:#ECE3D2; --white:#FFFCF6; --stone:#E6DECF; --stone-text:#5E574F; --mid:#BFB5A8;
   --dark:#2A2723; --brown:#7A5C3E; --rust:#C16140; --rust-light:#F6E9E1; --rust-mid:#D2876A;
   --pine:#234A3D; --pine-deep:#173026; --pine-soft:#2E5A4A;
+  --linen:#F4EDDF; /* alias of --cream — fixes app-level UI (e.g. UpgradeModal) that referenced --linen outside the .lp-root landing-page scope where it was previously only defined */
   --sage:#234A3D; --sage-light:#E7EDE7; --sage-soft:#A7BFA8; --gold:#B8861E; --sky:#3A7AAF; --sky-light:#EBF3FA;
   --red:#C0392B; --red-light:#FDECEA;
   --ink-soft:#6B645C;
@@ -19211,7 +19212,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     <Opts section={section} field={field} val={val} options={[["0-5","0–5 yrs"],["6-10","6–10 yrs"],["11-15","11–15 yrs"],["16+","16+ yrs"]]}/>
   );
 
-  const pct = `${Math.round(((step+1) / STEPS.length) * 100)}%`;
+  const pct = `${Math.min(100, Math.round(((step+1) / STEPS.length) * 100))}%`;
   const Progress = () => (
     <div className="onb-bar-track" style={{position:"fixed",top:0,left:0,right:0}}>
       <div className="onb-bar-fill" style={{width:pct}}/>
@@ -19751,20 +19752,20 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     const tiers = [
       {
         key: "free", label: "Free", price: "$0", period: "forever",
-        color: "#7A7370", bg: "#F4F1EB", border: "var(--stone)",
+        color: "#9FB3A8", bg: "rgba(255,255,255,.05)",
         pitch: "Track the basics — no cost, ever.",
         features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
       },
       {
         key: "plus", label: "Plus", price: "$7.99", period: "/mo",
-        color: "#3B5FBF", bg: "#EEF4FF", border: "#C5D5F7",
+        color: "#D2876A", bg: "rgba(210,135,106,.12)",
         pitch: "Automation and intelligence for the serious homeowner.",
         features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
         badge: "Most popular",
       },
       {
         key: "pro", label: "Pro", price: "$14.99", period: "/mo",
-        color: "#A0511A", bg: "#FBF0E6", border: "#F5D5B0",
+        color: "#E0A46E", bg: "rgba(224,164,110,.12)",
         pitch: "Multiple properties and shared access.",
         features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
       },
@@ -19782,53 +19783,56 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     };
 
     return (
-      <div className="setup-wizard">
-        <div style={{padding:"1.75rem 1.25rem 1.25rem",textAlign:"center"}}>
-          <div style={{fontSize:"1.8rem",marginBottom:".5rem"}}>🎉</div>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.35rem",fontWeight:500,color:"#F4EDDF",marginBottom:".4rem"}}>Your home is set up!</div>
-          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",lineHeight:1.55,maxWidth:360,margin:"0 auto"}}>
-            Choose the plan that fits how you want to manage your home. You can change this anytime.
+      <div className="setup-screen">
+        <Progress/><Wordmark/>
+        <div className="setup-inner" style={{paddingBottom:"9rem"}}>
+          <div style={{textAlign:"center",marginBottom:"1.5rem"}}>
+            <div style={{fontSize:"2rem",marginBottom:".5rem"}}>🎉</div>
+            <div className="setup-q" style={{marginBottom:".5rem"}}>Your home is set up!</div>
+            <div className="setup-hint" style={{maxWidth:360,margin:"0 auto"}}>
+              Choose the plan that fits how you want to manage your home. You can change this anytime.
+            </div>
           </div>
-        </div>
 
-        <div style={{padding:"0 1.1rem 1.1rem",display:"flex",flexDirection:"column",gap:".65rem"}}>
-          {tiers.map(t => {
-            const isSel = selected === t.key;
-            return (
-              <div key={t.key}
-                onClick={()=>setSelected(t.key)}
-                style={{
-                  background: isSel ? t.bg : "rgba(255,255,255,.03)",
-                  border: `2px solid ${isSel ? t.color : "rgba(244,237,223,.12)"}`,
-                  borderRadius:14, padding:"1rem 1.1rem", cursor:"pointer",
-                  transition:"all .15s", position:"relative",
-                }}>
-                {t.badge && (
-                  <div style={{position:"absolute",top:-9,right:14,background:"var(--rust)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 9px",borderRadius:10,letterSpacing:".03em"}}>{t.badge}</div>
-                )}
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".3rem"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.25)"}`,background:isSel?t.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      {isSel && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
+            {tiers.map(t => {
+              const isSel = selected === t.key;
+              return (
+                <div key={t.key}
+                  onClick={()=>setSelected(t.key)}
+                  style={{
+                    background: isSel ? t.bg : "rgba(255,255,255,.04)",
+                    border: `2px solid ${isSel ? t.color : "rgba(244,237,223,.14)"}`,
+                    borderRadius:14, padding:"1.1rem 1.15rem", cursor:"pointer",
+                    transition:"all .15s", position:"relative",
+                  }}>
+                  {t.badge && (
+                    <div style={{position:"absolute",top:-9,right:14,background:"var(--rust)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 9px",borderRadius:10,letterSpacing:".03em"}}>{t.badge}</div>
+                  )}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".35rem"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.3)"}`,background:isSel?t.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        {isSel && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#1C3D31" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"#F4EDDF"}}>{t.label}</span>
                     </div>
-                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:600,color: isSel ? t.color : "#F4EDDF"}}>{t.label}</span>
+                    <div>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:600,color:"#F4EDDF"}}>{t.price}</span>
+                      <span style={{fontSize:".72rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:600,color: isSel ? t.color : "#F4EDDF"}}>{t.price}</span>
-                    <span style={{fontSize:".7rem",color: isSel ? t.color : "rgba(244,237,223,.4)",opacity:.8}}> {t.period}</span>
+                  <div style={{fontSize:".78rem",color:"rgba(244,237,223,.55)",marginBottom:".55rem",marginLeft:32}}>{t.pitch}</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:".25rem",marginLeft:32}}>
+                    {t.features.map(f => (
+                      <div key={f} style={{fontSize:".76rem",color:"rgba(244,237,223,.45)",display:"flex",gap:6,alignItems:"flex-start"}}>
+                        <span style={{color:t.color,flexShrink:0}}>✓</span>{f}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div style={{fontSize:".76rem",color: isSel ? "rgba(0,0,0,.5)" : "rgba(244,237,223,.45)",marginBottom:".5rem",marginLeft:32}}>{t.pitch}</div>
-                <div style={{display:"flex",flexDirection:"column",gap:".2rem",marginLeft:32}}>
-                  {t.features.map(f => (
-                    <div key={f} style={{fontSize:".74rem",color: isSel ? "#3A3530" : "rgba(244,237,223,.35)",display:"flex",gap:6,alignItems:"flex-start"}}>
-                      <span style={{color: isSel ? t.color : "rgba(244,237,223,.3)",flexShrink:0}}>✓</span>{f}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         <div className="setup-actions">
