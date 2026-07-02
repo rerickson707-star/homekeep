@@ -1,4 +1,4 @@
-// Steadwell v145 — 2026-07-02T00:00:00.000Z
+// Steadwell v146 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12393,7 +12393,7 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const [emailCaptures, setEmailCaptures] = useState([]);
   const [showEmailInbox, setShowEmailInbox] = useState(false);
 
@@ -12723,11 +12723,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             toast={toast}
             userId={userId}
             planData={planData}
-            onComplete={() => {
-              setShowSetup(false);
-              // Show upgrade modal after a beat — user has just seen the product
-              setTimeout(() => setShowUpgrade("post-setup"), 600);
-            }}
+            onCheckout={onCheckout}
+            onComplete={() => setShowSetup(false)}
           />
         </div>
       )}
@@ -16081,7 +16078,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
@@ -19015,13 +19012,14 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
 }
 
 
-function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete }) {
+function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete, onCheckout }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Appliances","Review"];
   const LS_KEY = `sw_wizard_${userId}`;
 
   const [step, setStepRaw] = useState(0);
   const [saving, setSaving] = useState(false);
   const [assetDetails, setAssetDetails] = useState({});
+  const [wizardPlanChoice, setWizardPlanChoice] = useState(null); // forced plan choice — nothing pre-selected
 
   // Persist step + answers to localStorage on every change
   const setStep = (n) => {
@@ -19175,7 +19173,8 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       toast(msg);
       // Clear saved wizard state
       try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_step"); } catch {}
-      onComplete();
+      // Move into the plan-selection step — onComplete() fires once a plan choice is made
+      setStepRaw(6);
     } catch (err) {
       toast("Error saving — " + err.message, "error");
     }
@@ -19740,6 +19739,110 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
               ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up your home…</>
               : `Save ${selA.length+selT.length+selP.length} items to my home →`}
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 6: Forced plan choice — everyone sees this once, nothing pre-selected
+  if (step === 6) {
+    const selected = wizardPlanChoice;
+    const setSelected = setWizardPlanChoice;
+    const tiers = [
+      {
+        key: "free", label: "Free", price: "$0", period: "forever",
+        color: "#7A7370", bg: "#F4F1EB", border: "var(--stone)",
+        pitch: "Track the basics — no cost, ever.",
+        features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
+      },
+      {
+        key: "plus", label: "Plus", price: "$7.99", period: "/mo",
+        color: "#3B5FBF", bg: "#EEF4FF", border: "#C5D5F7",
+        pitch: "Automation and intelligence for the serious homeowner.",
+        features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
+        badge: "Most popular",
+      },
+      {
+        key: "pro", label: "Pro", price: "$14.99", period: "/mo",
+        color: "#A0511A", bg: "#FBF0E6", border: "#F5D5B0",
+        pitch: "Multiple properties and shared access.",
+        features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
+      },
+    ];
+
+    const handleContinue = () => {
+      if (!selected) return;
+      if (selected === "free") {
+        onComplete();
+      } else if (onCheckout) {
+        onCheckout(selected, "monthly"); // redirects to Stripe; webhook completes the upgrade
+      } else {
+        onComplete();
+      }
+    };
+
+    return (
+      <div className="setup-wizard">
+        <div style={{padding:"1.75rem 1.25rem 1.25rem",textAlign:"center"}}>
+          <div style={{fontSize:"1.8rem",marginBottom:".5rem"}}>🎉</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.35rem",fontWeight:500,color:"#F4EDDF",marginBottom:".4rem"}}>Your home is set up!</div>
+          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",lineHeight:1.55,maxWidth:360,margin:"0 auto"}}>
+            Choose the plan that fits how you want to manage your home. You can change this anytime.
+          </div>
+        </div>
+
+        <div style={{padding:"0 1.1rem 1.1rem",display:"flex",flexDirection:"column",gap:".65rem"}}>
+          {tiers.map(t => {
+            const isSel = selected === t.key;
+            return (
+              <div key={t.key}
+                onClick={()=>setSelected(t.key)}
+                style={{
+                  background: isSel ? t.bg : "rgba(255,255,255,.03)",
+                  border: `2px solid ${isSel ? t.color : "rgba(244,237,223,.12)"}`,
+                  borderRadius:14, padding:"1rem 1.1rem", cursor:"pointer",
+                  transition:"all .15s", position:"relative",
+                }}>
+                {t.badge && (
+                  <div style={{position:"absolute",top:-9,right:14,background:"var(--rust)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 9px",borderRadius:10,letterSpacing:".03em"}}>{t.badge}</div>
+                )}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".3rem"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.25)"}`,background:isSel?t.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {isSel && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:600,color: isSel ? t.color : "#F4EDDF"}}>{t.label}</span>
+                  </div>
+                  <div>
+                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:600,color: isSel ? t.color : "#F4EDDF"}}>{t.price}</span>
+                    <span style={{fontSize:".7rem",color: isSel ? t.color : "rgba(244,237,223,.4)",opacity:.8}}> {t.period}</span>
+                  </div>
+                </div>
+                <div style={{fontSize:".76rem",color: isSel ? "rgba(0,0,0,.5)" : "rgba(244,237,223,.45)",marginBottom:".5rem",marginLeft:32}}>{t.pitch}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:".2rem",marginLeft:32}}>
+                  {t.features.map(f => (
+                    <div key={f} style={{fontSize:".74rem",color: isSel ? "#3A3530" : "rgba(244,237,223,.35)",display:"flex",gap:6,alignItems:"flex-start"}}>
+                      <span style={{color: isSel ? t.color : "rgba(244,237,223,.3)",flexShrink:0}}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="setup-actions">
+          <button
+            className="onb-btn"
+            style={{marginTop:0,width:"100%",opacity: selected ? 1 : .5}}
+            onClick={handleContinue}
+            disabled={!selected}
+          >
+            {!selected ? "Select a plan to continue" : selected === "free" ? "Continue with Free →" : `Continue to checkout →`}
+          </button>
+          <div style={{textAlign:"center",fontSize:".7rem",color:"rgba(244,237,223,.35)",marginTop:".65rem"}}>
+            Cancel anytime · Secure payments via Stripe
+          </div>
         </div>
       </div>
     );
