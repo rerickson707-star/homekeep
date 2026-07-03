@@ -1,4 +1,4 @@
-// Steadwell v160 — 2026-07-02T00:00:00.000Z
+// Steadwell v161 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12815,15 +12815,15 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         ].filter(Boolean);
 
         return (
-        <div className="pw-card" style={{margin:"1rem 1rem 0",borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
+        <div className="pw-card" style={{borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
           <style>{`
-            .pw-card{display:flex;flex-direction:column;}
+            .pw-card{display:flex;flex-direction:column;margin:1rem 1rem 0;}
             .pw-photo{position:relative;aspect-ratio:2.2/1;overflow:hidden;background:var(--pine-deep);flex-shrink:0;}
             .pw-info{background:var(--pine-deep);display:flex;flex-direction:column;}
             .pw-value-row{display:flex;flex-direction:column;gap:.6rem;}
             .pw-value-stats{display:flex;gap:1.1rem;}
             @media(min-width:760px){
-              .pw-card{flex-direction:row;align-items:stretch;max-width:900px;margin-left:auto;margin-right:auto;}
+              .pw-card{flex-direction:row;align-items:stretch;max-width:900px;margin:1rem auto 0;}
               .pw-photo{aspect-ratio:auto;width:42%;flex-shrink:0;}
               .pw-info{width:58%;}
               .pw-value-row{flex-direction:row;align-items:center;justify-content:space-between;gap:1rem;}
