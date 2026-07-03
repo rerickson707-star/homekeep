@@ -1,4 +1,4 @@
-// Steadwell v166 — 2026-07-02T00:00:00.000Z
+// Steadwell v167 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3055,24 +3055,17 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      // Save exit survey feedback first — independent table, no FK to the user,
-      // so this record survives even though the account is about to be deleted.
-      try {
-        await supabase.from("cancellation_feedback").insert({
-          user_id: session.user.id,
-          email:   session.user.email,
-          plan:    planData?.plan || "free",
-          reason:  exitReason || "Not provided",
-          details: exitDetails || null,
-        });
-      } catch (_) {
-        // Never block account deletion on feedback saving failing
-      }
-
+      // Feedback save + notification email are now handled server-side in the
+      // delete-account edge function itself — more reliable than a client-side
+      // insert, and lets the same request send the notification to hello@.
       const resp = await fetch(DELETE_ACCOUNT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({ userId: session.user.id }),
+        body: JSON.stringify({
+          userId: session.user.id,
+          reason: exitReason || "Not provided",
+          details: exitDetails || null,
+        }),
       });
       const data = await resp.json();
       if (!resp.ok || !data.ok) throw new Error(data.error || "Delete failed");
