@@ -47,7 +47,10 @@ serve(async () => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
   <style>
+    :root { color-scheme: light; supported-color-schemes: light; }
     body { margin: 0; padding: 0; background: #ECE3D2; font-family: 'Helvetica Neue', Arial, sans-serif; }
     .wrap { max-width: 580px; margin: 40px auto; background: #FBF7EE; border-radius: 16px; overflow: hidden; }
     .header { background: #234A3D; padding: 28px 40px; display: flex; align-items: center; gap: 12px; }

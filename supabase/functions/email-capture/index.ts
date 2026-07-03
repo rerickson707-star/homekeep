@@ -223,11 +223,11 @@ async function sendConfirmation(
 
   const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>
 <body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:560px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
     <div style="background:#234A3D;padding:26px 32px;display:flex;align-items:center;gap:12px;">
-      <div style="width:34px;height:34px;background:#C16140;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+      <div style="width:34px;height:34px;background:#234A3D;border-radius:9px;display:flex;align-items:center;justify-content:center;">
         <svg viewBox="0 0 48 48" fill="none" width="19" height="19">
           <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>

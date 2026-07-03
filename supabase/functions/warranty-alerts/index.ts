@@ -15,7 +15,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const FROM                    = "Steadwell <hello@trysteadwell.app>";
 const APP_URL                 = "https://www.trysteadwell.app";
 
-// Category icons — updated to include new categories
+// Category icons
 const CAT_ICONS: Record<string, string> = {
   HVAC:                   "🌡️",
   Appliance:              "🍳",
@@ -45,10 +45,14 @@ function dateForOffset(daysFromNow: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// FIX: userId is now a parameter — the unsubscribe link in the footer references it,
+// but it was previously not passed in at all, causing a ReferenceError on every call
+// (this function never successfully returned an email before this fix).
 function buildEmail(
   name: string,
   warranties: any[],
   daysLeft: number,
+  userId: string,
 ): { subject: string; html: string } {
   const urgentColor = daysLeft <= 7 ? "#B0432B" : "#B8861E";
   const urgentBg    = daysLeft <= 7 ? "#F7E0DA" : "#FBF3DE";
@@ -100,6 +104,9 @@ function buildEmail(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <style>:root{color-scheme:light;supported-color-schemes:light;}</style>
   <title>${subject}</title>
 </head>
 <body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
@@ -107,7 +114,7 @@ function buildEmail(
 
     <!-- Header -->
     <div style="background:#173026;padding:26px 32px;display:flex;align-items:center;gap:12px;">
-      <div style="width:34px;height:34px;background:#C16140;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+      <div style="width:34px;height:34px;background:#234A3D;border:1.5px solid rgba(244,237,223,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;">
         <svg viewBox="0 0 48 48" fill="none" width="19" height="19">
           <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M21 33 L21 27 A3 3 0 0 1 27 27 L27 33" stroke="#F4EDDF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -208,7 +215,7 @@ serve(async (_req) => {
       if (!email) continue;
       const name = nameMap[userId] || email.split("@")[0];
 
-      const { subject, html } = buildEmail(name, userWarranties, daysAhead);
+      const { subject, html } = buildEmail(name, userWarranties, daysAhead, userId);
 
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",

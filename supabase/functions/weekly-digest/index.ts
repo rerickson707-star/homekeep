@@ -128,7 +128,7 @@ serve(async (_req) => {
 
     const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>
 <body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:580px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
     <div style="background:#234A3D;padding:28px 40px;display:flex;align-items:center;gap:12px;">
@@ -144,7 +144,7 @@ serve(async (_req) => {
       <span style="color:rgba(244,237,223,.45);font-size:13px;margin-left:auto;">Week of ${weekLabel}</span>
     </div>
     <div style="padding:36px 40px;">
-      <h1 style="font-family:Georgia,serif;font-size:22px;color:#234A3D;font-weight:400;margin:0 0 6px;letter-spacing:-0.3px;">Your home this week, ${name}</h1>
+      <h1 style="font-family:Georgia,serif;font-size:22px;color:#234A3D;font-weight:400;margin:0 0 6px;letter-spacing:-0.3px;">Your home this week,${name}</h1>
       <p style="font-size:14px;color:#A8A09A;margin:0 0 28px;">Here's what needs your attention.</p>
       ${overdueSection}
       ${upcomingSection}

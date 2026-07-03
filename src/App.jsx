@@ -1,4 +1,4 @@
-// Steadwell v165 — 2026-07-02T00:00:00.000Z
+// Steadwell v166 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2990,6 +2990,20 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showExitSurvey, setShowExitSurvey] = useState(false);
+  const [exitReason, setExitReason] = useState(null);
+  const [exitDetails, setExitDetails] = useState("");
+
+  const EXIT_REASONS = [
+    "Too expensive for what it offers",
+    "Missing a feature I need",
+    "Too complicated to use",
+    "Found a tool I like better",
+    "Just trying it out — not ready to commit",
+    "Technical issues or bugs",
+    "No longer need this",
+    "Other",
+  ];
 
   const plan = planData?.plan || "free";
   const planLabel = PLANS[plan]?.label || "Free";
@@ -3041,6 +3055,20 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
+      // Save exit survey feedback first — independent table, no FK to the user,
+      // so this record survives even though the account is about to be deleted.
+      try {
+        await supabase.from("cancellation_feedback").insert({
+          user_id: session.user.id,
+          email:   session.user.email,
+          plan:    planData?.plan || "free",
+          reason:  exitReason || "Not provided",
+          details: exitDetails || null,
+        });
+      } catch (_) {
+        // Never block account deletion on feedback saving failing
+      }
+
       const resp = await fetch(DELETE_ACCOUNT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
@@ -3220,7 +3248,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem"}}>
             <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#B0432B",marginBottom:".6rem"}}>Danger zone</div>
             <button
-              onClick={()=>setConfirmDelete(true)}
+              onClick={()=>setShowExitSurvey(true)}
               style={{width:"100%",padding:".75rem",borderRadius:10,border:"1.5px solid #E3B2A6",background:"#F7E0DA",color:"#B0432B",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
               Delete my account
             </button>
@@ -3230,6 +3258,62 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           </div>
         </div>
       </div>
+
+      {/* Exit survey — shown before the final delete confirmation */}
+      {showExitSurvey && (
+        <div className="overlay" style={{zIndex:601}} onClick={e => e.target===e.currentTarget && setShowExitSurvey(false)}>
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-handle" />
+            <div className="modal-hdr">
+              <span className="modal-title">Before you go</span>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowExitSurvey(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{fontSize:".85rem",color:"var(--mid)",marginBottom:"1.1rem",lineHeight:1.5}}>
+                Mind sharing why you're leaving? It helps us make Steadwell better — totally optional.
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:".5rem",marginBottom:"1rem"}}>
+                {EXIT_REASONS.map(r => (
+                  <button key={r} onClick={()=>setExitReason(r)}
+                    style={{
+                      textAlign:"left",padding:".7rem .85rem",borderRadius:10,
+                      border:`1.5px solid ${exitReason===r?"var(--pine)":"var(--stone)"}`,
+                      background:exitReason===r?"rgba(35,74,61,.06)":"var(--white)",
+                      color:exitReason===r?"var(--pine)":"var(--dark)",
+                      fontSize:".84rem",fontWeight:exitReason===r?700:500,
+                      cursor:"pointer",fontFamily:"inherit",transition:"all .12s",
+                      display:"flex",alignItems:"center",gap:".6rem",
+                    }}>
+                    <span style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${exitReason===r?"var(--pine)":"var(--stone)"}`,background:exitReason===r?"var(--pine)":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {exitReason===r && <span style={{width:6,height:6,borderRadius:"50%",background:"#fff"}}/>}
+                    </span>
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={exitDetails}
+                onChange={e=>setExitDetails(e.target.value)}
+                placeholder="Anything else you'd like to share? (optional)"
+                rows={3}
+                style={{width:"100%",padding:".7rem .85rem",borderRadius:10,border:"1.5px solid var(--stone)",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",marginBottom:"1.25rem"}}
+              />
+              <div style={{display:"flex",gap:".6rem"}}>
+                <button onClick={()=>{setShowExitSurvey(false);setConfirmDelete(true);}}
+                  style={{flex:1,padding:".7rem",borderRadius:10,border:"1.5px solid var(--stone)",background:"var(--white)",color:"var(--mid)",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                  Skip
+                </button>
+                <button
+                  disabled={!exitReason}
+                  onClick={()=>{setShowExitSurvey(false);setConfirmDelete(true);}}
+                  style={{flex:2,padding:".7rem",borderRadius:10,border:"none",background:exitReason?"#B0432B":"var(--stone)",color:exitReason?"#fff":"var(--mid)",fontSize:".82rem",fontWeight:700,cursor:exitReason?"pointer":"default",fontFamily:"inherit"}}>
+                  Continue to delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete account confirmation */}
       {confirmDelete && (

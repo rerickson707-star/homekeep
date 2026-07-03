@@ -46,7 +46,7 @@ serve(async (req) => {
     // Email Robert
     const notifyHtml = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>
 <body style="font-family:'Helvetica Neue',Arial,sans-serif;background:#ECE3D2;margin:0;padding:0;">
   <div style="max-width:560px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
     <div style="background:#234A3D;padding:24px 36px;display:flex;align-items:center;gap:12px;">
@@ -127,7 +127,7 @@ serve(async (req) => {
     // Send confirmation to applicant
     const confirmHtml = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>
 <body style="font-family:'Helvetica Neue',Arial,sans-serif;background:#ECE3D2;margin:0;padding:0;">
   <div style="max-width:560px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
     <div style="background:#234A3D;padding:24px 36px;display:flex;align-items:center;gap:12px;">
