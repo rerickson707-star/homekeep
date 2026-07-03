@@ -3,14 +3,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const SUPABASE_URL = Deno.env.get("DB_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const FROM = "Steadwell <hello@trysteadwell.app>";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req) => {
+  // Without this, the browser's CORS preflight (OPTIONS) request gets no valid
+  // response, and the browser silently blocks the real POST from ever being sent —
+  // this was why welcome emails were failing with no visible error anywhere.
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
   try {
     const { email, name } = await req.json();
-    if (!email) return new Response("Missing email", { status: 400 });
+    if (!email) return new Response("Missing email", { status: 400, headers: CORS });
 
     const displayName = name || email.split("@")[0];
 
@@ -153,9 +162,9 @@ serve(async (req) => {
     });
 
     const data = await res.json();
-    if (!res.ok) return new Response(JSON.stringify(data), { status: 500 });
-    return new Response(JSON.stringify({ ok: true, id: data.id }), { status: 200 });
+    if (!res.ok) return new Response(JSON.stringify(data), { status: 500, headers: CORS });
+    return new Response(JSON.stringify({ ok: true, id: data.id }), { status: 200, headers: CORS });
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500 });
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: CORS });
   }
 });

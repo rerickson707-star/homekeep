@@ -1,4 +1,4 @@
-// Steadwell v168 — 2026-07-03T00:00:00.000Z
+// Steadwell v169 — 2026-07-03T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2476,7 +2476,8 @@ function OnboardingWizard({ session, onComplete }) {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk"},
         body: JSON.stringify({ email: session.user.email, name: name.trim() || session.user.email.split("@")[0] }),
-      }).catch(() => {});
+      }).then(res => { if (!res.ok) console.error("[welcome-email] Failed with status", res.status); })
+        .catch(err => console.error("[welcome-email] Network error:", err));
     } catch(e) {
       console.error("Onboarding save error:", e);
       await onComplete({ launchSetup: false });
