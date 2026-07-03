@@ -1,4 +1,4 @@
-// Steadwell v163 — 2026-07-02T00:00:00.000Z
+// Steadwell v164 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -15690,6 +15690,21 @@ export default function App() {
   const [showWarrantyModule, setShowWarrantyModule] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // If the browser restores this page from bfcache (e.g. user hits Back after
+  // being redirected to Stripe Checkout), checkoutLoading would otherwise stay
+  // stuck at whatever it was the instant before navigating away — the page was
+  // never actually reloaded, so React state was never reset. Detect that restore
+  // and clear any in-flight loading state so the buttons work again immediately.
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        setCheckoutLoading(false);
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   const startCheckout = async (plan, interval) => {
     if (checkoutLoading) return;
