@@ -1,4 +1,4 @@
-// Steadwell v159 — 2026-07-02T00:00:00.000Z
+// Steadwell v160 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12815,10 +12815,24 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         ].filter(Boolean);
 
         return (
-        <div style={{margin:"1rem auto 0",maxWidth:640,borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
+        <div className="pw-card" style={{margin:"1rem 1rem 0",borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
+          <style>{`
+            .pw-card{display:flex;flex-direction:column;}
+            .pw-photo{position:relative;aspect-ratio:2.2/1;overflow:hidden;background:var(--pine-deep);flex-shrink:0;}
+            .pw-info{background:var(--pine-deep);display:flex;flex-direction:column;}
+            .pw-value-row{display:flex;flex-direction:column;gap:.6rem;}
+            .pw-value-stats{display:flex;gap:1.1rem;}
+            @media(min-width:760px){
+              .pw-card{flex-direction:row;align-items:stretch;max-width:900px;margin-left:auto;margin-right:auto;}
+              .pw-photo{aspect-ratio:auto;width:42%;flex-shrink:0;}
+              .pw-info{width:58%;}
+              .pw-value-row{flex-direction:row;align-items:center;justify-content:space-between;gap:1rem;}
+              .pw-value-stats{flex-direction:column;gap:.5rem;}
+            }
+          `}</style>
 
-          {/* Photo — scales proportionally with card width instead of a fixed pixel height */}
-          <div style={{position:"relative",aspectRatio:"2.2 / 1",overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
+          {/* Photo — scales with its column at every width, side-by-side with info on desktop */}
+          <div className="pw-photo">
             {(primaryPhotoUrl && !primaryPhotoFailed) ? (
               <img
                 src={primaryPhotoUrl}
@@ -12848,8 +12862,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             </button>
           </div>
 
-          {/* One continuous panel — identity, stats, and value all share the same background, separated only by hairlines */}
-          <div style={{background:"var(--pine-deep)"}}>
+          {/* Info column — identity, stats, value. On desktop this sits beside the photo instead of below it */}
+          <div className="pw-info">
 
             {/* Identity */}
             <div style={{padding:"1rem 1.15rem .85rem",textAlign:"left"}}>
@@ -12876,9 +12890,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               </div>
             )}
 
-            {/* Value */}
+            {/* Value — reorganizes from a wide horizontal spread to a compact vertical stack once the column narrows on desktop */}
             {zestimate > 0 && (
-              <div style={{padding:"1rem 1.15rem",display:"flex",alignItems:"stretch",gap:"1rem",borderTop:"1px solid rgba(244,237,223,.09)"}}>
+              <div className="pw-value-row" style={{padding:"1rem 1.15rem",borderTop:"1px solid rgba(244,237,223,.09)",flex:1}}>
                 <div style={{textAlign:"left"}}>
                   <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.4)",fontWeight:700,marginBottom:".2rem"}}>Estimated value</div>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{fmt$(zestimate)}</div>
@@ -12910,12 +12924,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     ↻ Refresh value
                   </button>
                 </div>
-                <div style={{flex:1}}/>
-                <div style={{width:1,background:"rgba(244,237,223,.1)",flexShrink:0}}/>
-                <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",justifyContent:"center",flexShrink:0,textAlign:"right"}}>
-                  {lastSalePrice>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(lastSalePrice)}</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Purchased</div></div>}
-                  {Number(profile?.rent_zestimate)>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(profile.rent_zestimate)}/mo</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Rent est.</div></div>}
-                  {Number(profile?.sqft)>0&&zestimate>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Per sqft</div></div>}
+                <div className="pw-value-stats">
+                  {lastSalePrice>0&&<div style={{textAlign:"left"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(lastSalePrice)}</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Purchased</div></div>}
+                  {Number(profile?.rent_zestimate)>0&&<div style={{textAlign:"left"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(profile.rent_zestimate)}/mo</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Rent est.</div></div>}
+                  {Number(profile?.sqft)>0&&zestimate>0&&<div style={{textAlign:"left"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Per sqft</div></div>}
                 </div>
               </div>
             )}
