@@ -1,4 +1,4 @@
-// Steadwell v167 — 2026-07-02T00:00:00.000Z
+// Steadwell v168 — 2026-07-03T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -5541,131 +5541,131 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
 
 const PROJECT_STATUSES = ["Planning","In Progress","Completed","On Hold"];
 
-// ─── PROJECT ROI REFERENCE DATA ───────────────────────────────────────────────
-// National averages from the annual Cost vs. Value Report (Remodeling magazine / Zonda),
-// the standard industry benchmark comparing renovation cost to resale value added.
-// These are national averages only — actual ROI varies significantly by region, home
-// price tier, and execution quality. Always shown with that caveat in the UI.
+// ─── PROJECT ROI DATA — now Supabase-backed, not hardcoded ────────────────────
+// Was a hardcoded JS constant requiring a full deploy for every Cost vs. Value
+// Report update (annual, each Sept/Oct). Now lives in project_roi_categories /
+// project_roi_scopes tables — update via SQL, no deploy needed.
 //
-// laborShare = typical fraction of total cost that goes to labor (vs materials) for
-// that category. Used to adjust the DIY estimate — see computeProjectROI() below.
-// Sourced from industry data putting labor at ~35-60% of total cost depending on trade
-// complexity; simple swaps (garage door) skew lower, structural/mechanical work skews higher.
-const PROJECT_ROI_DATA = {
-  // Each entry can have optional `scopes` array for scope-based estimation
-  // scope: { label, contractorCost, diyCost, roi, includes }
-  kitchen: {
-    label:"Kitchen Remodel", icon:"🍳", laborShare:0.50, avgCost:55000, roi:76,
-    scopes:[
-      { key:"full",  label:"Full gut remodel",        contractorCost:[70000,120000], diyCost:[30000,55000], roi:58, includes:"New layout, appliances, cabinets, countertops, flooring, lighting" },
-      { key:"mid",   label:"Mid-range update",         contractorCost:[25000,50000],  diyCost:[12000,25000], roi:76, includes:"New cabinets, countertops, appliances, updated fixtures" },
-      { key:"minor", label:"Cosmetic refresh",         contractorCost:[8000,18000],   diyCost:[3000,8000],   roi:96, includes:"Paint, hardware, new fixtures, minor cosmetic updates" },
-    ]
-  },
-  bathroom: {
-    label:"Bathroom Remodel", icon:"🚿", laborShare:0.55, avgCost:27000, roi:66,
-    scopes:[
-      { key:"full",  label:"Full renovation",          contractorCost:[20000,40000],  diyCost:[9000,18000],  roi:66, includes:"New tile, vanity, fixtures, tub/shower, flooring" },
-      { key:"mid",   label:"Mid-range update",         contractorCost:[10000,20000],  diyCost:[4000,9000],   roi:78, includes:"New vanity, fixtures, toilet, paint, updated hardware" },
-      { key:"minor", label:"Cosmetic refresh",         contractorCost:[3000,8000],    diyCost:[1000,3500],   roi:92, includes:"Paint, new fixtures, lighting, hardware updates" },
-    ]
-  },
-  deck: {
-    label:"Deck / Patio Addition", icon:"🪵", laborShare:0.50, avgCost:19000, roi:80,
-    scopes:[
-      { key:"large", label:"Large deck (500+ sq ft)",  contractorCost:[25000,50000],  diyCost:[10000,22000], roi:72, includes:"Composite or hardwood, built-in seating, lighting" },
-      { key:"mid",   label:"Standard deck (200–500 sq ft)", contractorCost:[12000,25000], diyCost:[5000,12000], roi:80, includes:"Pressure-treated wood or composite, basic railing" },
-      { key:"patio", label:"Patio / concrete slab",    contractorCost:[4000,12000],   diyCost:[1500,5000],   roi:88, includes:"Concrete or paver patio, basic landscaping border" },
-    ]
-  },
-  roof: {
-    label:"Roof Replacement", icon:"🏚️", laborShare:0.40, avgCost:31000, roi:68,
-    scopes:[
-      { key:"full",  label:"Full tear-off & replace",  contractorCost:[20000,45000],  diyCost:null,          roi:68, includes:"Full tear-off, new sheathing if needed, new shingles" },
-      { key:"partial",label:"Partial replacement",     contractorCost:[8000,18000],   diyCost:null,          roi:72, includes:"Damaged section replacement, matched shingles" },
-    ]
-  },
-  windows: {
-    label:"Window Replacement", icon:"🪟", laborShare:0.40, avgCost:21000, roi:85,
-    scopes:[
-      { key:"full",  label:"Full house (10+ windows)", contractorCost:[15000,30000],  diyCost:[7000,15000],  roi:85, includes:"Double-pane vinyl or wood, all rooms" },
-      { key:"partial",label:"Partial (3–6 windows)",  contractorCost:[4000,10000],   diyCost:[1800,5000],   roi:82, includes:"Priority rooms or damaged windows only" },
-    ]
-  },
-  siding: {
-    label:"Siding Replacement", icon:"🏠", laborShare:0.45, avgCost:17500, roi:114,
-    scopes:[
-      { key:"full",  label:"Full exterior",            contractorCost:[12000,25000],  diyCost:[5000,12000],  roi:114, includes:"Vinyl, fiber cement, or engineered wood, full exterior" },
-      { key:"partial",label:"Partial or accent",       contractorCost:[4000,10000],   diyCost:[1500,5000],   roi:95,  includes:"Front facade or damaged sections only" },
-    ]
-  },
-  hvac: {
-    label:"HVAC Replacement", icon:"🌡️", laborShare:0.40, avgCost:13000, roi:90,
-    scopes:[
-      { key:"full",  label:"Full system (AC + furnace)",contractorCost:[10000,20000], diyCost:null,          roi:90, includes:"New central AC unit, furnace or heat pump, installation" },
-      { key:"ac",    label:"AC unit only",              contractorCost:[4500,9000],   diyCost:null,          roi:85, includes:"Central AC replacement, existing ducts" },
-      { key:"mini",  label:"Mini-split system",         contractorCost:[3000,8000],   diyCost:[1500,4000],   roi:80, includes:"Ductless mini-split, 1–3 zones" },
-    ]
-  },
-  garage_door: {
-    label:"Garage Door Replacement", icon:"🚪", laborShare:0.35, avgCost:4500, roi:194,
-    scopes:[
-      { key:"standard",label:"Standard replacement",   contractorCost:[1200,2500],   diyCost:[700,1500],    roi:194, includes:"Steel or aluminum door, new opener" },
-      { key:"upscale", label:"Upscale / custom",       contractorCost:[2500,6000],   diyCost:[1200,3000],   roi:168, includes:"Carriage style, wood or glass panels, smart opener" },
-    ]
-  },
-  entry_door: {
-    label:"Entry Door Replacement", icon:"🚪", laborShare:0.40, avgCost:2200, roi:136,
-    scopes:[
-      { key:"standard",label:"Standard steel door",    contractorCost:[800,1800],    diyCost:[400,900],     roi:136, includes:"Insulated steel door, new hardware, weatherstripping" },
-      { key:"upscale", label:"Fiberglass or wood",     contractorCost:[1800,4500],   diyCost:[800,2000],    roi:112, includes:"Fiberglass or solid wood, sidelights, upgraded hardware" },
-    ]
-  },
-  primary_suite: {
-    label:"Primary Suite Addition", icon:"🛏️", laborShare:0.55, avgCost:160000, roi:33,
-    scopes:[
-      { key:"addition",label:"New room addition",      contractorCost:[120000,200000],diyCost:null,          roi:33, includes:"New square footage, full bath, closet, HVAC extension" },
-      { key:"conversion",label:"Existing space conversion",contractorCost:[40000,80000],diyCost:[15000,35000],roi:45,includes:"Convert garage, attic, or bonus room to primary suite" },
-    ]
-  },
-  pool: {
-    label:"Swimming Pool", icon:"🏊", laborShare:0.50, avgCost:65000, roi:30,
-    scopes:[
-      { key:"inground",label:"In-ground pool",         contractorCost:[45000,90000],  diyCost:null,          roi:30, includes:"Gunite or fiberglass, basic decking, equipment" },
-      { key:"above",   label:"Above-ground pool",      contractorCost:[3000,8000],    diyCost:[1500,4000],   roi:20, includes:"Above-ground frame pool, basic decking" },
-    ]
-  },
-  stone_veneer: {
-    label:"Stone Veneer (Exterior)", icon:"🧱", laborShare:0.55, avgCost:11000, roi:153,
-    scopes:[
-      { key:"full",  label:"Full front facade",        contractorCost:[8000,16000],   diyCost:[3000,7000],   roi:153, includes:"Manufactured stone veneer, full front of home" },
-      { key:"accent",label:"Accent only",              contractorCost:[3000,7000],    diyCost:[1200,3000],   roi:130, includes:"Foundation, columns, or entryway accent only" },
-    ]
-  },
-  other: { label:"Other / Custom Project", icon:"🔨", laborShare:0.45, avgCost:null, roi:null, scopes:null },
+// confidence: 'high' = directly confirmed by the current published report.
+// 'medium' = directionally adjusted from trend commentary, not pinpoint-sourced.
+// 'low' = not an official CVR category (hvac/pool/primary_suite); independent estimate.
+
+const PROJECT_ROI_SOURCE_CVR = "Based on the national Cost vs. Value Report (Zonda/Remodeling Magazine). Actual costs and returns vary by region, home price tier, and project quality.";
+const PROJECT_ROI_SOURCE_EST = "Independent estimate — not an official Cost vs. Value Report category. Actual costs and returns vary significantly.";
+
+// US Census Bureau's 9 divisions — matches how the Cost vs. Value Report breaks out regional data
+const STATE_TO_ROI_REGION = {
+  CT:"new_england",ME:"new_england",MA:"new_england",NH:"new_england",RI:"new_england",VT:"new_england",
+  NJ:"middle_atlantic",NY:"middle_atlantic",PA:"middle_atlantic",
+  DE:"south_atlantic",FL:"south_atlantic",GA:"south_atlantic",MD:"south_atlantic",NC:"south_atlantic",SC:"south_atlantic",VA:"south_atlantic",WV:"south_atlantic",DC:"south_atlantic",
+  IL:"east_north_central",IN:"east_north_central",MI:"east_north_central",OH:"east_north_central",WI:"east_north_central",
+  AL:"east_south_central",KY:"east_south_central",MS:"east_south_central",TN:"east_south_central",
+  IA:"west_north_central",KS:"west_north_central",MN:"west_north_central",MO:"west_north_central",NE:"west_north_central",ND:"west_north_central",SD:"west_north_central",
+  AR:"west_south_central",LA:"west_south_central",OK:"west_south_central",TX:"west_south_central",
+  AZ:"mountain",CO:"mountain",ID:"mountain",MT:"mountain",NV:"mountain",NM:"mountain",UT:"mountain",WY:"mountain",
+  AK:"pacific",CA:"pacific",HI:"pacific",OR:"pacific",WA:"pacific",
 };
-const PROJECT_ROI_SOURCE = "Based on national Cost vs. Value Report averages. Actual costs and returns vary by region, home price tier, and project quality.";
+
+// Pulls a 2-letter state code out of a free-text address like "808 Brandywine Dr, Largo, FL, 33771"
+function extractStateFromAddress(address) {
+  if (!address) return null;
+  const match = address.match(/\b([A-Z]{2})\b\s*,?\s*\d{5}/);
+  return match ? match[1] : null;
+}
+
+// Module-level cache — fetched once per session, shared across every component that needs it,
+// instead of every ProjectForm/detail-view instance hitting Supabase independently.
+let _roiDataCache = null;
+let _roiDataPromise = null;
+
+async function fetchProjectROIData() {
+  if (_roiDataCache) return _roiDataCache;
+  if (_roiDataPromise) return _roiDataPromise;
+
+  _roiDataPromise = (async () => {
+    const [{ data: categories }, { data: scopes }, { data: multipliers }] = await Promise.all([
+      supabase.from("project_roi_categories").select("*").order("sort_order"),
+      supabase.from("project_roi_scopes").select("*").order("sort_order"),
+      supabase.from("project_roi_regional_multipliers").select("*"),
+    ]);
+
+    const result = {};
+    for (const c of categories || []) {
+      result[c.key] = {
+        label: c.label, icon: c.icon, avgCost: c.avg_cost, roi: c.roi_pct,
+        isCVRTracked: c.is_cvr_tracked, confidence: c.confidence, sourceYear: c.source_year,
+        scopes: null,
+      };
+    }
+    for (const s of scopes || []) {
+      if (!result[s.category_key]) continue;
+      if (!result[s.category_key].scopes) result[s.category_key].scopes = [];
+      result[s.category_key].scopes.push({
+        key: s.scope_key, label: s.label, includes: s.includes,
+        contractorCost: [Number(s.contractor_cost_low), Number(s.contractor_cost_high)],
+        diyCost: (s.diy_cost_low != null) ? [Number(s.diy_cost_low), Number(s.diy_cost_high)] : null,
+        roi: Number(s.roi_pct), confidence: s.confidence,
+      });
+    }
+    const multMap = {}; // "region|category" -> multiplier
+    for (const m of multipliers || []) multMap[`${m.region_key}|${m.category_key}`] = Number(m.multiplier);
+
+    _roiDataCache = { categories: result, multipliers: multMap };
+    return _roiDataCache;
+  })();
+
+  return _roiDataPromise;
+}
+
+// Looks up the regional multiplier for a category based on a property address.
+// Returns 1.0 (no adjustment) if the state can't be determined or no verified
+// regional figure has been entered yet for that category/region combination.
+function getRegionalMultiplier(roiData, categoryKey, address) {
+  const state = extractStateFromAddress(address);
+  const region = state ? STATE_TO_ROI_REGION[state] : null;
+  if (!region || !roiData?.multipliers) return 1.0;
+  return roiData.multipliers[`${region}|${categoryKey}`] || 1.0;
+}
+
+// Hook — call from any component that needs ROI data. Shares the module-level cache,
+// so this is cheap to call from multiple components at once.
+function useProjectROIData() {
+  const [roiData, setRoiData] = useState(_roiDataCache);
+  const [loading, setLoading] = useState(!_roiDataCache);
+  useEffect(() => {
+    if (_roiDataCache) { setRoiData(_roiDataCache); setLoading(false); return; }
+    fetchProjectROIData().then(d => { setRoiData(d); setLoading(false); });
+  }, []);
+  return { roiData, loading };
+}
+
+// Formats a signed dollar amount correctly — "-$10,000" not "$-10,000"
+function fmtSigned$(n) {
+  const abs = Math.abs(Math.round(n));
+  return (n < 0 ? "-$" : "$") + abs.toLocaleString();
+}
 
 // Computes the ROI estimate accounting for: whether the work is DIY or contractor,
-// and how far the actual/budgeted spend deviates from the category's typical cost.
+// how far the actual/budgeted spend deviates from the category's typical cost, and
+// a regional multiplier if one has been verified for this category/region.
 //
 // Why this matters: published ROI% is calculated against the FULL contractor-installed
 // cost (labor + materials). A finished garage door is worth the same to a buyer whether
 // you installed it yourself or paid a pro — so DIY doesn't reduce the value added, it
 // just reduces what you spent to get there. We model this by treating "value added" as
-// anchored to the category's typical finished-result value (scaled to your spend on
-// materials-equivalent terms), while DIY cost basis excludes the labor share.
+// anchored to the category's typical finished-result value, while DIY cost basis uses
+// the separately-estimated diyCost range for that scope.
 //
 // Scope deviation: the published ROI is itself an average across small and large jobs
 // in that category. A spend far outside the typical range is less reliable to project
 // from — we flag this with a confidence note rather than silently extrapolating.
-function computeProjectROI(categoryKey, actualSpend, isDIY, scopeKey) {
-  const info = PROJECT_ROI_DATA[categoryKey];
+function computeProjectROI(categories, categoryKey, actualSpend, isDIY, scopeKey, regionalMultiplier = 1.0) {
+  const info = categories?.[categoryKey];
   if (!info || info.roi === null) return null;
 
   const scope = info.scopes?.find(s => s.key === scopeKey) || null;
-  const roi = scope ? scope.roi : info.roi;
-  const laborShare = info.laborShare;
+  const baseRoi = scope ? scope.roi : info.roi;
+  const roi = Math.round(baseRoi * regionalMultiplier);
 
   // Value added is anchored to the typical CONTRACTOR cost for this scope —
   // because that's what the Cost vs. Value ROI% was measured against.
@@ -5678,11 +5678,11 @@ function computeProjectROI(categoryKey, actualSpend, isDIY, scopeKey) {
   const valueAdded = Math.round(contractorMidpoint * (roi / 100));
 
   // What the user actually spends depends on DIY vs contractor
-  const diySidpoint = scope?.diyCost
+  const diyMidpoint = scope?.diyCost
     ? Math.round((scope.diyCost[0] + scope.diyCost[1]) / 2)
     : null;
 
-  const defaultSpend = isDIY && diySidpoint ? diySidpoint : contractorMidpoint;
+  const defaultSpend = isDIY && diyMidpoint ? diyMidpoint : contractorMidpoint;
   const spend = Number(actualSpend) > 0 ? Number(actualSpend) : defaultSpend;
 
   const netCost = spend - valueAdded;
@@ -5698,9 +5698,12 @@ function computeProjectROI(categoryKey, actualSpend, isDIY, scopeKey) {
     netCost,
     effectiveROI,
     publishedROI: roi,
+    baseRoi,
+    regionalMultiplier,
     isDIY,
     lowConfidence,
-    laborShare,
+    dataConfidence: scope?.confidence || info.confidence,
+    isCVRTracked: info.isCVRTracked,
     scope,
   };
 }
@@ -5766,12 +5769,14 @@ function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUr
   );
 }
 
-function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planData, onUpgrade }) {
+function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planData, onUpgrade, propertyAddress }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const status = data.status || "Planning";
-  const roiInfo = data.roi_category ? PROJECT_ROI_DATA[data.roi_category] : null;
+  const { roiData, loading: roiLoading } = useProjectROIData();
+  const roiInfo = data.roi_category && roiData ? roiData.categories[data.roi_category] : null;
   const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
   const activeScope = roiInfo?.scopes?.find(s => s.key === data.roi_scope) || null;
+  const regionalMult = roiData ? getRegionalMultiplier(roiData, data.roi_category, propertyAddress) : 1.0;
 
   // Which photo slots to show based on status
   const slots = [
@@ -5787,9 +5792,9 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       <div className="field s2"><label>Project Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Kitchen Remodel" /></div>
       <div className="field s2">
         <label>Project Type <span style={{fontWeight:400,color:"#A8A09A"}}>(for cost estimate)</span></label>
-        <select value={data.roi_category||""} onChange={e=>onChange({...data, roi_category:e.target.value, roi_scope:""})}>
-          <option value="">Select project type…</option>
-          {Object.entries(PROJECT_ROI_DATA).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
+        <select value={data.roi_category||""} onChange={e=>onChange({...data, roi_category:e.target.value, roi_scope:""})} disabled={roiLoading}>
+          <option value="">{roiLoading ? "Loading project types…" : "Select project type…"}</option>
+          {roiData && Object.entries(roiData.categories).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
         </select>
       </div>
 
@@ -5835,11 +5840,16 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
             <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".65rem .75rem",background:"rgba(35,74,61,.06)",borderRadius:8}}>
               <span style={{fontSize:".9rem"}}>📈</span>
               <div>
-                <span style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>~{activeScope.roi}% ROI </span>
-                <span style={{fontSize:".75rem",color:"#8A8178"}}>national average · adds ~{fmt(Math.round((activeScope.contractorCost[0]+activeScope.contractorCost[1])/2 * activeScope.roi/100))} in resale value</span>
+                <span style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>~{Math.round(activeScope.roi*regionalMult)}% ROI </span>
+                <span style={{fontSize:".75rem",color:"#8A8178"}}>{regionalMult!==1?"regional estimate":"national average"} · adds ~{fmt(Math.round((activeScope.contractorCost[0]+activeScope.contractorCost[1])/2 * (activeScope.roi*regionalMult)/100))} in resale value</span>
               </div>
             </div>
-            <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:".6rem",lineHeight:1.5}}>{PROJECT_ROI_SOURCE}</div>
+            {(activeScope.confidence && activeScope.confidence!=="high") && (
+              <div style={{marginTop:".5rem",fontSize:".68rem",color:"#B8861E",display:"flex",alignItems:"center",gap:5}}>
+                <span>⚠</span> {activeScope.confidence==="low" ? "Independent estimate, not from an official industry report" : "Directional estimate — figure is trend-adjusted, not a pinpoint source"}
+              </div>
+            )}
+            <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:".6rem",lineHeight:1.5}}>{roiInfo?.isCVRTracked ? PROJECT_ROI_SOURCE_CVR : PROJECT_ROI_SOURCE_EST}</div>
           </div>
         </div>
       )}
@@ -5878,7 +5888,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       )}
       {activeScope && isPaid && (() => {
         const useBudget = Number(data.budget) > 0 ? Number(data.budget) : null;
-        const calc = computeProjectROI(data.roi_category, useBudget, !!data.roi_diy, data.roi_scope);
+        const calc = computeProjectROI(roiData.categories, data.roi_category, useBudget, !!data.roi_diy, data.roi_scope, regionalMult);
         if (!calc) return null;
         const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
         return (
@@ -5896,17 +5906,18 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
                 </div>
                 <div>
                   <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Value added</div>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:"#F4EDDF"}}>${calc.valueAdded.toLocaleString()}</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:"#F4EDDF"}}>{fmtSigned$(calc.valueAdded)}</div>
                 </div>
                 <div>
-                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Net cost</div>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:"#F4EDDF"}}>${calc.netCost.toLocaleString()}</div>
+                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>{calc.netCost<0?"Net gain":"Net cost"}</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:calc.netCost<0?"#7DCBA1":"#F4EDDF"}}>{fmtSigned$(Math.abs(calc.netCost))}</div>
                 </div>
               </div>
               <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
                 {useBudget ? `Based on your $${calc.spend.toLocaleString()} budget` : `Based on typical ${activeScope.label.toLowerCase()} cost`} · {calc.isDIY?"DIY":"contractor"}.
                 {calc.isDIY && ` DIY saves on labor — the finished result adds similar value either way.`}
                 {pctOfHome && ` About ${pctOfHome}% of your home's value.`}
+                {calc.regionalMultiplier!==1 && ` Adjusted for your region.`}
               </div>
               {calc.lowConfidence && (
                 <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
@@ -9810,7 +9821,8 @@ function BillForm({ data, onChange, utility, userId }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0 }) {
+function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress }) {
+  const { roiData } = useProjectROIData();
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -10395,9 +10407,10 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     )}
 
                     {/* ROI result — uses real spend, shown whenever a project type is set, Plus/Pro only */}
-                    {p.roi_category && PROJECT_ROI_DATA[p.roi_category]?.roi !== null && spent > 0 && (() => {
+                    {p.roi_category && roiData?.categories[p.roi_category]?.roi !== null && spent > 0 && (() => {
                       const isPaidView = planData?.plan === "plus" || planData?.plan === "pro";
-                      const roiInfo = PROJECT_ROI_DATA[p.roi_category];
+                      const roiInfo = roiData.categories[p.roi_category];
+                      const regionalMult = getRegionalMultiplier(roiData, p.roi_category, propertyAddress);
 
                       if (!isPaidView) {
                         return (
@@ -10412,7 +10425,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         );
                       }
 
-                      const calc = computeProjectROI(p.roi_category, spent, !!p.roi_diy, p.roi_scope);
+                      const calc = computeProjectROI(roiData.categories, p.roi_category, spent, !!p.roi_diy, p.roi_scope, regionalMult);
                       if (!calc) return null;
                       const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
                       const isComplete = p.status === "Completed";
@@ -10424,6 +10437,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                               {isComplete ? "Estimated return" : "Projected return so far"}
                             </span>
                             {calc.isDIY && <span style={{fontSize:".6rem",background:"rgba(125,203,161,.2)",color:"#7DCBA1",fontWeight:700,padding:"2px 7px",borderRadius:8}}>DIY adjusted</span>}
+                            {calc.dataConfidence && calc.dataConfidence!=="high" && <span style={{fontSize:".6rem",background:"rgba(232,165,127,.2)",color:"#E8A57F",fontWeight:700,padding:"2px 7px",borderRadius:8}}>Estimate</span>}
                           </div>
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".6rem",marginBottom:".7rem"}}>
                             <div>
@@ -10432,18 +10446,19 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                             </div>
                             <div>
                               <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Value added</div>
-                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:"#F4EDDF"}}>${calc.valueAdded.toLocaleString()}</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:"#F4EDDF"}}>{fmtSigned$(calc.valueAdded)}</div>
                             </div>
                             <div>
-                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>Net cost</div>
-                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:"#F4EDDF"}}>${calc.netCost.toLocaleString()}</div>
+                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".05em",color:"rgba(244,237,223,.4)",marginBottom:"2px"}}>{calc.netCost<0?"Net gain":"Net cost"}</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,color:calc.netCost<0?"#7DCBA1":"#F4EDDF"}}>{fmtSigned$(Math.abs(calc.netCost))}</div>
                             </div>
                           </div>
                           <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
                             Based on ${calc.spend.toLocaleString()} spent on {roiInfo.label.toLowerCase()} ({calc.isDIY?"DIY":"contractor"}).
                             {calc.isDIY && ` Published ${calc.publishedROI}% ROI assumes contractor installation — DIY typically returns more per dollar spent since the finished result is worth about the same.`}
                             {pctOfHome && ` About ${pctOfHome}% of your home's estimated value.`}
-                            {" "}{PROJECT_ROI_SOURCE}.
+                            {calc.regionalMultiplier!==1 && ` Adjusted for your region.`}
+                            {" "}{calc.isCVRTracked ? PROJECT_ROI_SOURCE_CVR : PROJECT_ROI_SOURCE_EST}
                           </div>
                           {calc.lowConfidence && (
                             <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
@@ -10941,7 +10956,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
       {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
       {confirm && <Confirm message="This expense will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-      {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId} contractors={contractors} homeValue={homeValue} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId} contractors={contractors} homeValue={homeValue} planData={planData} onUpgrade={onUpgrade} propertyAddress={propertyAddress}/></Modal>}
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
       {utilModal && <Modal title={utilEditId?"Edit Utility":"Add Utility"} onClose={()=>setUtilModal(false)} onSave={saveUtil}><UtilityForm data={utilEditData} onChange={setUtilEditData}/></Modal>}
       {utilConfirm && <Confirm message="This utility and all its bill history will be permanently deleted." onConfirm={confirmDelUtil} onCancel={()=>setUtilConfirm(null)}/>}
@@ -16312,7 +16327,7 @@ export default function App() {
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
-              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0}/></div>
+              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
