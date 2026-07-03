@@ -1,4 +1,4 @@
-// Steadwell v157 — 2026-07-02T00:00:00.000Z
+// Steadwell v158 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12803,7 +12803,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
-      {/* ── PROPERTY CARD: photo + identity/stats panel + value banner, one cohesive card ── */}
+      {/* ── PROPERTY CARD: photo + one unified info panel, no hard color seams ── */}
       {!showSetup && (() => {
         // Merge Built + Age into one cell so a typical home (built year + beds + baths + sqft)
         // still fits in 4 clean columns instead of 5 crowded ones.
@@ -12818,7 +12818,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         <div style={{margin:"1rem 1rem 0",borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
 
           {/* Photo — image only, kept completely clean */}
-          <div style={{position:"relative",height:200,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
+          <div style={{position:"relative",height:180,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
             {(primaryPhotoUrl && !primaryPhotoFailed) ? (
               <img
                 src={primaryPhotoUrl}
@@ -12834,88 +12834,91 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 onError={()=>setStreetViewUrl(null)}
               />
             ) : (
-              <button onClick={openEdit} style={{width:"100%",height:"100%",background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:".6rem",padding:0}}>
-                <span style={{fontSize:"2.2rem",opacity:.4}}>📷</span>
-                <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,color:"rgba(244,237,223,.75)"}}>Add a photo of your home</span>
+              <button onClick={openEdit} style={{width:"100%",height:"100%",background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:".5rem",padding:0}}>
+                <span style={{fontSize:"2rem",opacity:.4}}>📷</span>
+                <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:700,color:"rgba(244,237,223,.75)"}}>Add a photo of your home</span>
                 {profile?.address && (
-                  <span style={{fontSize:".72rem",color:"rgba(244,237,223,.4)"}}>No street view available for this address</span>
+                  <span style={{fontSize:".7rem",color:"rgba(244,237,223,.4)"}}>No street view available for this address</span>
                 )}
               </button>
             )}
-            {/* Light scrim — just enough for Edit button legibility, no text to protect below anymore */}
             <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(23,48,38,.35) 0%,rgba(23,48,38,0) 30%)"}}/>
-            {/* Edit button */}
-            <button onClick={openEdit} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(23,48,38,.5)",border:"1.5px solid rgba(255,255,255,.28)",borderRadius:10,color:"#fff",fontSize:".82rem",fontWeight:700,padding:".45rem .85rem",cursor:"pointer",backdropFilter:"blur(6px)",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+            <button onClick={openEdit} style={{position:"absolute",top:".85rem",right:".85rem",background:"rgba(23,48,38,.5)",border:"1.5px solid rgba(255,255,255,.28)",borderRadius:10,color:"#fff",fontSize:".8rem",fontWeight:700,padding:".4rem .8rem",cursor:"pointer",backdropFilter:"blur(6px)",fontFamily:"'Hanken Grotesk',sans-serif"}}>
               Edit
             </button>
           </div>
 
-          {/* Identity + stats panel — name, address, and attributes all live here now, off the photo */}
-          <div style={{background:"var(--pine-soft)",padding:"1.1rem 1.25rem"}}>
-            {profile?.address && (
-              <div style={{fontSize:".78rem",color:"rgba(244,237,223,.65)",fontWeight:600,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}>
-                <svg width="11" height="14" viewBox="0 0 11 14" fill="none" style={{flexShrink:0}}><path d="M5.5 0C2.46 0 0 2.46 0 5.5C0 9.63 5.5 14 5.5 14S11 9.63 11 5.5C11 2.46 8.54 0 5.5 0ZM5.5 7.5C4.4 7.5 3.5 6.6 3.5 5.5S4.4 3.5 5.5 3.5S7.5 4.4 7.5 5.5S6.6 7.5 5.5 7.5Z" fill="#D2876A"/></svg>
-                {profile.address}
+          {/* One continuous panel — identity, stats, and value all share the same background, separated only by hairlines */}
+          <div style={{background:"var(--pine-deep)"}}>
+
+            {/* Identity */}
+            <div style={{padding:"1rem 1.15rem .85rem"}}>
+              {profile?.address && (
+                <div style={{fontSize:".75rem",color:"rgba(244,237,223,.6)",fontWeight:600,marginBottom:".25rem",display:"flex",alignItems:"center",gap:".35rem"}}>
+                  <svg width="10" height="13" viewBox="0 0 11 14" fill="none" style={{flexShrink:0}}><path d="M5.5 0C2.46 0 0 2.46 0 5.5C0 9.63 5.5 14 5.5 14S11 9.63 11 5.5C11 2.46 8.54 0 5.5 0ZM5.5 7.5C4.4 7.5 3.5 6.6 3.5 5.5S4.4 3.5 5.5 3.5S7.5 4.4 7.5 5.5S6.6 7.5 5.5 7.5Z" fill="#D2876A"/></svg>
+                  {profile.address}
+                </div>
+              )}
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#fff",lineHeight:1.15}}>
+                {profile?.name||"My Home"}
               </div>
-            )}
-            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,color:"#fff",lineHeight:1.15}}>
-              {profile?.name||"My Home"}
             </div>
 
+            {/* Stats */}
             {statItems.length > 0 && (
-              <div style={{display:"grid",gridTemplateColumns:`repeat(${statItems.length},1fr)`,marginTop:"1rem",paddingTop:".9rem",borderTop:"1px solid rgba(244,237,223,.12)"}}>
+              <div style={{display:"grid",gridTemplateColumns:`repeat(${statItems.length},1fr)`,padding:".75rem 1.15rem",borderTop:"1px solid rgba(244,237,223,.09)"}}>
                 {statItems.map((s,i)=>(
-                  <div key={s.label} style={{textAlign:"center",padding:".15rem .3rem",borderRight:i<statItems.length-1?"1px solid rgba(244,237,223,.12)":"none"}}>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:"#F4EDDF",whiteSpace:"nowrap"}}>{s.value}</div>
-                    <div style={{fontSize:".62rem",color:"rgba(244,237,223,.5)",textTransform:"uppercase",letterSpacing:".03em",fontWeight:600,marginTop:2}}>{s.label}</div>
+                  <div key={s.label} style={{textAlign:"center",padding:".1rem .25rem",borderRight:i<statItems.length-1?"1px solid rgba(244,237,223,.09)":"none"}}>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF",whiteSpace:"nowrap"}}>{s.value}</div>
+                    <div style={{fontSize:".58rem",color:"rgba(244,237,223,.45)",textTransform:"uppercase",letterSpacing:".03em",fontWeight:600,marginTop:2}}>{s.label}</div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
 
-          {/* Value banner — shares the same rounded card, brand pine instead of near-black */}
-          {zestimate > 0 && (
-            <div style={{background:"var(--pine-deep)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"stretch",gap:"1.1rem",borderTop:"1px solid rgba(244,237,223,.08)"}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.45)",fontWeight:700,marginBottom:".25rem"}}>Estimated value</div>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{fmt$(zestimate)}</div>
-                {appreciation!==null&&(
-                  <div style={{fontSize:".82rem",fontWeight:700,color:appreciation>=0?"#7DCBA1":"#FCA38A",marginTop:".3rem"}}>
-                    {appreciation>=0?"↑":"↓"} {fmt$(Math.abs(appreciation))} · {appreciationPct}% since purchase
-                  </div>
-                )}
-                <button onClick={async(e)=>{
-                  if(!profile?.address)return;
-                  const btn=e.currentTarget; btn.textContent="Updating…"; btn.disabled=true;
-                  try{
-                    const result=await lookupProperty(profile.address);
-                    if(result?.zestimate){
-                      const updated={
-                        zestimate:      result.zestimate,
-                        rent_zestimate: result.rent_zestimate||profile.rent_zestimate,
-                        tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : profile.tax_history,
-                        price_history:  result.price_history  ? JSON.stringify(result.price_history)  : profile.price_history,
-                        schools:        result.schools        ? JSON.stringify(result.schools)        : profile.schools,
-                      };
-                      const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
-                      if(!error){setProfile(p=>({...p,...updated}));toast("Home data updated ✓");}
-                      else toast("Could not save — try again","error");
-                    }else toast("No updated value found","error");
-                  }catch{toast("Refresh failed — try again","error");}
-                  btn.textContent="↻ Refresh value"; btn.disabled=false;
-                }} style={{marginTop:".4rem",background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".7rem",fontWeight:600,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
-                  ↻ Refresh value
-                </button>
+            {/* Value */}
+            {zestimate > 0 && (
+              <div style={{padding:"1rem 1.15rem",display:"flex",alignItems:"stretch",gap:"1rem",borderTop:"1px solid rgba(244,237,223,.09)"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.4)",fontWeight:700,marginBottom:".2rem"}}>Estimated value</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{fmt$(zestimate)}</div>
+                  {appreciation!==null&&(
+                    <div style={{fontSize:".78rem",fontWeight:700,color:appreciation>=0?"#7DCBA1":"#FCA38A",marginTop:".25rem"}}>
+                      {appreciation>=0?"↑":"↓"} {fmt$(Math.abs(appreciation))} · {appreciationPct}% since purchase
+                    </div>
+                  )}
+                  <button onClick={async(e)=>{
+                    if(!profile?.address)return;
+                    const btn=e.currentTarget; btn.textContent="Updating…"; btn.disabled=true;
+                    try{
+                      const result=await lookupProperty(profile.address);
+                      if(result?.zestimate){
+                        const updated={
+                          zestimate:      result.zestimate,
+                          rent_zestimate: result.rent_zestimate||profile.rent_zestimate,
+                          tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : profile.tax_history,
+                          price_history:  result.price_history  ? JSON.stringify(result.price_history)  : profile.price_history,
+                          schools:        result.schools        ? JSON.stringify(result.schools)        : profile.schools,
+                        };
+                        const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
+                        if(!error){setProfile(p=>({...p,...updated}));toast("Home data updated ✓");}
+                        else toast("Could not save — try again","error");
+                      }else toast("No updated value found","error");
+                    }catch{toast("Refresh failed — try again","error");}
+                    btn.textContent="↻ Refresh value"; btn.disabled=false;
+                  }} style={{marginTop:".35rem",background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".68rem",fontWeight:600,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
+                    ↻ Refresh value
+                  </button>
+                </div>
+                <div style={{width:1,background:"rgba(244,237,223,.1)",flexShrink:0}}/>
+                <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",justifyContent:"center",flexShrink:0}}>
+                  {lastSalePrice>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(lastSalePrice)}</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Purchased</div></div>}
+                  {Number(profile?.rent_zestimate)>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(profile.rent_zestimate)}/mo</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Rent est.</div></div>}
+                  {Number(profile?.sqft)>0&&zestimate>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Per sqft</div></div>}
+                </div>
               </div>
-              <div style={{width:1,background:"rgba(244,237,223,.12)",flexShrink:0}}/>
-              <div style={{display:"flex",flexDirection:"column",gap:".55rem",alignItems:"flex-end",justifyContent:"center",flexShrink:0}}>
-                {lastSalePrice>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(lastSalePrice)}</div><div style={{fontSize:".6rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Purchased</div></div>}
-                {Number(profile?.rent_zestimate)>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(profile.rent_zestimate)}/mo</div><div style={{fontSize:".6rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Rent est.</div></div>}
-                {Number(profile?.sqft)>0&&zestimate>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div><div style={{fontSize:".6rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Per sqft</div></div>}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         );
       })()}
