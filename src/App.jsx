@@ -1,4 +1,4 @@
-// Steadwell v158 — 2026-07-02T00:00:00.000Z
+// Steadwell v159 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12815,10 +12815,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         ].filter(Boolean);
 
         return (
-        <div style={{margin:"1rem 1rem 0",borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
+        <div style={{margin:"1rem auto 0",maxWidth:640,borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
 
-          {/* Photo — image only, kept completely clean */}
-          <div style={{position:"relative",height:180,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
+          {/* Photo — scales proportionally with card width instead of a fixed pixel height */}
+          <div style={{position:"relative",aspectRatio:"2.2 / 1",overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
             {(primaryPhotoUrl && !primaryPhotoFailed) ? (
               <img
                 src={primaryPhotoUrl}
@@ -12852,14 +12852,14 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           <div style={{background:"var(--pine-deep)"}}>
 
             {/* Identity */}
-            <div style={{padding:"1rem 1.15rem .85rem"}}>
+            <div style={{padding:"1rem 1.15rem .85rem",textAlign:"left"}}>
               {profile?.address && (
-                <div style={{fontSize:".75rem",color:"rgba(244,237,223,.6)",fontWeight:600,marginBottom:".25rem",display:"flex",alignItems:"center",gap:".35rem"}}>
+                <div style={{fontSize:".75rem",color:"rgba(244,237,223,.6)",fontWeight:600,marginBottom:".25rem",display:"flex",alignItems:"center",gap:".35rem",textAlign:"left"}}>
                   <svg width="10" height="13" viewBox="0 0 11 14" fill="none" style={{flexShrink:0}}><path d="M5.5 0C2.46 0 0 2.46 0 5.5C0 9.63 5.5 14 5.5 14S11 9.63 11 5.5C11 2.46 8.54 0 5.5 0ZM5.5 7.5C4.4 7.5 3.5 6.6 3.5 5.5S4.4 3.5 5.5 3.5S7.5 4.4 7.5 5.5S6.6 7.5 5.5 7.5Z" fill="#D2876A"/></svg>
                   {profile.address}
                 </div>
               )}
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#fff",lineHeight:1.15}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#fff",lineHeight:1.15,textAlign:"left"}}>
                 {profile?.name||"My Home"}
               </div>
             </div>
@@ -12879,7 +12879,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             {/* Value */}
             {zestimate > 0 && (
               <div style={{padding:"1rem 1.15rem",display:"flex",alignItems:"stretch",gap:"1rem",borderTop:"1px solid rgba(244,237,223,.09)"}}>
-                <div style={{flex:1}}>
+                <div style={{textAlign:"left"}}>
                   <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.4)",fontWeight:700,marginBottom:".2rem"}}>Estimated value</div>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{fmt$(zestimate)}</div>
                   {appreciation!==null&&(
@@ -12910,8 +12910,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     ↻ Refresh value
                   </button>
                 </div>
+                <div style={{flex:1}}/>
                 <div style={{width:1,background:"rgba(244,237,223,.1)",flexShrink:0}}/>
-                <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",justifyContent:"center",flexShrink:0}}>
+                <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",justifyContent:"center",flexShrink:0,textAlign:"right"}}>
                   {lastSalePrice>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(lastSalePrice)}</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Purchased</div></div>}
                   {Number(profile?.rent_zestimate)>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(profile.rent_zestimate)}/mo</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Rent est.</div></div>}
                   {Number(profile?.sqft)>0&&zestimate>0&&<div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:700,color:"#F4EDDF"}}>{fmt$(Math.round(zestimate/Number(profile.sqft)))}/sqft</div><div style={{fontSize:".58rem",color:"rgba(244,237,223,.4)",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Per sqft</div></div>}
