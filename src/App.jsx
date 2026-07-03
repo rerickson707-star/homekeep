@@ -1,4 +1,4 @@
-// Steadwell v164 — 2026-07-02T00:00:00.000Z
+// Steadwell v165 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -204,7 +204,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 /* ══ HEADER ══ */
 .hdr{height:var(--hdr);background:var(--pine);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:fixed;top:0;left:0;right:0;z-index:200;gap:.75rem;box-shadow:0 2px 12px -4px rgba(23,48,38,.35);-webkit-transform:translateZ(0);transform:translateZ(0);will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .hdr-logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
-.hdr-logo .ico{width:32px;height:32px;background:var(--rust);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.hdr-logo .ico{width:32px;height:32px;background:var(--pine);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .hdr-logo .name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#fff;letter-spacing:-.3px}
 .search-wrap{flex:1;max-width:520px;position:relative}
 .search-wrap input{width:100%;padding:.42rem .85rem .42rem 2.1rem;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.12);border-radius:22px;font-size:.82rem;color:#fff;outline:none;transition:all .2s;font-family:'Hanken Grotesk',sans-serif}
