@@ -1,4 +1,4 @@
-// Steadwell v162 — 2026-07-02T00:00:00.000Z
+// Steadwell v163 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -7139,6 +7139,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState({});
+  const [addressCopied, setAddressCopied] = useState(false);
 
   const pending = captures.filter(c => c.status === "pending");
   const saved   = captures.filter(c => c.status === "saved");
@@ -7274,9 +7275,29 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
             <div style={{fontSize:".78rem",color:"#5A534B",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.inbound_email}</div>
           </div>
           <button
-            onClick={() => { navigator.clipboard?.writeText(profile?.inbound_email || ""); }}
-            style={{background:"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:8,padding:"4px 10px",fontSize:".72rem",fontWeight:700,cursor:"pointer",flexShrink:0}}>
-            Copy
+            onClick={async () => {
+              try {
+                if (navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(profile?.inbound_email || "");
+                } else {
+                  // Fallback for browsers/contexts without the Clipboard API
+                  const ta = document.createElement("textarea");
+                  ta.value = profile?.inbound_email || "";
+                  ta.style.position = "fixed";
+                  ta.style.opacity = "0";
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand("copy");
+                  document.body.removeChild(ta);
+                }
+                setAddressCopied(true);
+                setTimeout(() => setAddressCopied(false), 1800);
+              } catch {
+                setAddressCopied(false);
+              }
+            }}
+            style={{background:addressCopied?"#2A7A4A":"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:8,padding:"4px 10px",fontSize:".72rem",fontWeight:700,cursor:"pointer",flexShrink:0,transition:"background .15s",display:"flex",alignItems:"center",gap:4}}>
+            {addressCopied ? (<>✓ Copied</>) : "Copy"}
           </button>
         </div>
 

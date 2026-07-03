@@ -12,7 +12,7 @@ const SUPABASE_URL          = "https://hjkyameroqufaojuerns.supabase.co";
 const SERVICE_KEY           = Deno.env.get("SERVICE_ROLE_KEY")!;
 const FROM                  = "Steadwell <hello@trysteadwell.app>";
 
-// ── Verify Resend webhook signature ──────────────────────────────────────────
+// ── Verify Resend webhook signature ─────────────────────────────────────────
 async function verifySignature(body: string, headers: Headers): Promise<boolean> {
   try {
     const svixId        = headers.get("svix-id") || "";
@@ -37,7 +37,7 @@ async function verifySignature(body: string, headers: Headers): Promise<boolean>
   }
 }
 
-// ── Fetch full email content from Resend API ──────────────────────────────────
+// ── Fetch full email content from Resend API ────────────────────────────────
 async function fetchEmailContent(emailId: string): Promise<{ text: string; html: string; subject: string; from: string }> {
   const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
     headers: {
@@ -95,7 +95,7 @@ async function fetchAttachmentsFixed(emailId: string): Promise<any[]> {
   return data.data || [];
 }
 
-// ── Fetch attachments from Resend API ─────────────────────────────────────────
+// ── Fetch attachments from Resend API ────────────────────────────────────────
 async function fetchAttachments(emailId: string): Promise<any[]> {
   const res = await fetch(`https://api.resend.com/emails/${emailId}/attachments`, {
     headers: { "Authorization": `Bearer ${RESEND_API_KEY}` },
@@ -126,7 +126,7 @@ Determine what type of home record this email represents and extract the relevan
 
 Respond with ONLY valid JSON in this exact format:
 {
-  "type": "warranty" | "expense" | "document" | "asset" | "unknown",
+  "type": "warranty" | "expense" | "document" | "asset" | "utility_bill" | "unknown",
   "confidence": "high" | "medium" | "low",
   "summary": "One sentence describing what this is",
   "data": {
@@ -136,16 +136,20 @@ Respond with ONLY valid JSON in this exact format:
     "amount": 0.00,
     "purchase_date": "YYYY-MM-DD or null",
     "expiry_date": "YYYY-MM-DD or null",
+    "bill_date": "YYYY-MM-DD or null — for utility_bill type, the statement/billing date",
+    "usage": 0.00,
+    "usage_unit": "kWh | therms | gallons | CCF or null — for utility_bill type, the consumption amount and its unit",
     "category": "HVAC | Appliance | Electronics | Vehicle | Tools | Roofing | Plumbing | Electrical | Structure | Safety | Landscaping | Jewelry & Valuables | Outdoor | Other",
     "notes": "any other relevant details",
-    "vendor": "store or company name if present",
+    "vendor": "store, utility provider, or company name if present",
     "warranty_years": null
   }
 }
 
 Rules:
 - type "warranty": receipt for a purchased item with warranty info, or warranty registration
-- type "expense": contractor invoice, service bill, repair cost, utility bill
+- type "utility_bill": a recurring utility statement — electric, gas, water, sewer, or trash billing. Use "vendor" for the utility company name (e.g. "Duke Energy"), "amount" for the total due, "bill_date" for the statement date, and "usage"/"usage_unit" if consumption is shown (e.g. usage: 812, usage_unit: "kWh"). Do NOT classify these as "expense".
+- type "expense": a one-time contractor invoice, service call, or repair cost — not a recurring utility bill
 - type "document": inspection report, insurance policy, permit, manual, HOA document
 - type "asset": notification about a new home system or appliance being installed
 - type "unknown": cannot determine, save as-is
@@ -196,18 +200,20 @@ async function sendConfirmation(
   confidence: string,
 ) {
   const typeLabel: Record<string, string> = {
-    warranty: "Warranty",
-    expense:  "Expense",
-    document: "Document",
-    asset:    "Asset",
-    unknown:  "Email",
+    warranty:     "Warranty",
+    expense:      "Expense",
+    document:     "Document",
+    asset:        "Asset",
+    utility_bill: "Utility Bill",
+    unknown:      "Email",
   };
   const typeColor: Record<string, string> = {
-    warranty: "#234A3D",
-    expense:  "#B8861E",
-    document: "#3B5EA6",
-    asset:    "#C16140",
-    unknown:  "#8A8178",
+    warranty:     "#234A3D",
+    expense:      "#B8861E",
+    document:     "#3B5EA6",
+    asset:        "#C16140",
+    utility_bill: "#3B8A6E",
+    unknown:      "#8A8178",
   };
   const label = typeLabel[type] || "Email";
   const color = typeColor[type] || "#8A8178";
