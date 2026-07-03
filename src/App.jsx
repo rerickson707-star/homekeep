@@ -1,4 +1,4 @@
-// Steadwell v161 — 2026-07-02T00:00:00.000Z
+// Steadwell v162 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12823,7 +12823,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             .pw-value-row{display:flex;flex-direction:column;gap:.6rem;}
             .pw-value-stats{display:flex;gap:1.1rem;}
             @media(min-width:760px){
-              .pw-card{flex-direction:row;align-items:stretch;max-width:900px;margin:1rem auto 0;}
+              .pw-card{flex-direction:row;align-items:stretch;}
               .pw-photo{aspect-ratio:auto;width:42%;flex-shrink:0;}
               .pw-info{width:58%;}
               .pw-value-row{flex-direction:row;align-items:center;justify-content:space-between;gap:1rem;}
