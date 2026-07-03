@@ -1,4 +1,4 @@
-// Steadwell v156 — 2026-07-02T00:00:00.000Z
+// Steadwell v157 — 2026-07-02T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12803,7 +12803,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
-      {/* ── PROPERTY CARD: photo + stat row + value banner, one cohesive card ── */}
+      {/* ── PROPERTY CARD: photo + identity/stats panel + value banner, one cohesive card ── */}
       {!showSetup && (() => {
         // Merge Built + Age into one cell so a typical home (built year + beds + baths + sqft)
         // still fits in 4 clean columns instead of 5 crowded ones.
@@ -12817,20 +12817,20 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         return (
         <div style={{margin:"1rem 1rem 0",borderRadius:20,overflow:"hidden",boxShadow:"0 6px 24px rgba(23,48,38,.18)"}}>
 
-          {/* Photo — address + name only, kept calm and uncrowded */}
-          <div style={{position:"relative",height:220,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
+          {/* Photo — image only, kept completely clean */}
+          <div style={{position:"relative",height:200,overflow:"hidden",background:"var(--pine-deep)",flexShrink:0}}>
             {(primaryPhotoUrl && !primaryPhotoFailed) ? (
               <img
                 src={primaryPhotoUrl}
                 alt="Your home"
-                style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:`center ${photoPos}%`,opacity:.82}}
+                style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:`center ${photoPos}%`,opacity:.9}}
                 onError={()=>setPrimaryPhotoFailed(true)}
               />
             ) : streetViewUrl ? (
               <img
                 src={streetViewUrl}
                 alt="Street view of your home"
-                style={{width:"100%",height:"100%",objectFit:"cover",opacity:.82}}
+                style={{width:"100%",height:"100%",objectFit:"cover",opacity:.9}}
                 onError={()=>setStreetViewUrl(null)}
               />
             ) : (
@@ -12842,41 +12842,41 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 )}
               </button>
             )}
-            {/* Scrim — darkens top for Edit button legibility and bottom for text, regardless of photo content */}
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(23,48,38,.4) 0%,rgba(23,48,38,.02) 30%,rgba(23,48,38,.78) 100%)"}}/>
-            {/* Content */}
-            <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"1.1rem 1.25rem 1rem"}}>
-              {profile?.address && (
-                <div style={{fontSize:".78rem",color:"rgba(244,237,223,.65)",fontWeight:600,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}>
-                  <svg width="11" height="14" viewBox="0 0 11 14" fill="none" style={{flexShrink:0}}><path d="M5.5 0C2.46 0 0 2.46 0 5.5C0 9.63 5.5 14 5.5 14S11 9.63 11 5.5C11 2.46 8.54 0 5.5 0ZM5.5 7.5C4.4 7.5 3.5 6.6 3.5 5.5S4.4 3.5 5.5 3.5S7.5 4.4 7.5 5.5S6.6 7.5 5.5 7.5Z" fill="#D2876A"/></svg>
-                  {profile.address}
-                </div>
-              )}
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.85rem",fontWeight:500,color:"#fff",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,.25)"}}>
-                {profile?.name||"My Home"}
-              </div>
-            </div>
+            {/* Light scrim — just enough for Edit button legibility, no text to protect below anymore */}
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(23,48,38,.35) 0%,rgba(23,48,38,0) 30%)"}}/>
             {/* Edit button */}
             <button onClick={openEdit} style={{position:"absolute",top:"1rem",right:"1rem",background:"rgba(23,48,38,.5)",border:"1.5px solid rgba(255,255,255,.28)",borderRadius:10,color:"#fff",fontSize:".82rem",fontWeight:700,padding:".45rem .85rem",cursor:"pointer",backdropFilter:"blur(6px)",fontFamily:"'Hanken Grotesk',sans-serif"}}>
               Edit
             </button>
           </div>
 
-          {/* Stat row — attributes get their own breathing room, off the photo */}
-          {statItems.length > 0 && (
-            <div style={{background:"var(--pine-soft)",padding:".8rem .5rem",display:"grid",gridTemplateColumns:`repeat(${statItems.length},1fr)`}}>
-              {statItems.map((s,i)=>(
-                <div key={s.label} style={{textAlign:"center",padding:".15rem .3rem",borderRight:i<statItems.length-1?"1px solid rgba(244,237,223,.12)":"none"}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:"#F4EDDF",whiteSpace:"nowrap"}}>{s.value}</div>
-                  <div style={{fontSize:".62rem",color:"rgba(244,237,223,.5)",textTransform:"uppercase",letterSpacing:".03em",fontWeight:600,marginTop:2}}>{s.label}</div>
-                </div>
-              ))}
+          {/* Identity + stats panel — name, address, and attributes all live here now, off the photo */}
+          <div style={{background:"var(--pine-soft)",padding:"1.1rem 1.25rem"}}>
+            {profile?.address && (
+              <div style={{fontSize:".78rem",color:"rgba(244,237,223,.65)",fontWeight:600,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}>
+                <svg width="11" height="14" viewBox="0 0 11 14" fill="none" style={{flexShrink:0}}><path d="M5.5 0C2.46 0 0 2.46 0 5.5C0 9.63 5.5 14 5.5 14S11 9.63 11 5.5C11 2.46 8.54 0 5.5 0ZM5.5 7.5C4.4 7.5 3.5 6.6 3.5 5.5S4.4 3.5 5.5 3.5S7.5 4.4 7.5 5.5S6.6 7.5 5.5 7.5Z" fill="#D2876A"/></svg>
+                {profile.address}
+              </div>
+            )}
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,color:"#fff",lineHeight:1.15}}>
+              {profile?.name||"My Home"}
             </div>
-          )}
+
+            {statItems.length > 0 && (
+              <div style={{display:"grid",gridTemplateColumns:`repeat(${statItems.length},1fr)`,marginTop:"1rem",paddingTop:".9rem",borderTop:"1px solid rgba(244,237,223,.12)"}}>
+                {statItems.map((s,i)=>(
+                  <div key={s.label} style={{textAlign:"center",padding:".15rem .3rem",borderRight:i<statItems.length-1?"1px solid rgba(244,237,223,.12)":"none"}}>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:"#F4EDDF",whiteSpace:"nowrap"}}>{s.value}</div>
+                    <div style={{fontSize:".62rem",color:"rgba(244,237,223,.5)",textTransform:"uppercase",letterSpacing:".03em",fontWeight:600,marginTop:2}}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Value banner — shares the same rounded card, brand pine instead of near-black */}
           {zestimate > 0 && (
-            <div style={{background:"var(--pine-deep)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"stretch",gap:"1.1rem",borderTop:statItems.length>0?"1px solid rgba(244,237,223,.08)":"none"}}>
+            <div style={{background:"var(--pine-deep)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"stretch",gap:"1.1rem",borderTop:"1px solid rgba(244,237,223,.08)"}}>
               <div style={{flex:1}}>
                 <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.45)",fontWeight:700,marginBottom:".25rem"}}>Estimated value</div>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{fmt$(zestimate)}</div>
