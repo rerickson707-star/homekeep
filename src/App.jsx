@@ -1,4 +1,4 @@
-// Steadwell v173 — 2026-07-05T00:00:00.000Z
+// Steadwell v174 — 2026-07-05T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12942,14 +12942,19 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const totalCost = expenses.reduce((s,e)=>s+Number(e.amount||0),0) + serviceLogTotal;
   const activeW   = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
 
-  // Value added — sum of estimated resale value from all projects that have ROI data
-  const totalValueAdded = (!roiData || !projects?.length) ? 0 : projects.reduce((sum, p) => {
-    if (!p.roi_category || !roiData.categories?.[p.roi_category]) return sum;
-    const spent = expenses.filter(e => e.project_id === p.id).reduce((s,e) => s+Number(e.amount||0), 0);
-    const mult = getRegionalMultiplier(roiData, p.roi_category, profile?.address);
-    const calc = computeProjectROI(roiData.categories, p.roi_category, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, mult);
-    return sum + (calc?.valueAdded || 0);
-  }, 0);
+  // Potential value added — recomputes reactively when roiData arrives from Supabase.
+  // Includes ALL projects with an roi_category, regardless of status or whether
+  // expenses are linked yet (falls back to typical cost for the scope/category).
+  const totalValueAdded = React.useMemo(() => {
+    if (!roiData?.categories || !projects?.length) return 0;
+    return projects.reduce((sum, p) => {
+      if (!p.roi_category || !roiData.categories[p.roi_category]) return sum;
+      const spent = expenses.filter(e => e.project_id === p.id).reduce((s,e) => s+Number(e.amount||0), 0);
+      const mult = getRegionalMultiplier(roiData, p.roi_category, profile?.address);
+      const calc = computeProjectROI(roiData.categories, p.roi_category, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, mult);
+      return sum + (calc?.valueAdded || 0);
+    }, 0);
+  }, [roiData, projects, expenses, profile?.address]);
 
   const schoolRatingColor = r => !r ? "#C2B8AE" : r>=8 ? "#1A7A44" : r>=6 ? "#E0A84A" : "#B91C1C";
 
@@ -13168,7 +13173,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             {val:warranties.length, lbl:"Assets",       color:"var(--pine)"},
             {val:activeW,           lbl:"Warranties",   color:"#B8861E"},
             {val:fmt$(totalCost),   lbl:"Invested",     color:"var(--rust)"},
-            {val:totalValueAdded > 0 ? fmt$(Math.round(totalValueAdded)) : "—", lbl:"Value Added", color:"var(--ok)"},
+            {val:totalValueAdded > 0 ? fmt$(Math.round(totalValueAdded)) : "—", lbl:"Est. Value Added", color:"var(--ok)"},
           ].map(s=>(
             <div key={s.lbl} style={{background:"var(--white)",padding:".85rem .5rem",textAlign:"center"}}>
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:700,color:s.color,lineHeight:1}}>{s.val}</div>
