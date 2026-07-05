@@ -1,4 +1,4 @@
-// Steadwell v174 — 2026-07-05T00:00:00.000Z
+// Steadwell v175 — 2026-07-05T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12945,7 +12945,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // Potential value added — recomputes reactively when roiData arrives from Supabase.
   // Includes ALL projects with an roi_category, regardless of status or whether
   // expenses are linked yet (falls back to typical cost for the scope/category).
-  const totalValueAdded = React.useMemo(() => {
+  const totalValueAdded = useMemo(() => {
     if (!roiData?.categories || !projects?.length) return 0;
     return projects.reduce((sum, p) => {
       if (!p.roi_category || !roiData.categories[p.roi_category]) return sum;
