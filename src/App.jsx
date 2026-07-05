@@ -1,4 +1,4 @@
-// Steadwell v170 — 2026-07-03T00:00:00.000Z
+// Steadwell v171 — 2026-07-05T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -11642,7 +11642,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 }
 
 // ─── HOME HISTORY REPORT GENERATOR ───────────────────────────────────────────
-function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [] }) {
+function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null }) {
   const addr     = profile?.address || "Your Home";
   const owner    = profile?.name    || "";
   const today    = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
@@ -11767,6 +11767,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; font-size: 11px; font-weight: 600; color: #A8A09A; text-transform: uppercase; letter-spacing: .05em; padding: 0 6px 8px; border-bottom: 2px solid #E8E0D0; }
   th:last-child { text-align: right; }
+  .cover-photo { width: 100%; height: 220px; object-fit: cover; display: block; }
   .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
   .disclaimer { background: #FBF7EE; border: 1px solid #E8E0D0; border-radius: 8px; padding: 16px 18px; margin: 28px 40px; }
   .disclaimer-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #A8A09A; margin-bottom: 8px; }
@@ -11777,7 +11778,12 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
     .print-btn { display: none; }
     body { background: #fff; }
     .page { margin: 0; border-radius: 0; box-shadow: none; max-width: 100%; }
-    .section { page-break-inside: avoid; }
+    /* Only the compact sections stay whole — tables are allowed to break across
+       pages naturally instead of forcing large blank gaps to keep them intact. */
+    .section:not(:has(table)) { page-break-inside: avoid; }
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+    thead { display: table-header-group; } /* repeats column headers on every printed page */
     .photo-grid { grid-template-columns: repeat(3,1fr); }
   }
 </style>
@@ -11786,6 +11792,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
 <button class="print-btn" onclick="window.print()">⬇ Save as PDF</button>
 <div class="page">
 
+  ${photoUrl ? `<img class="cover-photo" src="${photoUrl}" alt="${addr}" onerror="this.style.display='none'">` : ""}
   <!-- Cover -->
   <div class="cover">
     <div class="cover-label">Home History Report</div>
@@ -11863,7 +11870,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   <!-- Disclaimer -->
   <div class="disclaimer">
     <div class="disclaimer-title">Important Notice</div>
-    <div class="disclaimer-text">This Home History Report is a personal summary prepared by the homeowner using Steadwell, a home management application. It is based solely on information provided by the homeowner and has not been independently verified. This document is <strong>NOT</strong> a legal seller disclosure statement, does <strong>NOT</strong> constitute a warranty of any kind, and does <strong>NOT</strong> guarantee compliance with applicable local, state, or federal real estate disclosure laws. Buyers should conduct their own independent inspections and due diligence. Sellers should consult a licensed real estate attorney or agent for disclosure requirements specific to their jurisdiction. Steadwell, Inc. assumes no responsibility for the accuracy, completeness, or legal sufficiency of the information contained in this report.</div>
+    <div class="disclaimer-text">This Home History Report is a personal summary prepared by the homeowner using Steadwell, a home management application. It is based solely on information provided by the homeowner and has not been independently verified. This document is <strong>NOT</strong> a legal seller disclosure statement, does <strong>NOT</strong> constitute a warranty of any kind, and does <strong>NOT</strong> guarantee compliance with applicable local, state, or federal real estate disclosure laws. Buyers should conduct their own independent inspections and due diligence. Sellers should consult a licensed real estate attorney or agent for disclosure requirements specific to their jurisdiction. Steadwell, LLC assumes no responsibility for the accuracy, completeness, or legal sufficiency of the information contained in this report.</div>
   </div>
 
   <!-- Footer -->
@@ -13422,7 +13429,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
             {/* ── CLAIM-READY EXPORT ── */}
             {!showCheckin && (
-              <div onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks})}
+              <div onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
                 style={{margin:"0 1rem 1rem",background:"linear-gradient(135deg,#1a3a2e,var(--pine-soft))",borderRadius:"var(--r-sm)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"center",gap:"1rem",cursor:"pointer"}}>
                 <div style={{width:50,height:50,borderRadius:13,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>📋</div>
                 <div style={{flex:1}}>
@@ -13689,7 +13696,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             {[
               {ico:"📄", name:"Documents",       desc:"Deeds, permits, inspection reports",        action:onShowDocs},
               {ico:"👷", name:"Contractors",      desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
-              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks});}},
+              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,photoUrl:primaryPhotoUrl||streetViewUrl||null});}},
               {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
               {ico:"📬", name:"Email inbox",      desc:pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
