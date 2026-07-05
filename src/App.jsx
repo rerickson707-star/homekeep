@@ -1,4 +1,4 @@
-// Steadwell v171 — 2026-07-05T00:00:00.000Z
+// Steadwell v172 — 2026-07-05T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -11642,7 +11642,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 }
 
 // ─── HOME HISTORY REPORT GENERATOR ───────────────────────────────────────────
-function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null }) {
+function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null, projects = [], roiData = null }) {
   const addr     = profile?.address || "Your Home";
   const owner    = profile?.name    || "";
   const today    = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
@@ -11668,6 +11668,20 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   const byCat = {};
   expenses.forEach(e => { byCat[e.category||"Other"] = (byCat[e.category||"Other"]||0) + Number(e.amount||0); });
   const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  // Projects — value added, using the same computeProjectROI logic as the live ROI calculator
+  const multCache = {};
+  const projectRows_ = (roiData ? projects : []).filter(p => p.roi_category && roiData.categories?.[p.roi_category]).map(p => {
+    const projExpenses = expenses.filter(e => e.project_id === p.id);
+    const spentAmt = projExpenses.reduce((s,e) => s + Number(e.amount||0), 0);
+    const mult = multCache[p.roi_category] ?? (multCache[p.roi_category] = getRegionalMultiplier(roiData, p.roi_category, profile?.address));
+    const calc = computeProjectROI(roiData.categories, p.roi_category, spentAmt > 0 ? spentAmt : null, !!p.roi_diy, p.roi_scope, mult);
+    return calc ? { p, calc } : null;
+  }).filter(Boolean);
+
+  const totalProjectSpend = projectRows_.reduce((s,r) => s + r.calc.spend, 0);
+  const totalValueAdded   = projectRows_.reduce((s,r) => s + r.calc.valueAdded, 0);
+  const totalNetPosition  = totalProjectSpend - totalValueAdded; // negative = net gain overall
 
   // Completed tasks
   const done = tasks.filter(t => t.status === "Completed").slice(0, 15);
@@ -11721,6 +11735,23 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
     <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#2A2723;">${cat}</td>
     <td style="padding:7px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:500;color:#2A2723;text-align:right;">$${Number(amt).toLocaleString()}</td>
   </tr>`).join("");
+
+  const statusBg = { "Completed":"#EAF3DE", "In Progress":"#FAEEDA", "Planning":"#E9F0FA" };
+  const statusFg = { "Completed":"#3B6D11", "In Progress":"#854F0B", "Planning":"#2E5A9C" };
+  const projectRows = projectRows_.map(({p, calc}) => {
+    const catLabel = roiData.categories[p.roi_category]?.label || p.roi_category;
+    const scopeLabel = calc.scope?.label || "";
+    const status = p.status || "Planning";
+    const netLabel = calc.netCost < 0 ? `+$${Math.abs(calc.netCost).toLocaleString()} gain` : `$${calc.netCost.toLocaleString()}`;
+    return `<tr>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:600;color:#2A2723;">${p.name||catLabel}${scopeLabel?`<div style="font-size:10px;font-weight:400;color:#8A8178;margin-top:1px;">${scopeLabel}</div>`:""}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;"><span style="background:${statusBg[status]||"#F4EDDF"};color:${statusFg[status]||"#5A534B"};font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;">${status}</span></td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;text-align:right;">$${calc.spend.toLocaleString()}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:600;color:#234A3D;text-align:right;">$${calc.valueAdded.toLocaleString()}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:${calc.netCost<0?"#3B6D11":"#5A534B"};text-align:right;">${netLabel}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:700;color:#234A3D;text-align:right;">${calc.effectiveROI}%</td>
+    </tr>`;
+  }).join("");
 
   // ── Photo gallery cards ──
   const photoCards = assetsWithPhotos.map(a => `
@@ -11815,6 +11846,29 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
       <div class="stat-card"><div class="stat-val">${expTotal>0?"$"+Math.round(expTotal).toLocaleString():"—"}</div><div class="stat-lbl">Total invested</div></div>
     </div>
   </div>
+
+  <!-- Home Improvement Projects & Value Added -->
+  ${projectRows_.length > 0 ? `<div class="section">
+    <div class="sec-title">Home Improvement Projects &amp; Value Added</div>
+    <div class="stats-row" style="margin-bottom:18px;">
+      <div class="stat-card"><div class="stat-val">${projectRows_.length}</div><div class="stat-lbl">Projects completed</div></div>
+      <div class="stat-card"><div class="stat-val">$${Math.round(totalProjectSpend).toLocaleString()}</div><div class="stat-lbl">Total invested</div></div>
+      <div class="stat-card" style="background:#EAF3DE;"><div class="stat-val" style="color:#3B6D11;">$${Math.round(totalValueAdded).toLocaleString()}</div><div class="stat-lbl">Est. value added</div></div>
+      <div class="stat-card" style="${totalNetPosition<0?'background:#EAF3DE;':''}"><div class="stat-val" style="${totalNetPosition<0?'color:#3B6D11;':''}">${totalNetPosition<0?"+$"+Math.round(Math.abs(totalNetPosition)).toLocaleString():"$"+Math.round(totalNetPosition).toLocaleString()}</div><div class="stat-lbl">${totalNetPosition<0?"Net gain":"Net cost"}</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Project</th>
+        <th>Status</th>
+        <th style="text-align:right">Spent</th>
+        <th style="text-align:right">Value Added</th>
+        <th style="text-align:right">Net</th>
+        <th style="text-align:right">ROI</th>
+      </tr></thead>
+      <tbody>${projectRows}</tbody>
+    </table>
+    <p style="font-size:10px;color:#A8A09A;margin-top:12px;line-height:1.5;">Value added estimates are based on the national Cost vs. Value Report and regional adjustments where available. These are estimates only, not appraisals — actual resale value depends on market conditions, buyer preferences, and execution quality.</p>
+  </div>` : ""}
 
   <!-- Systems & Assets — with photo thumb, brand/model, and warranty column -->
   ${assets.length > 0 ? `<div class="section">
@@ -12562,7 +12616,8 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+  const { roiData } = useProjectROIData();
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [streetViewUrl, setStreetViewUrl] = useState(null);
   const [primaryPhotoFailed, setPrimaryPhotoFailed] = useState(false);
@@ -13429,7 +13484,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
             {/* ── CLAIM-READY EXPORT ── */}
             {!showCheckin && (
-              <div onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
+              <div onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
                 style={{margin:"0 1rem 1rem",background:"linear-gradient(135deg,#1a3a2e,var(--pine-soft))",borderRadius:"var(--r-sm)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"center",gap:"1rem",cursor:"pointer"}}>
                 <div style={{width:50,height:50,borderRadius:13,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>📋</div>
                 <div style={{flex:1}}>
@@ -13696,7 +13751,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             {[
               {ico:"📄", name:"Documents",       desc:"Deeds, permits, inspection reports",        action:onShowDocs},
               {ico:"👷", name:"Contractors",      desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
-              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,photoUrl:primaryPhotoUrl||streetViewUrl||null});}},
+              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null});}},
               {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
               {ico:"📬", name:"Email inbox",      desc:pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
@@ -16336,7 +16391,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
