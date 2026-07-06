@@ -1,4 +1,4 @@
-// Steadwell v176 — 2026-07-05T00:00:00.000Z
+// Steadwell v177 — 2026-07-05T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12950,7 +12950,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     if (!projects?.length) { console.log("[ValueAdded] no projects"); return 0; }
     const result = projects.reduce((sum, p) => {
       if (!p.roi_category) { console.log("[ValueAdded] project has no roi_category:", p.name||p.id); return sum; }
-      if (!roiData.categories[p.roi_category]) { console.log("[ValueAdded] unknown category:", p.roi_category); return sum; }
+      if (!roiData.categories[p.roi_category]) { console.log("[ValueAdded] unknown category:", p.roi_category, "| available keys:", Object.keys(roiData.categories)); return sum; }
       const spent = expenses.filter(e => e.project_id === p.id).reduce((s,e) => s+Number(e.amount||0), 0);
       const mult = getRegionalMultiplier(roiData, p.roi_category, profile?.address);
       const calc = computeProjectROI(roiData.categories, p.roi_category, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, mult);
