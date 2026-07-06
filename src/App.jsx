@@ -1,4 +1,4 @@
-// Steadwell v177 — 2026-07-05T00:00:00.000Z
+// Steadwell v178 — 2026-07-05T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12946,19 +12946,14 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // Includes ALL projects with an roi_category, regardless of status or whether
   // expenses are linked yet (falls back to typical cost for the scope/category).
   const totalValueAdded = useMemo(() => {
-    if (!roiData?.categories) { console.log("[ValueAdded] roiData not loaded yet"); return 0; }
-    if (!projects?.length) { console.log("[ValueAdded] no projects"); return 0; }
-    const result = projects.reduce((sum, p) => {
-      if (!p.roi_category) { console.log("[ValueAdded] project has no roi_category:", p.name||p.id); return sum; }
-      if (!roiData.categories[p.roi_category]) { console.log("[ValueAdded] unknown category:", p.roi_category, "| available keys:", Object.keys(roiData.categories)); return sum; }
+    if (!roiData?.categories || !projects?.length) return 0;
+    return projects.reduce((sum, p) => {
+      if (!p.roi_category || !roiData.categories[p.roi_category]) return sum;
       const spent = expenses.filter(e => e.project_id === p.id).reduce((s,e) => s+Number(e.amount||0), 0);
       const mult = getRegionalMultiplier(roiData, p.roi_category, profile?.address);
       const calc = computeProjectROI(roiData.categories, p.roi_category, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, mult);
-      console.log("[ValueAdded]", p.name||p.id, "cat:", p.roi_category, "spent:", spent, "valueAdded:", calc?.valueAdded);
       return sum + (calc?.valueAdded || 0);
     }, 0);
-    console.log("[ValueAdded] total:", result);
-    return result;
   }, [roiData, projects, expenses, profile?.address]);
 
   const schoolRatingColor = r => !r ? "#C2B8AE" : r>=8 ? "#1A7A44" : r>=6 ? "#E0A84A" : "#B91C1C";
