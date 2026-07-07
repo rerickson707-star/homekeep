@@ -6120,7 +6120,7 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
   // Address lookup limits per plan
   const isPro   = planData?.plan === "pro";
   const isPlus  = planData?.plan === "plus";
-  const LIMIT   = isPro ? 99 : 2; // Pro = unlimited, Free/Plus = 2/year
+  const LIMIT   = isPro ? 99 : isPlus ? 5 : 2; // Pro = unlimited, Plus = 5/year, Free = 2/year
   const LS_KEY  = `sw_addr_lookups_${userId}_${new Date().getFullYear()}`;
   const usedCount = parseInt(localStorage.getItem(LS_KEY) || "0");
   const remaining = Math.max(0, LIMIT - usedCount);
@@ -14033,7 +14033,7 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
       XLSX.writeFile(wb, `steadwell-${addr}.xlsx`);
     } catch(e) {
       console.error("Export failed:", e);
-      alert("Export failed — please try again.");
+      window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: "Export failed — please try again.", type: "error" } }));
     }
     setDownloading(false);
   };
@@ -15587,7 +15587,7 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
     };
     const { data, error } = await supabase.from("profiles").insert([payload]).select();
     setSaving(false);
-    if (error) { alert("Error saving: " + error.message); return; }
+    if (error) { window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: "Error saving — " + error.message, type: "error" } })); return; }
     onCreated(data[0]);
   };
 
@@ -15778,6 +15778,34 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+// ─── APP-WIDE ERROR BOUNDARY ─────────────────────────────────────────────────
+class AppErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error("[App crash]", error, info.componentStack); }
+  render() {
+    if (this.state.error) return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--cream,#F4EDDF)",fontFamily:"'Hanken Grotesk',sans-serif",padding:"2rem"}}>
+        <div style={{background:"#fff",borderRadius:18,padding:"2.5rem 2rem",maxWidth:420,width:"100%",textAlign:"center",boxShadow:"0 8px 40px rgba(35,74,61,.10)"}}>
+          <div style={{fontSize:"2.2rem",marginBottom:"1rem"}}>🏠</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,color:"#234A3D",marginBottom:".6rem"}}>Something went wrong</div>
+          <div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.6,marginBottom:"1.5rem"}}>An unexpected error occurred. Your data is safe — reload the page to continue.</div>
+          <button
+            onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+            style={{background:"#234A3D",color:"#fff",border:"none",borderRadius:10,padding:".75rem 1.5rem",fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".95rem",cursor:"pointer"}}
+          >
+            Reload Steadwell
+          </button>
+          <div style={{marginTop:"1rem",fontSize:".75rem",color:"#A8A09A"}}>
+            If this keeps happening, email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140",textDecoration:"none"}}>hello@trysteadwell.app</a>
+          </div>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 export default function App() {
   // Rewardful affiliate tracking — capture ?via= param and store in cookie
   useEffect(() => {
@@ -15916,6 +15944,14 @@ export default function App() {
   const [serviceLogs, setServiceLogs] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const { toasts, show: toast } = useToast();
+
+  // ── Global toast event bus — lets deeply nested components without a toast prop
+  // surface styled toasts via: window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg, type } }))
+  useEffect(() => {
+    const handler = (e) => toast(e.detail?.msg || "Something went wrong", e.detail?.type || "error");
+    window.addEventListener("sw:toast", handler);
+    return () => window.removeEventListener("sw:toast", handler);
+  }, []);
 
   const setActivePropertyId = (id, uid) => {
     setActivePropertyIdRaw(id);
@@ -16209,7 +16245,7 @@ export default function App() {
   const username = (session.user.email || "there").split("@")[0];
 
   return (
-    <>
+    <AppErrorBoundary>
       <style>{CSS}</style>
       <div className="app">
         {/* ── Header ── */}
@@ -16482,7 +16518,7 @@ export default function App() {
         )}
         {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} postSetup={showUpgrade === "post-setup"} />}
       </div>
-    </>
+    </AppErrorBoundary>
   );
 }
 
@@ -17964,8 +18000,8 @@ function GuidesPage() {
     setPurchasing(tier);
     // Stripe Checkout will be wired here once LLC + Stripe account is live
     setTimeout(() => {
-      alert("Guides are launching soon — check back shortly!");
       setPurchasing(null);
+      window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: "Guides are launching soon — check back shortly! 🏠", type: "success" } }));
     }, 300);
   };
 
