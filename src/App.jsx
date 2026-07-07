@@ -11705,7 +11705,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
       return `<span style="background:${bg};color:${color};font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;">${label}</span>`;
     })() : `<span style="color:#C2B8AE;font-size:11px;">—</span>`;
     const thumb = a.asset_photo_url
-      ? `<img src="${a.asset_photo_url}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #E8E0D0;display:block;" onerror="this.style.display='none'">`
+      ? `<img src="${a.asset_photo_url}" alt="${a.item}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #E8E0D0;display:block;" onerror="this.style.display='none'">`
       : `<div style="width:36px;height:36px;border-radius:6px;background:#F4EDDF;border:1px dashed #C2B8AE;"></div>`;
     return `<tr>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;">${thumb}</td>
@@ -18966,7 +18966,7 @@ function ADAPage() {
       <main id="ada-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Accessibility Statement</h1>
-        <p style={S.meta}>Effective date: June 1, 2026 &nbsp;&middot;&nbsp; Last reviewed: June 1, 2026</p>
+        <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last reviewed: July 9, 2026</p>
         <div style={S.notice}><strong style={{color:"#234A3D"}}>Our commitment:</strong> Steadwell is committed to making our home management platform accessible to all users, including those with disabilities, in compliance with the Americans with Disabilities Act (ADA) and Web Content Accessibility Guidelines (WCAG) 2.1 Level AA.</div>
 
         <h2 style={S.h2}>1. Conformance Status</h2>
