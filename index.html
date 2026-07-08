@@ -1,108 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Primary Meta -->
-    <title>Steadwell — Home Maintenance Tracking & Asset Management</title>
-    <meta name="description" content="Steadwell helps homeowners track maintenance, manage appliances, and stay ahead of repairs. Scan nameplates, set reminders, and keep your home records in one place. Free to start." />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://www.trysteadwell.app/" />
-
-    <!-- Open Graph (Facebook, LinkedIn, iMessage previews) -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.trysteadwell.app/" />
-    <meta property="og:site_name" content="Steadwell" />
-    <meta property="og:title" content="Steadwell — Home Maintenance Tracking & Asset Management" />
-    <meta property="og:description" content="Track maintenance, manage appliances, and stay ahead of repairs. Scan nameplates, set reminders, and keep your home records in one place. Free to start." />
-    <meta property="og:image" content="https://www.trysteadwell.app/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:locale" content="en_US" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@trysteadwell" />
-    <meta name="twitter:title" content="Steadwell — Home Maintenance Tracking & Asset Management" />
-    <meta name="twitter:description" content="Track maintenance, manage appliances, and stay ahead of repairs. Free to start." />
-    <meta name="twitter:image" content="https://www.trysteadwell.app/og-image.png" />
-
-    <!-- Structured Data: SoftwareApplication -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Steadwell",
-      "url": "https://www.trysteadwell.app",
-      "description": "Steadwell helps homeowners track maintenance, manage appliances, and stay ahead of costly repairs. Scan appliance nameplates with AI, set seasonal reminders, and keep your home records organized.",
-      "applicationCategory": "HomeAndGarden",
-      "operatingSystem": "Web, iOS, Android",
-      "offers": [
-        {
-          "@type": "Offer",
-          "name": "Free",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        {
-          "@type": "Offer",
-          "name": "Plus",
-          "price": "4.99",
-          "priceCurrency": "USD",
-          "billingIncrement": "P1M"
-        },
-        {
-          "@type": "Offer",
-          "name": "Pro",
-          "price": "9.99",
-          "priceCurrency": "USD",
-          "billingIncrement": "P1M"
-        }
-      ],
-      "publisher": {
-        "@type": "Organization",
-        "name": "Steadwell",
-        "url": "https://www.trysteadwell.app"
-      },
-      "featureList": [
-        "AI appliance nameplate scanning",
-        "Home maintenance reminders",
-        "Asset and appliance tracking",
-        "Expense and repair logging",
-        "Shared home access for families",
-        "Document and warranty storage"
-      ]
-    }
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#234A3D">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Steadwell">
+    <title>Steadwell &#x2014; Home Management App | Track Maintenance, Warranties &amp; Costs</title>
+    <meta name="description" content="Steadwell is the home management app that tracks maintenance schedules, appliance warranties, repair costs, and documents - all in one place. Free to start, setup in 3 minutes.">
+    <meta name="keywords" content="home maintenance app, home management software, appliance warranty tracker, home maintenance tracker, HomeZada alternative">
+    <link rel="canonical" href="https://www.trysteadwell.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.trysteadwell.app/">
+    <meta property="og:title" content="Steadwell - Your home, kept well.">
+    <meta property="og:description" content="Track maintenance, warranties, costs, and documents for your home. Type your address and Steadwell fills in the rest.">
+    <meta property="og:image" content="https://www.trysteadwell.app/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Steadwell - Your home, kept well.">
+    <meta name="twitter:description" content="Home management app that tracks maintenance, warranties, and costs. Free to start.">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Steadwell","applicationCategory":"HomeAndGardenApplication","operatingSystem":"Web, iOS, Android","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Home management software for tracking maintenance, warranties, costs, and documents.","url":"https://www.trysteadwell.app"}</script>
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CSR87NCW38"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-CSR87NCW38');
     </script>
-
-    <!-- Structured Data: Organization -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Steadwell",
-      "url": "https://www.trysteadwell.app",
-      "logo": "https://www.trysteadwell.app/icon-512.png",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "hello@trysteadwell.app"
-      },
-      "sameAs": []
-    }
-    </script>
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#234A3D" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="icon" type="image/png" href="/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
