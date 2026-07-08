@@ -144,7 +144,7 @@ serve(async (_req) => {
       <span style="color:rgba(244,237,223,.45);font-size:13px;margin-left:auto;">Week of ${weekLabel}</span>
     </div>
     <div style="padding:36px 40px;">
-      <h1 style="font-family:Georgia,serif;font-size:22px;color:#234A3D;font-weight:400;margin:0 0 6px;letter-spacing:-0.3px;">Your home this week,${name}</h1>
+      <h1 style="font-family:Georgia,serif;font-size:22px;color:#234A3D;font-weight:400;margin:0 0 6px;letter-spacing:-0.3px;">Your home this week, ${name}</h1>
       <p style="font-size:14px;color:#A8A09A;margin:0 0 28px;">Here's what needs your attention.</p>
       ${overdueSection}
       ${upcomingSection}
@@ -163,7 +163,7 @@ serve(async (_req) => {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: [email], subject: `Your Steadwell digest &mdash; week of ${weekLabel}`, html }),
+      body: JSON.stringify({ from: FROM, to: [email], subject: `Your Steadwell digest — week of ${weekLabel}`, html }),
     });
 
     const result = await res.json();
