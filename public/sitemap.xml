@@ -4,115 +4,105 @@
   <!-- Core pages -->
   <url>
     <loc>https://www.trysteadwell.app/</loc>
-    <lastmod>2026-06-18</lastmod>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/guides</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
+    <lastmod>2026-07-09</lastmod>
   </url>
   <url>
     <loc>https://www.trysteadwell.app/warranty-tracker</loc>
-    <lastmod>2026-06-18</lastmod>
-    <priority>0.8</priority>
+    <lastmod>2026-07-09</lastmod>
   </url>
   <url>
-    <loc>https://www.trysteadwell.app/blog</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://www.trysteadwell.app/contractor-tracker</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/home-maintenance-tracker</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/home-document-vault</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/home-expense-tracker</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/home-insurance-tracker</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/home-projects</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/recall-alerts</loc>
+    <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/guides</loc>
+    <lastmod>2026-07-09</lastmod>
   </url>
   <url>
     <loc>https://www.trysteadwell.app/terms</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.3</priority>
+    <lastmod>2026-07-09</lastmod>
   </url>
   <url>
     <loc>https://www.trysteadwell.app/privacy</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.3</priority>
+    <lastmod>2026-07-09</lastmod>
   </url>
   <url>
     <loc>https://www.trysteadwell.app/ada</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.3</priority>
+    <lastmod>2026-07-09</lastmod>
   </url>
 
   <!-- Blog posts -->
   <url>
-    <loc>https://www.trysteadwell.app/blog/hvac-maintenance-schedule</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/blog/find-appliance-serial-number</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/blog/cost-of-deferred-maintenance</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/blog/how-old-is-my-water-heater</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/blog/steadwell-vs-homezada</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/blog/steadwell-vs-homebinder</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.trysteadwell.app/blog/centriq-alternative</loc>
-    <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
+    <loc>https://www.trysteadwell.app/blog/new-homeowner-checklist-first-30-days</loc>
+    <lastmod>2026-07-09</lastmod>
   </url>
   <url>
     <loc>https://www.trysteadwell.app/blog/home-maintenance-checklist</loc>
     <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.trysteadwell.app/blog/what-does-a-home-warranty-cover</loc>
+    <loc>https://www.trysteadwell.app/blog/hvac-maintenance-schedule</loc>
     <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.trysteadwell.app/blog/how-to-find-age-of-house</loc>
+    <loc>https://www.trysteadwell.app/blog/how-old-is-my-water-heater</loc>
     <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.trysteadwell.app/blog/roof-lifespan-when-to-replace</loc>
     <lastmod>2026-06-01</lastmod>
-    <priority>0.7</priority>
   </url>
-
-
   <url>
-    <loc>https://www.trysteadwell.app/recall-alerts</loc>
-    <lastmod>2026-06-25</lastmod>
-    <priority>0.8</priority>
+    <loc>https://www.trysteadwell.app/blog/how-to-find-age-of-house</loc>
+    <lastmod>2026-06-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/blog/find-appliance-serial-number</loc>
+    <lastmod>2026-06-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/blog/what-does-a-home-warranty-cover</loc>
+    <lastmod>2026-06-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/blog/cost-of-deferred-maintenance</loc>
+    <lastmod>2026-06-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/blog/steadwell-vs-homezada</loc>
+    <lastmod>2026-06-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/blog/steadwell-vs-homebinder</loc>
+    <lastmod>2026-06-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.trysteadwell.app/blog/centriq-alternative</loc>
+    <lastmod>2026-06-01</lastmod>
   </url>
 
-  <url><loc>https://www.trysteadwell.app/ai-scan</loc><lastmod>2026-06-25</lastmod><priority>0.8</priority></url>
-  <url><loc>https://www.trysteadwell.app/email-capture</loc><lastmod>2026-06-25</lastmod><priority>0.8</priority></url>
-  <url><loc>https://www.trysteadwell.app/home-maintenance-tracker</loc><lastmod>2026-06-25</lastmod><priority>0.8</priority></url>
-  <url><loc>https://www.trysteadwell.app/contractor-tracker</loc><lastmod>2026-06-25</lastmod><priority>0.7</priority></url>
-  <url><loc>https://www.trysteadwell.app/home-insurance-tracker</loc><lastmod>2026-06-25</lastmod><priority>0.7</priority></url>
-  <url><loc>https://www.trysteadwell.app/home-expense-tracker</loc><lastmod>2026-06-25</lastmod><priority>0.7</priority></url>
-  <url><loc>https://www.trysteadwell.app/home-projects</loc><lastmod>2026-06-25</lastmod><priority>0.7</priority></url>
-  <url><loc>https://www.trysteadwell.app/home-document-vault</loc><lastmod>2026-06-25</lastmod><priority>0.7</priority></url>
-
-  <url><loc>https://www.trysteadwell.app/affiliates</loc><lastmod>2026-06-29</lastmod><priority>0.7</priority></url>
-  <url><loc>https://www.trysteadwell.app/affiliate-agreement</loc><lastmod>2026-06-29</lastmod><priority>0.5</priority></url>
 </urlset>
