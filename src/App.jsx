@@ -15834,6 +15834,8 @@ export default function App() {
   if (_path === "/home-expense-tracker" || _path === "/home-expense-tracker/") return <HomeExpenseTrackerPage />;
   if (_path === "/home-projects" || _path === "/home-projects/") return <HomeProjectsPage />;
   if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
+  if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
+  if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
   if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
@@ -16587,6 +16589,268 @@ function UnsubscribePage() {
 
 
 // ─── AFFILIATES PAGE v2 ────────────────────────────────────────────────────────
+// ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
+const ADMIN_PASSWORD = "sw-admin-2026"; // change this after launch
+function AdminPage() {
+  const [authed, setAuthed] = useState(false);
+  const [pw, setPw] = useState("");
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [acting, setActing] = useState(null);
+  const [msg, setMsg] = useState(null);
+
+  const login = () => { if (pw === ADMIN_PASSWORD) { setAuthed(true); loadAgents(); } else setMsg("Wrong password."); };
+
+  const loadAgents = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("agent_applications").select("*").order("created_at", { ascending: false });
+    setAgents(data || []);
+    setLoading(false);
+  };
+
+  const approve = async (agent) => {
+    setActing(agent.id);
+    await supabase.from("agent_applications").update({ status: "approved" }).eq("id", agent.id);
+    await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ""}` },
+      body: JSON.stringify({ agent_id: agent.id }),
+    });
+    setMsg(`Approved ${agent.name} — welcome email sent.`);
+    loadAgents();
+    setActing(null);
+  };
+
+  const reject = async (agent) => {
+    setActing(agent.id);
+    await supabase.from("agent_applications").update({ status: "rejected" }).eq("id", agent.id);
+    setMsg(`${agent.name} rejected.`);
+    loadAgents();
+    setActing(null);
+  };
+
+  const s = { page: { minHeight: "100vh", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif", padding: "40px 24px" }, card: { background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 14, padding: "20px 24px", marginBottom: 14 }, badge: (st) => ({ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: st === "approved" ? "#EAF3EC" : st === "rejected" ? "#FCEBEB" : "#FBF7EE", color: st === "approved" ? "#2E7050" : st === "rejected" ? "#A32D2D" : "#C16140" }) };
+
+  if (!authed) return (
+    <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 16, padding: "40px 32px", width: "100%", maxWidth: 360, textAlign: "center" }}>
+        <div style={{ fontFamily: "Georgia,serif", fontSize: 22, color: "#234A3D", marginBottom: 24 }}>Steadwell Admin</div>
+        <input type="password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} placeholder="Password" style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1.5px solid #E6DECF", fontSize: 15, marginBottom: 12, fontFamily: "inherit" }} />
+        {msg && <div style={{ color: "#A32D2D", fontSize: 13, marginBottom: 10 }}>{msg}</div>}
+        <button onClick={login} style={{ width: "100%", background: "#234A3D", color: "#F4EDDF", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Sign in</button>
+      </div>
+    </div>
+  );
+
+  const byStatus = (st) => agents.filter(a => a.status === st);
+
+  return (
+    <div style={s.page}>
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+          <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: "#234A3D" }}>Agent Applications</div>
+          <button onClick={loadAgents} style={{ background: "#E6DECF", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Refresh</button>
+        </div>
+        {msg && <div style={{ background: "#EAF3EC", border: "1px solid #C4DEC8", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 14, color: "#234A3D" }}>{msg}</div>}
+        {loading && <div style={{ color: "#A8A09A", fontSize: 14 }}>Loading…</div>}
+
+        {["pending", "approved", "rejected"].map(status => (
+          <div key={status}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#A8A09A", marginBottom: 10, marginTop: 24 }}>{status} ({byStatus(status).length})</div>
+            {byStatus(status).map(agent => (
+              <div key={agent.id} style={s.card}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: "#2A2723" }}>{agent.name}</span>
+                      <span style={s.badge(agent.status)}>{agent.status}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: "#7A7370", marginBottom: 4 }}>{agent.email} {agent.brokerage ? `· ${agent.brokerage}` : ""}</div>
+                    <div style={{ fontSize: 12, color: "#A8A09A" }}>Market: {agent.market || "—"} · Closings/yr: {agent.volume || "—"}</div>
+                    {agent.note && <div style={{ fontSize: 12, color: "#7A7370", marginTop: 6, fontStyle: "italic" }}>"{agent.note}"</div>}
+                    <div style={{ fontSize: 11, color: "#C9BFA8", marginTop: 8 }}>{new Date(agent.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
+                    {agent.status === "approved" && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: "#234A3D" }}>
+                        Upload link: <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{ color: "#C16140" }}>/agent-setup?token={agent.token?.slice(0, 8)}…</a>
+                        {agent.headshot_url && <span style={{ marginLeft: 12, color: "#2E7050" }}>✓ Assets uploaded</span>}
+                      </div>
+                    )}
+                  </div>
+                  {agent.status === "pending" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+                      <button onClick={() => approve(agent)} disabled={acting === agent.id} style={{ background: "#234A3D", color: "#F4EDDF", border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", opacity: acting === agent.id ? .6 : 1 }}>
+                        {acting === agent.id ? "Sending…" : "Approve →"}
+                      </button>
+                      <button onClick={() => reject(agent)} disabled={acting === agent.id} style={{ background: "#FCEBEB", color: "#A32D2D", border: "1px solid #F7C1C1", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {byStatus(status).length === 0 && <div style={{ fontSize: 13, color: "#C9BFA8", fontStyle: "italic", marginBottom: 8 }}>None yet.</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── AGENT SETUP PAGE ─────────────────────────────────────────────────────────
+function AgentSetupPage() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const [agent, setAgent] = useState(null);
+  const [notFound, setNotFound] = useState(false);
+  const [form, setForm] = useState({ display_name: "", title: "", contact: "", license: "" });
+  const [headshot, setHeadshot] = useState(null);
+  const [logo, setLogo] = useState(null);
+  const [headshotPreview, setHeadshotPreview] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    if (!token) { setNotFound(true); return; }
+    supabase.from("agent_applications").select("*").eq("token", token).single()
+      .then(({ data, error }) => {
+        if (error || !data) { setNotFound(true); return; }
+        setAgent(data);
+        setForm({ display_name: data.display_name || data.name || "", title: data.title || "", contact: data.contact || "", license: data.license || "" });
+        if (data.headshot_url) setHeadshotPreview(data.headshot_url);
+        if (data.logo_url) setLogoPreview(data.logo_url);
+      });
+  }, [token]);
+
+  const handleFile = (type, file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setErr("File must be under 5MB."); return; }
+    if (!["image/jpeg","image/jpg","image/png","image/webp"].includes(file.type)) { setErr("Please upload a JPG, PNG, or WebP image."); return; }
+    const preview = URL.createObjectURL(file);
+    if (type === "headshot") { setHeadshot(file); setHeadshotPreview(preview); }
+    else { setLogo(file); setLogoPreview(preview); }
+    setErr(null);
+  };
+
+  const uploadFile = async (file, path) => {
+    const { data, error } = await supabase.storage.from("agent-assets").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from("agent-assets").getPublicUrl(path);
+    return publicUrl;
+  };
+
+  const submit = async () => {
+    if (!form.display_name.trim()) { setErr("Please add your name as you'd like it to appear."); return; }
+    if (!headshot && !headshotPreview) { setErr("Please upload a headshot — clients will see it when they redeem your gift."); return; }
+    setSaving(true); setErr(null);
+    try {
+      const updates = { display_name: form.display_name.trim(), title: form.title.trim() || null, contact: form.contact.trim() || null, license: form.license.trim() || null, onboarded_at: new Date().toISOString() };
+      if (headshot) updates.headshot_url = await uploadFile(headshot, `${token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
+      if (logo) updates.logo_url = await uploadFile(logo, `${token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
+      const { error } = await supabase.from("agent_applications").update(updates).eq("token", token);
+      if (error) throw error;
+      setDone(true);
+    } catch (e) { setErr("Something went wrong uploading your files. Try again or email hello@trysteadwell.app."); }
+    finally { setSaving(false); }
+  };
+
+  const inputStyle = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1.5px solid #E6DECF", background: "#fff", fontSize: ".92rem", fontFamily: "'Hanken Grotesk',sans-serif", color: "#2A2723", marginBottom: 14 };
+  const labelStyle = { display: "block", fontSize: ".78rem", fontWeight: 700, color: "#234A3D", marginBottom: 6, letterSpacing: ".02em" };
+  const dropStyle = (preview) => ({ border: `2px dashed ${preview ? "#234A3D" : "#E6DECF"}`, borderRadius: 12, padding: "24px", textAlign: "center", cursor: "pointer", background: preview ? "#EAF3EC" : "#FBF7EE", marginBottom: 14, position: "relative", overflow: "hidden" });
+
+  if (notFound) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
+      <div style={{ textAlign: "center", maxWidth: 400, padding: 40 }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
+        <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#234A3D", marginBottom: 10 }}>Link not found</div>
+        <div style={{ fontSize: 14, color: "#7A7370", lineHeight: 1.6 }}>This setup link may have expired or been used already. Email <a href="mailto:hello@trysteadwell.app" style={{ color: "#C16140" }}>hello@trysteadwell.app</a> and we'll sort it out.</div>
+      </div>
+    </div>
+  );
+
+  if (!agent) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid #E6DECF", borderTop: "3px solid #234A3D", borderRadius: "50%", animation: "spin 1s linear infinite" }}/>
+    </div>
+  );
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
+      <div style={{ background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 20, padding: "48px 40px", maxWidth: 480, textAlign: "center" }}>
+        <div style={{ fontSize: "3rem", marginBottom: 16 }}>🎉</div>
+        <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: "#234A3D", marginBottom: 12 }}>You're all set</div>
+        <div style={{ fontSize: 15, color: "#7A7370", lineHeight: 1.65, marginBottom: 24 }}>Your agent profile is set up. Robert will review and send your personal gift link within one business day. You'll also receive a printable closing card you can tuck into your gifts.</div>
+        <div style={{ background: "#F4EDDF", borderRadius: 12, padding: "16px 20px", fontSize: 13, color: "#7A7370", lineHeight: 1.5 }}>Questions? Email <a href="mailto:hello@trysteadwell.app" style={{ color: "#C16140" }}>hello@trysteadwell.app</a></div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
+      <div style={{ background: "#234A3D", padding: "16px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+        <svg viewBox="0 0 48 48" fill="none" width="26" height="26"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
+        <span style={{ fontFamily: "Georgia,serif", fontSize: 18, color: "#F4EDDF" }}>Steadwell</span>
+        <span style={{ marginLeft: "auto", fontSize: 13, color: "rgba(244,237,223,.5)" }}>Agent setup</span>
+      </div>
+      <div style={{ maxWidth: 540, margin: "0 auto", padding: "40px 24px" }}>
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontFamily: "Georgia,serif", fontSize: 28, color: "#234A3D", marginBottom: 8 }}>Set up your agent profile</div>
+          <div style={{ fontSize: 15, color: "#7A7370", lineHeight: 1.6 }}>Hi {agent.name?.split(" ")[0]} — upload your headshot and logo, and fill in a few details. This is what your clients see when they redeem their gift.</div>
+        </div>
+
+        {/* Preview card */}
+        <div style={{ background: "#234A3D", borderRadius: 16, padding: "20px 22px", marginBottom: 32, display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: headshotPreview ? "transparent" : "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {headshotPreview ? <img src={headshotPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/> : <span style={{ fontSize: 22 }}>👤</span>}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#F4EDDF" }}>{form.display_name || agent.name}</div>
+            {form.title && <div style={{ fontSize: 12, color: "rgba(244,237,223,.6)" }}>{form.title}</div>}
+            {agent.brokerage && <div style={{ fontSize: 12, color: "rgba(244,237,223,.5)" }}>{agent.brokerage}</div>}
+          </div>
+          {logoPreview && <img src={logoPreview} alt="Logo" style={{ height: 36, objectFit: "contain", opacity: .85 }}/>}
+        </div>
+
+        {err && <div style={{ background: "#FCEBEB", border: "1px solid #F7C1C1", borderRadius: 10, padding: "12px 16px", fontSize: 14, color: "#A32D2D", marginBottom: 16 }}>{err}</div>}
+
+        {/* Headshot upload */}
+        <label style={labelStyle}>Headshot * <span style={{ fontWeight: 400, color: "#A8A09A" }}>(square preferred, JPG/PNG)</span></label>
+        <div style={dropStyle(headshotPreview)} onClick={() => document.getElementById("hs-input").click()}>
+          <input id="hs-input" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile("headshot", e.target.files[0])} />
+          {headshotPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Headshot ready — click to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>📷</div><div style={{ fontSize: 14, color: "#7A7370" }}>Click to upload your headshot</div><div style={{ fontSize: 12, color: "#A8A09A", marginTop: 4 }}>The professional photo you use on listings works great</div></div>}
+        </div>
+
+        {/* Logo upload */}
+        <label style={labelStyle}>Brokerage logo <span style={{ fontWeight: 400, color: "#A8A09A" }}>(optional, PNG with transparent background ideal)</span></label>
+        <div style={dropStyle(logoPreview)} onClick={() => document.getElementById("logo-input").click()}>
+          <input id="logo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile("logo", e.target.files[0])} />
+          {logoPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Logo ready — click to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>🏢</div><div style={{ fontSize: 14, color: "#7A7370" }}>Click to upload your brokerage logo</div></div>}
+        </div>
+
+        {/* Text fields */}
+        <label style={labelStyle}>Your name as clients should see it *</label>
+        <input style={inputStyle} value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} placeholder="Jane Smith" />
+
+        <label style={labelStyle}>Title / role</label>
+        <input style={inputStyle} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="REALTOR® · Keller Williams" />
+
+        <label style={labelStyle}>Best contact for clients <span style={{ fontWeight: 400, color: "#A8A09A" }}>(phone and/or email)</span></label>
+        <input style={inputStyle} value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="(727) 555-0100 · jane@kw.com" />
+
+        <label style={labelStyle}>License number <span style={{ fontWeight: 400, color: "#A8A09A" }}>(for co-branded materials)</span></label>
+        <input style={inputStyle} value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder="BK-3456789" />
+
+        <button onClick={submit} disabled={saving} style={{ width: "100%", background: saving ? "#8A8076" : "#C16140", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontWeight: 700, fontSize: 16, cursor: saving ? "default" : "pointer", fontFamily: "inherit", marginTop: 8 }}>
+          {saving ? "Uploading your assets…" : "Complete my agent profile →"}
+        </button>
+        <div style={{ fontSize: 12, color: "#A8A09A", textAlign: "center", marginTop: 12 }}>Your assets are stored securely and only used to co-brand your clients' Steadwell experience.</div>
+      </div>
+    </div>
+  );
+}
+
 function ForAgentsPage() {
   useSEO({
     title:"Steadwell for Real Estate Agents — A Closing Gift Clients Remember",
@@ -16607,15 +16871,19 @@ function ForAgentsPage() {
   const [err, setErr] = useState(false);
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
   const submit = async () => {
-    if (!form.name.trim() || !form.email.trim()) { setErr("Please add your name and email."); return; }
+    if (!form.name.trim()) { setErr("Please add your name."); return; }
+    if (!form.email.trim()) { setErr("Please add your email."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setErr("That email doesn't look right — please check it."); return; }
     setSaving(true); setErr(false);
     try {
-      const { error } = await supabase.from("feedback").insert([{
-        email: form.email.trim(),
-        type: "agent_application",
-        subject: `Agent application — ${form.name.trim()}`,
-        message: `Name: ${form.name.trim()}\nBrokerage: ${form.brokerage.trim()}\nMarket: ${form.market.trim()}\nClosings/yr: ${form.volume.trim()}\nNote: ${form.note.trim()}`,
-        page: "/for-agents",
+      const { error } = await supabase.from("agent_applications").insert([{
+        name:      form.name.trim(),
+        email:     form.email.trim(),
+        brokerage: form.brokerage.trim() || null,
+        market:    form.market.trim() || null,
+        volume:    form.volume.trim() || null,
+        note:      form.note.trim() || null,
+        status:    "pending",
       }]);
       if (error) throw error;
       setDone(true);
@@ -16650,8 +16918,8 @@ function ForAgentsPage() {
 
         <LPSection alt>
           <LPSectionHead h2="What your clients actually get" sub="A real product they'll use — not a gimmick."/>
-          <div style={{maxWidth:640,margin:"0 auto 28px",display:"flex",justifyContent:"center"}}>
-            <img src="/screenshots/steadwell-assets.png" alt="Steadwell home dashboard showing appliance tracking, warranties, and home health" style={{width:"100%",borderRadius:16,boxShadow:"0 20px 60px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
+          <div style={{maxWidth:480,margin:"0 auto 28px",display:"flex",justifyContent:"center"}}>
+            <img src="/screenshots/steadwell-assets.png" alt="Steadwell home dashboard showing appliance tracking, warranties, and home health" style={{width:"100%",borderRadius:14,boxShadow:"0 16px 44px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
           </div>
           <LPGrid gap={16}>
             {[
@@ -16675,7 +16943,7 @@ function ForAgentsPage() {
               <div style={{fontSize:".95rem",color:"#7A7370",lineHeight:1.6}}>Thanks — we'll review and reach out within two business days with your agent gift link and everything you need.</div>
             </div>
           ) : (
-            <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"32px",maxWidth:520,margin:"0 auto"}}>
+            <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"32px",maxWidth:520,margin:"0 auto",textAlign:"left"}}>
               <label style={labelStyle}>Your name *</label>
               <input style={inputStyle} value={form.name} onChange={set("name")} placeholder="Jane Smith" />
               <label style={labelStyle}>Email *</label>
