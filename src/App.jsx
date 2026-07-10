@@ -16613,7 +16613,7 @@ function AdminPage() {
     await supabase.from("agent_applications").update({ status: "approved" }).eq("id", agent.id);
     await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-welcome", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ""}` },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk" },
       body: JSON.stringify({ agent_id: agent.id }),
     });
     setMsg(`Approved ${agent.name} — welcome email sent.`);
@@ -16756,9 +16756,10 @@ function AgentSetupPage() {
     finally { setSaving(false); }
   };
 
-  const inputStyle = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1.5px solid #E6DECF", background: "#fff", fontSize: ".92rem", fontFamily: "'Hanken Grotesk',sans-serif", color: "#2A2723", marginBottom: 14 };
-  const labelStyle = { display: "block", fontSize: ".78rem", fontWeight: 700, color: "#234A3D", marginBottom: 6, letterSpacing: ".02em" };
-  const dropStyle = (preview) => ({ border: `2px dashed ${preview ? "#234A3D" : "#E6DECF"}`, borderRadius: 12, padding: "24px", textAlign: "center", cursor: "pointer", background: preview ? "#EAF3EC" : "#FBF7EE", marginBottom: 14, position: "relative", overflow: "hidden" });
+  const inputStyle = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1.5px solid #E6DECF", background: "#fff", fontSize: "1rem", fontFamily: "'Hanken Grotesk',sans-serif", color: "#2A2723", marginBottom: 14, boxSizing: "border-box" };
+  const labelStyle = { display: "block", fontSize: ".82rem", fontWeight: 700, color: "#234A3D", marginBottom: 4, letterSpacing: ".02em" };
+  const labelHint = { fontWeight: 400, color: "#A8A09A", fontSize: ".75rem", display: "block", marginTop: 1, marginBottom: 6 };
+  const dropStyle = (preview) => ({ border: `2px dashed ${preview ? "#234A3D" : "#E6DECF"}`, borderRadius: 12, padding: "20px 16px", textAlign: "center", cursor: "pointer", background: preview ? "#EAF3EC" : "#FBF7EE", marginBottom: 14 });
 
   if (notFound) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
@@ -16794,39 +16795,39 @@ function AgentSetupPage() {
         <span style={{ fontFamily: "Georgia,serif", fontSize: 18, color: "#F4EDDF" }}>Steadwell</span>
         <span style={{ marginLeft: "auto", fontSize: 13, color: "rgba(244,237,223,.5)" }}>Agent setup</span>
       </div>
-      <div style={{ maxWidth: 540, margin: "0 auto", padding: "40px 24px" }}>
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontFamily: "Georgia,serif", fontSize: 28, color: "#234A3D", marginBottom: 8 }}>Set up your agent profile</div>
+      <div style={{ maxWidth: 540, margin: "0 auto", padding: "32px 16px" }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontFamily: "Georgia,serif", fontSize: "clamp(22px,5vw,28px)", color: "#234A3D", marginBottom: 8 }}>Set up your agent profile</div>
           <div style={{ fontSize: 15, color: "#7A7370", lineHeight: 1.6 }}>Hi {agent.name?.split(" ")[0]} — upload your headshot and logo, and fill in a few details. This is what your clients see when they redeem their gift.</div>
         </div>
 
         {/* Preview card */}
-        <div style={{ background: "#234A3D", borderRadius: 16, padding: "20px 22px", marginBottom: 32, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: headshotPreview ? "transparent" : "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {headshotPreview ? <img src={headshotPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/> : <span style={{ fontSize: 22 }}>👤</span>}
+        <div style={{ background: "#234A3D", borderRadius: 16, padding: "16px 18px", marginBottom: 28, display: "flex", alignItems: "center", gap: 12, overflow: "hidden" }}>
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: headshotPreview ? "transparent" : "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {headshotPreview ? <img src={headshotPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/> : <span style={{ fontSize: 20 }}>👤</span>}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#F4EDDF" }}>{form.display_name || agent.name}</div>
-            {form.title && <div style={{ fontSize: 12, color: "rgba(244,237,223,.6)" }}>{form.title}</div>}
-            {agent.brokerage && <div style={{ fontSize: 12, color: "rgba(244,237,223,.5)" }}>{agent.brokerage}</div>}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#F4EDDF", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{form.display_name || agent.name}</div>
+            {form.title && <div style={{ fontSize: 12, color: "rgba(244,237,223,.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{form.title}</div>}
+            {agent.brokerage && <div style={{ fontSize: 12, color: "rgba(244,237,223,.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agent.brokerage}</div>}
           </div>
-          {logoPreview && <img src={logoPreview} alt="Logo" style={{ height: 36, objectFit: "contain", opacity: .85 }}/>}
+          {logoPreview && <img src={logoPreview} alt="Logo" style={{ height: 30, maxWidth: 80, objectFit: "contain", opacity: .85, flexShrink: 0 }}/>}
         </div>
 
         {err && <div style={{ background: "#FCEBEB", border: "1px solid #F7C1C1", borderRadius: 10, padding: "12px 16px", fontSize: 14, color: "#A32D2D", marginBottom: 16 }}>{err}</div>}
 
         {/* Headshot upload */}
-        <label style={labelStyle}>Headshot * <span style={{ fontWeight: 400, color: "#A8A09A" }}>(square preferred, JPG/PNG)</span></label>
+        <label style={labelStyle}>Headshot *<span style={labelHint}>Square preferred · JPG or PNG · under 5MB</span></label>
         <div style={dropStyle(headshotPreview)} onClick={() => document.getElementById("hs-input").click()}>
           <input id="hs-input" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile("headshot", e.target.files[0])} />
-          {headshotPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Headshot ready — click to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>📷</div><div style={{ fontSize: 14, color: "#7A7370" }}>Click to upload your headshot</div><div style={{ fontSize: 12, color: "#A8A09A", marginTop: 4 }}>The professional photo you use on listings works great</div></div>}
+          {headshotPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Headshot ready — tap to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>📷</div><div style={{ fontSize: 14, color: "#7A7370" }}>Tap to upload your headshot</div><div style={{ fontSize: 12, color: "#A8A09A", marginTop: 4 }}>Your listing photo works great</div></div>}
         </div>
 
         {/* Logo upload */}
-        <label style={labelStyle}>Brokerage logo <span style={{ fontWeight: 400, color: "#A8A09A" }}>(optional, PNG with transparent background ideal)</span></label>
+        <label style={labelStyle}>Brokerage logo<span style={labelHint}>Optional · PNG with transparent background ideal</span></label>
         <div style={dropStyle(logoPreview)} onClick={() => document.getElementById("logo-input").click()}>
           <input id="logo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile("logo", e.target.files[0])} />
-          {logoPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Logo ready — click to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>🏢</div><div style={{ fontSize: 14, color: "#7A7370" }}>Click to upload your brokerage logo</div></div>}
+          {logoPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Logo ready — tap to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>🏢</div><div style={{ fontSize: 14, color: "#7A7370" }}>Tap to upload your brokerage logo</div></div>}
         </div>
 
         {/* Text fields */}
@@ -16836,13 +16837,13 @@ function AgentSetupPage() {
         <label style={labelStyle}>Title / role</label>
         <input style={inputStyle} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="REALTOR® · Keller Williams" />
 
-        <label style={labelStyle}>Best contact for clients <span style={{ fontWeight: 400, color: "#A8A09A" }}>(phone and/or email)</span></label>
+        <label style={labelStyle}>Best contact for clients<span style={labelHint}>Phone and/or email</span></label>
         <input style={inputStyle} value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="(727) 555-0100 · jane@kw.com" />
 
-        <label style={labelStyle}>License number <span style={{ fontWeight: 400, color: "#A8A09A" }}>(for co-branded materials)</span></label>
+        <label style={labelStyle}>License number<span style={labelHint}>Used on co-branded materials</span></label>
         <input style={inputStyle} value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder="BK-3456789" />
 
-        <button onClick={submit} disabled={saving} style={{ width: "100%", background: saving ? "#8A8076" : "#C16140", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontWeight: 700, fontSize: 16, cursor: saving ? "default" : "pointer", fontFamily: "inherit", marginTop: 8 }}>
+        <button onClick={submit} disabled={saving} style={{ width: "100%", background: saving ? "#8A8076" : "#C16140", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontWeight: 700, fontSize: 16, cursor: saving ? "default" : "pointer", fontFamily: "inherit", marginTop: 8, boxSizing: "border-box" }}>
           {saving ? "Uploading your assets…" : "Complete my agent profile →"}
         </button>
         <div style={{ fontSize: 12, color: "#A8A09A", textAlign: "center", marginTop: 12 }}>Your assets are stored securely and only used to co-brand your clients' Steadwell experience.</div>
