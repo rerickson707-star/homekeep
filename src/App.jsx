@@ -15833,6 +15833,7 @@ export default function App() {
   if (_path === "/home-insurance-tracker" || _path === "/home-insurance-tracker/") return <InsuranceTrackerPage />;
   if (_path === "/home-expense-tracker" || _path === "/home-expense-tracker/") return <HomeExpenseTrackerPage />;
   if (_path === "/home-projects" || _path === "/home-projects/") return <HomeProjectsPage />;
+  if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
   if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
@@ -16586,6 +16587,139 @@ function UnsubscribePage() {
 
 
 // ─── AFFILIATES PAGE v2 ────────────────────────────────────────────────────────
+function ForAgentsPage() {
+  useSEO({
+    title:"Steadwell for Real Estate Agents — A Closing Gift Clients Remember",
+    description:"Give every client a closing gift that keeps your name in their home all year. Free to you, valuable to them. Apply to the Steadwell agent partner program.",
+    canonical:"https://www.trysteadwell.app/for-agents",
+  });
+  useEffect(() => {
+    let el = document.querySelector('meta[name="robots"]');
+    const created = !el;
+    if (!el) { el = document.createElement("meta"); el.setAttribute("name","robots"); document.head.appendChild(el); }
+    const prev = el.getAttribute("content");
+    el.setAttribute("content","noindex");
+    return () => { if (created) el.remove(); else if (prev) el.setAttribute("content", prev); };
+  }, []);
+  const [form, setForm] = useState({ name:"", email:"", brokerage:"", market:"", volume:"", note:"" });
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState(false);
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const submit = async () => {
+    if (!form.name.trim() || !form.email.trim()) { setErr("Please add your name and email."); return; }
+    setSaving(true); setErr(false);
+    try {
+      const { error } = await supabase.from("feedback").insert([{
+        email: form.email.trim(),
+        type: "agent_application",
+        subject: `Agent application — ${form.name.trim()}`,
+        message: `Name: ${form.name.trim()}\nBrokerage: ${form.brokerage.trim()}\nMarket: ${form.market.trim()}\nClosings/yr: ${form.volume.trim()}\nNote: ${form.note.trim()}`,
+        page: "/for-agents",
+      }]);
+      if (error) throw error;
+      setDone(true);
+    } catch (e) {
+      setErr("Something went wrong — email hello@trysteadwell.app and we'll set you up.");
+    } finally { setSaving(false); }
+  };
+  const inputStyle = { width:"100%", padding:"12px 14px", borderRadius:10, border:"1.5px solid #E6DECF", background:"#fff", fontSize:".92rem", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723", marginBottom:12 };
+  const labelStyle = { display:"block", fontSize:".78rem", fontWeight:700, color:"#234A3D", marginBottom:6, letterSpacing:".02em" };
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Steadwell for Agents" h1="The closing gift your" h1em="clients won't forget." sub="Give every client three months of Steadwell Plus — a housewarming gift that keeps your name in their home all year. Free to you. Genuinely useful to them." badge="Partner program · Now accepting local agents"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="The relationship shouldn't end at the closing table" sub="Most agents lose touch the moment the deal closes. This keeps you in the home — and top of mind for referrals."/>
+          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+            {[
+              {icon:"🎁",title:"You look generous",text:"A thoughtful $24 housewarming gift, co-branded with your name — not another branded notepad they'll throw away."},
+              {icon:"🏡",title:"Your clients get real value",text:"Steadwell organizes their new home — warranties, maintenance, documents, and costs — at the exact moment they're overwhelmed."},
+              {icon:"🔁",title:"You stay top of mind",text:"Your name is on their home dashboard and welcome email all year. When they or a friend need an agent, you're right there."},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{fontSize:"1.6rem",marginBottom:10}}>{s.icon}</div>
+                <div style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",marginBottom:8}}>{s.title}</div>
+                <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.6,textAlign:"left"}}>{s.text}</div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="What your clients actually get" sub="A real product they'll use — not a gimmick."/>
+          <div style={{maxWidth:640,margin:"0 auto 28px",display:"flex",justifyContent:"center"}}>
+            <img src="/screenshots/steadwell-assets.png" alt="Steadwell home dashboard showing appliance tracking, warranties, and home health" style={{width:"100%",borderRadius:16,boxShadow:"0 20px 60px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
+          </div>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"You hand it over at closing",text:"We give you a simple gift link and a card to include with your closing gift. Nothing to install, nothing to manage."},
+              {num:"02",title:"Your client redeems 3 months of Plus",text:"They enter their address and Steadwell fills in their home — appliances, warranties, maintenance schedule — gifted by you."},
+              {num:"03",title:"You stay in the picture",text:"Your name is on their welcome. They think of you every time they open the app to check a warranty or plan a project."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection narrow id="apply">
+          <div style={{textAlign:"center",marginBottom:28}}>
+            <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#C16140",marginBottom:12}}>Apply to the program</div>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>Request agent access</h2>
+            <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto",lineHeight:1.6}}>We're onboarding a small group of local agents to start. Tell us a bit about you and we'll be in touch within two business days.</p>
+          </div>
+          {done ? (
+            <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"40px 32px",maxWidth:520,margin:"0 auto",textAlign:"center"}}>
+              <div style={{fontSize:"2.4rem",marginBottom:14}}>🎉</div>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,color:"#234A3D",marginBottom:10}}>Application received</div>
+              <div style={{fontSize:".95rem",color:"#7A7370",lineHeight:1.6}}>Thanks — we'll review and reach out within two business days with your agent gift link and everything you need.</div>
+            </div>
+          ) : (
+            <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"32px",maxWidth:520,margin:"0 auto"}}>
+              <label style={labelStyle}>Your name *</label>
+              <input style={inputStyle} value={form.name} onChange={set("name")} placeholder="Jane Smith" />
+              <label style={labelStyle}>Email *</label>
+              <input style={inputStyle} type="email" value={form.email} onChange={set("email")} placeholder="jane@brokerage.com" />
+              <label style={labelStyle}>Brokerage</label>
+              <input style={inputStyle} value={form.brokerage} onChange={set("brokerage")} placeholder="Coldwell Banker, Keller Williams…" />
+              <label style={labelStyle}>Market / area you serve</label>
+              <input style={inputStyle} value={form.market} onChange={set("market")} placeholder="St. Petersburg, FL" />
+              <label style={labelStyle}>Roughly how many closings a year?</label>
+              <input style={inputStyle} value={form.volume} onChange={set("volume")} placeholder="e.g. 20" />
+              <label style={labelStyle}>Anything else? (optional)</label>
+              <textarea style={{...inputStyle,minHeight:80,resize:"vertical"}} value={form.note} onChange={set("note")} placeholder="Tell us how you'd use it with clients." />
+              {err && <div style={{color:"#A32D2D",fontSize:".85rem",marginBottom:12}}>{err}</div>}
+              <button onClick={submit} disabled={saving} style={{width:"100%",background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:"14px",fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",cursor:saving?"default":"pointer",opacity:saving?.7:1}}>
+                {saving ? "Submitting…" : "Apply for agent access →"}
+              </button>
+              <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginTop:12,lineHeight:1.5}}>No cost to join. We'll only use your info to set up your agent account.</div>
+            </div>
+          )}
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Does this cost me anything?","No. The agent partner program is free. You give your clients three months of Steadwell Plus at no cost to you."],
+            ["What do my clients get?","Three months of Steadwell Plus — the paid tier — gifted in your name. They can keep using the free tier after, or continue on Plus."],
+            ["How do I hand it out?","We give you a simple gift link and a printable card to include with your closing gift. That's it — nothing to install or manage."],
+            ["Will my name really be on it?","Yes. Your clients see \u201cgifted by [your name]\u201d on their welcome, so you stay top of mind in the home all year."],
+          ]}/>
+        </LPSection>
+        <section style={{background:"#234A3D",padding:"72px 24px",textAlign:"center"}}>
+          <div style={{maxWidth:580,margin:"0 auto"}}>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.8rem,4vw,2.8rem)",color:"#F4EDDF",marginBottom:16,letterSpacing:"-.02em"}}>Give a gift they'll actually use.</h2>
+            <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",maxWidth:"32rem",margin:"0 auto 32px",lineHeight:1.6}}>Join the agent partner program and turn every closing into a year-long relationship.</p>
+            <a href="#apply" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Apply for agent access →</a>
+            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>Now onboarding local agents</div>
+          </div>
+        </section>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
 function AffiliatesPage() {
   useSEO({
     title:"Steadwell Affiliate Program — Earn Recurring Commissions",
@@ -17497,6 +17631,11 @@ function HomeProjectsPage() {
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
       <LPHero eyebrow="Home Projects & ROI" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator shows exactly what each project adds to your home's resale value using industry Cost vs. Value data." badge="Projects free · ROI calculator on Plus"/>
+      <div style={{background:"#F4EDDF",padding:"0 1.5rem 3rem",display:"flex",justifyContent:"center"}}>
+        <div style={{maxWidth:720,width:"100%"}}>
+          <img src="/screenshots/steadwell-roi.png" alt="Steadwell project ROI calculator showing a kitchen remodel with 113% return and $29,400 value added" style={{width:"100%",borderRadius:16,boxShadow:"0 20px 60px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
+        </div>
+      </div>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you track for each project" sub="From a $200 faucet replacement to a $50,000 kitchen remodel."/>
