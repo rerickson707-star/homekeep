@@ -16613,7 +16613,7 @@ function AdminPage() {
     setLoading(true);
     const [agentRes, profileRes, feedRes] = await Promise.all([
       supabase.from("agent_applications").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("user_id, name, email, plan, created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("profiles").select("user_id, name, plan, address, created_at").order("created_at", { ascending: false }).limit(200),
       supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
     const ag = agentRes.data || [];
@@ -16718,11 +16718,11 @@ function AdminPage() {
         {users.slice(0,8).map((u,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<7?"1px solid #F0EAE0":"none"}}>
             <div style={{width:30,height:30,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:12,fontWeight:700,flexShrink:0}}>
-              {(u.name||u.email||"?")[0].toUpperCase()}
+              {(u.name||"?")[0].toUpperCase()}
             </div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||u.email}</div>
-              {u.name&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.email}</div>}
+              {u.address&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address?.split(",")[0]}</div>}
             </div>
             <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
             <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
@@ -16748,11 +16748,11 @@ function AdminPage() {
         <div key={i} style={{...S.card,padding:"12px 16px"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{width:34,height:34,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:13,fontWeight:700,flexShrink:0}}>
-              {(u.name||u.email||"?")[0].toUpperCase()}
+              {(u.name||"?")[0].toUpperCase()}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||"—"}</div>
-              <div style={{fontSize:11,color:"#7A7370",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.email}</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name yet</span>}</div>
+              {u.address&&<div style={{fontSize:11,color:"#7A7370",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address?.split(",").slice(0,2).join(",")}</div>}
             </div>
             <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
             <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
