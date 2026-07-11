@@ -2456,6 +2456,7 @@ function OnboardingWizard({ session, onComplete }) {
     try {
       const payload = {
         user_id: uid, name: name.trim(), goal: goals.length ? goals.join(",") : null, onboarding_complete: true,
+        referred_by: (() => { const m = document.cookie.match(/(^| )rw_via=([^;]+)/); return m ? decodeURIComponent(m[2]) : null; })() || null,
         address: propertyData?.address || address || "",
         type: propertyData?.type || "", year: propertyData?.year || "",
         sqft: propertyData?.sqft || "", bedrooms: propertyData?.bedrooms || "",
@@ -15584,6 +15585,7 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
       price_history:      propertyData?.price_history ? JSON.stringify(propertyData.price_history) : "",
       schools:            propertyData?.schools       ? JSON.stringify(propertyData.schools)       : "",
       onboarding_complete: true,
+      referred_by: (() => { const m = document.cookie.match(/(^| )rw_via=([^;]+)/); return m ? decodeURIComponent(m[2]) : null; })() || null,
     };
     const { data, error } = await supabase.from("profiles").insert([payload]).select();
     setSaving(false);
@@ -15816,6 +15818,12 @@ export default function App() {
     }
   }, []);
 
+  // Helper: read a cookie value by name
+  const getCookie = (name) => {
+    const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+    return match ? decodeURIComponent(match[2]) : null;
+  };
+
   // URL-based routing for legal pages — check before any hooks
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
   if (_path === "/terms" || _path === "/terms.html") return <TermsPage />;
@@ -15919,7 +15927,7 @@ export default function App() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${authSession.access_token}`,
           },
-          body: JSON.stringify({ plan, interval }),
+          body: JSON.stringify({ plan, interval, client_reference_id: getCookie("rw_via") || undefined }),
         }
       );
       const data = await resp.json();
@@ -16601,6 +16609,8 @@ function AdminPage() {
   const [loading, setLoading]   = useState(false);
   const [acting, setActing]     = useState(null);
   const [msg, setMsg]           = useState(null);
+  const [editingUser, setEditingUser] = useState(null); // { user_id, field, value }
+  const [savingUser, setSavingUser]   = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -16613,7 +16623,7 @@ function AdminPage() {
     setLoading(true);
     const [agentRes, profileRes, feedRes] = await Promise.all([
       supabase.from("agent_applications").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("user_id, name, plan, address, created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("profiles").select("user_id, name, plan, address, referred_by, admin_notes, created_at").order("created_at", { ascending: false }).limit(200),
       supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
     const ag = agentRes.data || [];
@@ -16628,7 +16638,7 @@ function AdminPage() {
       thisWeek: pr.filter(p => new Date(p.created_at) > weekAgo).length,
       free: planCounts.free, plus: planCounts.plus, pro: planCounts.pro,
       agentsPending: ag.filter(a=>a.status==="pending").length,
-      agentsApproved: ag.filter(a=>a.status==="approved").length,
+      withAffiliate: pr.filter(p=>p.referred_by).length,
     });
     setLoading(false);
   };
@@ -16648,30 +16658,56 @@ function AdminPage() {
   const reject = async (agent) => {
     setActing(agent.id);
     await supabase.from("agent_applications").update({ status:"rejected" }).eq("id", agent.id);
-    setMsg(`${agent.name} rejected.`);
-    loadAll(); setActing(null);
+    setMsg(`${agent.name} rejected.`); loadAll(); setActing(null);
+  };
+
+  const saveUserField = async (userId, field, value) => {
+    setSavingUser(userId + field);
+    const { error } = await supabase.from("profiles").update({ [field]: value || null }).eq("user_id", userId);
+    if (!error) {
+      setUsers(u => u.map(r => r.user_id === userId ? { ...r, [field]: value } : r));
+      if (field === "plan") {
+        setStats(s => {
+          if (!s) return s;
+          const prev = users.find(r=>r.user_id===userId)?.plan||"free";
+          const next = value||"free";
+          const c = {...s, [prev]: (s[prev]||1)-1, [next]: (s[next]||0)+1};
+          return c;
+        });
+        setMsg(`✓ Plan updated to ${value||"free"}.`);
+      }
+    } else { setMsg("Error saving: " + error.message); }
+    setSavingUser(null);
+    setEditingUser(null);
   };
 
   const S = {
     page:      { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif" },
     hdr:       { background:"#234A3D", padding:"0 28px", display:"flex", alignItems:"center", gap:16, height:56 },
-    hdrTtl:   { fontFamily:"Georgia,serif", color:"#F4EDDF", fontSize:18 },
-    tabBar:    { background:"#fff", borderBottom:"1px solid #E6DECF", display:"flex", padding:"0 20px", gap:2, overflowX:"auto" },
-    tab:       (on) => ({ padding:"13px 16px", fontSize:13, fontWeight:700, cursor:"pointer", border:"none", background:"none", color:on?"#234A3D":"#A8A09A", borderBottom:on?"2.5px solid #234A3D":"2.5px solid transparent", fontFamily:"inherit", whiteSpace:"nowrap" }),
-    body:      { maxWidth:900, margin:"0 auto", padding:"24px 16px" },
-    card:      { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"16px 20px", marginBottom:12 },
-    badge:     (st) => ({ display:"inline-block", padding:"2px 9px", borderRadius:20, fontSize:11, fontWeight:700, background:st==="approved"?"#EAF3EC":st==="rejected"?"#FCEBEB":"#FBF7EE", color:st==="approved"?"#2E7050":st==="rejected"?"#A32D2D":"#C16140" }),
-    planBadge: (pl) => ({ display:"inline-block", padding:"2px 9px", borderRadius:20, fontSize:11, fontWeight:700, background:pl==="pro"?"#EAF3EC":pl==="plus"?"#EEF0FB":"#F4F0EA", color:pl==="pro"?"#2E7050":pl==="plus"?"#4B5EC4":"#8A8076" }),
-    statCard:  { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"18px", textAlign:"center" },
-    statV:     { fontFamily:"Georgia,serif", fontSize:34, fontWeight:600, color:"#234A3D", lineHeight:1 },
-    statL:     { fontSize:10, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"#A8A09A", marginTop:7 },
-    secHdr:    { fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", color:"#A8A09A", marginBottom:10, marginTop:22 },
-    msgBox:    { background:"#EAF3EC", border:"1px solid #C4DEC8", borderRadius:10, padding:"12px 16px", marginBottom:18, fontSize:14, color:"#234A3D" },
+    hdrTtl:    { fontFamily:"Georgia,serif", color:"#F4EDDF", fontSize:18 },
+    tabBar:    { background:"#fff", borderBottom:"1px solid #E6DECF", display:"flex", padding:"0 16px", gap:2, overflowX:"auto" },
+    tab:       (on) => ({ padding:"13px 14px", fontSize:13, fontWeight:700, cursor:"pointer", border:"none", background:"none", color:on?"#234A3D":"#A8A09A", borderBottom:on?"2.5px solid #234A3D":"2.5px solid transparent", fontFamily:"inherit", whiteSpace:"nowrap" }),
+    body:      { maxWidth:920, margin:"0 auto", padding:"24px 16px" },
+    card:      { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"14px 18px", marginBottom:10 },
+    badge:     (st) => ({ display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:st==="approved"?"#EAF3EC":st==="rejected"?"#FCEBEB":"#FBF7EE", color:st==="approved"?"#2E7050":st==="rejected"?"#A32D2D":"#C16140" }),
+    planBadge: (pl) => ({ display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:pl==="pro"?"#EAF3EC":pl==="plus"?"#EEF0FB":"#F4F0EA", color:pl==="pro"?"#2E7050":pl==="plus"?"#4B5EC4":"#8A8076" }),
+    statCard:  { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"18px 14px", textAlign:"center" },
+    statV:     { fontFamily:"Georgia,serif", fontSize:32, fontWeight:600, color:"#234A3D", lineHeight:1 },
+    statL:     { fontSize:10, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"#A8A09A", marginTop:6 },
+    secHdr:    { fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", color:"#A8A09A", marginBottom:10, marginTop:20 },
+    msgBox:    { background:"#EAF3EC", border:"1px solid #C4DEC8", borderRadius:10, padding:"12px 16px", marginBottom:16, fontSize:14, color:"#234A3D" },
+    input:     { fontSize:13, fontFamily:"'Hanken Grotesk',sans-serif", border:"1.5px solid #234A3D", borderRadius:8, padding:"6px 10px", color:"#2A2723", background:"#fff", outline:"none" },
+    afBadge:   { display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:"#F3ECF8", color:"#7B3FA0" },
   };
 
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
   const fmtPlan = (p) => (p||"free").toLowerCase();
   const byStatus = (st) => agents.filter(a=>a.status===st);
+  const avatar = (name) => (
+    <div style={{width:32,height:32,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:13,fontWeight:700,flexShrink:0}}>
+      {(name||"?")[0].toUpperCase()}
+    </div>
+  );
 
   if (authed===null) return <div style={{...S.page,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/></div>;
   if (!authed) return (
@@ -16688,14 +16724,15 @@ function AdminPage() {
   // ── DASHBOARD ──────────────────────────────────────────────────────────────
   const TabDashboard = () => (
     <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:22}}>
         {[
-          {v:stats?.total??"…",      l:"Total users"},
-          {v:stats?.thisWeek??"…",   l:"New this week"},
-          {v:stats?.free??"…",       l:"Free"},
-          {v:stats?.plus??"…",       l:"Plus"},
-          {v:stats?.pro??"…",        l:"Pro"},
-          {v:stats?.agentsPending??"…", l:"Agents pending", alert:stats?.agentsPending>0},
+          {v:stats?.total??"…",       l:"Total users"},
+          {v:stats?.thisWeek??"…",    l:"New this week"},
+          {v:stats?.free??"…",        l:"Free"},
+          {v:stats?.plus??"…",        l:"Plus"},
+          {v:stats?.pro??"…",         l:"Pro"},
+          {v:stats?.agentsPending??"…",l:"Agents pending",alert:stats?.agentsPending>0},
+          {v:stats?.withAffiliate??"…",l:"Via affiliate"},
         ].map((s,i)=>(
           <div key={i} style={S.statCard}>
             <div style={{...S.statV,color:s.alert?"#C16140":"#234A3D"}}>{s.v}</div>
@@ -16703,27 +16740,23 @@ function AdminPage() {
           </div>
         ))}
       </div>
-      {stats?.agentsPending>0 && (
-        <div style={{background:"#FBF3EC",border:"1.5px solid #EAD0BC",borderRadius:12,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}}>
+      {stats?.agentsPending>0&&(
+        <div style={{background:"#FBF3EC",border:"1.5px solid #EAD0BC",borderRadius:12,padding:"14px 18px",marginBottom:18,display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:18}}>⏳</span>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:700,color:"#C16140",fontSize:14}}>{stats.agentsPending} agent application{stats.agentsPending>1?"s":""} waiting</div>
-            <div style={{fontSize:12,color:"#A8A09A",marginTop:2}}>Go to the Agents tab to approve or reject</div>
-          </div>
+          <div style={{flex:1}}><div style={{fontWeight:700,color:"#C16140",fontSize:14}}>{stats.agentsPending} agent{stats.agentsPending>1?"s":""} waiting for review</div><div style={{fontSize:12,color:"#A8A09A",marginTop:2}}>Go to the Agents tab</div></div>
           <button onClick={()=>setTab("agents")} style={{background:"#C16140",color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Review →</button>
         </div>
       )}
       <div style={S.secHdr}>Recent signups</div>
       <div style={S.card}>
         {users.slice(0,8).map((u,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<7?"1px solid #F0EAE0":"none"}}>
-            <div style={{width:30,height:30,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:12,fontWeight:700,flexShrink:0}}>
-              {(u.name||"?")[0].toUpperCase()}
-            </div>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<7?"1px solid #F0EAE0":"none"}}>
+            {avatar(u.name)}
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||u.email}</div>
-              {u.address&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address?.split(",")[0]}</div>}
+              <div style={{fontSize:13,fontWeight:600,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name</span>}</div>
+              {u.address&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address.split(",")[0]}</div>}
             </div>
+            {u.referred_by&&<span style={S.afBadge}>📣 {u.referred_by}</span>}
             <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
             <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
           </div>
@@ -16744,21 +16777,62 @@ function AdminPage() {
           <span style={{color:"#2E7050"}}>Pro: {stats?.pro}</span>
         </div>
       </div>
-      {users.map((u,i)=>(
-        <div key={i} style={{...S.card,padding:"12px 16px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:34,height:34,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:13,fontWeight:700,flexShrink:0}}>
-              {(u.name||"?")[0].toUpperCase()}
+      {users.map((u,i)=>{
+        const isEditing = editingUser?.user_id===u.user_id;
+        return (
+          <div key={i} style={S.card}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+              {avatar(u.name)}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name yet</span>}</span>
+                  {u.referred_by&&<span style={S.afBadge}>📣 {u.referred_by}</span>}
+                </div>
+                {u.address&&<div style={{fontSize:11,color:"#7A7370",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address.split(",").slice(0,2).join(",")}</div>}
+                {/* Plan edit */}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{fontSize:11,color:"#A8A09A",fontWeight:700}}>PLAN:</span>
+                  {editingUser?.user_id===u.user_id&&editingUser?.field==="plan" ? (
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <select defaultValue={u.plan||"free"} id={`plan-${u.user_id}`} style={{...S.input,fontSize:12}}>
+                        <option value="free">Free</option>
+                        <option value="plus">Plus</option>
+                        <option value="pro">Pro</option>
+                      </select>
+                      <button onClick={()=>saveUserField(u.user_id,"plan",document.getElementById(`plan-${u.user_id}`).value)} disabled={savingUser===u.user_id+"plan"} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                        {savingUser===u.user_id+"plan"?"…":"Save"}
+                      </button>
+                      <button onClick={()=>setEditingUser(null)} style={{background:"#E6DECF",color:"#6B635A",border:"none",borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  ) : (
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
+                      <button onClick={()=>setEditingUser({user_id:u.user_id,field:"plan"})} style={{background:"none",border:"1px solid #E6DECF",borderRadius:7,padding:"3px 9px",fontSize:11,color:"#A8A09A",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                    </div>
+                  )}
+                </div>
+                {/* Admin notes */}
+                {editingUser?.user_id===u.user_id&&editingUser?.field==="notes" ? (
+                  <div style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:4}}>
+                    <textarea id={`notes-${u.user_id}`} defaultValue={u.admin_notes||""} placeholder="Private note about this user…" style={{...S.input,width:"100%",minHeight:60,resize:"vertical",fontSize:12}} />
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      <button onClick={()=>saveUserField(u.user_id,"admin_notes",document.getElementById(`notes-${u.user_id}`).value)} disabled={savingUser===u.user_id+"admin_notes"} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:7,padding:"5px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                      <button onClick={()=>setEditingUser(null)} style={{background:"#E6DECF",color:"#6B635A",border:"none",borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  </div>
+                ) : u.admin_notes ? (
+                  <div style={{background:"#F4F0EA",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#6B635A",marginBottom:4,cursor:"pointer"}} onClick={()=>setEditingUser({user_id:u.user_id,field:"notes"})}>
+                    📝 {u.admin_notes}
+                  </div>
+                ) : (
+                  <button onClick={()=>setEditingUser({user_id:u.user_id,field:"notes"})} style={{background:"none",border:"none",fontSize:11,color:"#C9BFA8",cursor:"pointer",padding:0,fontFamily:"inherit"}}>+ Add note</button>
+                )}
+              </div>
+              <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0,textAlign:"right"}}>{fmtDate(u.created_at)}</div>
             </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name yet</span>}</div>
-              {u.address&&<div style={{fontSize:11,color:"#7A7370",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address?.split(",").slice(0,2).join(",")}</div>}
-            </div>
-            <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
-            <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {users.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No users yet.</div>}
     </div>
   );
@@ -16775,7 +16849,7 @@ function AdminPage() {
           <div key={i} style={S.card}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,fontWeight:700,background:bgMap[f.type]||"#F4F0EA",color:txMap[f.type]||"#6B635A"}}>{f.type||"general"}</span>
+                <span style={{display:"inline-block",padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700,background:bgMap[f.type]||"#F4F0EA",color:txMap[f.type]||"#6B635A"}}>{f.type||"general"}</span>
                 {f.subject&&<span style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{f.subject}</span>}
               </div>
               <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(f.created_at)}</div>
@@ -16785,6 +16859,56 @@ function AdminPage() {
           </div>
         ))}
         {items.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No feedback yet.</div>}
+      </div>
+    );
+  };
+
+  // ── AFFILIATES ─────────────────────────────────────────────────────────────
+  const TabAffiliates = () => {
+    const affiliated = users.filter(u=>u.referred_by);
+    if (affiliated.length===0) return (
+      <div style={{textAlign:"center",padding:"60px 24px"}}>
+        <div style={{fontSize:40,marginBottom:16}}>📣</div>
+        <div style={{fontFamily:"Georgia,serif",fontSize:20,color:"#234A3D",marginBottom:8}}>No affiliate signups yet</div>
+        <div style={{fontSize:14,color:"#7A7370",lineHeight:1.6,maxWidth:400,margin:"0 auto"}}>When someone signs up via an affiliate link (?via=code), they'll appear here with the affiliate code tracked.</div>
+      </div>
+    );
+    // Group by affiliate code
+    const byCode = affiliated.reduce((acc,u) => {
+      const code = u.referred_by;
+      if (!acc[code]) acc[code] = [];
+      acc[code].push(u);
+      return acc;
+    }, {});
+    return (
+      <div>
+        <div style={{fontSize:13,color:"#A8A09A",marginBottom:14}}>{affiliated.length} users from {Object.keys(byCode).length} affiliate{Object.keys(byCode).length!==1?"s":""}</div>
+        {Object.entries(byCode).sort((a,b)=>b[1].length-a[1].length).map(([code,usrs])=>(
+          <div key={code} style={{...S.card,marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid #F0EAE0"}}>
+              <span style={{fontSize:22}}>📣</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:16,fontWeight:700,color:"#234A3D"}}>{code}</div>
+                <div style={{fontSize:12,color:"#A8A09A",marginTop:2}}>{usrs.length} signup{usrs.length!==1?"s":""} · {usrs.filter(u=>u.plan&&u.plan!=="free").length} paid</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontFamily:"Georgia,serif",fontSize:26,fontWeight:600,color:usrs.filter(u=>u.plan&&u.plan!=="free").length>0?"#234A3D":"#C9BFA8"}}>{usrs.filter(u=>u.plan&&u.plan!=="free").length}</div>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#A8A09A"}}>conversions</div>
+              </div>
+            </div>
+            {usrs.map((u,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<usrs.length-1?"1px solid #F8F4EE":"none"}}>
+                {avatar(u.name)}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"#2A2723"}}>{u.name||"—"}</div>
+                  {u.address&&<div style={{fontSize:11,color:"#A8A09A"}}>{u.address.split(",")[0]}</div>}
+                </div>
+                <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
+                <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     );
   };
@@ -16808,11 +16932,7 @@ function AdminPage() {
                   <div style={{fontSize:12,color:"#7A7370",marginBottom:2}}>{agent.email}{agent.brokerage?` · ${agent.brokerage}`:""}</div>
                   <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
                   {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
-                  {agent.status==="approved"&&(
-                    <div style={{marginTop:7,fontSize:11}}>
-                      <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>Setup link ↗</a>
-                    </div>
-                  )}
+                  {agent.status==="approved"&&<div style={{marginTop:7,fontSize:11}}><a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>Setup link ↗</a></div>}
                   <div style={{fontSize:10,color:"#C9BFA8",marginTop:5}}>{fmtDate(agent.created_at)}</div>
                 </div>
                 {agent.status==="pending"&&(
@@ -16820,9 +16940,7 @@ function AdminPage() {
                     <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",opacity:acting===agent.id?.6:1}}>
                       {acting===agent.id?"Sending…":"Approve →"}
                     </button>
-                    <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={{background:"#FCEBEB",color:"#A32D2D",border:"1px solid #F7C1C1",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
-                      Reject
-                    </button>
+                    <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={{background:"#FCEBEB",color:"#A32D2D",border:"1px solid #F7C1C1",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Reject</button>
                   </div>
                 )}
               </div>
@@ -16835,10 +16953,11 @@ function AdminPage() {
   );
 
   const TABS = [
-    {id:"dashboard", label:"Dashboard"},
-    {id:"users",     label:`Users (${users.length})`},
-    {id:"feedback",  label:`Feedback (${feedback.filter(f=>f.type!=="agent_application").length})`},
-    {id:"agents",    label:`Agents${stats?.agentsPending>0?" ● "+stats.agentsPending:""}`},
+    {id:"dashboard",  label:"Dashboard"},
+    {id:"users",      label:`Users (${users.length})`},
+    {id:"feedback",   label:`Feedback (${feedback.filter(f=>f.type!=="agent_application").length})`},
+    {id:"affiliates", label:`Affiliates (${users.filter(u=>u.referred_by).length})`},
+    {id:"agents",     label:`Agents${stats?.agentsPending>0?" ● "+stats.agentsPending:""}`},
   ];
 
   return (
@@ -16854,11 +16973,12 @@ function AdminPage() {
         {TABS.map(t=><button key={t.id} style={S.tab(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
       </div>
       <div style={S.body}>
-        {msg&&<div style={S.msgBox}>{msg}</div>}
-        {tab==="dashboard"&&<TabDashboard/>}
-        {tab==="users"    &&<TabUsers/>}
-        {tab==="feedback" &&<TabFeedback/>}
-        {tab==="agents"   &&<TabAgents/>}
+        {msg&&<div style={S.msgBox} onClick={()=>setMsg(null)}>{msg} <span style={{float:"right",cursor:"pointer",opacity:.5}}>✕</span></div>}
+        {tab==="dashboard"  &&<TabDashboard/>}
+        {tab==="users"      &&<TabUsers/>}
+        {tab==="feedback"   &&<TabFeedback/>}
+        {tab==="affiliates" &&<TabAffiliates/>}
+        {tab==="agents"     &&<TabAgents/>}
       </div>
     </div>
   );
