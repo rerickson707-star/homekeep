@@ -16590,16 +16590,26 @@ function UnsubscribePage() {
 
 // ─── AFFILIATES PAGE v2 ────────────────────────────────────────────────────────
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = "sw-admin-2026"; // change this after launch
+const ADMIN_EMAIL = "hello@trysteadwell.app"; // only this email can access /admin
 function AdminPage() {
-  const [authed, setAuthed] = useState(false);
-  const [pw, setPw] = useState("");
+  const [authed, setAuthed] = useState(null); // null=checking, false=denied, true=ok
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState(null);
   const [msg, setMsg] = useState(null);
 
-  const login = () => { if (pw === ADMIN_PASSWORD) { setAuthed(true); loadAgents(); } else setMsg("Wrong password."); };
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email === ADMIN_EMAIL) {
+        setAuthed(true);
+        loadAgents();
+      } else {
+        setAuthed(false);
+      }
+    });
+  }, []);
+
+  const login = () => { window.location.href = "/"; };
 
   const loadAgents = async () => {
     setLoading(true);
@@ -16631,13 +16641,19 @@ function AdminPage() {
 
   const s = { page: { minHeight: "100vh", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif", padding: "40px 24px" }, card: { background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 14, padding: "20px 24px", marginBottom: 14 }, badge: (st) => ({ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: st === "approved" ? "#EAF3EC" : st === "rejected" ? "#FCEBEB" : "#FBF7EE", color: st === "approved" ? "#2E7050" : st === "rejected" ? "#A32D2D" : "#C16140" }) };
 
+  if (authed === null) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF" }}>
+      <div style={{ width: 36, height: 36, border: "3px solid #E6DECF", borderTop: "3px solid #234A3D", borderRadius: "50%" }}/>
+    </div>
+  );
+
   if (!authed) return (
-    <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 16, padding: "40px 32px", width: "100%", maxWidth: 360, textAlign: "center" }}>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 22, color: "#234A3D", marginBottom: 24 }}>Steadwell Admin</div>
-        <input type="password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} placeholder="Password" style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1.5px solid #E6DECF", fontSize: 15, marginBottom: 12, fontFamily: "inherit" }} />
-        {msg && <div style={{ color: "#A32D2D", fontSize: 13, marginBottom: 10 }}>{msg}</div>}
-        <button onClick={login} style={{ width: "100%", background: "#234A3D", color: "#F4EDDF", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Sign in</button>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
+      <div style={{ background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 16, padding: "40px 32px", maxWidth: 360, textAlign: "center" }}>
+        <div style={{ fontSize: 32, marginBottom: 16 }}>🔒</div>
+        <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#234A3D", marginBottom: 10 }}>Admin access only</div>
+        <div style={{ fontSize: 14, color: "#7A7370", lineHeight: 1.6, marginBottom: 24 }}>You need to be signed in as an admin to access this page.</div>
+        <button onClick={login} style={{ width: "100%", background: "#234A3D", color: "#F4EDDF", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Go to sign in</button>
       </div>
     </div>
   );
@@ -16892,7 +16908,7 @@ function ForAgentsPage() {
       setErr("Something went wrong — email hello@trysteadwell.app and we'll set you up.");
     } finally { setSaving(false); }
   };
-  const inputStyle = { width:"100%", padding:"12px 14px", borderRadius:10, border:"1.5px solid #E6DECF", background:"#fff", fontSize:".92rem", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723", marginBottom:12 };
+  const inputStyle = { width:"100%", padding:"12px 14px", borderRadius:10, border:"1.5px solid #E6DECF", background:"#fff", fontSize:"1rem", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723", marginBottom:12, boxSizing:"border-box" };
   const labelStyle = { display:"block", fontSize:".78rem", fontWeight:700, color:"#234A3D", marginBottom:6, letterSpacing:".02em" };
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -16938,13 +16954,13 @@ function ForAgentsPage() {
             <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto",lineHeight:1.6}}>We're onboarding a small group of local agents to start. Tell us a bit about you and we'll be in touch within two business days.</p>
           </div>
           {done ? (
-            <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"40px 32px",maxWidth:520,margin:"0 auto",textAlign:"center"}}>
+            <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"clamp(20px,5vw,40px) clamp(16px,4vw,32px)",maxWidth:520,margin:"0 auto",textAlign:"center"}}>
               <div style={{fontSize:"2.4rem",marginBottom:14}}>🎉</div>
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,color:"#234A3D",marginBottom:10}}>Application received</div>
               <div style={{fontSize:".95rem",color:"#7A7370",lineHeight:1.6}}>Thanks — we'll review and reach out within two business days with your agent gift link and everything you need.</div>
             </div>
           ) : (
-            <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"32px",maxWidth:520,margin:"0 auto",textAlign:"left"}}>
+            <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"clamp(16px,4vw,32px)",maxWidth:520,margin:"0 auto",textAlign:"left"}}>
               <label style={labelStyle}>Your name *</label>
               <input style={inputStyle} value={form.name} onChange={set("name")} placeholder="Jane Smith" />
               <label style={labelStyle}>Email *</label>
@@ -16958,7 +16974,7 @@ function ForAgentsPage() {
               <label style={labelStyle}>Anything else? (optional)</label>
               <textarea style={{...inputStyle,minHeight:80,resize:"vertical"}} value={form.note} onChange={set("note")} placeholder="Tell us how you'd use it with clients." />
               {err && <div style={{color:"#A32D2D",fontSize:".85rem",marginBottom:12}}>{err}</div>}
-              <button onClick={submit} disabled={saving} style={{width:"100%",background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:"14px",fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",cursor:saving?"default":"pointer",opacity:saving?.7:1}}>
+              <button onClick={submit} disabled={saving} style={{width:"100%",background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:"14px",fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",cursor:saving?"default":"pointer",opacity:saving?.7:1,boxSizing:"border-box"}}>
                 {saving ? "Submitting…" : "Apply for agent access →"}
               </button>
               <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginTop:12,lineHeight:1.5}}>No cost to join. We'll only use your info to set up your agent account.</div>
