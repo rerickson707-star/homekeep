@@ -16590,124 +16590,275 @@ function UnsubscribePage() {
 
 // ─── AFFILIATES PAGE v2 ────────────────────────────────────────────────────────
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-const ADMIN_EMAIL = "hello@trysteadwell.app"; // only this email can access /admin
+const ADMIN_EMAIL = "hello@trysteadwell.app";
 function AdminPage() {
-  const [authed, setAuthed] = useState(null); // null=checking, false=denied, true=ok
-  const [agents, setAgents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [acting, setActing] = useState(null);
-  const [msg, setMsg] = useState(null);
+  const [authed, setAuthed]     = useState(null);
+  const [tab, setTab]           = useState("dashboard");
+  const [agents, setAgents]     = useState([]);
+  const [users, setUsers]       = useState([]);
+  const [feedback, setFeedback] = useState([]);
+  const [stats, setStats]       = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [acting, setActing]     = useState(null);
+  const [msg, setMsg]           = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email === ADMIN_EMAIL) {
-        setAuthed(true);
-        loadAgents();
-      } else {
-        setAuthed(false);
-      }
+      if (session?.user?.email === ADMIN_EMAIL) { setAuthed(true); loadAll(); }
+      else { setAuthed(false); }
     });
   }, []);
 
-  const login = () => { window.location.href = "/"; };
-
-  const loadAgents = async () => {
+  const loadAll = async () => {
     setLoading(true);
-    const { data } = await supabase.from("agent_applications").select("*").order("created_at", { ascending: false });
-    setAgents(data || []);
+    const [agentRes, profileRes, feedRes] = await Promise.all([
+      supabase.from("agent_applications").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("user_id, name, email, plan, created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
+    ]);
+    const ag = agentRes.data || [];
+    const pr = profileRes.data || [];
+    const fb = feedRes.data || [];
+    setAgents(ag); setUsers(pr); setFeedback(fb);
+    const now = new Date(); const weekAgo = new Date(now - 7*24*60*60*1000);
+    const planCounts = { free:0, plus:0, pro:0 };
+    pr.forEach(p => { const pl=(p.plan||"free").toLowerCase(); planCounts[pl]=(planCounts[pl]||0)+1; });
+    setStats({
+      total: pr.length,
+      thisWeek: pr.filter(p => new Date(p.created_at) > weekAgo).length,
+      free: planCounts.free, plus: planCounts.plus, pro: planCounts.pro,
+      agentsPending: ag.filter(a=>a.status==="pending").length,
+      agentsApproved: ag.filter(a=>a.status==="approved").length,
+    });
     setLoading(false);
   };
 
   const approve = async (agent) => {
     setActing(agent.id);
-    await supabase.from("agent_applications").update({ status: "approved" }).eq("id", agent.id);
+    await supabase.from("agent_applications").update({ status:"approved" }).eq("id", agent.id);
     await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-welcome", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk" },
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk" },
       body: JSON.stringify({ agent_id: agent.id }),
     });
-    setMsg(`Approved ${agent.name} — welcome email sent.`);
-    loadAgents();
-    setActing(null);
+    setMsg(`✓ Approved ${agent.name} — welcome email sent.`);
+    loadAll(); setActing(null);
   };
 
   const reject = async (agent) => {
     setActing(agent.id);
-    await supabase.from("agent_applications").update({ status: "rejected" }).eq("id", agent.id);
+    await supabase.from("agent_applications").update({ status:"rejected" }).eq("id", agent.id);
     setMsg(`${agent.name} rejected.`);
-    loadAgents();
-    setActing(null);
+    loadAll(); setActing(null);
   };
 
-  const s = { page: { minHeight: "100vh", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif", padding: "40px 24px" }, card: { background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 14, padding: "20px 24px", marginBottom: 14 }, badge: (st) => ({ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: st === "approved" ? "#EAF3EC" : st === "rejected" ? "#FCEBEB" : "#FBF7EE", color: st === "approved" ? "#2E7050" : st === "rejected" ? "#A32D2D" : "#C16140" }) };
+  const S = {
+    page:      { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif" },
+    hdr:       { background:"#234A3D", padding:"0 28px", display:"flex", alignItems:"center", gap:16, height:56 },
+    hdrTtl:   { fontFamily:"Georgia,serif", color:"#F4EDDF", fontSize:18 },
+    tabBar:    { background:"#fff", borderBottom:"1px solid #E6DECF", display:"flex", padding:"0 20px", gap:2, overflowX:"auto" },
+    tab:       (on) => ({ padding:"13px 16px", fontSize:13, fontWeight:700, cursor:"pointer", border:"none", background:"none", color:on?"#234A3D":"#A8A09A", borderBottom:on?"2.5px solid #234A3D":"2.5px solid transparent", fontFamily:"inherit", whiteSpace:"nowrap" }),
+    body:      { maxWidth:900, margin:"0 auto", padding:"24px 16px" },
+    card:      { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"16px 20px", marginBottom:12 },
+    badge:     (st) => ({ display:"inline-block", padding:"2px 9px", borderRadius:20, fontSize:11, fontWeight:700, background:st==="approved"?"#EAF3EC":st==="rejected"?"#FCEBEB":"#FBF7EE", color:st==="approved"?"#2E7050":st==="rejected"?"#A32D2D":"#C16140" }),
+    planBadge: (pl) => ({ display:"inline-block", padding:"2px 9px", borderRadius:20, fontSize:11, fontWeight:700, background:pl==="pro"?"#EAF3EC":pl==="plus"?"#EEF0FB":"#F4F0EA", color:pl==="pro"?"#2E7050":pl==="plus"?"#4B5EC4":"#8A8076" }),
+    statCard:  { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"18px", textAlign:"center" },
+    statV:     { fontFamily:"Georgia,serif", fontSize:34, fontWeight:600, color:"#234A3D", lineHeight:1 },
+    statL:     { fontSize:10, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"#A8A09A", marginTop:7 },
+    secHdr:    { fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", color:"#A8A09A", marginBottom:10, marginTop:22 },
+    msgBox:    { background:"#EAF3EC", border:"1px solid #C4DEC8", borderRadius:10, padding:"12px 16px", marginBottom:18, fontSize:14, color:"#234A3D" },
+  };
 
-  if (authed === null) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF" }}>
-      <div style={{ width: 36, height: 36, border: "3px solid #E6DECF", borderTop: "3px solid #234A3D", borderRadius: "50%" }}/>
-    </div>
-  );
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+  const fmtPlan = (p) => (p||"free").toLowerCase();
+  const byStatus = (st) => agents.filter(a=>a.status===st);
 
+  if (authed===null) return <div style={{...S.page,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/></div>;
   if (!authed) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
-      <div style={{ background: "#fff", border: "1.5px solid #E6DECF", borderRadius: 16, padding: "40px 32px", maxWidth: 360, textAlign: "center" }}>
-        <div style={{ fontSize: 32, marginBottom: 16 }}>🔒</div>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#234A3D", marginBottom: 10 }}>Admin access only</div>
-        <div style={{ fontSize: 14, color: "#7A7370", lineHeight: 1.6, marginBottom: 24 }}>You need to be signed in as an admin to access this page.</div>
-        <button onClick={login} style={{ width: "100%", background: "#234A3D", color: "#F4EDDF", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Go to sign in</button>
+    <div style={{...S.page,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"40px 32px",maxWidth:360,textAlign:"center"}}>
+        <div style={{fontSize:32,marginBottom:16}}>🔒</div>
+        <div style={{fontFamily:"Georgia,serif",fontSize:20,color:"#234A3D",marginBottom:10}}>Admin access only</div>
+        <div style={{fontSize:14,color:"#7A7370",lineHeight:1.6,marginBottom:24}}>Sign in as the admin account to continue.</div>
+        <button onClick={()=>window.location.href="/"} style={{width:"100%",background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:10,padding:"12px",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>Go to sign in</button>
       </div>
     </div>
   );
 
-  const byStatus = (st) => agents.filter(a => a.status === st);
-
-  return (
-    <div style={s.page}>
-      <div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-          <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: "#234A3D" }}>Agent Applications</div>
-          <button onClick={loadAgents} style={{ background: "#E6DECF", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Refresh</button>
-        </div>
-        {msg && <div style={{ background: "#EAF3EC", border: "1px solid #C4DEC8", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 14, color: "#234A3D" }}>{msg}</div>}
-        {loading && <div style={{ color: "#A8A09A", fontSize: 14 }}>Loading…</div>}
-
-        {["pending", "approved", "rejected"].map(status => (
-          <div key={status}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#A8A09A", marginBottom: 10, marginTop: 24 }}>{status} ({byStatus(status).length})</div>
-            {byStatus(status).map(agent => (
-              <div key={agent.id} style={s.card}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: "#2A2723" }}>{agent.name}</span>
-                      <span style={s.badge(agent.status)}>{agent.status}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: "#7A7370", marginBottom: 4 }}>{agent.email} {agent.brokerage ? `· ${agent.brokerage}` : ""}</div>
-                    <div style={{ fontSize: 12, color: "#A8A09A" }}>Market: {agent.market || "—"} · Closings/yr: {agent.volume || "—"}</div>
-                    {agent.note && <div style={{ fontSize: 12, color: "#7A7370", marginTop: 6, fontStyle: "italic" }}>"{agent.note}"</div>}
-                    <div style={{ fontSize: 11, color: "#C9BFA8", marginTop: 8 }}>{new Date(agent.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
-                    {agent.status === "approved" && (
-                      <div style={{ marginTop: 8, fontSize: 12, color: "#234A3D" }}>
-                        Upload link: <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{ color: "#C16140" }}>/agent-setup?token={agent.token?.slice(0, 8)}…</a>
-                        {agent.headshot_url && <span style={{ marginLeft: 12, color: "#2E7050" }}>✓ Assets uploaded</span>}
-                      </div>
-                    )}
-                  </div>
-                  {agent.status === "pending" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-                      <button onClick={() => approve(agent)} disabled={acting === agent.id} style={{ background: "#234A3D", color: "#F4EDDF", border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", opacity: acting === agent.id ? .6 : 1 }}>
-                        {acting === agent.id ? "Sending…" : "Approve →"}
-                      </button>
-                      <button onClick={() => reject(agent)} disabled={acting === agent.id} style={{ background: "#FCEBEB", color: "#A32D2D", border: "1px solid #F7C1C1", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {byStatus(status).length === 0 && <div style={{ fontSize: 13, color: "#C9BFA8", fontStyle: "italic", marginBottom: 8 }}>None yet.</div>}
+  // ── DASHBOARD ──────────────────────────────────────────────────────────────
+  const TabDashboard = () => (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:24}}>
+        {[
+          {v:stats?.total??"…",      l:"Total users"},
+          {v:stats?.thisWeek??"…",   l:"New this week"},
+          {v:stats?.free??"…",       l:"Free"},
+          {v:stats?.plus??"…",       l:"Plus"},
+          {v:stats?.pro??"…",        l:"Pro"},
+          {v:stats?.agentsPending??"…", l:"Agents pending", alert:stats?.agentsPending>0},
+        ].map((s,i)=>(
+          <div key={i} style={S.statCard}>
+            <div style={{...S.statV,color:s.alert?"#C16140":"#234A3D"}}>{s.v}</div>
+            <div style={S.statL}>{s.l}</div>
           </div>
         ))}
+      </div>
+      {stats?.agentsPending>0 && (
+        <div style={{background:"#FBF3EC",border:"1.5px solid #EAD0BC",borderRadius:12,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:18}}>⏳</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,color:"#C16140",fontSize:14}}>{stats.agentsPending} agent application{stats.agentsPending>1?"s":""} waiting</div>
+            <div style={{fontSize:12,color:"#A8A09A",marginTop:2}}>Go to the Agents tab to approve or reject</div>
+          </div>
+          <button onClick={()=>setTab("agents")} style={{background:"#C16140",color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Review →</button>
+        </div>
+      )}
+      <div style={S.secHdr}>Recent signups</div>
+      <div style={S.card}>
+        {users.slice(0,8).map((u,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<7?"1px solid #F0EAE0":"none"}}>
+            <div style={{width:30,height:30,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:12,fontWeight:700,flexShrink:0}}>
+              {(u.name||u.email||"?")[0].toUpperCase()}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||u.email}</div>
+              {u.name&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.email}</div>}
+            </div>
+            <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
+            <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
+          </div>
+        ))}
+        {users.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No users yet.</div>}
+      </div>
+    </div>
+  );
+
+  // ── USERS ──────────────────────────────────────────────────────────────────
+  const TabUsers = () => (
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <div style={{fontSize:13,color:"#A8A09A"}}>{users.length} users</div>
+        <div style={{display:"flex",gap:14,fontSize:12,fontWeight:700}}>
+          <span style={{color:"#8A8076"}}>Free: {stats?.free}</span>
+          <span style={{color:"#4B5EC4"}}>Plus: {stats?.plus}</span>
+          <span style={{color:"#2E7050"}}>Pro: {stats?.pro}</span>
+        </div>
+      </div>
+      {users.map((u,i)=>(
+        <div key={i} style={{...S.card,padding:"12px 16px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:34,height:34,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:13,fontWeight:700,flexShrink:0}}>
+              {(u.name||u.email||"?")[0].toUpperCase()}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||"—"}</div>
+              <div style={{fontSize:11,color:"#7A7370",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.email}</div>
+            </div>
+            <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
+            <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
+          </div>
+        </div>
+      ))}
+      {users.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No users yet.</div>}
+    </div>
+  );
+
+  // ── FEEDBACK ───────────────────────────────────────────────────────────────
+  const TabFeedback = () => {
+    const items = feedback.filter(f=>f.type!=="agent_application");
+    const bgMap = {bug:"#FCEBEB",feature:"#EEF0FB",exit_survey:"#FBF3EC",cancellation_feedback:"#FBF3EC"};
+    const txMap = {bug:"#A32D2D",feature:"#4B5EC4",exit_survey:"#C07A3A",cancellation_feedback:"#C07A3A"};
+    return (
+      <div>
+        <div style={{fontSize:13,color:"#A8A09A",marginBottom:14}}>{items.length} items</div>
+        {items.map((f,i)=>(
+          <div key={i} style={S.card}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,fontWeight:700,background:bgMap[f.type]||"#F4F0EA",color:txMap[f.type]||"#6B635A"}}>{f.type||"general"}</span>
+                {f.subject&&<span style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{f.subject}</span>}
+              </div>
+              <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(f.created_at)}</div>
+            </div>
+            <div style={{fontSize:13,color:"#5E574F",lineHeight:1.65,whiteSpace:"pre-wrap"}}>{f.message}</div>
+            {f.email&&<div style={{fontSize:11,color:"#A8A09A",marginTop:8}}>From: {f.email}{f.page?` · ${f.page}`:""}</div>}
+          </div>
+        ))}
+        {items.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No feedback yet.</div>}
+      </div>
+    );
+  };
+
+  // ── AGENTS ─────────────────────────────────────────────────────────────────
+  const TabAgents = () => (
+    <div>
+      {["pending","approved","rejected"].map(status=>(
+        <div key={status}>
+          <div style={S.secHdr}>{status} ({byStatus(status).length})</div>
+          {byStatus(status).map(agent=>(
+            <div key={agent.id} style={S.card}>
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
+                    <span style={{fontSize:14,fontWeight:700,color:"#2A2723"}}>{agent.name}</span>
+                    <span style={S.badge(agent.status)}>{agent.status}</span>
+                    {agent.headshot_url&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Assets</span>}
+                    {agent.onboarded_at&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Profile</span>}
+                  </div>
+                  <div style={{fontSize:12,color:"#7A7370",marginBottom:2}}>{agent.email}{agent.brokerage?` · ${agent.brokerage}`:""}</div>
+                  <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
+                  {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
+                  {agent.status==="approved"&&(
+                    <div style={{marginTop:7,fontSize:11}}>
+                      <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>Setup link ↗</a>
+                    </div>
+                  )}
+                  <div style={{fontSize:10,color:"#C9BFA8",marginTop:5}}>{fmtDate(agent.created_at)}</div>
+                </div>
+                {agent.status==="pending"&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:7,flexShrink:0}}>
+                    <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",opacity:acting===agent.id?.6:1}}>
+                      {acting===agent.id?"Sending…":"Approve →"}
+                    </button>
+                    <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={{background:"#FCEBEB",color:"#A32D2D",border:"1px solid #F7C1C1",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {byStatus(status).length===0&&<div style={{fontSize:12,color:"#C9BFA8",fontStyle:"italic",marginBottom:6}}>None yet.</div>}
+        </div>
+      ))}
+    </div>
+  );
+
+  const TABS = [
+    {id:"dashboard", label:"Dashboard"},
+    {id:"users",     label:`Users (${users.length})`},
+    {id:"feedback",  label:`Feedback (${feedback.filter(f=>f.type!=="agent_application").length})`},
+    {id:"agents",    label:`Agents${stats?.agentsPending>0?" ● "+stats.agentsPending:""}`},
+  ];
+
+  return (
+    <div style={S.page}>
+      <div style={S.hdr}>
+        <svg viewBox="0 0 48 48" fill="none" width="24" height="24"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
+        <span style={S.hdrTtl}>Steadwell Admin</span>
+        <button onClick={loadAll} style={{marginLeft:"auto",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          {loading?"Loading…":"↻ Refresh"}
+        </button>
+      </div>
+      <div style={S.tabBar}>
+        {TABS.map(t=><button key={t.id} style={S.tab(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
+      </div>
+      <div style={S.body}>
+        {msg&&<div style={S.msgBox}>{msg}</div>}
+        {tab==="dashboard"&&<TabDashboard/>}
+        {tab==="users"    &&<TabUsers/>}
+        {tab==="feedback" &&<TabFeedback/>}
+        {tab==="agents"   &&<TabAgents/>}
       </div>
     </div>
   );
