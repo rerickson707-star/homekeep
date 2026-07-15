@@ -9781,7 +9781,7 @@ function UtilityForm({ data, onChange }) {
   );
 }
 
-function BillForm({ data, onChange, utility, userId }) {
+function BillForm({ data, onChange, utility, userId, planData, onUpgrade }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const ut = UTIL_TYPES[utility?.type] || UTIL_TYPES.electric;
 
@@ -9806,6 +9806,8 @@ function BillForm({ data, onChange, utility, userId }) {
           description="Photo or PDF — fills amount, date & usage automatically"
           scanType="utility_bill"
           useCamera={false}
+          planData={planData}
+          onUpgrade={onUpgrade}
         />
         <div className="scan-divider">or fill in manually</div>
       </div>
@@ -10962,7 +10964,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
       {utilModal && <Modal title={utilEditId?"Edit Utility":"Add Utility"} onClose={()=>setUtilModal(false)} onSave={saveUtil}><UtilityForm data={utilEditData} onChange={setUtilEditData}/></Modal>}
       {utilConfirm && <Confirm message="This utility and all its bill history will be permanently deleted." onConfirm={confirmDelUtil} onCancel={()=>setUtilConfirm(null)}/>}
-      {billModal && <Modal title={billEditId?"Edit Bill":"Log Bill"} onClose={()=>setBillModal(false)} onSave={saveBill}><BillForm data={billEditData} onChange={setBillEditData} utility={activeUtil} userId={userId}/></Modal>}
+      {billModal && <Modal title={billEditId?"Edit Bill":"Log Bill"} onClose={()=>setBillModal(false)} onSave={saveBill}><BillForm data={billEditData} onChange={setBillEditData} utility={activeUtil} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {billConfirm && <Confirm message="This bill will be permanently deleted." onConfirm={confirmDelBill} onCancel={()=>setBillConfirm(null)}/>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
