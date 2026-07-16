@@ -2389,6 +2389,32 @@ function OnboardingWizard({ session, onComplete }) {
   const [step, setStep]   = useState(1);
   const [saving, setSaving] = useState(false);
 
+  // ── Gift agent detection ───────────────────────────────────────────────────
+  const [giftAgent, setGiftAgent]       = useState(null);  // agent row if gift link
+  const [giftChecked, setGiftChecked]   = useState(false);
+
+  useEffect(() => {
+    const m = document.cookie.match(/(^| )sw_agent=([^;]+)/);
+    if (!m) { setGiftChecked(true); return; }
+    const token = decodeURIComponent(m[2]);
+    supabase.from("agent_applications")
+      .select("token, display_name, name, title, brokerage, headshot_url, logo_url")
+      .eq("token", token)
+      .eq("status", "approved")
+      .single()
+      .then(({ data }) => {
+        if (data) { setGiftAgent(data); setStep(0); }  // step 0 = gift welcome
+        setGiftChecked(true);
+      });
+  }, []);
+
+  // Show loading spinner while checking for gift cookie
+  if (!giftChecked) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ECE3D2"}}>
+      <div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
+    </div>
+  );
+
   // Step 1 — Name
   const [name, setName] = useState("");
 
@@ -2473,6 +2499,16 @@ function OnboardingWizard({ session, onComplete }) {
       if (existing?.length > 0) { await supabase.from("profiles").update(payload).eq("user_id", uid); }
       else { await supabase.from("profiles").insert([payload]); }
       await onComplete({ launchSetup: !skipSetup });
+      // ── Gift redemption: if user came via agent gift link, activate Plus ──
+      if (giftAgent) {
+        fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk" },
+          body: JSON.stringify({ agent_token: giftAgent.token, user_id: uid }),
+        }).catch(err => console.error("[redeem-agent-gift]", err));
+        // Clear the cookie
+        document.cookie = "sw_agent=;max-age=0;path=/";
+      }
       fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk"},
@@ -2505,6 +2541,45 @@ function OnboardingWizard({ session, onComplete }) {
       <div className="onb-bar-fill" style={{width: pct}}/>
     </div>
   );
+
+  // ── Step 0: Gift welcome (only when agent gift cookie present) ───────────────
+  if (step === 0 && giftAgent) {
+    const agentName = giftAgent.display_name || giftAgent.name;
+    return (
+      <div className="onb-screen" style={{background:"#ECE3D2"}}>
+        <div style={{maxWidth:460,margin:"0 auto",padding:"24px 20px"}}>
+          <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",borderRadius:20,padding:"28px 28px 24px",marginBottom:20,textAlign:"center"}}>
+            <div style={{fontSize:36,marginBottom:10}}>🎁</div>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:28,color:"#F4EDDF",fontWeight:400,lineHeight:1.2,marginBottom:8}}>Welcome to your new home.</div>
+            <div style={{fontSize:14,color:"rgba(244,237,223,.7)",lineHeight:1.6}}>You've received 3 months of Steadwell Plus — compliments of your agent.</div>
+          </div>
+          <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"18px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:14}}>
+            {giftAgent.headshot_url
+              ? <img src={giftAgent.headshot_url} alt={agentName} style={{width:54,height:54,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+              : <div style={{width:54,height:54,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:22,fontWeight:700,flexShrink:0}}>{(agentName||"?")[0]}</div>
+            }
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,color:"#A8A09A",marginBottom:3}}>Gifted by</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
+              {giftAgent.title&&<div style={{fontSize:12,color:"#7A7370"}}>{giftAgent.title}</div>}
+              {giftAgent.brokerage&&<div style={{fontSize:12,color:"#7A7370"}}>{giftAgent.brokerage}</div>}
+            </div>
+            {giftAgent.logo_url&&<img src={giftAgent.logo_url} alt="Logo" style={{height:30,maxWidth:70,objectFit:"contain",opacity:.8,flexShrink:0}}/>}
+          </div>
+          <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"16px 20px",marginBottom:24}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#A8A09A",marginBottom:12}}>Your 3-month gift includes</div>
+            {["Warranty tracking & expiry alerts","Monthly maintenance schedules","Cost tracking & ROI calculator","AI receipt & nameplate scanning","Document vault"].map((f,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:i<4?"1px solid #F4F0E8":"none",fontSize:13,color:"#2A2723"}}>
+                <span style={{color:"#2E7050",fontWeight:700,flexShrink:0}}>✓</span>{f}
+              </div>
+            ))}
+          </div>
+          <button className="onb-btn" onClick={() => setStep(1)}>Set up my home →</button>
+          <div style={{fontSize:12,color:"#A8A09A",textAlign:"center",marginTop:10}}>No credit card needed · Continues free after 3 months</div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Step 1: Name ─────────────────────────────────────────────────────────────
   if (step === 1) return (
@@ -15846,6 +15921,7 @@ export default function App() {
   if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
   if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
   if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
+  if (_path === "/gift" || _path === "/gift/") return <GiftPage />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
   if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
@@ -17136,6 +17212,108 @@ function AgentSetupPage() {
           {saving ? "Uploading your assets…" : "Complete my agent profile →"}
         </button>
         <div style={{ fontSize: 12, color: "#A8A09A", textAlign: "center", marginTop: 12 }}>Your assets are stored securely and only used to co-brand your clients' Steadwell experience.</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── GIFT PAGE ────────────────────────────────────────────────────────────────
+// /gift?agent=TOKEN — sets sw_agent cookie and redirects to signup
+// The OnboardingWizard reads this cookie to show the gifted-by welcome screen
+function GiftPage() {
+  const [agent, setAgent]     = useState(null);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get("agent");
+    if (!token) { setNotFound(true); return; }
+    supabase.from("agent_applications")
+      .select("token, display_name, name, title, brokerage, headshot_url, logo_url")
+      .eq("token", token)
+      .eq("status", "approved")
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) { setNotFound(true); return; }
+        setAgent(data);
+        // Set cookie: 30 days, carries through signup
+        document.cookie = `sw_agent=${encodeURIComponent(token)};max-age=${60*60*24*30};path=/;SameSite=Lax`;
+      });
+  }, []);
+
+  const goToSignup = () => { window.location.href = "/"; };
+
+  const S = {
+    page: { minHeight:"100vh", background:"#ECE3D2", fontFamily:"'Hanken Grotesk',sans-serif", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" },
+    card: { background:"#fff", borderRadius:24, maxWidth:480, width:"100%", overflow:"hidden", boxShadow:"0 24px 60px rgba(35,74,61,.14)", border:"1px solid #E6DECF" },
+    hdr:  { background:"linear-gradient(135deg,#1C3D31,#234A3D)", padding:"32px 32px 28px", textAlign:"center" },
+  };
+
+  if (notFound) return (
+    <div style={S.page}>
+      <div style={{...S.card, padding:"48px 32px", textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:16}}>🔒</div>
+        <div style={{fontFamily:"Georgia,serif",fontSize:22,color:"#234A3D",marginBottom:10}}>Link not found</div>
+        <div style={{fontSize:14,color:"#7A7370",lineHeight:1.6,marginBottom:24}}>This gift link may have expired or been entered incorrectly. Ask your agent for a fresh link.</div>
+        <button onClick={()=>window.location.href="/"} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:12,padding:"12px 24px",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>Go to Steadwell →</button>
+      </div>
+    </div>
+  );
+
+  if (!agent) return (
+    <div style={S.page}>
+      <div style={{width:40,height:40,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
+    </div>
+  );
+
+  const agentName = agent.display_name || agent.name;
+
+  return (
+    <div style={S.page}>
+      <div style={S.card}>
+        <div style={S.hdr}>
+          <svg viewBox="0 0 48 48" fill="none" width="36" height="36" style={{margin:"0 auto 12px",display:"block"}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
+          <div style={{fontFamily:"Georgia,serif",fontSize:28,color:"#F4EDDF",fontWeight:400,marginBottom:8}}>A gift for your new home.</div>
+          <div style={{fontSize:14,color:"rgba(244,237,223,.65)",lineHeight:1.6}}>3 months of Steadwell Plus — compliments of your agent</div>
+        </div>
+        <div style={{padding:"28px 32px"}}>
+          {/* Agent card */}
+          <div style={{background:"#F4EDDF",borderRadius:14,padding:"18px 20px",marginBottom:24,display:"flex",alignItems:"center",gap:14}}>
+            {agent.headshot_url
+              ? <img src={agent.headshot_url} alt={agentName} style={{width:52,height:52,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:"2px solid #E6DECF"}}/>
+              : <div style={{width:52,height:52,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:22,fontWeight:700,flexShrink:0}}>{(agentName||"?")[0]}</div>
+            }
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:15,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
+              {agent.title&&<div style={{fontSize:12,color:"#7A7370",marginTop:2}}>{agent.title}</div>}
+              {agent.brokerage&&<div style={{fontSize:12,color:"#7A7370"}}>{agent.brokerage}</div>}
+            </div>
+            {agent.logo_url&&<img src={agent.logo_url} alt="Logo" style={{height:32,maxWidth:80,objectFit:"contain",opacity:.85,flexShrink:0}}/>}
+          </div>
+
+          {/* What you get */}
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#A8A09A",marginBottom:12}}>What's included</div>
+            {[
+              {ic:"🛡️", t:"Warranty tracking", s:"Alerts before coverage expires"},
+              {ic:"🔧", t:"Maintenance schedules", s:"Seasonal reminders, task calendar"},
+              {ic:"💰", t:"Cost tracking & ROI", s:"Every dollar in, estimated value out"},
+              {ic:"📋", t:"Document vault", s:"Deeds, policies, permits — always findable"},
+              {ic:"✨", t:"AI receipt & nameplate scan", s:"Auto-fill from photos"},
+            ].map((f,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<4?"1px solid #F0EAE0":"none"}}>
+                <span style={{fontSize:18,width:24,textAlign:"center"}}>{f.ic}</span>
+                <div><div style={{fontSize:13,fontWeight:600,color:"#2A2723"}}>{f.t}</div><div style={{fontSize:11,color:"#A8A09A"}}>{f.s}</div></div>
+                <span style={{marginLeft:"auto",fontSize:11,fontWeight:700,color:"#2E7050"}}>✓</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={goToSignup} style={{width:"100%",background:"#C16140",color:"#fff",border:"none",borderRadius:14,padding:"16px",fontWeight:700,fontSize:17,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>
+            Claim your gift →
+          </button>
+          <div style={{fontSize:12,color:"#A8A09A",textAlign:"center",lineHeight:1.5}}>Free for 3 months · No credit card required · Continues free after trial</div>
+        </div>
       </div>
     </div>
   );
