@@ -17848,7 +17848,7 @@ function LPFooter() {
     <footer role="contentinfo" style={{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14,fontSize:".82rem"}}>
       <span>© 2026 Steadwell, LLC. All rights reserved.</span>
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
-        {[{h:"/warranty-tracker",l:"Warranty Tracker"},{h:"/recall-alerts",l:"Recall Alerts"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/affiliates",l:"Affiliates"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"mailto:hello@trysteadwell.app",l:"Contact"}].map((a,i)=>(
+        {[{h:"/warranty-tracker",l:"Warranty Tracker"},{h:"/recall-alerts",l:"Recall Alerts"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-agents",l:"For Agents"},{h:"/affiliates",l:"Affiliates"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"mailto:hello@trysteadwell.app",l:"Contact"}].map((a,i)=>(
           <a key={i} href={a.h} style={{color:"rgba(244,237,223,.55)",textDecoration:"none"}}>{a.l}</a>
         ))}
       </div>
