@@ -2371,6 +2371,7 @@ function LandingPage({ onSignIn, onSignUp }) {
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
                 </a>
               </div>
+              <a href="/for-agents" style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>For Agents</a>
               <a href="/affiliates"  style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Affiliates</a>
               <a href="/terms"       style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Terms</a>
               <a href="/privacy"     style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Privacy</a>
