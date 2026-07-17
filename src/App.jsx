@@ -1778,6 +1778,39 @@ function Modal({ title, onClose, onSave, children, footer }) {
 
 // ─── LANDING PAGE ────────────────────────────────────────────────────────────
 // ─── SEO / META TAG MANAGEMENT ───────────────────────────────────────────────
+// ── useFormDraft — persists active form state to localStorage so a tab reload
+// (caused by iOS/Android suspending the browser) restores in-progress data.
+// TTL: 30 minutes. Usage: const [draft, setDraft] = useFormDraft("key", initial);
+function useFormDraft(key, initial) {
+  const storageKey = `sw_draft_${key}`;
+  const TTL = 30 * 60 * 1000; // 30 minutes
+
+  const [state, setState] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return initial;
+      const { value, expires } = JSON.parse(raw);
+      if (Date.now() > expires) { localStorage.removeItem(storageKey); return initial; }
+      return value;
+    } catch { return initial; }
+  });
+
+  const setDraft = (value) => {
+    const next = typeof value === "function" ? value(state) : value;
+    setState(next);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ value: next, expires: Date.now() + TTL }));
+    } catch { /* storage full — silent fail */ }
+  };
+
+  const clearDraft = () => {
+    setState(initial);
+    try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+  };
+
+  return [state, setDraft, clearDraft];
+}
+
 function useSEO({ title, description, canonical, jsonLd } = {}) {
   useEffect(() => {
     const siteName = "Steadwell";
@@ -4640,6 +4673,8 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
         description="Auto-fills item, serial number, purchase date & warranty expiry"
         scanType="warranty"
         planData={planData}
+        saveDocument={true}
+        currentUserId={userId}
         onUpgrade={onUpgrade}
         useCamera={true}
       />
@@ -4801,6 +4836,8 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           useCamera={true}
           triggerRef={nameplateRef}
           highlighted={true}
+          saveDocument={true}
+          currentUserId={userId}
         />
       </div>
       <button type="button" onClick={()=>setScanned(true)}
@@ -4864,6 +4901,8 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           onUpgrade={onUpgrade}
           useCamera={false}
           highlighted={true}
+          saveDocument={true}
+          currentUserId={userId}
         />
       </div>
       <button type="button" onClick={()=>setScanned(true)}
@@ -4897,6 +4936,8 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
               useCamera={true}
               compact={true}
               triggerRef={nameplateRef}
+              saveDocument={true}
+              currentUserId={userId}
             />
             <AIScanButton
               onScanComplete={handleScanComplete}
@@ -4906,6 +4947,8 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
               planData={planData}
               onUpgrade={onUpgrade}
               useCamera={false}
+              saveDocument={true}
+              currentUserId={userId}
               compact={true}
             />
           </div>
@@ -4995,7 +5038,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
   );
 }
 
-function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[] }) {
+function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[], userId }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div>
@@ -5006,6 +5049,8 @@ function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[] })
         scanType="invoice"
         planData={planData}
         onUpgrade={onUpgrade}
+        saveDocument={true}
+        currentUserId={userId}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -5584,6 +5629,8 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
         planData={planData}
         onUpgrade={onUpgrade}
         useCamera={true}
+        saveDocument={true}
+        currentUserId={userId}
       />
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
@@ -9412,7 +9459,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             onCancel={()=>setRetireConfirm(null)}
           />
         )}
-        {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+        {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
         {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
         {/* Inline task edit modal */}
@@ -9807,7 +9854,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           onCancel={()=>setRetireConfirm(null)}
         />
       )}
-      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
       {warrantyModal && <Modal title={warrantyEditId?"Edit Warranty":"Track a Warranty"} onClose={()=>setWarrantyModal(false)} onSave={saveWarranty}><WarrantyOnlyForm data={warrantyData} onChange={setWarrantyData} userId={userId} planData={planData} onUpgrade={onUpgrade} assets={assets}/></Modal>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
@@ -9884,6 +9931,8 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade }) {
           useCamera={false}
           planData={planData}
           onUpgrade={onUpgrade}
+          saveDocument={true}
+          currentUserId={userId}
         />
         <div className="scan-divider">or fill in manually</div>
       </div>
@@ -9905,7 +9954,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const { roiData } = useProjectROIData();
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
-  const [editData, setEditData] = useState({});
+  const [editData, setEditData, clearExpenseDraft] = useFormDraft("expense_form", {});
   const [editId, setEditId] = useState(null);
   const [catF, setCatF] = useState("All");
   const [sort, setSort] = useState("date_desc");
@@ -9926,7 +9975,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [utilEditId, setUtilEditId] = useState(null);
   const [utilConfirm, setUtilConfirm] = useState(null);
   const [billModal, setBillModal] = useState(false);
-  const [billEditData, setBillEditData] = useState({});
+  const [billEditData, setBillEditData, clearBillDraft] = useFormDraft("bill_form", {});
   const [billEditId, setBillEditId] = useState(null);
   const [billConfirm, setBillConfirm] = useState(null);
   const [activeUtil, setActiveUtil] = useState(null);
@@ -11034,13 +11083,13 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
         </div>
       )}
 
-      {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>setModal(false)} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
+      {modal && <Modal title={editId?"Edit Expense":"Log Expense"} onClose={()=>{setModal(false);clearExpenseDraft();}} onSave={save}><ExpenseForm data={editData} onChange={setEditData} projects={projects} userId={userId} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
       {confirm && <Confirm message="This expense will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
       {projectModal && <Modal title={projectEditId?"Edit Project":"New Project"} onClose={()=>setProjectModal(false)} onSave={saveProject}><ProjectForm data={projectEditData} onChange={setProjectEditData} userId={userId} contractors={contractors} homeValue={homeValue} planData={planData} onUpgrade={onUpgrade} propertyAddress={propertyAddress}/></Modal>}
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
       {utilModal && <Modal title={utilEditId?"Edit Utility":"Add Utility"} onClose={()=>setUtilModal(false)} onSave={saveUtil}><UtilityForm data={utilEditData} onChange={setUtilEditData}/></Modal>}
       {utilConfirm && <Confirm message="This utility and all its bill history will be permanently deleted." onConfirm={confirmDelUtil} onCancel={()=>setUtilConfirm(null)}/>}
-      {billModal && <Modal title={billEditId?"Edit Bill":"Log Bill"} onClose={()=>setBillModal(false)} onSave={saveBill}><BillForm data={billEditData} onChange={setBillEditData} utility={activeUtil} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {billModal && <Modal title={billEditId?"Edit Bill":"Log Bill"} onClose={()=>{setBillModal(false);clearBillDraft();}} onSave={saveBill}><BillForm data={billEditData} onChange={setBillEditData} utility={activeUtil} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
       {billConfirm && <Confirm message="This bill will be permanently deleted." onConfirm={confirmDelBill} onCancel={()=>setBillConfirm(null)}/>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
