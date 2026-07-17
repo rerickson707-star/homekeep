@@ -31,6 +31,25 @@
       gtag('js', new Date());
       gtag('config', 'G-CSR87NCW38');
     </script>
+    <!-- Sentry error monitoring -->
+    <script
+      src="https://js.sentry-cdn.com/c02326d22cc42e2e617324931e6a04e6.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      Sentry.onLoad(function() {
+        Sentry.init({
+          dsn: "https://c02326d22cc42e2e617324931e6a04e6@o4511752124956672.ingest.us.sentry.io/4511752135901184",
+          environment: "production",
+          tracesSampleRate: 0.2,
+          replaysSessionSampleRate: 0.05,
+          replaysOnErrorSampleRate: 1.0,
+          integrations: [
+            Sentry.replayIntegration(),
+          ],
+        });
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
