@@ -5057,6 +5057,7 @@ function ServiceLogForm({ data, onChange, planData, onUpgrade, contractors=[], u
         <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. Annual tune-up, replaced capacitor" /></div>
         <div className="field"><label>Service Date *</label><input type="date" value={data.service_date||""} onChange={e=>f("service_date",e.target.value)} /></div>
         <div className="field"><label>Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
+        <div className="field s2"><label>Contractor</label><ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Who did the work"/></div>
         <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Technician, parts used, findings…" /></div>
       </div>
     </div>
@@ -7305,15 +7306,39 @@ async function checkCPSCRecall(brand, productType, model, serialNumber) {
 }
 
 function useRecallAlerts(assets) {
-  const [recalls, setRecalls]   = useState([]);
-  const [checking, setChecking] = useState(false);
-  const [checked, setChecked]   = useState(false); // true once run completes
+  const [recalls, setRecalls]     = useState([]);
+  const [checking, setChecking]   = useState(false);
+  const [checked, setChecked]     = useState(false);
   const [recallError, setRecallError] = useState("");
+
+  const CACHE_KEY = "sw_recall_cache";
+  const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+  const getCached = () => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const { recalls: r, expires } = JSON.parse(raw);
+      if (Date.now() > expires) { localStorage.removeItem(CACHE_KEY); return null; }
+      return r;
+    } catch { return null; }
+  };
+
+  const setCache = (r) => {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ recalls: r, expires: Date.now() + CACHE_TTL }));
+    } catch { /* storage full */ }
+  };
 
   const runCheck = async (assetList) => {
     const list = assetList || assets;
     const checkable = list.filter(a => a.brand && a.category !== "Insurance" && a.category !== "Other");
     if (!checkable.length) { setChecked(true); return; }
+
+    // Return cached results immediately if fresh
+    const cached = getCached();
+    if (cached) { setRecalls(cached); setChecked(true); return; }
+
     setChecking(true);
     setRecallError("");
     const found = [];
@@ -7330,12 +7355,12 @@ function useRecallAlerts(assets) {
       }
       await new Promise(res => setTimeout(res, 250));
     }
+    setCache(found);
     setRecalls(found);
     setChecked(true);
     setChecking(false);
   };
 
-  // Fire when assets first populate — handles the case where assets load after mount
   const hasAssets = assets.length > 0;
   useEffect(() => {
     if (hasAssets && !checked && !checking) {
@@ -8827,6 +8852,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       description:  serviceEditData.description||"",
       cost:         serviceEditData.cost ? Number(serviceEditData.cost) : null,
       notes:        serviceEditData.notes||"",
+      vendor:       serviceEditData.vendor||"",
     };
     if(serviceEditId) {
       const {error} = await supabase.from("asset_service_log").update(payload).eq("id",serviceEditId).eq("user_id",userId);
@@ -11621,9 +11647,11 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   if (selected) {
     const c = contractors.find(x=>x.id===selected);
     if (!c) { setSelected(null); return null; }
-    const jobs = serviceLogs.filter(s=>s.notes?.includes(c.name)||s.description?.includes(c.name)||
-      (c.company&&s.notes?.includes(c.company))||
-      contractors.find(x=>x.id===selected)?.name===s.vendor
+    const jobs = serviceLogs.filter(s=>
+      s.vendor === c.name ||
+      (c.company && s.vendor === c.company) ||
+      s.notes?.includes(c.name) ||
+      (c.company && s.notes?.includes(c.company))
     );
     const totalSpent = jobs.reduce((s,j)=>s+Number(j.cost||0),0);
     return (
