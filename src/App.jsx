@@ -16811,12 +16811,16 @@ function AdminPage() {
     } else {
       await supabase.from("agent_applications").update({ status:"approved" }).eq("id", agent.id);
     }
-    await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-welcome", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json", "Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk" },
-      body: JSON.stringify({ agent_id: agent.id }),
+    // Invoke agent-welcome edge function
+    const { error: welcomeErr } = await supabase.functions.invoke("agent-welcome", {
+      body: { agent_id: agent.id },
     });
-    setMsg(`✓ Approved ${agent.name} — welcome email sent. Gift link: trysteadwell.app/gift/${giftCode}`);
+    if (welcomeErr) {
+      console.error("[agent-welcome] error:", welcomeErr);
+      setMsg(`✓ Approved ${agent.name} — but welcome email failed: ${welcomeErr.message}. Check Supabase edge function logs.`);
+    } else {
+      setMsg(`✓ Approved ${agent.name} — welcome email sent. Gift link: trysteadwell.app/gift/${giftCode}`);
+    }
     loadAll(); setActing(null);
   };
 
@@ -17097,18 +17101,18 @@ function AdminPage() {
                   <div style={{fontSize:12,color:"#7A7370",marginBottom:2}}>{agent.email}{agent.brokerage?` · ${agent.brokerage}`:""}</div>
                   <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
                   {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
-                  {agent.status==="approved"&&(
-                    <div style={{marginTop:7,fontSize:11,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                      {agent.gift_code ? (
-                        <>
-                          <span style={{fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
-                          <button onClick={()=>{navigator.clipboard.writeText(`https://www.trysteadwell.app/gift/${agent.gift_code}`);setMsg("✓ Gift link copied!");}} style={{background:"#E6DECF",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Copy</button>
-                          <a href={`/print-card/${agent.gift_code}`} target="_blank" style={{background:"#234A3D",color:"#F4EDDF",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,textDecoration:"none"}}>Print card ↗</a>
-                        </>
-                      ) : (
-                        <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>Setup link ↗</a>
-                      )}
-                      {agent.onboarded_at&&<span style={{color:"#2E7050",fontWeight:700}}>✓ Profile complete</span>}
+                  {/* Setup link always visible — needed to send to agent before/after approval */}
+                  <div style={{marginTop:6,fontSize:11}}>
+                    <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>
+                      {agent.onboarded_at ? "Setup link ↗" : "Setup link (share with agent) ↗"}
+                    </a>
+                    {agent.onboarded_at&&<span style={{marginLeft:10,color:"#2E7050",fontWeight:700}}>✓ Profile complete</span>}
+                  </div>
+                  {agent.status==="approved"&&agent.gift_code&&(
+                    <div style={{marginTop:5,fontSize:11,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
+                      <button onClick={()=>{navigator.clipboard.writeText(`https://www.trysteadwell.app/gift/${agent.gift_code}`);setMsg("✓ Gift link copied!");}} style={{background:"#E6DECF",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Copy</button>
+                      <a href={`/print-card/${agent.gift_code}`} target="_blank" style={{background:"#234A3D",color:"#F4EDDF",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,textDecoration:"none"}}>Print card ↗</a>
                     </div>
                   )}
                   <div style={{fontSize:10,color:"#C9BFA8",marginTop:5}}>{fmtDate(agent.created_at)}</div>
