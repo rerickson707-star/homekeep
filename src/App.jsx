@@ -17235,26 +17235,11 @@ function AgentSetupPage() {
   const labelHint = { fontWeight: 400, color: "#A8A09A", fontSize: ".75rem", display: "block", marginTop: 1, marginBottom: 6 };
   const dropStyle = (preview) => ({ border: `2px dashed ${preview ? "#234A3D" : "#E6DECF"}`, borderRadius: 12, padding: "20px 16px", textAlign: "center", cursor: "pointer", background: preview ? "#EAF3EC" : "#FBF7EE", marginBottom: 14 });
 
-  if (notFound) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
-      <div style={{ textAlign: "center", maxWidth: 400, padding: 40 }}>
-        <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#234A3D", marginBottom: 10 }}>Link not found</div>
-        <div style={{ fontSize: 14, color: "#7A7370", lineHeight: 1.6 }}>This setup link may have expired or been used already. Email <a href="mailto:hello@trysteadwell.app" style={{ color: "#C16140" }}>hello@trysteadwell.app</a> and we'll sort it out.</div>
-      </div>
-    </div>
-  );
-
-  if (!agent) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF" }}>
-      <div style={{ width: 40, height: 40, border: "3px solid #E6DECF", borderTop: "3px solid #234A3D", borderRadius: "50%", animation: "spin 1s linear infinite" }}/>
-    </div>
-  );
-
-  const [emailForm, setEmailForm]   = useState({ client_name:"", client_email:"" });
-  const [emailSent, setEmailSent]   = useState(false);
+  // ── Email-to-client state (must be here, before any early returns) ──────────
+  const [emailForm, setEmailForm]       = useState({ client_name:"", client_email:"" });
+  const [emailSent, setEmailSent]       = useState(false);
   const [emailSending, setEmailSending] = useState(false);
-  const [emailErr, setEmailErr]     = useState("");
+  const [emailErr, setEmailErr]         = useState("");
 
   const sendGiftEmail = async () => {
     if (!emailForm.client_name.trim()) { setEmailErr("Please add the client's name."); return; }
@@ -17272,6 +17257,22 @@ function AgentSetupPage() {
     } catch(e) { setEmailErr(e.message || "Something went wrong."); }
     finally { setEmailSending(false); }
   };
+
+  if (notFound) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF", fontFamily: "'Hanken Grotesk',sans-serif" }}>
+      <div style={{ textAlign: "center", maxWidth: 400, padding: 40 }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
+        <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#234A3D", marginBottom: 10 }}>Link not found</div>
+        <div style={{ fontSize: 14, color: "#7A7370", lineHeight: 1.6 }}>This setup link may have expired or been used already. Email <a href="mailto:hello@trysteadwell.app" style={{ color: "#C16140" }}>hello@trysteadwell.app</a> and we'll sort it out.</div>
+      </div>
+    </div>
+  );
+
+  if (!agent) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4EDDF" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid #E6DECF", borderTop: "3px solid #234A3D", borderRadius: "50%", animation: "spin 1s linear infinite" }}/>
+    </div>
+  );
 
   if (done) return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif"}}>
