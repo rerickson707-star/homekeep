@@ -16766,12 +16766,13 @@ function AdminPage() {
   const [tab, setTab]           = useState("dashboard");
   const [agents, setAgents]     = useState([]);
   const [users, setUsers]       = useState([]);
-  const [feedback, setFeedback] = useState([]);
-  const [stats, setStats]       = useState(null);
-  const [loading, setLoading]   = useState(false);
-  const [acting, setActing]     = useState(null);
-  const [msg, setMsg]           = useState(null);
-  const [editingUser, setEditingUser] = useState(null); // { user_id, field, value }
+  const [feedback, setFeedback]       = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
+  const [stats, setStats]             = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const [acting, setActing]           = useState(null);
+  const [msg, setMsg]                 = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
   const [savingUser, setSavingUser]   = useState(null);
 
   useEffect(() => {
@@ -16783,15 +16784,17 @@ function AdminPage() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [agentRes, profileRes, feedRes] = await Promise.all([
+    const [agentRes, profileRes, feedRes, redemptionRes] = await Promise.all([
       supabase.from("agent_applications").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, name, plan, address, referred_by, admin_notes, created_at").order("created_at", { ascending: false }).limit(200),
       supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("gift_redemptions").select("agent_token, user_id, redeemed_at"),
     ]);
     const ag = agentRes.data || [];
     const pr = profileRes.data || [];
     const fb = feedRes.data || [];
-    setAgents(ag); setUsers(pr); setFeedback(fb);
+    const rd = redemptionRes.data || [];
+    setAgents(ag); setUsers(pr); setFeedback(fb); setRedemptions(rd);
     const now = new Date(); const weekAgo = new Date(now - 7*24*60*60*1000);
     const planCounts = { free:0, plus:0, pro:0 };
     pr.forEach(p => { const pl=(p.plan||"free").toLowerCase(); planCounts[pl]=(planCounts[pl]||0)+1; });
@@ -16833,6 +16836,20 @@ function AdminPage() {
     setActing(agent.id);
     await supabase.from("agent_applications").update({ status:"rejected" }).eq("id", agent.id);
     setMsg(`${agent.name} rejected.`); loadAll(); setActing(null);
+  };
+
+  const deactivate = async (agent) => {
+    if (!window.confirm(`Deactivate ${agent.name}? Their gift link will stop working but their record is preserved.`)) return;
+    setActing(agent.id);
+    await supabase.from("agent_applications").update({ status:"inactive", gift_active: false }).eq("id", agent.id);
+    setMsg(`${agent.name} deactivated — gift link disabled.`); loadAll(); setActing(null);
+  };
+
+  const deleteAgent = async (agent) => {
+    if (!window.confirm(`Permanently delete ${agent.name}? This cannot be undone.`)) return;
+    setActing(agent.id);
+    await supabase.from("agent_applications").delete().eq("id", agent.id);
+    setMsg(`${agent.name} deleted.`); loadAll(); setActing(null);
   };
 
   const saveUserField = async (userId, field, value) => {
@@ -17088,56 +17105,82 @@ function AdminPage() {
   };
 
   // ── AGENTS ─────────────────────────────────────────────────────────────────
-  const TabAgents = () => (
-    <div>
-      {["pending","approved","rejected"].map(status=>(
-        <div key={status}>
-          <div style={S.secHdr}>{status} ({byStatus(status).length})</div>
-          {byStatus(status).map(agent=>(
-            <div key={agent.id} style={S.card}>
-              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
-                    <span style={{fontSize:14,fontWeight:700,color:"#2A2723"}}>{agent.name}</span>
-                    <span style={S.badge(agent.status)}>{agent.status}</span>
-                    {agent.headshot_url&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Assets</span>}
-                    {agent.onboarded_at&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Profile</span>}
-                  </div>
-                  <div style={{fontSize:12,color:"#7A7370",marginBottom:2}}>{agent.email}{agent.brokerage?` · ${agent.brokerage}`:""}</div>
-                  <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
-                  {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
-                  {/* Setup link always visible — needed to send to agent before/after approval */}
-                  <div style={{marginTop:6,fontSize:11}}>
-                    <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>
-                      {agent.onboarded_at ? "Setup link ↗" : "Setup link (share with agent) ↗"}
-                    </a>
-                    {agent.onboarded_at&&<span style={{marginLeft:10,color:"#2E7050",fontWeight:700}}>✓ Profile complete</span>}
-                  </div>
-                  {agent.status==="approved"&&agent.gift_code&&(
-                    <div style={{marginTop:5,fontSize:11,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                      <span style={{fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
-                      <button onClick={()=>{navigator.clipboard.writeText(`https://www.trysteadwell.app/gift/${agent.gift_code}`);setMsg("✓ Gift link copied!");}} style={{background:"#E6DECF",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Copy</button>
-                      <a href={`/print-card/${agent.gift_code}`} target="_blank" style={{background:"#234A3D",color:"#F4EDDF",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,textDecoration:"none"}}>Print card ↗</a>
+  const TabAgents = () => {
+    const redemptionCounts = redemptions.reduce((acc, r) => {
+      const key = String(r.agent_token);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const allStatuses = ["pending","approved","inactive","rejected"];
+    return (
+      <div>
+        {allStatuses.map(status=>{
+          const list = agents.filter(a=>a.status===status);
+          return (
+            <div key={status}>
+              <div style={S.secHdr}>{status} ({list.length})</div>
+              {list.map(agent=>{
+                const rc = redemptionCounts[String(agent.token)] || 0;
+                const isPending  = status==="pending";
+                const isApproved = status==="approved";
+                const isInactive = status==="inactive";
+                return (
+                  <div key={agent.id} style={S.card}>
+                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
+                          <span style={{fontSize:14,fontWeight:700,color:"#2A2723"}}>{agent.name}</span>
+                          <span style={S.badge(agent.status)}>{agent.status}</span>
+                          {agent.headshot_url&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Assets</span>}
+                          {agent.onboarded_at&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Profile</span>}
+                          {rc>0&&<span style={{fontSize:11,fontWeight:700,background:"#EAF3EC",color:"#2E7050",borderRadius:20,padding:"2px 8px"}}>{rc} signup{rc!==1?"s":""}</span>}
+                        </div>
+                        <div style={{fontSize:12,color:"#7A7370",marginBottom:2}}>{agent.email}{agent.brokerage?` · ${agent.brokerage}`:""}</div>
+                        <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
+                        {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
+                        <div style={{marginTop:6,fontSize:11}}>
+                          <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>
+                            {agent.onboarded_at?"Setup link ↗":"Setup link (share with agent) ↗"}
+                          </a>
+                          {agent.onboarded_at&&<span style={{marginLeft:10,color:"#2E7050",fontWeight:700}}>✓ Profile complete</span>}
+                        </div>
+                        {isApproved&&agent.gift_code&&(
+                          <div style={{marginTop:5,fontSize:11,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                            <span style={{fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
+                            <button onClick={()=>{navigator.clipboard.writeText(`https://www.trysteadwell.app/gift/${agent.gift_code}`);setMsg("✓ Gift link copied!");}} style={{background:"#E6DECF",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Copy</button>
+                            <a href={`/print-card/${agent.gift_code}`} target="_blank" style={{background:"#234A3D",color:"#F4EDDF",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,textDecoration:"none"}}>Print card ↗</a>
+                          </div>
+                        )}
+                        <div style={{fontSize:10,color:"#C9BFA8",marginTop:5}}>{fmtDate(agent.created_at)}</div>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+                        {isPending&&(
+                          <>
+                            <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",opacity:acting===agent.id?.6:1}}>
+                              {acting===agent.id?"Sending…":"Approve →"}
+                            </button>
+                            <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={{background:"#FCEBEB",color:"#A32D2D",border:"1px solid #F7C1C1",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Reject</button>
+                          </>
+                        )}
+                        {isApproved&&(
+                          <button onClick={()=>deactivate(agent)} disabled={acting===agent.id} style={{background:"#FBF3EC",color:"#C07A3A",border:"1px solid #EAD0BC",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Deactivate</button>
+                        )}
+                        {isInactive&&(
+                          <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#EAF3EC",color:"#2E7050",border:"1px solid #C4DEC8",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Reactivate</button>
+                        )}
+                        <button onClick={()=>deleteAgent(agent)} disabled={acting===agent.id} style={{background:"none",color:"#A8A09A",border:"1px solid #E6DECF",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+                      </div>
                     </div>
-                  )}
-                  <div style={{fontSize:10,color:"#C9BFA8",marginTop:5}}>{fmtDate(agent.created_at)}</div>
-                </div>
-                {agent.status==="pending"&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:7,flexShrink:0}}>
-                    <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",opacity:acting===agent.id?.6:1}}>
-                      {acting===agent.id?"Sending…":"Approve →"}
-                    </button>
-                    <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={{background:"#FCEBEB",color:"#A32D2D",border:"1px solid #F7C1C1",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Reject</button>
                   </div>
-                )}
-              </div>
+                );
+              })}
+              {list.length===0&&<div style={{fontSize:12,color:"#C9BFA8",fontStyle:"italic",marginBottom:6}}>None yet.</div>}
             </div>
-          ))}
-          {byStatus(status).length===0&&<div style={{fontSize:12,color:"#C9BFA8",fontStyle:"italic",marginBottom:6}}>None yet.</div>}
-        </div>
-      ))}
-    </div>
-  );
+          );
+        })}
+      </div>
+    );
+  };
 
   const TABS = [
     {id:"dashboard",  label:"Dashboard"},
