@@ -16006,7 +16006,12 @@ export default function App() {
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [screen, setScreen] = useState("landing"); // landing | login | signup
+  const [screen, setScreen] = useState(() => {
+    // If coming from a gift link or any ?action=signup link, open signup directly
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("action") === "signup") return "signup";
+    return "landing";
+  }); // landing | login | signup
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
   const [tab, setTabRaw] = useState(() => {
     try { return localStorage.getItem("sw_tab") || "dashboard"; } catch { return "dashboard"; }
@@ -17425,7 +17430,25 @@ function PrintCardPage({ code }) {
       });
   }, [code]);
 
-  const agentName = agent ? (agent.display_name || agent.name) : "";
+  const [copied, setCopied] = useState(false);
+
+  const copyGiftLink = async () => {
+    try {
+      await navigator.clipboard.writeText(giftUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback for browsers that block clipboard without user gesture
+      const el = document.createElement("textarea");
+      el.value = giftUrl;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
 
   const AvatarEl = () => {
     if (!agent) return null;
@@ -17470,7 +17493,7 @@ function PrintCardPage({ code }) {
       <style>{`@media print { .no-print { display:none !important; } body { background:white !important; } @page { margin:0.5in; } }`}</style>
       <div className="no-print" style={{marginBottom:24,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",justifyContent:"center"}}>
         <button onClick={()=>window.print()} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:10,padding:"10px 22px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>🖨 Print / Save as PDF</button>
-        <button onClick={()=>{navigator.clipboard.writeText(giftUrl);}} style={{background:"#E6DECF",color:"#2A2723",border:"none",borderRadius:10,padding:"10px 22px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>Copy gift link</button>
+        <button onClick={copyGiftLink} style={{background:copied?"#234A3D":"#E6DECF",color:copied?"#F4EDDF":"#2A2723",border:"none",borderRadius:10,padding:"10px 22px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all .2s"}}>{copied ? "✓ Copied!" : "Copy gift link"}</button>
       </div>
 
       <div style={cardStyle}>
@@ -17567,7 +17590,7 @@ function GiftPage() {
       });
   }, []);
 
-  const goToSignup = () => { window.location.href = "/"; };
+  const goToSignup = () => { window.location.href = "/?action=signup"; };
 
   const S = {
     page: { minHeight:"100vh", background:"#ECE3D2", fontFamily:"'Hanken Grotesk',sans-serif", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" },
