@@ -17670,6 +17670,18 @@ function ForAgentsPage() {
         status:    "pending",
       }]);
       if (error) throw error;
+      // Notify admin immediately
+      fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/feedback-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email:   form.email.trim(),
+          type:    "agent_application",
+          subject: `New agent application — ${form.name.trim()}`,
+          message: `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nBrokerage: ${form.brokerage.trim()||"—"}\nMarket: ${form.market.trim()||"—"}\nClosings/yr: ${form.volume.trim()||"—"}\nNote: ${form.note.trim()||"—"}\n\nReview at: https://www.trysteadwell.app/admin`,
+          page:    "/for-agents",
+        }),
+      }).catch(() => {}); // best-effort, don't block the success state
       setDone(true);
     } catch (e) {
       setErr("Something went wrong — email hello@trysteadwell.app and we'll set you up.");
