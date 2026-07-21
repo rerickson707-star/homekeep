@@ -2427,28 +2427,6 @@ function OnboardingWizard({ session, onComplete }) {
   const [giftAgent, setGiftAgent]       = useState(null);  // agent row if gift link
   const [giftChecked, setGiftChecked]   = useState(false);
 
-  useEffect(() => {
-    const m = document.cookie.match(/(^| )sw_agent=([^;]+)/);
-    if (!m) { setGiftChecked(true); return; }
-    const token = decodeURIComponent(m[2]);
-    supabase.from("agent_applications")
-      .select("token, display_name, name, title, brokerage, headshot_url, logo_url")
-      .eq("token", token)
-      .eq("status", "approved")
-      .single()
-      .then(({ data }) => {
-        if (data) { setGiftAgent(data); setStep(0); }  // step 0 = gift welcome
-        setGiftChecked(true);
-      });
-  }, []);
-
-  // Show loading spinner while checking for gift cookie
-  if (!giftChecked) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ECE3D2"}}>
-      <div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
-    </div>
-  );
-
   // Step 1 — Name
   const [name, setName] = useState("");
 
@@ -2473,10 +2451,32 @@ function OnboardingWizard({ session, onComplete }) {
   ];
 
   useEffect(() => {
+    const m = document.cookie.match(/(^| )sw_agent=([^;]+)/);
+    if (!m) { setGiftChecked(true); return; }
+    const token = decodeURIComponent(m[2]);
+    supabase.from("agent_applications")
+      .select("token, display_name, name, title, brokerage, headshot_url, logo_url")
+      .eq("token", token)
+      .eq("status", "approved")
+      .single()
+      .then(({ data }) => {
+        if (data) { setGiftAgent(data); setStep(0); }  // step 0 = gift welcome
+        setGiftChecked(true);
+      });
+  }, []);
+
+  useEffect(() => {
     const h = e => { if(suggestRef.current && !suggestRef.current.contains(e.target)) setShowSug(false); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  // Show loading spinner while checking for gift cookie
+  if (!giftChecked) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ECE3D2"}}>
+      <div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
+    </div>
+  );
 
   const handleAddressInput = (val) => {
     setAddress(val); setShowSug(true); setLookupState("idle");
