@@ -16215,6 +16215,17 @@ export default function App() {
       const activeP = allP.find(p => p.id === activePid) || allP[0] || null;
       if (activeP) setProfile(activeP);
 
+      // No property yet — set empty state and let the onboarding gate handle it
+      if (!activePid) {
+        setTasks([]);
+        setWarranties([]);
+        setExpenses([]);
+        setServiceLogs([]);
+        setContractors([]);
+        setDataLoading(false);
+        return;
+      }
+
       // For shared properties, load data by property_id (not user_id)
       const activeIsShared = activeP?._shared;
       const [t, w, e, sl, c] = await Promise.all([
