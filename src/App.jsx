@@ -17903,14 +17903,22 @@ function PrintCardPage({ code }) {
   };
 
   return (
-    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#ECE3D2",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
-      <style>{`@media print { .no-print { display:none !important; } body { background:white !important; } @page { margin:0.5in; } }`}</style>
+    <div className="print-card-root" style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#ECE3D2",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
+      <style>{`
+        @media print {
+          .no-print { display:none !important; }
+          body { background:white !important; margin:0; padding:0; }
+          @page { size: 4in 6in; margin: 0; }
+          .print-card-root { display:flex; align-items:flex-start; justify-content:center; padding:0; min-height:unset; background:white !important; }
+          .print-card-wrap { width:400px; box-shadow:none !important; border:none !important; border-radius:0 !important; }
+        }
+      `}</style>
       <div className="no-print" style={{marginBottom:24,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",justifyContent:"center"}}>
         <button onClick={()=>window.print()} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:10,padding:"10px 22px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>🖨 Print / Save as PDF</button>
         <button onClick={copyGiftLink} style={{background:copied?"#234A3D":"#E6DECF",color:copied?"#F4EDDF":"#2A2723",border:"none",borderRadius:10,padding:"10px 22px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all .2s"}}>{copied ? "✓ Copied!" : "Copy gift link"}</button>
       </div>
 
-      <div style={cardStyle}>
+      <div className="print-card-wrap" style={cardStyle}>
         {/* Header */}
         <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",padding:"24px 26px 20px",textAlign:"center"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:14}}>
