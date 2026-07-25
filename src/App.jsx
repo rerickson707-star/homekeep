@@ -17868,14 +17868,14 @@ function PrintCardPage({ code }) {
     if (!agent) return null;
     if (agent.headshot_url) return (
       <img src={agent.headshot_url} alt={agentName}
-        style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:"2px solid #E6DECF"}}/>
+        style={{width:44,height:44,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:"2px solid #E6DECF"}}/>
     );
     if (agent.logo_url) return (
       <img src={agent.logo_url} alt={agent.brokerage||""}
-        style={{width:56,height:56,borderRadius:"50%",objectFit:"contain",background:"#F4EDDF",padding:6,flexShrink:0,border:"2px solid #E6DECF"}}/>
+        style={{width:44,height:44,borderRadius:"50%",objectFit:"contain",background:"#F4EDDF",padding:5,flexShrink:0,border:"2px solid #E6DECF"}}/>
     );
     return (
-      <div style={{width:56,height:56,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:20,fontWeight:700,flexShrink:0}}>
+      <div style={{width:44,height:44,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:18,fontWeight:700,flexShrink:0}}>
         {(agentName||"?")[0]}
       </div>
     );
@@ -17920,62 +17920,61 @@ function PrintCardPage({ code }) {
 
       <div className="print-card-wrap" style={cardStyle}>
         {/* Header */}
-        <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",padding:"24px 26px 20px",textAlign:"center"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:14}}>
-            <svg viewBox="0 0 48 48" fill="none" width="24" height="24"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
-            <span style={{fontFamily:"Georgia,serif",fontSize:20,color:"#F4EDDF",fontWeight:400}}>Steadwell</span>
+        <div style={{background:"linear-gradient(135deg,#1C3D31,#234A3D)",padding:"14px 22px 12px",textAlign:"center"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:6}}>
+            <svg viewBox="0 0 48 48" fill="none" width="18" height="18"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
+            <span style={{fontFamily:"Georgia,serif",fontSize:16,color:"#F4EDDF",fontWeight:400}}>Steadwell</span>
           </div>
-          <div style={{fontSize:26,marginBottom:8}}>🎁</div>
-          <div style={{fontFamily:"Georgia,serif",fontSize:22,color:"#F4EDDF",fontWeight:400,lineHeight:1.25,marginBottom:6}}>A gift for your new home.</div>
-          <div style={{fontSize:12,color:"rgba(244,237,223,.65)",lineHeight:1.55}}>3 months of Steadwell Plus — the home management app that keeps everything in one place.</div>
+          <div style={{fontFamily:"Georgia,serif",fontSize:19,color:"#F4EDDF",fontWeight:400,lineHeight:1.2,marginBottom:4}}>A gift for your new home.</div>
+          <div style={{fontSize:11,color:"rgba(244,237,223,.65)",lineHeight:1.4}}>3 months of Steadwell Plus — the home management app that keeps everything in one place.</div>
         </div>
 
         {/* Body */}
-        <div style={{padding:"20px 24px"}}>
+        <div style={{padding:"12px 18px"}}>
           {/* Agent */}
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"#A8A09A",marginBottom:8}}>Gifted by your agent</div>
-          <div style={{display:"flex",alignItems:"center",gap:12,background:"#F4EDDF",borderRadius:12,padding:"12px 14px",marginBottom:16}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"#A8A09A",marginBottom:6}}>Gifted by your agent</div>
+          <div style={{display:"flex",alignItems:"center",gap:10,background:"#F4EDDF",borderRadius:10,padding:"9px 12px",marginBottom:10}}>
             <AvatarEl/>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:14,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
-              {agent.title&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.title}</div>}
-              {agent.brokerage&&<div style={{fontSize:11,color:"#7A7370"}}>{agent.brokerage}</div>}
-              {agent.phone&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.phone}</div>}
-              {agent.agent_email&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.agent_email}</div>}
+              <div style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
+              {agent.title&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.title}</div>}
+              {agent.brokerage&&<div style={{fontSize:10,color:"#7A7370"}}>{agent.brokerage}</div>}
+              {agent.phone&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.phone}</div>}
+              {agent.agent_email&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.agent_email}</div>}
             </div>
             {agent.logo_url&&agent.headshot_url&&(
-              <img src={agent.logo_url} alt="Logo" style={{height:26,maxWidth:64,objectFit:"contain",opacity:.8,flexShrink:0}}/>
+              <img src={agent.logo_url} alt="Logo" style={{height:22,maxWidth:56,objectFit:"contain",opacity:.8,flexShrink:0}}/>
             )}
           </div>
 
           {/* Features */}
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"#A8A09A",marginBottom:8}}>Your gift includes</div>
-          <div style={{marginBottom:16}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"#A8A09A",marginBottom:5}}>Your gift includes</div>
+          <div style={{marginBottom:10}}>
             {["Warranty tracking & expiry alerts","Monthly maintenance schedules","Cost tracking & ROI calculator","AI receipt & nameplate scanning","Document vault"].map((f,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<4?"1px solid #F0EAE0":"none",fontSize:12,color:"#2A2723"}}>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:7,padding:"3px 0",borderBottom:i<4?"1px solid #F0EAE0":"none",fontSize:11,color:"#2A2723"}}>
                 <span style={{color:"#2E7050",fontWeight:700,flexShrink:0}}>✓</span>{f}
               </div>
             ))}
           </div>
 
           {/* QR + URL */}
-          <div style={{background:"#234A3D",borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:14}}>
-            <div style={{flexShrink:0,background:"#fff",borderRadius:8,padding:4,width:80,height:80,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#234A3D",borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{flexShrink:0,background:"#fff",borderRadius:6,padding:3,width:64,height:64,display:"flex",alignItems:"center",justifyContent:"center"}}>
               {qrDataUri
-                ? <img src={qrDataUri} alt="QR code" style={{width:72,height:72}}/>
+                ? <img src={qrDataUri} alt="QR code" style={{width:58,height:58}}/>
                 : <div style={{fontSize:9,color:"#A8A09A",textAlign:"center",padding:4,lineHeight:1.3}}>Scan gift link</div>
               }
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"rgba(244,237,223,.5)",marginBottom:4}}>Scan or visit</div>
-              <div style={{fontFamily:"Georgia,serif",fontSize:13,color:"#F4EDDF",wordBreak:"break-all",lineHeight:1.4}}>trysteadwell.app/gift/{code}</div>
-              <div style={{fontSize:10,color:"rgba(244,237,223,.45)",marginTop:3}}>Free · No credit card needed</div>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"rgba(244,237,223,.5)",marginBottom:3}}>Scan or visit</div>
+              <div style={{fontFamily:"Georgia,serif",fontSize:12,color:"#F4EDDF",wordBreak:"break-all",lineHeight:1.35}}>trysteadwell.app/gift/{code}</div>
+              <div style={{fontSize:9,color:"rgba(244,237,223,.45)",marginTop:2}}>Free · No credit card needed</div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{padding:"10px 24px",borderTop:"1px solid #E6DECF",textAlign:"center",fontSize:10,color:"#A8A09A"}}>
+        <div style={{padding:"7px 18px",borderTop:"1px solid #E6DECF",textAlign:"center",fontSize:9,color:"#A8A09A"}}>
           Steadwell LLC · hello@trysteadwell.app · trysteadwell.app
         </div>
       </div>
