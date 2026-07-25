@@ -40,7 +40,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: CORS });
     }
 
-    const uploadLink = `${BASE_URL}/agent-setup?token=${agent.token}`;
+    const uploadLink = `${BASE_URL}/agent-portal?token=${agent.token}`;
     const firstName  = agent.name?.split(" ")[0] || "there";
 
     const html = `<!DOCTYPE html>
@@ -99,8 +99,8 @@ serve(async (req) => {
       <div style="text-align:center;margin-bottom:28px;">
         <div style="font-family:Georgia,serif;font-size:17px;color:#2A2723;margin-bottom:8px;">First step: upload your brand assets</div>
         <div style="font-size:13px;color:#A8A09A;margin-bottom:20px;line-height:1.5;">Headshot, brokerage logo, and a few details — so your clients see your name and face when they redeem their gift.</div>
-        <a href="${uploadLink}" style="background:#C16140;color:#fff;text-decoration:none;padding:14px 28px;border-radius:40px;font-size:15px;font-weight:700;display:inline-block;">Set up my agent profile &#8594;</a>
-        <div style="margin-top:12px;font-size:12px;color:#A8A09A;">This link is unique to you — no login required.</div>
+        <a href="${uploadLink}" style="background:#C16140;color:#fff;text-decoration:none;padding:14px 28px;border-radius:40px;font-size:15px;font-weight:700;display:inline-block;">Go to my agent portal &#8594;</a>
+        <div style="margin-top:12px;font-size:12px;color:#A8A09A;">This link is unique to you — bookmark it to send gifts and update your profile anytime.</div>
       </div>
 
       <!-- What clients see -->

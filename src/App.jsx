@@ -18053,7 +18053,6 @@ function ForAgentsPage() {
         market:    form.market.trim() || null,
         volume:    form.volume.trim() || null,
         note:      form.note.trim() || null,
-        status:    "pending",
       }]);
       if (error) throw error;
       // Notify admin immediately
