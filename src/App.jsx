@@ -17263,7 +17263,7 @@ function AgentSetupPage() {
 
   const submit = async () => {
     if (!form.display_name.trim()) { setErr("Please add your name as you'd like it to appear."); return; }
-    if (!headshot && !headshotPreview) { setErr("Please upload a headshot — clients will see it when they redeem your gift."); return; }
+    if (!headshot && !headshotPreview && !logo && !logoPreview) { setErr("Please upload a headshot or company logo — clients will see it when they redeem your gift."); return; }
     setSaving(true); setErr(null);
     try {
       // Build update payload — file uploads happen client-side to storage first
