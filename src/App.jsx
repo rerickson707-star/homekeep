@@ -16825,49 +16825,32 @@ function AdminPage() {
     setLoading(false);
   };
 
-  const approve = async (agent) => {
+  const agentAction = async (action, agent, confirmMsg) => {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
     setActing(agent.id);
-    // Generate a short gift code if not already set (8 chars, no ambiguous chars)
-    let giftCode = agent.gift_code;
-    if (!giftCode) {
-      const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-      giftCode = Array.from({length:8}, ()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-      await supabase.from("agent_applications").update({ status:"approved", gift_code: giftCode }).eq("id", agent.id);
-    } else {
-      await supabase.from("agent_applications").update({ status:"approved" }).eq("id", agent.id);
-    }
-    // Invoke agent-welcome edge function
-    const { error: welcomeErr } = await supabase.functions.invoke("agent-welcome", {
-      body: { agent_id: agent.id },
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const { data, error } = await supabase.functions.invoke("admin-agent", {
+      body: { action, agent_id: agent.id },
+      headers: { Authorization: `Bearer ${s?.access_token}` },
     });
-    if (welcomeErr) {
-      console.error("[agent-welcome] error:", welcomeErr);
-      setMsg(`✓ Approved ${agent.name} — but welcome email failed: ${welcomeErr.message}. Check Supabase edge function logs.`);
-    } else {
-      setMsg(`✓ Approved ${agent.name} — welcome email sent. Gift link: trysteadwell.app/gift/${giftCode}`);
-    }
+    if (error) { setMsg(`Error: ${error.message}`); setActing(null); return; }
+    if (action === "approve") {
+      const giftCode = data?.gift_code || agent.gift_code;
+      setMsg(data?.welcome_email_sent
+        ? `✓ Approved ${agent.name} — welcome email sent. Gift link: trysteadwell.app/gift/${giftCode}`
+        : `✓ Approved ${agent.name} — but welcome email failed. Check edge function logs.`);
+    } else if (action === "reject")     { setMsg(`${agent.name} rejected.`); }
+    else if (action === "deactivate")   { setMsg(`${agent.name} deactivated — gift link disabled.`); }
+    else if (action === "reactivate")   { setMsg(`${agent.name} reactivated.`); }
+    else if (action === "delete")       { setMsg(data?.soft_delete ? `${agent.name} soft-deleted (redemptions preserved).` : `${agent.name} deleted.`); }
     loadAll(); setActing(null);
   };
 
-  const reject = async (agent) => {
-    setActing(agent.id);
-    await supabase.from("agent_applications").update({ status:"rejected" }).eq("id", agent.id);
-    setMsg(`${agent.name} rejected.`); loadAll(); setActing(null);
-  };
-
-  const deactivate = async (agent) => {
-    if (!window.confirm(`Deactivate ${agent.name}? Their gift link will stop working but their record is preserved.`)) return;
-    setActing(agent.id);
-    await supabase.from("agent_applications").update({ status:"inactive", gift_active: false }).eq("id", agent.id);
-    setMsg(`${agent.name} deactivated — gift link disabled.`); loadAll(); setActing(null);
-  };
-
-  const deleteAgent = async (agent) => {
-    if (!window.confirm(`Permanently delete ${agent.name}? This cannot be undone.`)) return;
-    setActing(agent.id);
-    await supabase.from("agent_applications").delete().eq("id", agent.id);
-    setMsg(`${agent.name} deleted.`); loadAll(); setActing(null);
-  };
+  const approve    = (agent) => agentAction("approve", agent);
+  const reject     = (agent) => agentAction("reject", agent);
+  const deactivate = (agent) => agentAction("deactivate", agent, `Deactivate ${agent.name}? Their gift link will stop working but their record is preserved.`);
+  const reactivate = (agent) => agentAction("reactivate", agent);
+  const deleteAgent = (agent) => agentAction("delete", agent, `Permanently delete ${agent.name}? This cannot be undone.`);
 
   const saveUserField = async (userId, field, value) => {
     setSavingUser(userId + field);
@@ -17280,11 +17263,25 @@ function AgentSetupPage() {
     if (!headshot && !headshotPreview) { setErr("Please upload a headshot — clients will see it when they redeem your gift."); return; }
     setSaving(true); setErr(null);
     try {
-      const updates = { display_name: form.display_name.trim(), title: form.title.trim() || null, contact: form.contact.trim() || null, license: form.license.trim() || null, onboarded_at: new Date().toISOString() };
+      // Build update payload — file uploads happen client-side to storage first
+      const updates = {
+        display_name: form.display_name.trim(),
+        title:        form.title.trim() || null,
+        contact:      form.contact.trim() || null,
+        license:      form.license.trim() || null,
+        onboarded_at: new Date().toISOString(),
+      };
       if (headshot) updates.headshot_url = await uploadFile(headshot, `${token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
-      if (logo) updates.logo_url = await uploadFile(logo, `${token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
-      const { error } = await supabase.from("agent_applications").update(updates).eq("token", token);
-      if (error) throw error;
+      if (logo)     updates.logo_url     = await uploadFile(logo,     `${token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
+
+      // Write profile fields through edge function — validates token server-side
+      const res = await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-setup-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, updates }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to save profile");
       setDone(true);
     } catch (e) { setErr("Something went wrong uploading your files. Try again or email hello@trysteadwell.app."); }
     finally { setSaving(false); }
