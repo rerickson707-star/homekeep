@@ -22,20 +22,27 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    // GET: lookup agent by token for the setup page (replaces direct DB read, which is now admin-only)
+    // GET: public agent lookup — used by /agent-setup (by token) and /gift (by gift_code or token)
     if (req.method === "GET") {
       const url = new URL(req.url);
-      const token = url.searchParams.get("token");
-      if (!token) {
-        return new Response(JSON.stringify({ error: "token required" }), { status: 400, headers: CORS });
+      const token    = url.searchParams.get("token");
+      const giftCode = url.searchParams.get("gift_code");
+
+      if (!token && !giftCode) {
+        return new Response(JSON.stringify({ error: "token or gift_code required" }), { status: 400, headers: CORS });
       }
+
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-      const { data, error } = await supabase
+
+      let query = supabase
         .from("agent_applications")
-        .select("token, display_name, name, title, phone, agent_email, license, headshot_url, logo_url, status, gift_code")
-        .eq("token", token)
-        .eq("status", "approved")
-        .single();
+        .select("token, display_name, name, title, brokerage, phone, agent_email, license, headshot_url, logo_url, gift_code")
+        .eq("status", "approved");
+
+      if (giftCode) query = query.eq("gift_code", giftCode);
+      else          query = query.eq("token", token);
+
+      const { data, error } = await query.single();
       if (error || !data) {
         return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: CORS });
       }

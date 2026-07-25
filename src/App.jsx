@@ -2454,15 +2454,14 @@ function OnboardingWizard({ session, onComplete }) {
     const m = document.cookie.match(/(^| )sw_agent=([^;]+)/);
     if (!m) { setGiftChecked(true); return; }
     const token = decodeURIComponent(m[2]);
-    supabase.from("agent_applications")
-      .select("token, display_name, name, title, brokerage, headshot_url, logo_url")
-      .eq("token", token)
-      .eq("status", "approved")
-      .single()
+    // Lookup via edge function — agent_applications is now admin-only at DB level
+    fetch(`https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-setup-save?token=${encodeURIComponent(token)}`)
+      .then(res => res.json())
       .then(({ data }) => {
         if (data) { setGiftAgent(data); setStep(0); }  // step 0 = gift welcome
         setGiftChecked(true);
-      });
+      })
+      .catch(() => setGiftChecked(true));
   }, []);
 
   useEffect(() => {
@@ -17483,15 +17482,14 @@ function PrintCardPage({ code }) {
 
   useEffect(() => {
     if (!code) { setNotFound(true); return; }
-    supabase.from("agent_applications")
-      .select("*")
-      .eq("gift_code", code)
-      .eq("status", "approved")
-      .single()
+    // Lookup via edge function — agent_applications is now admin-only at DB level
+    fetch(`https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-setup-save?gift_code=${encodeURIComponent(code)}`)
+      .then(res => res.json())
       .then(({ data, error }) => {
         if (error || !data) { setNotFound(true); return; }
         setAgent(data);
-      });
+      })
+      .catch(() => setNotFound(true));
   }, [code]);
 
   const [copied, setCopied] = useState(false);
@@ -17641,18 +17639,17 @@ function GiftPage() {
 
     if (!code && !token) { setNotFound(true); return; }
 
-    const query = supabase.from("agent_applications")
-      .select("token, display_name, name, title, brokerage, headshot_url, logo_url, gift_code")
-      .eq("status", "approved");
-
-    (code ? query.eq("gift_code", code) : query.eq("token", token))
-      .single()
+    // Lookup via edge function — agent_applications is now admin-only at DB level
+    const param = code ? `gift_code=${encodeURIComponent(code)}` : `token=${encodeURIComponent(token)}`;
+    fetch(`https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-setup-save?${param}`)
+      .then(res => res.json())
       .then(({ data, error }) => {
         if (error || !data) { setNotFound(true); return; }
         setAgent(data);
         // Set cookie with the canonical token (works for both URL styles)
         document.cookie = `sw_agent=${encodeURIComponent(data.token)};max-age=${60*60*24*30};path=/;SameSite=Lax`;
-      });
+      })
+      .catch(() => setNotFound(true));
   }, []);
 
   const goToSignup = () => { window.location.href = "/?action=signup"; };
