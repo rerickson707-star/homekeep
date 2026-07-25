@@ -17237,7 +17237,7 @@ function AgentSetupPage() {
       .then(({ data, error }) => {
         if (error || !data) { setNotFound(true); return; }
         setAgent(data);
-        setForm({ display_name: data.display_name || data.name || "", title: data.title || "", contact: data.contact || "", license: data.license || "" });
+        setForm({ display_name: data.display_name || data.name || "", title: data.title || "", phone: data.phone || "", agent_email: data.agent_email || "", license: data.license || "" });
         if (data.headshot_url) setHeadshotPreview(data.headshot_url);
         if (data.logo_url) setLogoPreview(data.logo_url);
       })
@@ -17270,7 +17270,8 @@ function AgentSetupPage() {
       const updates = {
         display_name: form.display_name.trim(),
         title:        form.title.trim() || null,
-        contact:      form.contact.trim() || null,
+        phone:        form.phone.trim() || null,
+        agent_email:  form.agent_email.trim() || null,
         license:      form.license.trim() || null,
         onboarded_at: new Date().toISOString(),
       };
@@ -17430,8 +17431,10 @@ function AgentSetupPage() {
         <label style={labelStyle}>Title / role</label>
         <input style={inputStyle} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="REALTOR® · Keller Williams" />
 
-        <label style={labelStyle}>Best contact for clients<span style={labelHint}>Phone and/or email</span></label>
-        <input style={inputStyle} value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="(727) 555-0100 · jane@kw.com" />
+        <label style={labelStyle}>Phone<span style={labelHint}>Best number for clients to reach you</span></label>
+        <input style={inputStyle} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(727) 555-0100" />
+        <label style={labelStyle}>Contact email<span style={labelHint}>Shown to clients — can differ from your login email</span></label>
+        <input style={inputStyle} type="email" value={form.agent_email} onChange={e => setForm(f => ({ ...f, agent_email: e.target.value }))} placeholder="jane@kwrealty.com" />
 
         <label style={labelStyle}>License number<span style={labelHint}>Used on co-branded materials</span></label>
         <input style={inputStyle} value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder="BK-3456789" />
@@ -17579,7 +17582,8 @@ function PrintCardPage({ code }) {
               <div style={{fontSize:14,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
               {agent.title&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.title}</div>}
               {agent.brokerage&&<div style={{fontSize:11,color:"#7A7370"}}>{agent.brokerage}</div>}
-              {agent.contact&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.contact}</div>}
+              {agent.phone&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.phone}</div>}
+              {agent.agent_email&&<div style={{fontSize:11,color:"#7A7370",marginTop:2}}>{agent.agent_email}</div>}
             </div>
             {agent.logo_url&&agent.headshot_url&&(
               <img src={agent.logo_url} alt="Logo" style={{height:26,maxWidth:64,objectFit:"contain",opacity:.8,flexShrink:0}}/>

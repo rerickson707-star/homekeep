@@ -16,7 +16,7 @@ const CORS = {
 };
 
 // Only these fields can be written by the agent — everything else is admin-only
-const ALLOWED_FIELDS = ["display_name", "title", "contact", "license", "headshot_url", "logo_url", "onboarded_at"];
+const ALLOWED_FIELDS = ["display_name", "title", "phone", "agent_email", "license", "headshot_url", "logo_url", "onboarded_at"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -32,7 +32,7 @@ serve(async (req) => {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
       const { data, error } = await supabase
         .from("agent_applications")
-        .select("token, display_name, name, title, contact, license, headshot_url, logo_url, status, gift_code")
+        .select("token, display_name, name, title, phone, agent_email, license, headshot_url, logo_url, status, gift_code")
         .eq("token", token)
         .eq("status", "approved")
         .single();

@@ -95,7 +95,8 @@ serve(async (req) => {
           <div style="font-size:15px;font-weight:700;color:#2A2723;">${agentName}</div>
           ${agent.title ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.title}</div>` : ""}
           ${agent.brokerage ? `<div style="font-size:12px;color:#7A7370;">${agent.brokerage}</div>` : ""}
-          ${agent.contact ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.contact}</div>` : ""}
+          ${agent.phone ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.phone}</div>` : ""}
+          ${agent.agent_email ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.agent_email}</div>` : ""}
         </div>
       </div>
 
