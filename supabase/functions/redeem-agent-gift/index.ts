@@ -28,14 +28,15 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-    // Derive and verify user_id from the Authorization JWT
+    // Derive and verify user from JWT
     const authHeader = req.headers.get("Authorization") ?? "";
     const jwt = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Invalid or missing auth token" }), { status: 401, headers: CORS });
     }
-    const user_id = user.id;
+    const user_id     = user.id;
+    const client_email = user.email ?? null;
 
     // 1. Fetch the agent application by token
     const { data: agent, error: agentErr } = await supabase
@@ -81,6 +82,7 @@ serve(async (req) => {
     await supabase.from("gift_redemptions").insert([{
       agent_token,
       user_id,
+      client_email,
     }]);
 
     // 5. Notify admin

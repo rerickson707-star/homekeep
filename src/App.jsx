@@ -16004,6 +16004,7 @@ export default function App() {
   if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
   if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
   if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
+  if (_path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
   if (_path === "/gift" || _path === "/gift/" || _path.startsWith("/gift/")) return <GiftPage />;
   if (_path.startsWith("/print-card/")) return <PrintCardPage code={_path.replace("/print-card/","")} />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
@@ -17442,6 +17443,302 @@ function AgentSetupPage() {
           {saving ? "Uploading your assets…" : "Complete my agent profile →"}
         </button>
         <div style={{ fontSize: 12, color: "#A8A09A", textAlign: "center", marginTop: 12 }}>Your assets are stored securely and only used to co-brand your clients' Steadwell experience.</div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── AGENT PORTAL PAGE ────────────────────────────────────────────────────────
+// /agent-portal?token=TOKEN — agent dashboard: profile editing, send gifts, track sends
+function AgentPortalPage() {
+  const params  = new URLSearchParams(window.location.search);
+  const token   = params.get("token");
+  const BASE_FN = "https://hjkyameroqufaojuerns.supabase.co/functions/v1";
+
+  const [agent,       setAgent]       = useState(null);
+  const [notFound,    setNotFound]    = useState(false);
+  const [tab,         setTab]         = useState("send");  // send | profile | history
+  const [sends,       setSends]       = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
+  const [loading,     setLoading]     = useState(true);
+
+  // ── Profile form state ───────────────────────────────────────────────────────
+  const [form,           setForm]           = useState({ display_name:"", title:"", phone:"", agent_email:"", license:"" });
+  const [headshot,       setHeadshot]       = useState(null);
+  const [logo,           setLogo]           = useState(null);
+  const [headshotPreview,setHeadshotPreview]= useState(null);
+  const [logoPreview,    setLogoPreview]    = useState(null);
+  const [saving,         setSaving]         = useState(false);
+  const [saveMsg,        setSaveMsg]        = useState("");
+
+  // ── Send gift form state ─────────────────────────────────────────────────────
+  const [giftForm,    setGiftForm]    = useState({ client_name:"", client_email:"" });
+  const [sending,     setSending]     = useState(false);
+  const [sendMsg,     setSendMsg]     = useState("");
+  const [sendErr,     setSendErr]     = useState("");
+
+  // ── Load agent + sends + redemptions ────────────────────────────────────────
+  const loadAll = () => {
+    if (!token) { setNotFound(true); setLoading(false); return; }
+    fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(token)}`)
+      .then(r => r.json())
+      .then(({ data, error }) => {
+        if (error || !data) { setNotFound(true); setLoading(false); return; }
+        setAgent(data);
+        setForm({ display_name: data.display_name||data.name||"", title: data.title||"", phone: data.phone||"", agent_email: data.agent_email||"", license: data.license||"" });
+        if (data.headshot_url) setHeadshotPreview(data.headshot_url);
+        if (data.logo_url) setLogoPreview(data.logo_url);
+      })
+      .catch(() => { setNotFound(true); setLoading(false); });
+
+    fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(token)}&include=history`)
+      .then(r => r.json())
+      .then(({ sends: s, redemptions: r }) => {
+        setSends(s || []);
+        setRedemptions(r || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { loadAll(); }, [token]);
+
+  // ── File handling ────────────────────────────────────────────────────────────
+  const handleFile = (type, file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setSaveMsg("File must be under 5MB."); return; }
+    if (!["image/jpeg","image/jpg","image/png","image/webp"].includes(file.type)) { setSaveMsg("Please upload a JPG, PNG, or WebP image."); return; }
+    const preview = URL.createObjectURL(file);
+    if (type === "headshot") { setHeadshot(file); setHeadshotPreview(preview); }
+    else { setLogo(file); setLogoPreview(preview); }
+  };
+
+  const uploadFile = async (file, path) => {
+    const { data, error } = await supabase.storage.from("agent-assets").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from("agent-assets").getPublicUrl(path);
+    return publicUrl;
+  };
+
+  // ── Save profile ─────────────────────────────────────────────────────────────
+  const saveProfile = async () => {
+    if (!form.display_name.trim()) { setSaveMsg("Name is required."); return; }
+    setSaving(true); setSaveMsg("");
+    try {
+      const updates = {
+        display_name: form.display_name.trim(),
+        title:        form.title.trim() || null,
+        phone:        form.phone.trim() || null,
+        agent_email:  form.agent_email.trim() || null,
+        license:      form.license.trim() || null,
+        onboarded_at: new Date().toISOString(),
+      };
+      if (headshot) updates.headshot_url = await uploadFile(headshot, `${token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
+      if (logo)     updates.logo_url     = await uploadFile(logo,     `${token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
+      const res = await fetch(`${BASE_FN}/agent-setup-save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, updates }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Save failed");
+      setSaveMsg("✓ Profile updated");
+      loadAll();
+    } catch(e) { setSaveMsg("Error: " + e.message); }
+    finally { setSaving(false); }
+  };
+
+  // ── Send gift email ──────────────────────────────────────────────────────────
+  const sendGift = async () => {
+    if (!giftForm.client_name.trim()) { setSendErr("Please add the client's name."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(giftForm.client_email.trim())) { setSendErr("Please check the email address."); return; }
+    setSending(true); setSendErr("");
+    try {
+      const res = await fetch(`${BASE_FN}/send-gift-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_token: token, client_name: giftForm.client_name.trim(), client_email: giftForm.client_email.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to send");
+      setSendMsg(`✓ Gift sent to ${giftForm.client_name.trim()}`);
+      setGiftForm({ client_name:"", client_email:"" });
+      loadAll();
+    } catch(e) { setSendErr(e.message || "Something went wrong."); }
+    finally { setSending(false); }
+  };
+
+  const S = {
+    page:   { minHeight:"100vh", background:"#ECE3D2", fontFamily:"'Hanken Grotesk',sans-serif", padding:"24px" },
+    wrap:   { maxWidth:600, margin:"0 auto" },
+    card:   { background:"#fff", borderRadius:16, padding:"24px 28px", marginBottom:16, boxShadow:"0 2px 12px rgba(35,74,61,.07)", border:"1px solid #E6DECF" },
+    label:  { display:"block", fontSize:".82rem", fontWeight:700, color:"#234A3D", marginBottom:4 },
+    hint:   { fontWeight:400, color:"#A8A09A", fontSize:".75rem" },
+    input:  { width:"100%", padding:"11px 14px", borderRadius:10, border:"1.5px solid #E6DECF", background:"#fff", fontSize:"1rem", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723", marginBottom:14, boxSizing:"border-box" },
+    drop:   (has) => ({ border:`2px dashed ${has?"#234A3D":"#E6DECF"}`, borderRadius:12, padding:"16px", textAlign:"center", cursor:"pointer", background:has?"#EAF3EC":"#FBF7EE", marginBottom:14 }),
+    btn:    { width:"100%", background:"#C16140", color:"#fff", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif" },
+    tabBtn: (active) => ({ padding:"10px 20px", border:"none", borderBottom: active?"2px solid #234A3D":"2px solid transparent", background:"none", fontWeight:active?700:400, color:active?"#234A3D":"#7A7370", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif", fontSize:14 }),
+  };
+
+  if (!token || notFound) return (
+    <div style={S.page}>
+      <div style={{...S.wrap, textAlign:"center", paddingTop:80}}>
+        <div style={{fontSize:40, marginBottom:16}}>🔒</div>
+        <div style={{fontFamily:"Georgia,serif", fontSize:22, color:"#234A3D", marginBottom:8}}>Portal not found</div>
+        <div style={{fontSize:14, color:"#7A7370"}}>This link may be invalid. Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a> for help.</div>
+      </div>
+    </div>
+  );
+
+  if (loading || !agent) return (
+    <div style={{...S.page, display:"flex", alignItems:"center", justifyContent:"center"}}>
+      <div style={{width:36, height:36, border:"3px solid #E6DECF", borderTop:"3px solid #234A3D", borderRadius:"50%"}}/>
+    </div>
+  );
+
+  const agentName = agent.display_name || agent.name || "Agent";
+  const giftUrl   = `https://www.trysteadwell.app/gift/${agent.gift_code}`;
+
+  // Build a set of redeemed emails for quick lookup
+  const redeemedTokens = new Set(redemptions.map(r => r.agent_token));
+
+  return (
+    <div style={S.page}>
+      <div style={S.wrap}>
+        {/* Header */}
+        <div style={{background:"#234A3D", borderRadius:16, padding:"20px 24px", marginBottom:16, display:"flex", alignItems:"center", gap:14}}>
+          {agent.headshot_url
+            ? <img src={agent.headshot_url} alt={agentName} style={{width:48, height:48, borderRadius:"50%", objectFit:"cover", border:"2px solid rgba(244,237,223,.3)"}}/>
+            : <div style={{width:48, height:48, borderRadius:"50%", background:"#1C3D31", display:"flex", alignItems:"center", justifyContent:"center", color:"#F4EDDF", fontSize:20, fontWeight:700}}>{agentName[0]}</div>
+          }
+          <div>
+            <div style={{color:"#F4EDDF", fontWeight:700, fontSize:16}}>{agentName}</div>
+            {agent.title && <div style={{color:"rgba(244,237,223,.65)", fontSize:12}}>{agent.title}</div>}
+          </div>
+          <div style={{marginLeft:"auto", textAlign:"right"}}>
+            <div style={{fontSize:11, color:"rgba(244,237,223,.5)", marginBottom:4}}>Your gift link</div>
+            <div style={{fontSize:12, color:"#F4EDDF", fontWeight:600}}>{`trysteadwell.app/gift/${agent.gift_code}`}</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{background:"#fff", borderRadius:12, border:"1px solid #E6DECF", marginBottom:16, overflow:"hidden"}}>
+          <div style={{display:"flex", borderBottom:"1px solid #E6DECF"}}>
+            {[["send","Send Gift"],["history","Sent Gifts"],["profile","My Profile"]].map(([id,label]) => (
+              <button key={id} style={S.tabBtn(tab===id)} onClick={()=>setTab(id)}>{label}{id==="history"&&sends.length>0&&<span style={{marginLeft:6, background:"#234A3D", color:"#F4EDDF", borderRadius:10, padding:"1px 7px", fontSize:11}}>{sends.length}</span>}</button>
+            ))}
+          </div>
+
+          <div style={{padding:"24px 28px"}}>
+
+            {/* ── SEND GIFT TAB ── */}
+            {tab === "send" && (
+              <div>
+                <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Send a gift to a client</div>
+                <div style={{fontSize:13, color:"#7A7370", marginBottom:20, lineHeight:1.6}}>They'll receive a branded email from Steadwell with your name on it and a link to claim 3 months of Plus.</div>
+                {sendMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:13, fontWeight:600}}>{sendMsg} <button onClick={()=>setSendMsg("")} style={{marginLeft:8, background:"none", border:"none", cursor:"pointer", color:"#1C5C35", fontSize:13}}>Send another</button></div>}
+                {!sendMsg && <>
+                  <label style={S.label}>Client's name</label>
+                  <input style={S.input} value={giftForm.client_name} onChange={e=>setGiftForm(f=>({...f,client_name:e.target.value}))} placeholder="Sarah Johnson" />
+                  <label style={S.label}>Client's email</label>
+                  <input style={{...S.input, marginBottom:sendErr?8:16}} type="email" value={giftForm.client_email} onChange={e=>setGiftForm(f=>({...f,client_email:e.target.value}))} placeholder="sarah@email.com" />
+                  {sendErr && <div style={{color:"#A32D2D", fontSize:13, marginBottom:12}}>{sendErr}</div>}
+                  <button onClick={sendGift} disabled={sending} style={{...S.btn, opacity:sending?.7:1}}>{sending?"Sending…":"Send gift email →"}</button>
+                  <div style={{fontSize:12, color:"#A8A09A", textAlign:"center", marginTop:10}}>We send from Steadwell on your behalf — the email shows your name as the gift sender.</div>
+                </>}
+
+                {/* Gift link */}
+                <div style={{marginTop:24, paddingTop:20, borderTop:"1px solid #E6DECF"}}>
+                  <div style={{fontSize:12, color:"#7A7370", marginBottom:8}}>Or share your gift link directly</div>
+                  <div style={{display:"flex", gap:8, alignItems:"center"}}>
+                    <div style={{flex:1, background:"#F4EDDF", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#234A3D", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{giftUrl}</div>
+                    <button onClick={()=>navigator.clipboard.writeText(giftUrl)} style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:8, padding:"10px 16px", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap"}}>Copy</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── HISTORY TAB ── */}
+            {tab === "history" && (
+              <div>
+                <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Sent gifts</div>
+                <div style={{fontSize:13, color:"#7A7370", marginBottom:20}}>Clients you've emailed a gift link. "Signed up" means they created a Steadwell account via your gift.</div>
+                {sends.length === 0
+                  ? <div style={{textAlign:"center", padding:"40px 0", color:"#A8A09A", fontSize:14}}>No gifts sent yet — use the Send Gift tab to get started.</div>
+                  : <div>
+                      {/* Header row */}
+                      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto", gap:8, padding:"8px 12px", fontSize:11, fontWeight:700, color:"#A8A09A", letterSpacing:".05em", textTransform:"uppercase", borderBottom:"1px solid #E6DECF", marginBottom:4}}>
+                        <div>Client</div><div>Email</div><div>Sent</div><div>Status</div>
+                      </div>
+                      {sends.map(s => {
+                        const signedUp = redemptions.some(r => r.client_email === s.client_email);
+                        return (
+                          <div key={s.id} style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto", gap:8, padding:"10px 12px", fontSize:13, borderBottom:"1px solid #F4EDDF", alignItems:"center"}}>
+                            <div style={{fontWeight:600, color:"#2A2723", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_name}</div>
+                            <div style={{color:"#7A7370", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_email}</div>
+                            <div style={{color:"#A8A09A", whiteSpace:"nowrap"}}>{new Date(s.sent_at).toLocaleDateString()}</div>
+                            <div style={{whiteSpace:"nowrap"}}>
+                              {signedUp
+                                ? <span style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>✓ Signed up</span>
+                                : <span style={{background:"#F4EDDF", color:"#A8A09A", borderRadius:6, padding:"3px 8px", fontSize:11}}>Pending</span>
+                              }
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                }
+              </div>
+            )}
+
+            {/* ── PROFILE TAB ── */}
+            {tab === "profile" && (
+              <div>
+                <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Your profile</div>
+                <div style={{fontSize:13, color:"#7A7370", marginBottom:20}}>Clients see this when they visit your gift link and in their welcome email.</div>
+
+                {/* Headshot */}
+                <label style={S.label}>Headshot <span style={S.hint}>Square preferred · JPG or PNG · under 5MB</span></label>
+                <div style={S.drop(!!headshotPreview)} onClick={()=>document.getElementById("portal-headshot").click()}>
+                  {headshotPreview
+                    ? <img src={headshotPreview} alt="Headshot" style={{width:72, height:72, borderRadius:"50%", objectFit:"cover", margin:"0 auto", display:"block"}}/>
+                    : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload headshot</div>
+                  }
+                  <input id="portal-headshot" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("headshot",e.target.files[0])}/>
+                </div>
+
+                {/* Logo */}
+                <label style={S.label}>Brokerage logo <span style={S.hint}>Optional · PNG with transparent background ideal</span></label>
+                <div style={S.drop(!!logoPreview)} onClick={()=>document.getElementById("portal-logo").click()}>
+                  {logoPreview
+                    ? <img src={logoPreview} alt="Logo" style={{height:48, maxWidth:140, objectFit:"contain", margin:"0 auto", display:"block"}}/>
+                    : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload logo</div>
+                  }
+                  <input id="portal-logo" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("logo",e.target.files[0])}/>
+                </div>
+
+                <label style={S.label}>Name as clients should see it</label>
+                <input style={S.input} value={form.display_name} onChange={e=>setForm(f=>({...f,display_name:e.target.value}))} placeholder="Jane Smith" />
+
+                <label style={S.label}>Title / role</label>
+                <input style={S.input} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="REALTOR® · Keller Williams" />
+
+                <label style={S.label}>Phone <span style={S.hint}>Best number for clients to reach you</span></label>
+                <input style={S.input} value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="(727) 555-0100" />
+
+                <label style={S.label}>Contact email <span style={S.hint}>Shown to clients</span></label>
+                <input style={S.input} type="email" value={form.agent_email} onChange={e=>setForm(f=>({...f,agent_email:e.target.value}))} placeholder="jane@kwrealty.com" />
+
+                <label style={S.label}>License number <span style={S.hint}>Used on co-branded materials</span></label>
+                <input style={{...S.input, marginBottom:20}} value={form.license} onChange={e=>setForm(f=>({...f,license:e.target.value}))} placeholder="BK-3456789" />
+
+                {saveMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:12, fontSize:13, fontWeight:600}}>{saveMsg}</div>}
+                <button onClick={saveProfile} disabled={saving} style={{...S.btn, opacity:saving?.7:1}}>{saving?"Saving…":"Save profile"}</button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

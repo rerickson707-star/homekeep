@@ -150,6 +150,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Email failed", detail: result }), { status: 500, headers: CORS });
     }
 
+    // Record the send for portal history tracking
+    await supabase.from("gift_sends").insert([{
+      agent_token:  agent.token,
+      client_name:  client_name,
+      client_email: client_email,
+    }]).catch(err => console.error("[gift_sends] insert error:", err));
+
     return new Response(JSON.stringify({ ok: true, email_id: result.id }), { headers: CORS });
 
   } catch (err) {

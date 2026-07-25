@@ -46,6 +46,24 @@ serve(async (req) => {
       if (error || !data) {
         return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: CORS });
       }
+
+      // If include=history, also return sends + redemptions for the portal
+      if (url.searchParams.get("include") === "history" && data.token) {
+        const [sendsRes, redemptionsRes] = await Promise.all([
+          supabase.from("gift_sends")
+            .select("id, client_name, client_email, sent_at")
+            .eq("agent_token", data.token)
+            .order("sent_at", { ascending: false }),
+          supabase.from("gift_redemptions")
+            .select("agent_token, user_id, client_email, redeemed_at")
+            .eq("agent_token", data.token),
+        ]);
+        return new Response(JSON.stringify({
+          sends:       sendsRes.data || [],
+          redemptions: redemptionsRes.data || [],
+        }), { headers: CORS });
+      }
+
       return new Response(JSON.stringify({ data }), { headers: CORS });
     }
 
