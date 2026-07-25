@@ -17231,14 +17231,17 @@ function AgentSetupPage() {
 
   useEffect(() => {
     if (!token) { setNotFound(true); return; }
-    supabase.from("agent_applications").select("*").eq("token", token).single()
+    // Lookup via edge function — agent_applications is now admin-only at DB level
+    fetch(`https://hjkyameroqufaojuerns.supabase.co/functions/v1/agent-setup-save?token=${encodeURIComponent(token)}`)
+      .then(res => res.json())
       .then(({ data, error }) => {
         if (error || !data) { setNotFound(true); return; }
         setAgent(data);
         setForm({ display_name: data.display_name || data.name || "", title: data.title || "", contact: data.contact || "", license: data.license || "" });
         if (data.headshot_url) setHeadshotPreview(data.headshot_url);
         if (data.logo_url) setLogoPreview(data.logo_url);
-      });
+      })
+      .catch(() => setNotFound(true));
   }, [token]);
 
   const handleFile = (type, file) => {
