@@ -17862,6 +17862,8 @@ function PrintCardPage({ code }) {
     }
   };
 
+  const agentName = agent ? (agent.display_name || agent.name || "Agent") : "Agent";
+
   const AvatarEl = () => {
     if (!agent) return null;
     if (agent.headshot_url) return (
