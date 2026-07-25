@@ -17458,7 +17458,7 @@ function AgentPortalPage() {
 
   const [agent,       setAgent]       = useState(null);
   const [notFound,    setNotFound]    = useState(false);
-  const [tab,         setTab]         = useState("send");  // send | profile | history
+  const [tab,         setTab]         = useState("profile");  // profile | send | history
   const [sends,       setSends]       = useState([]);
   const [redemptions, setRedemptions] = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -17618,14 +17618,17 @@ function AgentPortalPage() {
           </div>
           <div style={{marginLeft:"auto", textAlign:"right"}}>
             <div style={{fontSize:11, color:"rgba(244,237,223,.5)", marginBottom:4}}>Your gift link</div>
-            <div style={{fontSize:12, color:"#F4EDDF", fontWeight:600}}>{`trysteadwell.app/gift/${agent.gift_code}`}</div>
+            <div style={{fontSize:12, color:"#F4EDDF", fontWeight:600, marginBottom:6}}>{`trysteadwell.app/gift/${agent.gift_code}`}</div>
+            {agent.gift_code && (
+              <a href={`/print-card/${agent.gift_code}`} target="_blank" rel="noreferrer" style={{background:"rgba(244,237,223,.15)", color:"#F4EDDF", borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:700, textDecoration:"none", border:"1px solid rgba(244,237,223,.2)"}}>Print card ↗</a>
+            )}
           </div>
         </div>
 
         {/* Tabs */}
         <div style={{background:"#fff", borderRadius:12, border:"1px solid #E6DECF", marginBottom:16, overflow:"hidden"}}>
           <div style={{display:"flex", borderBottom:"1px solid #E6DECF"}}>
-            {[["send","Send Gift"],["history","Sent Gifts"],["profile","My Profile"]].map(([id,label]) => (
+            {[["profile","My Profile"],["send","Send Gift"],["history","Sent Gifts"]].map(([id,label]) => (
               <button key={id} style={S.tabBtn(tab===id)} onClick={()=>setTab(id)}>{label}{id==="history"&&sends.length>0&&<span style={{marginLeft:6, background:"#234A3D", color:"#F4EDDF", borderRadius:10, padding:"1px 7px", fontSize:11}}>{sends.length}</span>}</button>
             ))}
           </div>
