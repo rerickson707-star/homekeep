@@ -21,12 +21,21 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const { agent_token, user_id } = await req.json();
-    if (!agent_token || !user_id) {
-      return new Response(JSON.stringify({ error: "agent_token and user_id required" }), { status: 400, headers: CORS });
+    const { agent_token } = await req.json();
+    if (!agent_token) {
+      return new Response(JSON.stringify({ error: "agent_token required" }), { status: 400, headers: CORS });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
+    // Derive and verify user_id from the Authorization JWT
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid or missing auth token" }), { status: 401, headers: CORS });
+    }
+    const user_id = user.id;
 
     // 1. Fetch the agent application by token
     const { data: agent, error: agentErr } = await supabase

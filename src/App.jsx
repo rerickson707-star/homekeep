@@ -2535,11 +2535,17 @@ function OnboardingWizard({ session, onComplete }) {
       await onComplete({ launchSetup: !skipSetup });
       // ── Gift redemption: if user came via agent gift link, activate Plus ──
       if (giftAgent) {
-        fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk" },
-          body: JSON.stringify({ agent_token: giftAgent.token, user_id: uid }),
-        }).catch(err => console.error("[redeem-agent-gift]", err));
+        const { data: { session: activeSession } } = await supabase.auth.getSession();
+        const userToken = activeSession?.access_token;
+        if (userToken) {
+          fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+            body: JSON.stringify({ agent_token: giftAgent.token }),
+          }).catch(err => console.error("[redeem-agent-gift]", err));
+        } else {
+          console.error("[redeem-agent-gift] No active session token — skipping redemption");
+        }
         // Clear the cookie
         document.cookie = "sw_agent=;max-age=0;path=/";
       }
