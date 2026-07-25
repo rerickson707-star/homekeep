@@ -54,6 +54,29 @@ serve(async (req) => {
     const giftUrl     = `${BASE_URL}/gift/${agent.gift_code}`;
     const firstName   = client_name.split(" ")[0] || client_name;
 
+    // Pre-compute avatar HTML to avoid nested template literals inside table layout
+    const avatarHtml = agent.headshot_url
+      ? `<img src="${agent.headshot_url}" alt="${agentName}" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block;border:2px solid #E6DECF;"/>`
+      : agent.logo_url
+        ? `<img src="${agent.logo_url}" alt="${agent.brokerage||""}" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:contain;background:#fff;padding:8px;display:block;border:2px solid #E6DECF;"/>`
+        : `<div style="width:64px;height:64px;border-radius:50%;background:#234A3D;text-align:center;line-height:64px;color:#F4EDDF;font-size:24px;font-weight:700;">${agentName[0]}</div>`;
+
+    // Pre-compute phone formatting and contact row to avoid nested template literal issues
+    const rawPhone = (agent.phone || "").replace(/\D/g, "");
+    const formattedPhone = rawPhone.length === 10
+      ? `(${rawPhone.slice(0,3)}) ${rawPhone.slice(3,6)}-${rawPhone.slice(6)}`
+      : rawPhone.length === 11 && rawPhone[0] === "1"
+        ? `(${rawPhone.slice(1,4)}) ${rawPhone.slice(4,7)}-${rawPhone.slice(7)}`
+        : agent.phone || "";
+
+    // Stack phone and email on separate lines — most reliable across all email clients
+    const contactRowHtml = (agent.phone || agent.agent_email)
+      ? `<div style="border-top:1px solid #E6DECF;margin-top:16px;padding-top:16px;">
+          ${agent.phone ? `<div style="font-size:13px;color:#7A7370;margin-bottom:6px;">${formattedPhone}</div>` : ""}
+          ${agent.agent_email ? `<div style="font-size:13px;color:#7A7370;">${agent.agent_email}</div>` : ""}
+        </div>`
+      : "";
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -83,21 +106,23 @@ serve(async (req) => {
 
     <!-- Agent card -->
     <div style="padding:28px 36px 0;">
-      <div style="background:#F4EDDF;border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:24px;">
-        ${agent.headshot_url
-          ? `<img src="${agent.headshot_url}" alt="${agentName}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #E6DECF;"/>`
-          : agent.logo_url
-            ? `<img src="${agent.logo_url}" alt="${agent.brokerage||''}" style="width:52px;height:52px;border-radius:50%;object-fit:contain;background:#fff;padding:6px;flex-shrink:0;border:2px solid #E6DECF;"/>`
-            : `<div style="width:52px;height:52px;border-radius:50%;background:#234A3D;display:flex;align-items:center;justify-content:center;color:#F4EDDF;font-size:20px;font-weight:700;flex-shrink:0;">${agentName[0]}</div>`
-        }
-        <div>
-          <div style="font-size:11px;color:#A8A09A;margin-bottom:3px;">Gifted by</div>
-          <div style="font-size:15px;font-weight:700;color:#2A2723;">${agentName}</div>
-          ${agent.title ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.title}</div>` : ""}
-          ${agent.brokerage ? `<div style="font-size:12px;color:#7A7370;">${agent.brokerage}</div>` : ""}
-          ${agent.phone ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.phone}</div>` : ""}
-          ${agent.agent_email ? `<div style="font-size:12px;color:#7A7370;margin-top:2px;">${agent.agent_email}</div>` : ""}
-        </div>
+      <div style="background:#F4EDDF;border-radius:16px;padding:22px 24px;margin-bottom:28px;">
+        <!-- Avatar + name row — table layout for email client compatibility -->
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:14px;">
+          <tr>
+            <td style="width:80px;vertical-align:middle;padding-right:16px;">
+              ${avatarHtml}
+            </td>
+            <td style="vertical-align:middle;">
+              <div style="font-size:11px;color:#A8A09A;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;">Gifted by</div>
+              <div style="font-size:17px;font-weight:700;color:#2A2723;line-height:1.2;">${agentName}</div>
+              ${agent.title ? `<div style="font-size:13px;color:#7A7370;margin-top:3px;">${agent.title}</div>` : ""}
+              ${agent.brokerage ? `<div style="font-size:13px;color:#7A7370;margin-top:2px;">${agent.brokerage}</div>` : ""}
+            </td>
+          </tr>
+        </table>
+        <!-- Contact row — only shown if phone or email present -->
+        ${contactRowHtml}
       </div>
 
       <!-- What's included -->
@@ -151,11 +176,12 @@ serve(async (req) => {
     }
 
     // Record the send for portal history tracking
-    await supabase.from("gift_sends").insert([{
+    const { error: sendErr } = await supabase.from("gift_sends").insert([{
       agent_token:  agent.token,
       client_name:  client_name,
       client_email: client_email,
-    }]).catch(err => console.error("[gift_sends] insert error:", err));
+    }]);
+    if (sendErr) console.error("[gift_sends] insert error:", sendErr);
 
     return new Response(JSON.stringify({ ok: true, email_id: result.id }), { headers: CORS });
 

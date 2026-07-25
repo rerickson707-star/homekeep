@@ -17471,6 +17471,7 @@ function AgentPortalPage() {
   const [logoPreview,    setLogoPreview]    = useState(null);
   const [saving,         setSaving]         = useState(false);
   const [saveMsg,        setSaveMsg]        = useState("");
+  const [isEditing,      setIsEditing]      = useState(false);
 
   // ── Send gift form state ─────────────────────────────────────────────────────
   const [giftForm,    setGiftForm]    = useState({ client_name:"", client_email:"" });
@@ -17607,22 +17608,28 @@ function AgentPortalPage() {
     <div style={S.page}>
       <div style={S.wrap}>
         {/* Header */}
-        <div style={{background:"#234A3D", borderRadius:16, padding:"20px 24px", marginBottom:16, display:"flex", alignItems:"center", gap:14}}>
-          {agent.headshot_url
-            ? <img src={agent.headshot_url} alt={agentName} style={{width:48, height:48, borderRadius:"50%", objectFit:"cover", border:"2px solid rgba(244,237,223,.3)"}}/>
-            : <div style={{width:48, height:48, borderRadius:"50%", background:"#1C3D31", display:"flex", alignItems:"center", justifyContent:"center", color:"#F4EDDF", fontSize:20, fontWeight:700}}>{agentName[0]}</div>
-          }
-          <div>
-            <div style={{color:"#F4EDDF", fontWeight:700, fontSize:16}}>{agentName}</div>
-            {agent.title && <div style={{color:"rgba(244,237,223,.65)", fontSize:12}}>{agent.title}</div>}
+        <div style={{background:"#234A3D", borderRadius:16, padding:"20px 24px", marginBottom:16}}>
+          {/* Top row: avatar + name */}
+          <div style={{display:"flex", alignItems:"center", gap:14, marginBottom:agent.gift_code?12:0}}>
+            {agent.headshot_url
+              ? <img src={agent.headshot_url} alt={agentName} style={{width:48, height:48, borderRadius:"50%", objectFit:"cover", border:"2px solid rgba(244,237,223,.3)", flexShrink:0}}/>
+              : <div style={{width:48, height:48, borderRadius:"50%", background:"#1C3D31", display:"flex", alignItems:"center", justifyContent:"center", color:"#F4EDDF", fontSize:20, fontWeight:700, flexShrink:0}}>{agentName[0]}</div>
+            }
+            <div style={{minWidth:0}}>
+              <div style={{color:"#F4EDDF", fontWeight:700, fontSize:16, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{agentName}</div>
+              {agent.title && <div style={{color:"rgba(244,237,223,.65)", fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{agent.title}</div>}
+            </div>
           </div>
-          <div style={{marginLeft:"auto", textAlign:"right"}}>
-            <div style={{fontSize:11, color:"rgba(244,237,223,.5)", marginBottom:4}}>Your gift link</div>
-            <div style={{fontSize:12, color:"#F4EDDF", fontWeight:600, marginBottom:6}}>{`trysteadwell.app/gift/${agent.gift_code}`}</div>
-            {agent.gift_code && (
-              <a href={`/print-card/${agent.gift_code}`} target="_blank" rel="noreferrer" style={{background:"rgba(244,237,223,.15)", color:"#F4EDDF", borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:700, textDecoration:"none", border:"1px solid rgba(244,237,223,.2)"}}>Print card ↗</a>
-            )}
-          </div>
+          {/* Bottom row: gift link + print card */}
+          {agent.gift_code && (
+            <div style={{borderTop:"1px solid rgba(244,237,223,.12)", paddingTop:12, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap"}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:11, color:"rgba(244,237,223,.5)", marginBottom:2}}>Your gift link</div>
+                <div style={{fontSize:12, color:"#F4EDDF", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{`trysteadwell.app/gift/${agent.gift_code}`}</div>
+              </div>
+              <a href={`/print-card/${agent.gift_code}`} target="_blank" rel="noreferrer" style={{background:"rgba(244,237,223,.15)", color:"#F4EDDF", borderRadius:6, padding:"6px 12px", fontSize:11, fontWeight:700, textDecoration:"none", border:"1px solid rgba(244,237,223,.2)", whiteSpace:"nowrap", flexShrink:0}}>Print card ↗</a>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -17698,46 +17705,89 @@ function AgentPortalPage() {
             {/* ── PROFILE TAB ── */}
             {tab === "profile" && (
               <div>
-                <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Your profile</div>
-                <div style={{fontSize:13, color:"#7A7370", marginBottom:20}}>Clients see this when they visit your gift link and in their welcome email.</div>
-
-                {/* Headshot */}
-                <label style={S.label}>Headshot <span style={S.hint}>Square preferred · JPG or PNG · under 5MB</span></label>
-                <div style={S.drop(!!headshotPreview)} onClick={()=>document.getElementById("portal-headshot").click()}>
-                  {headshotPreview
-                    ? <img src={headshotPreview} alt="Headshot" style={{width:72, height:72, borderRadius:"50%", objectFit:"cover", margin:"0 auto", display:"block"}}/>
-                    : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload headshot</div>
-                  }
-                  <input id="portal-headshot" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("headshot",e.target.files[0])}/>
+                <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:isEditing?4:20}}>
+                  <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D"}}>Your profile</div>
+                  {!isEditing && (
+                    <button onClick={()=>setIsEditing(true)} style={{background:"#F4EDDF", border:"1px solid #E6DECF", color:"#234A3D", borderRadius:8, padding:"7px 16px", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit"}}>Edit</button>
+                  )}
                 </div>
+                {isEditing && <div style={{fontSize:13, color:"#7A7370", marginBottom:20}}>Clients see this when they visit your gift link and in their welcome email.</div>}
 
-                {/* Logo */}
-                <label style={S.label}>Brokerage logo <span style={S.hint}>Optional · PNG with transparent background ideal</span></label>
-                <div style={S.drop(!!logoPreview)} onClick={()=>document.getElementById("portal-logo").click()}>
-                  {logoPreview
-                    ? <img src={logoPreview} alt="Logo" style={{height:48, maxWidth:140, objectFit:"contain", margin:"0 auto", display:"block"}}/>
-                    : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload logo</div>
-                  }
-                  <input id="portal-logo" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("logo",e.target.files[0])}/>
-                </div>
+                {!isEditing ? (
+                  /* ── READ-ONLY VIEW ── */
+                  <div>
+                    <div style={{display:"flex", alignItems:"center", gap:16, padding:"16px 0", borderBottom:"1px solid #F4EDDF"}}>
+                      {headshotPreview
+                        ? <img src={headshotPreview} alt="Headshot" style={{width:64, height:64, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:"2px solid #E6DECF"}}/>
+                        : logoPreview
+                          ? <img src={logoPreview} alt="Logo" style={{width:64, height:64, borderRadius:"50%", objectFit:"contain", background:"#F4EDDF", padding:8, flexShrink:0, border:"2px solid #E6DECF"}}/>
+                          : <div style={{width:64, height:64, borderRadius:"50%", background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", color:"#F4EDDF", fontSize:24, fontWeight:700, flexShrink:0}}>{(form.display_name||"?")[0]}</div>
+                      }
+                      <div>
+                        <div style={{fontWeight:700, fontSize:16, color:"#2A2723"}}>{form.display_name || <span style={{color:"#A8A09A"}}>No name set</span>}</div>
+                        {form.title && <div style={{fontSize:13, color:"#7A7370", marginTop:2}}>{form.title}</div>}
+                        {logoPreview && headshotPreview && <img src={logoPreview} alt="Logo" style={{height:24, maxWidth:80, objectFit:"contain", marginTop:6, display:"block"}}/>}
+                      </div>
+                    </div>
+                    {[
+                      ["Phone",          form.phone],
+                      ["Contact email",  form.agent_email],
+                      ["License",        form.license],
+                    ].map(([label, val]) => val ? (
+                      <div key={label} style={{display:"flex", gap:12, padding:"12px 0", borderBottom:"1px solid #F4EDDF"}}>
+                        <div style={{fontSize:12, fontWeight:700, color:"#A8A09A", width:100, flexShrink:0}}>{label}</div>
+                        <div style={{fontSize:13, color:"#2A2723"}}>{val}</div>
+                      </div>
+                    ) : null)}
+                    {!form.phone && !form.agent_email && !form.license && (
+                      <div style={{fontSize:13, color:"#A8A09A", padding:"16px 0"}}>No contact details added yet.</div>
+                    )}
+                  </div>
+                ) : (
+                  /* ── EDIT VIEW ── */
+                  <div>
+                    {/* Headshot */}
+                    <label style={S.label}>Headshot <span style={S.hint}>Square preferred · JPG or PNG · under 5MB</span></label>
+                    <div style={S.drop(!!headshotPreview)} onClick={()=>document.getElementById("portal-headshot").click()}>
+                      {headshotPreview
+                        ? <img src={headshotPreview} alt="Headshot" style={{width:72, height:72, borderRadius:"50%", objectFit:"cover", margin:"0 auto", display:"block"}}/>
+                        : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload headshot</div>
+                      }
+                      <input id="portal-headshot" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("headshot",e.target.files[0])}/>
+                    </div>
 
-                <label style={S.label}>Name as clients should see it</label>
-                <input style={S.input} value={form.display_name} onChange={e=>setForm(f=>({...f,display_name:e.target.value}))} placeholder="Jane Smith" />
+                    {/* Logo */}
+                    <label style={S.label}>Brokerage logo <span style={S.hint}>Optional · PNG with transparent background ideal</span></label>
+                    <div style={S.drop(!!logoPreview)} onClick={()=>document.getElementById("portal-logo").click()}>
+                      {logoPreview
+                        ? <img src={logoPreview} alt="Logo" style={{height:48, maxWidth:140, objectFit:"contain", margin:"0 auto", display:"block"}}/>
+                        : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload logo</div>
+                      }
+                      <input id="portal-logo" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("logo",e.target.files[0])}/>
+                    </div>
 
-                <label style={S.label}>Title / role</label>
-                <input style={S.input} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="REALTOR® · Keller Williams" />
+                    <label style={S.label}>Name as clients should see it</label>
+                    <input style={S.input} value={form.display_name} onChange={e=>setForm(f=>({...f,display_name:e.target.value}))} placeholder="Jane Smith" />
 
-                <label style={S.label}>Phone <span style={S.hint}>Best number for clients to reach you</span></label>
-                <input style={S.input} value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="(727) 555-0100" />
+                    <label style={S.label}>Title / role</label>
+                    <input style={S.input} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="REALTOR® · Keller Williams" />
 
-                <label style={S.label}>Contact email <span style={S.hint}>Shown to clients</span></label>
-                <input style={S.input} type="email" value={form.agent_email} onChange={e=>setForm(f=>({...f,agent_email:e.target.value}))} placeholder="jane@kwrealty.com" />
+                    <label style={S.label}>Phone <span style={S.hint}>Best number for clients to reach you</span></label>
+                    <input style={S.input} value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="(727) 555-0100" />
 
-                <label style={S.label}>License number <span style={S.hint}>Used on co-branded materials</span></label>
-                <input style={{...S.input, marginBottom:20}} value={form.license} onChange={e=>setForm(f=>({...f,license:e.target.value}))} placeholder="BK-3456789" />
+                    <label style={S.label}>Contact email <span style={S.hint}>Shown to clients</span></label>
+                    <input style={S.input} type="email" value={form.agent_email} onChange={e=>setForm(f=>({...f,agent_email:e.target.value}))} placeholder="jane@kwrealty.com" />
 
-                {saveMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:12, fontSize:13, fontWeight:600}}>{saveMsg}</div>}
-                <button onClick={saveProfile} disabled={saving} style={{...S.btn, opacity:saving?.7:1}}>{saving?"Saving…":"Save profile"}</button>
+                    <label style={S.label}>License number <span style={S.hint}>Used on co-branded materials</span></label>
+                    <input style={{...S.input, marginBottom:20}} value={form.license} onChange={e=>setForm(f=>({...f,license:e.target.value}))} placeholder="BK-3456789" />
+
+                    {saveMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:12, fontSize:13, fontWeight:600}}>{saveMsg}</div>}
+                    <div style={{display:"flex", gap:10}}>
+                      <button onClick={()=>{setIsEditing(false); setSaveMsg("");}} style={{flex:1, background:"none", border:"1.5px solid #E6DECF", color:"#7A7370", borderRadius:10, padding:"13px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
+                      <button onClick={async()=>{ await saveProfile(); setIsEditing(false); }} disabled={saving} style={{...S.btn, flex:2, opacity:saving?.7:1}}>{saving?"Saving…":"Save profile"}</button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
