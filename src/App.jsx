@@ -1786,10 +1786,10 @@ function Modal({ title, onClose, onSave, children, footer }) {
 // Shows the user's iCal feed URL and copy/subscribe buttons
 function CalendarSyncWidget({ userId }) {
   const SUPABASE_URL = "https://hjkyameroqufaojuerns.supabase.co";
-  const [feedUrl,   setFeedUrl]   = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [copied,    setCopied]    = useState(false);
-  const [expanded,  setExpanded]  = useState(false);
+  const [feedUrl,    setFeedUrl]    = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [active,     setActive]     = useState(null); // "google" | "apple" | "outlook" | null
+  const [copied,     setCopied]     = useState(false);
 
   useEffect(() => {
     supabase.from("profiles")
@@ -1804,54 +1804,114 @@ function CalendarSyncWidget({ userId }) {
       });
   }, [userId]);
 
-  const copy = async () => {
+  const copyUrl = async () => {
     if (!feedUrl) return;
     await navigator.clipboard.writeText(feedUrl);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => setCopied(false), 3000);
+  };
+
+  const handleGoogle = () => {
+    window.open(`https://www.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(feedUrl)}`, "_blank");
+    setActive("google");
+  };
+
+  const handleApple = async () => {
+    await copyUrl();
+    setActive("apple");
+  };
+
+  const handleOutlook = async () => {
+    await copyUrl();
+    setActive("outlook");
   };
 
   if (loading) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Loading…</div>;
   if (!feedUrl) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Calendar feed unavailable.</div>;
 
-  const googleUrl = `https://www.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(feedUrl)}`;
+  const btnBase = {
+    display:"flex", alignItems:"center", gap:10,
+    background:"#fff", border:"1.5px solid var(--cream2)",
+    borderRadius:12, padding:"12px 16px", cursor:"pointer",
+    fontFamily:"inherit", textDecoration:"none", width:"100%",
+    marginBottom:8, transition:"border-color .15s",
+  };
+  const btnActive = { ...btnBase, borderColor:"var(--pine)", background:"#F0F6F3" };
 
   return (
     <div>
-      {/* URL row */}
-      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-        <div style={{flex:1,background:"var(--cream2)",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"var(--mid)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:"monospace"}}>
-          {feedUrl}
+      {/* Google */}
+      <button onClick={handleGoogle} style={active==="google" ? btnActive : btnBase}>
+        {/* Google Calendar color logo */}
+        <svg viewBox="0 0 48 48" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="36" height="36" rx="4" fill="#fff" stroke="#E0E0E0" strokeWidth="1.5"/>
+          <rect x="6" y="14" width="36" height="4" fill="#4285F4"/>
+          <rect x="14" y="6" width="4" height="10" rx="2" fill="#4285F4"/>
+          <rect x="30" y="6" width="4" height="10" rx="2" fill="#4285F4"/>
+          <text x="24" y="36" textAnchor="middle" fontSize="16" fontWeight="700" fill="#4285F4" fontFamily="Arial,sans-serif">G</text>
+        </svg>
+        <div style={{flex:1, textAlign:"left"}}>
+          <div style={{fontSize:".85rem",fontWeight:700,color:"var(--dark)"}}>Google Calendar</div>
+          <div style={{fontSize:".75rem",color:"var(--mid)",marginTop:2}}>Opens Google Calendar — one click to subscribe</div>
         </div>
-        <button onClick={copy} style={{flexShrink:0,background:copied?"var(--pine)":"var(--cream2)",color:copied?"#F4EDDF":"var(--dark)",border:"none",borderRadius:8,padding:"8px 14px",fontSize:".78rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",whiteSpace:"nowrap"}}>
-          {copied ? "✓ Copied" : "Copy"}
-        </button>
-      </div>
-
-      {/* Quick subscribe buttons */}
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
-        <a href={googleUrl} target="_blank" rel="noreferrer"
-          style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff",border:"1.5px solid var(--cream2)",borderRadius:8,padding:"7px 14px",fontSize:".78rem",fontWeight:700,color:"var(--dark)",textDecoration:"none",fontFamily:"inherit"}}>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#4285F4" strokeWidth="2"/><path d="M3 9h18" stroke="#4285F4" strokeWidth="2"/><path d="M9 3v6" stroke="#4285F4" strokeWidth="2"/><path d="M15 3v6" stroke="#4285F4" strokeWidth="2"/></svg>
-          Google Calendar
-        </a>
-        <button onClick={() => setExpanded(e => !e)}
-          style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff",border:"1.5px solid var(--cream2)",borderRadius:8,padding:"7px 14px",fontSize:".78rem",fontWeight:700,color:"var(--dark)",cursor:"pointer",fontFamily:"inherit"}}>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#555" strokeWidth="2"/><path d="M3 9h18" stroke="#555" strokeWidth="2"/><path d="M9 3v6" stroke="#555" strokeWidth="2"/><path d="M15 3v6" stroke="#555" strokeWidth="2"/></svg>
-          Apple / Outlook
-        </button>
-      </div>
-
-      {/* Expanded instructions for Apple / Outlook */}
-      {expanded && (
-        <div style={{background:"var(--cream2)",borderRadius:10,padding:"12px 14px",fontSize:".78rem",color:"var(--mid)",lineHeight:1.7}}>
-          <div style={{fontWeight:700,color:"var(--dark)",marginBottom:6}}>Apple Calendar</div>
-          <div>File → New Calendar Subscription → paste the URL above → Subscribe.</div>
-          <div style={{fontWeight:700,color:"var(--dark)",margin:"10px 0 6px"}}>Outlook</div>
-          <div>Add calendar → From internet → paste the URL above → Import.</div>
-          <div style={{marginTop:8,fontSize:".72rem",color:"#A8A09A"}}>Updates sync automatically — Apple every ~1 hour, Google every 24 hours, Outlook every day.</div>
+        <span style={{fontSize:".75rem",color:"var(--pine)",fontWeight:700}}>→</span>
+      </button>
+      {active==="google" && (
+        <div style={{background:"#F0F6F3",border:"1px solid #C3DDD0",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:".78rem",color:"var(--pine)",lineHeight:1.6}}>
+          ✓ Google Calendar opened. Click <strong>"Add calendar"</strong> in the page that opened.
         </div>
       )}
+
+      {/* Apple */}
+      <button onClick={handleApple} style={active==="apple" ? btnActive : btnBase}>
+        <svg viewBox="0 0 48 48" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="36" height="36" rx="4" fill="#fff" stroke="#E0E0E0" strokeWidth="1.5"/>
+          <rect x="6" y="14" width="36" height="5" fill="#FF3B30"/>
+          <rect x="14" y="6" width="4" height="10" rx="2" fill="#888"/>
+          <rect x="30" y="6" width="4" height="10" rx="2" fill="#888"/>
+          <text x="24" y="37" textAnchor="middle" fontSize="13" fontWeight="700" fill="#1C1C1E" fontFamily="Arial,sans-serif">31</text>
+        </svg>
+        <div style={{flex:1, textAlign:"left"}}>
+          <div style={{fontSize:".85rem",fontWeight:700,color:"var(--dark)"}}>Apple Calendar</div>
+          <div style={{fontSize:".75rem",color:"var(--mid)",marginTop:2}}>Copies your calendar link — then paste it in Apple Calendar</div>
+        </div>
+        <span style={{fontSize:".75rem",color:copied&&active==="apple"?"var(--pine)":"var(--mid)",fontWeight:700}}>{copied&&active==="apple"?"✓ Copied":"Copy"}</span>
+      </button>
+      {active==="apple" && (
+        <div style={{background:"#F0F6F3",border:"1px solid #C3DDD0",borderRadius:10,padding:"12px 14px",marginBottom:8,fontSize:".78rem",color:"var(--dark)",lineHeight:1.8}}>
+          <div style={{fontWeight:700,color:"var(--pine)",marginBottom:6}}>✓ Link copied — now open Apple Calendar:</div>
+          <div><strong>On Mac:</strong> File → New Calendar Subscription → paste → Subscribe</div>
+          <div><strong>On iPhone/iPad:</strong> Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar → paste → Next</div>
+        </div>
+      )}
+
+      {/* Outlook */}
+      <button onClick={handleOutlook} style={active==="outlook" ? btnActive : btnBase}>
+        <svg viewBox="0 0 48 48" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="36" height="36" rx="4" fill="#0078D4"/>
+          <rect x="14" y="14" width="20" height="20" rx="2" fill="#fff" fillOpacity=".15"/>
+          <text x="24" y="30" textAnchor="middle" fontSize="14" fontWeight="700" fill="#fff" fontFamily="Arial,sans-serif">O</text>
+        </svg>
+        <div style={{flex:1, textAlign:"left"}}>
+          <div style={{fontSize:".85rem",fontWeight:700,color:"var(--dark)"}}>Outlook</div>
+          <div style={{fontSize:".75rem",color:"var(--mid)",marginTop:2}}>Copies your calendar link — then paste it in Outlook</div>
+        </div>
+        <span style={{fontSize:".75rem",color:copied&&active==="outlook"?"var(--pine)":"var(--mid)",fontWeight:700}}>{copied&&active==="outlook"?"✓ Copied":"Copy"}</span>
+      </button>
+      {active==="outlook" && (
+        <div style={{background:"#F0F6F3",border:"1px solid #C3DDD0",borderRadius:10,padding:"12px 14px",marginBottom:8,fontSize:".78rem",color:"var(--dark)",lineHeight:1.8}}>
+          <div style={{fontWeight:700,color:"var(--pine)",marginBottom:6}}>✓ Link copied — now open Outlook:</div>
+          <div><strong>Desktop:</strong> Add calendar → From internet → paste → OK</div>
+          <div><strong>Outlook.com:</strong> Add calendar → Subscribe from web → paste → Import</div>
+        </div>
+      )}
+
+      {/* Advanced: show raw URL */}
+      <div style={{marginTop:4,textAlign:"center"}}>
+        <button onClick={copyUrl} style={{background:"none",border:"none",fontSize:".72rem",color:"#A8A09A",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>
+          {copied ? "✓ Link copied" : "Copy raw link (for other calendar apps)"}
+        </button>
+      </div>
     </div>
   );
 }
