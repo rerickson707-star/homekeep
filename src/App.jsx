@@ -15353,6 +15353,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const [genItems, setGenItems]     = useState([]);
   const [genChecked, setGenChecked] = useState({});
   const [created, setCreated]       = useState(new Set()); // suggestion ids already created
+  const [showCalSync, setShowCalSync] = useState(false);
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
@@ -15534,6 +15535,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 <button className="ct-nav-btn" onClick={prevMonth}>‹</button>
                 <button className="ct-nav-btn ct-today-btn" onClick={()=>{setCurMonth(today.getMonth());setCurYear(today.getFullYear());setSelDate(todayStr);}}>Today</button>
                 <button className="ct-nav-btn" onClick={nextMonth}>›</button>
+                <button className="ct-nav-btn" onClick={()=>setShowCalSync(true)} title="Sync to calendar" style={{fontSize:".72rem",padding:"3px 8px",marginLeft:4}}>📅 Sync</button>
               </div>
             </div>
             <div className="ct-cg">
@@ -15697,6 +15699,26 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 {saving ? "Saving…" : "Create Task"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar sync popup */}
+      {showCalSync && (
+        <div className="overlay" style={{zIndex:600}} onClick={e=>e.target===e.currentTarget&&setShowCalSync(false)}>
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-handle"/>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div>
+                <div style={{fontFamily:"Georgia,serif",fontSize:18,color:"var(--pine)",marginBottom:2}}>Sync to your calendar</div>
+                <div style={{fontSize:12,color:"var(--mid)"}}>Your tasks and warranty dates, always up to date.</div>
+              </div>
+              <button onClick={()=>setShowCalSync(false)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"var(--mid)",lineHeight:1}}>×</button>
+            </div>
+            {userId
+              ? <CalendarSyncWidget userId={userId}/>
+              : <div style={{fontSize:13,color:"var(--mid)"}}>Sign in to access your calendar feed.</div>
+            }
           </div>
         </div>
       )}
