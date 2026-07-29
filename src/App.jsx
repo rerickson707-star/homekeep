@@ -3493,7 +3493,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem",marginBottom:"1.1rem"}}>
             <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"var(--pine)",marginBottom:".5rem"}}>Calendar sync</div>
             <div style={{fontSize:".82rem",color:"var(--mid)",lineHeight:1.6,marginBottom:".75rem"}}>Subscribe to your maintenance tasks and warranty expiries in Apple Calendar, Google Calendar, or Outlook. Updates automatically.</div>
-            {userId && <CalendarSyncWidget userId={userId} />}
+            {session?.user?.id && <CalendarSyncWidget userId={session.user.id} />}
           </div>
 
           {/* Danger zone */}
