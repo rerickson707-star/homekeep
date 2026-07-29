@@ -15535,7 +15535,27 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 <button className="ct-nav-btn" onClick={prevMonth}>‹</button>
                 <button className="ct-nav-btn ct-today-btn" onClick={()=>{setCurMonth(today.getMonth());setCurYear(today.getFullYear());setSelDate(todayStr);}}>Today</button>
                 <button className="ct-nav-btn" onClick={nextMonth}>›</button>
-                <button className="ct-nav-btn" onClick={()=>setShowCalSync(true)} title="Sync to calendar" style={{fontSize:".72rem",padding:"3px 8px",marginLeft:4}}>📅 Sync</button>
+                <button
+                  onClick={()=>setShowCalSync(true)}
+                  style={{
+                    display:"flex",alignItems:"center",gap:6,
+                    background:"var(--pine)",color:"#F4EDDF",
+                    border:"none",borderRadius:20,
+                    padding:"6px 14px",fontSize:".78rem",fontWeight:700,
+                    cursor:"pointer",fontFamily:"inherit",
+                    marginLeft:8,whiteSpace:"nowrap",flexShrink:0,
+                    boxShadow:"0 1px 4px rgba(35,74,61,.18)",
+                  }}>
+                  <svg viewBox="0 0 20 20" width="13" height="13" fill="none">
+                    <rect x="2" y="3" width="16" height="15" rx="2.5" stroke="#F4EDDF" strokeWidth="1.6"/>
+                    <path d="M2 8h16" stroke="#F4EDDF" strokeWidth="1.6"/>
+                    <path d="M6 1v4M14 1v4" stroke="#F4EDDF" strokeWidth="1.6" strokeLinecap="round"/>
+                    <circle cx="7" cy="12" r="1.2" fill="#F4EDDF"/>
+                    <circle cx="10" cy="12" r="1.2" fill="#F4EDDF"/>
+                    <circle cx="13" cy="12" r="1.2" fill="#F4EDDF"/>
+                  </svg>
+                  Sync to calendar
+                </button>
               </div>
             </div>
             <div className="ct-cg">
@@ -15706,19 +15726,23 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
       {/* Calendar sync popup */}
       {showCalSync && (
         <div className="overlay" style={{zIndex:600}} onClick={e=>e.target===e.currentTarget&&setShowCalSync(false)}>
-          <div className="modal" style={{maxWidth:420}}>
-            <div className="modal-handle"/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+          <div className="modal" style={{maxWidth:520,padding:0,overflow:"hidden"}}>
+            <div className="modal-handle" style={{marginTop:8}}/>
+            {/* Header */}
+            <div style={{background:"var(--pine)",padding:"20px 24px",display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
-                <div style={{fontFamily:"Georgia,serif",fontSize:18,color:"var(--pine)",marginBottom:2}}>Sync to your calendar</div>
-                <div style={{fontSize:12,color:"var(--mid)"}}>Your tasks and warranty dates, always up to date.</div>
+                <div style={{fontFamily:"Georgia,serif",fontSize:20,color:"#F4EDDF",fontWeight:400,marginBottom:4}}>Sync to your calendar</div>
+                <div style={{fontSize:13,color:"rgba(244,237,223,.7)",lineHeight:1.5}}>Your maintenance tasks and warranty dates — always visible in the calendar app you already use.</div>
               </div>
-              <button onClick={()=>setShowCalSync(false)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"var(--mid)",lineHeight:1}}>×</button>
+              <button onClick={()=>setShowCalSync(false)} style={{background:"rgba(244,237,223,.15)",border:"none",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#F4EDDF",fontSize:16,flexShrink:0,marginLeft:12}}>×</button>
             </div>
-            {userId
-              ? <CalendarSyncWidget userId={userId}/>
-              : <div style={{fontSize:13,color:"var(--mid)"}}>Sign in to access your calendar feed.</div>
-            }
+            {/* Body */}
+            <div style={{padding:"20px 24px"}}>
+              {userId
+                ? <CalendarSyncWidget userId={userId}/>
+                : <div style={{fontSize:13,color:"var(--mid)"}}>Sign in to access your calendar feed.</div>
+              }
+            </div>
           </div>
         </div>
       )}
