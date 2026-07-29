@@ -1781,6 +1781,81 @@ function Modal({ title, onClose, onSave, children, footer }) {
 // ── useFormDraft — persists active form state to localStorage so a tab reload
 // (caused by iOS/Android suspending the browser) restores in-progress data.
 // TTL: 30 minutes. Usage: const [draft, setDraft] = useFormDraft("key", initial);
+
+// ─── CALENDAR SYNC WIDGET ─────────────────────────────────────────────────────
+// Shows the user's iCal feed URL and copy/subscribe buttons
+function CalendarSyncWidget({ userId }) {
+  const SUPABASE_URL = "https://hjkyameroqufaojuerns.supabase.co";
+  const [feedUrl,   setFeedUrl]   = useState(null);
+  const [loading,   setLoading]   = useState(true);
+  const [copied,    setCopied]    = useState(false);
+  const [expanded,  setExpanded]  = useState(false);
+
+  useEffect(() => {
+    supabase.from("profiles")
+      .select("calendar_token")
+      .eq("user_id", userId)
+      .single()
+      .then(({ data }) => {
+        if (data?.calendar_token) {
+          setFeedUrl(`${SUPABASE_URL}/functions/v1/ical-feed?token=${data.calendar_token}`);
+        }
+        setLoading(false);
+      });
+  }, [userId]);
+
+  const copy = async () => {
+    if (!feedUrl) return;
+    await navigator.clipboard.writeText(feedUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  if (loading) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Loading…</div>;
+  if (!feedUrl) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Calendar feed unavailable.</div>;
+
+  const googleUrl = `https://www.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(feedUrl)}`;
+
+  return (
+    <div>
+      {/* URL row */}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+        <div style={{flex:1,background:"var(--cream2)",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"var(--mid)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:"monospace"}}>
+          {feedUrl}
+        </div>
+        <button onClick={copy} style={{flexShrink:0,background:copied?"var(--pine)":"var(--cream2)",color:copied?"#F4EDDF":"var(--dark)",border:"none",borderRadius:8,padding:"8px 14px",fontSize:".78rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",whiteSpace:"nowrap"}}>
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
+
+      {/* Quick subscribe buttons */}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+        <a href={googleUrl} target="_blank" rel="noreferrer"
+          style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff",border:"1.5px solid var(--cream2)",borderRadius:8,padding:"7px 14px",fontSize:".78rem",fontWeight:700,color:"var(--dark)",textDecoration:"none",fontFamily:"inherit"}}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#4285F4" strokeWidth="2"/><path d="M3 9h18" stroke="#4285F4" strokeWidth="2"/><path d="M9 3v6" stroke="#4285F4" strokeWidth="2"/><path d="M15 3v6" stroke="#4285F4" strokeWidth="2"/></svg>
+          Google Calendar
+        </a>
+        <button onClick={() => setExpanded(e => !e)}
+          style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff",border:"1.5px solid var(--cream2)",borderRadius:8,padding:"7px 14px",fontSize:".78rem",fontWeight:700,color:"var(--dark)",cursor:"pointer",fontFamily:"inherit"}}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#555" strokeWidth="2"/><path d="M3 9h18" stroke="#555" strokeWidth="2"/><path d="M9 3v6" stroke="#555" strokeWidth="2"/><path d="M15 3v6" stroke="#555" strokeWidth="2"/></svg>
+          Apple / Outlook
+        </button>
+      </div>
+
+      {/* Expanded instructions for Apple / Outlook */}
+      {expanded && (
+        <div style={{background:"var(--cream2)",borderRadius:10,padding:"12px 14px",fontSize:".78rem",color:"var(--mid)",lineHeight:1.7}}>
+          <div style={{fontWeight:700,color:"var(--dark)",marginBottom:6}}>Apple Calendar</div>
+          <div>File → New Calendar Subscription → paste the URL above → Subscribe.</div>
+          <div style={{fontWeight:700,color:"var(--dark)",margin:"10px 0 6px"}}>Outlook</div>
+          <div>Add calendar → From internet → paste the URL above → Import.</div>
+          <div style={{marginTop:8,fontSize:".72rem",color:"#A8A09A"}}>Updates sync automatically — Apple every ~1 hour, Google every 24 hours, Outlook every day.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function useFormDraft(key, initial) {
   const storageKey = `sw_draft_${key}`;
   const TTL = 30 * 60 * 1000; // 30 minutes
@@ -3352,6 +3427,13 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
               ⚠ Your subscription is cancelled. Access continues until <strong>{new Date(profile.plan_cancel_at).toLocaleDateString()}</strong>.
             </div>
           )}
+
+          {/* Calendar sync */}
+          <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem",marginBottom:"1.1rem"}}>
+            <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"var(--pine)",marginBottom:".5rem"}}>Calendar sync</div>
+            <div style={{fontSize:".82rem",color:"var(--mid)",lineHeight:1.6,marginBottom:".75rem"}}>Subscribe to your maintenance tasks and warranty expiries in Apple Calendar, Google Calendar, or Outlook. Updates automatically.</div>
+            <CalendarSyncWidget userId={userId} />
+          </div>
 
           {/* Danger zone */}
           <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem"}}>
