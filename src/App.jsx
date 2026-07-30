@@ -15518,30 +15518,24 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
           {/* Calendar grid */}
           <div className="ct-cal">
             <div className="ct-cal-hdr">
-              <span className="ct-month-lbl">{MONTHS[curMonth]} {curYear}</span>
+              <div style={{display:"flex",alignItems:"baseline",gap:12}}>
+                <span className="ct-month-lbl">{MONTHS[curMonth]} {curYear}</span>
+                <button
+                  onClick={()=>setShowCalSync(true)}
+                  style={{
+                    background:"none",border:"none",padding:0,
+                    fontSize:".72rem",fontWeight:600,color:"var(--pine)",
+                    cursor:"pointer",fontFamily:"inherit",
+                    textDecoration:"underline",textUnderlineOffset:2,
+                    whiteSpace:"nowrap",flexShrink:0,
+                  }}>
+                  Sync to calendar
+                </button>
+              </div>
               <div className="ct-navs">
                 <button className="ct-nav-btn" onClick={prevMonth}>‹</button>
                 <button className="ct-nav-btn ct-today-btn" onClick={()=>{setCurMonth(today.getMonth());setCurYear(today.getFullYear());setSelDate(todayStr);}}>Today</button>
                 <button className="ct-nav-btn" onClick={nextMonth}>›</button>
-                <button
-                  onClick={()=>setShowCalSync(true)}
-                  title="Sync to your calendar"
-                  style={{
-                    width:30,height:30,borderRadius:8,
-                    border:"1px solid var(--pine)",
-                    background:"var(--pine)",color:"#F4EDDF",
-                    cursor:"pointer",display:"flex",alignItems:"center",
-                    justifyContent:"center",flexShrink:0,
-                  }}>
-                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
-                    <rect x="2" y="3" width="16" height="15" rx="2.5" stroke="#F4EDDF" strokeWidth="1.6"/>
-                    <path d="M2 8h16" stroke="#F4EDDF" strokeWidth="1.6"/>
-                    <path d="M6 1v4M14 1v4" stroke="#F4EDDF" strokeWidth="1.6" strokeLinecap="round"/>
-                    <circle cx="7" cy="12" r="1.2" fill="#F4EDDF"/>
-                    <circle cx="10" cy="12" r="1.2" fill="#F4EDDF"/>
-                    <circle cx="13" cy="12" r="1.2" fill="#F4EDDF"/>
-                  </svg>
-                </button>
               </div>
             </div>
             <div className="ct-cg">
