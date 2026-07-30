@@ -15537,16 +15537,15 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 <button className="ct-nav-btn" onClick={nextMonth}>›</button>
                 <button
                   onClick={()=>setShowCalSync(true)}
+                  title="Sync to your calendar"
                   style={{
-                    display:"flex",alignItems:"center",gap:6,
+                    width:30,height:30,borderRadius:8,
+                    border:"1px solid var(--pine)",
                     background:"var(--pine)",color:"#F4EDDF",
-                    border:"none",borderRadius:20,
-                    padding:"6px 14px",fontSize:".78rem",fontWeight:700,
-                    cursor:"pointer",fontFamily:"inherit",
-                    marginLeft:8,whiteSpace:"nowrap",flexShrink:0,
-                    boxShadow:"0 1px 4px rgba(35,74,61,.18)",
+                    cursor:"pointer",display:"flex",alignItems:"center",
+                    justifyContent:"center",flexShrink:0,
                   }}>
-                  <svg viewBox="0 0 20 20" width="13" height="13" fill="none">
+                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
                     <rect x="2" y="3" width="16" height="15" rx="2.5" stroke="#F4EDDF" strokeWidth="1.6"/>
                     <path d="M2 8h16" stroke="#F4EDDF" strokeWidth="1.6"/>
                     <path d="M6 1v4M14 1v4" stroke="#F4EDDF" strokeWidth="1.6" strokeLinecap="round"/>
@@ -15554,7 +15553,6 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                     <circle cx="10" cy="12" r="1.2" fill="#F4EDDF"/>
                     <circle cx="13" cy="12" r="1.2" fill="#F4EDDF"/>
                   </svg>
-                  Sync to calendar
                 </button>
               </div>
             </div>
