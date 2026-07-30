@@ -1350,7 +1350,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-navs{display:flex;align-items:center;gap:4px}
 .ct-nav-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--stone);background:none;cursor:pointer;color:var(--dark);font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:background .12s}
 .ct-nav-btn:hover{background:var(--cream2)}
-.ct-today-btn{font-size:.62rem;font-weight:700;letter-spacing:.3px;padding:0 .5rem}
+.ct-today-btn{font-size:.72rem;font-weight:700;letter-spacing:.3px;width:auto;padding:0 10px}
 .ct-cg{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--stone)}
 .ct-dow{background:var(--cream2);padding:.42rem 0;text-align:center;font-size:.63rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#9E9690}
 .ct-day{background:var(--white);padding:.32rem .38rem .4rem;min-height:58px;cursor:pointer;transition:background .1s;position:relative;user-select:none}
@@ -15523,13 +15523,19 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 <button
                   onClick={()=>setShowCalSync(true)}
                   style={{
-                    background:"none",border:"none",padding:0,
-                    fontSize:".72rem",fontWeight:600,color:"var(--pine)",
+                    background:"var(--cream2)",border:"none",
+                    borderRadius:20,padding:"3px 10px",
+                    fontSize:".7rem",fontWeight:700,color:"var(--pine)",
                     cursor:"pointer",fontFamily:"inherit",
-                    textDecoration:"underline",textUnderlineOffset:2,
                     whiteSpace:"nowrap",flexShrink:0,
+                    display:"flex",alignItems:"center",gap:4,
                   }}>
-                  Sync to calendar
+                  <svg viewBox="0 0 16 16" width="11" height="11" fill="none">
+                    <rect x="1" y="2" width="14" height="13" rx="2" stroke="var(--pine)" strokeWidth="1.4"/>
+                    <path d="M1 7h14" stroke="var(--pine)" strokeWidth="1.4"/>
+                    <path d="M5 1v3M11 1v3" stroke="var(--pine)" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  Sync
                 </button>
               </div>
               <div className="ct-navs">
