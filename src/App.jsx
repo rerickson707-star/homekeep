@@ -1784,25 +1784,15 @@ function Modal({ title, onClose, onSave, children, footer }) {
 
 // ─── CALENDAR SYNC WIDGET ─────────────────────────────────────────────────────
 // Shows the user's iCal feed URL and copy/subscribe buttons
-function CalendarSyncWidget({ userId }) {
+function CalendarSyncWidget({ userId, calendarToken }) {
   const SUPABASE_URL = "https://hjkyameroqufaojuerns.supabase.co";
-  const [feedUrl,    setFeedUrl]    = useState(null);
-  const [loading,    setLoading]    = useState(true);
+  // Use passed token directly — avoids secondary fetch which fails on Safari/iOS
+  const feedUrl = calendarToken
+    ? `${SUPABASE_URL}/functions/v1/ical-feed?token=${calendarToken}`
+    : null;
+  const loading = false;
   const [active,     setActive]     = useState(null); // "google" | "apple" | "outlook" | null
   const [copied,     setCopied]     = useState(false);
-
-  useEffect(() => {
-    supabase.from("profiles")
-      .select("calendar_token")
-      .eq("user_id", userId)
-      .single()
-      .then(({ data }) => {
-        if (data?.calendar_token) {
-          setFeedUrl(`${SUPABASE_URL}/functions/v1/ical-feed?token=${data.calendar_token}`);
-        }
-        setLoading(false);
-      });
-  }, [userId]);
 
   const copyUrl = async () => {
     if (!feedUrl) return;
@@ -1826,9 +1816,7 @@ function CalendarSyncWidget({ userId }) {
     setActive("outlook");
   };
 
-  if (!userId) return null;
-  if (loading) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Loading…</div>;
-  if (!feedUrl) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Calendar feed unavailable.</div>;
+  if (!feedUrl) return <div style={{fontSize:".8rem",color:"var(--mid)"}}>Calendar feed unavailable. Try refreshing the page.</div>;
 
   const btnBase = {
     display:"flex", alignItems:"center", gap:10,
@@ -3493,7 +3481,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem",marginBottom:"1.1rem"}}>
             <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"var(--pine)",marginBottom:".5rem"}}>Calendar sync</div>
             <div style={{fontSize:".82rem",color:"var(--mid)",lineHeight:1.6,marginBottom:".75rem"}}>Subscribe to your maintenance tasks and warranty expiries in Apple Calendar, Google Calendar, or Outlook. Updates automatically.</div>
-            {session?.user?.id && <CalendarSyncWidget userId={session.user.id} />}
+            {session?.user?.id && <CalendarSyncWidget userId={session.user.id} calendarToken={profile?.calendar_token} />}
           </div>
 
           {/* Danger zone */}
@@ -15737,7 +15725,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
             {/* Body */}
             <div style={{padding:"20px 24px"}}>
               {userId
-                ? <CalendarSyncWidget userId={userId}/>
+                ? <CalendarSyncWidget userId={userId} calendarToken={profile?.calendar_token}/>
                 : <div style={{fontSize:13,color:"var(--mid)"}}>Sign in to access your calendar feed.</div>
               }
             </div>
