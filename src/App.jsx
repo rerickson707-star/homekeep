@@ -15523,19 +15523,19 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 <button
                   onClick={()=>setShowCalSync(true)}
                   style={{
-                    background:"var(--cream2)",border:"none",
-                    borderRadius:20,padding:"3px 10px",
-                    fontSize:".7rem",fontWeight:700,color:"var(--pine)",
+                    background:"var(--pine)",border:"none",
+                    borderRadius:20,padding:"5px 12px",
+                    fontSize:".72rem",fontWeight:700,color:"#F4EDDF",
                     cursor:"pointer",fontFamily:"inherit",
                     whiteSpace:"nowrap",flexShrink:0,
-                    display:"flex",alignItems:"center",gap:4,
+                    display:"flex",alignItems:"center",gap:5,
                   }}>
                   <svg viewBox="0 0 16 16" width="11" height="11" fill="none">
-                    <rect x="1" y="2" width="14" height="13" rx="2" stroke="var(--pine)" strokeWidth="1.4"/>
-                    <path d="M1 7h14" stroke="var(--pine)" strokeWidth="1.4"/>
-                    <path d="M5 1v3M11 1v3" stroke="var(--pine)" strokeWidth="1.4" strokeLinecap="round"/>
+                    <rect x="1" y="2" width="14" height="13" rx="2" stroke="#F4EDDF" strokeWidth="1.4"/>
+                    <path d="M1 7h14" stroke="#F4EDDF" strokeWidth="1.4"/>
+                    <path d="M5 1v3M11 1v3" stroke="#F4EDDF" strokeWidth="1.4" strokeLinecap="round"/>
                   </svg>
-                  Sync
+                  Sync to calendar
                 </button>
               </div>
               <div className="ct-navs">
