@@ -2543,7 +2543,7 @@ function LandingPage({ onSignIn, onSignUp }) {
 
 // ─── ONBOARDING WIZARD ───────────────────────────────────────────────────────
 function OnboardingWizard({ session, onComplete }) {
-  const TOTAL = 3;
+  const TOTAL = 4;
   const [step, setStep]   = useState(1);
   const [saving, setSaving] = useState(false);
 
@@ -2567,6 +2567,15 @@ function OnboardingWizard({ session, onComplete }) {
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [goals, setGoals] = useState([]);
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
+  const [hearAbout, setHearAbout] = useState(null);
+  const HEAR_ABOUT = [
+    { id:"google",    label:"Google search",             ico:"🔍" },
+    { id:"instagram", label:"Instagram",                 ico:"📸" },
+    { id:"friend",    label:"A friend or family member", ico:"👋" },
+    { id:"agent",     label:"My real estate agent",      ico:"🏠" },
+    { id:"reddit",    label:"Reddit",                    ico:"💬" },
+    { id:"other",     label:"Somewhere else",            ico:"✨" },
+  ];
   const GOALS = [
     { id:"maintenance", label:"Stay on top of maintenance",    sub:"Reminders, seasonal tasks, service history",   ico:"🔧" },
     { id:"costs",       label:"Track costs & expenses",        sub:"Repairs, utilities, project spending",         ico:"📊" },
@@ -2633,13 +2642,47 @@ function OnboardingWizard({ session, onComplete }) {
     setLookupState("idle"); setPropertyData(null); setSuggesting(false);
   };
 
+  if (step === 4) return (
+    <div className="onb-screen">
+      <ProgressBar/>
+      <Wordmark/>
+      <div className="onb-inner">
+        <div className="onb-step">Step 4 of {TOTAL}</div>
+        <div className="onb-q">One last thing — how did you hear about us?</div>
+        <div className="onb-hint">Helps us know where to show up for people like you.</div>
+        <div className="onb-goals" style={{marginBottom:"1rem"}}>
+          {HEAR_ABOUT.map(opt => (
+            <button key={opt.id} className={`onb-goal ${hearAbout === opt.id ? "sel" : ""}`} onClick={() => setHearAbout(opt.id)}>
+              <div className="onb-goal-ico">{opt.ico}</div>
+              <div className="onb-goal-text">
+                <div className="onb-goal-label">{opt.label}</div>
+              </div>
+              <div className="onb-goal-check">
+                {hearAbout === opt.id && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+            </button>
+          ))}
+        </div>
+        <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
+          {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
+        </button>
+        <div style={{textAlign:"center",marginTop:".5rem"}}>
+          <button className="onb-skip" onClick={() => handleFinish(true)}>
+            Skip — go to my dashboard
+          </button>
+        </div>
+        <button className="onb-back" onClick={() => setStep(3)}>← Back</button>
+      </div>
+    </div>
+  );
+
   const handleFinish = async (skipSetup = false) => {
     setSaving(true);
     const uid = session.user.id;
     try {
       const payload = {
         user_id: uid, name: name.trim(), goal: goals.length ? goals.join(",") : null, onboarding_complete: true,
-        referred_by: (() => { const m = document.cookie.match(/(^| )rw_via=([^;]+)/); return m ? decodeURIComponent(m[2]) : null; })() || null,
+        referred_by: (() => { const m = document.cookie.match(/(^| )rw_via=([^;]+)/); return m ? decodeURIComponent(m[2]) : (hearAbout || null); })(),
         address: propertyData?.address || address || "",
         type: propertyData?.type || "", year: propertyData?.year || "",
         sqft: propertyData?.sqft || "", bedrooms: propertyData?.bedrooms || "",
@@ -2876,12 +2919,12 @@ function OnboardingWizard({ session, onComplete }) {
             </button>
           ))}
         </div>
-        <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
-          {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
+        <button className="onb-btn" onClick={() => setStep(4)}>
+          Continue →
         </button>
         <div style={{textAlign:"center",marginTop:".5rem"}}>
-          <button className="onb-skip" onClick={() => handleFinish(true)}>
-            Skip for now — go to my dashboard
+          <button className="onb-skip" onClick={() => setStep(4)}>
+            Skip for now
           </button>
           <div style={{fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".35rem",lineHeight:1.5}}>
             You'll start with an empty dashboard and no maintenance schedule. Takes about 3 minutes to set up — worth it.
