@@ -2607,50 +2607,7 @@ function OnboardingWizard({ session, onComplete }) {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // All sub-component declarations must come before any conditional return (TDZ safety)
-  const pct = `${Math.round((step / TOTAL) * 100)}%`;
-  const firstName = name.split(" ")[0];
-
-  const Wordmark = () => (
-    <div className="onb-wordmark">
-      <div className="onb-wordmark-dot">
-        <svg viewBox="0 0 48 48" fill="none" width="16" height="16">
-          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
-      </div>
-      <span className="onb-wordmark-name">Steadwell</span>
-    </div>
-  );
-
-  const ProgressBar = () => (
-    <div className="onb-bar-track">
-      <div className="onb-bar-fill" style={{width: pct}}/>
-    </div>
-  );
-
-  // Show loading spinner while checking for gift cookie
-  if (!giftChecked) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ECE3D2"}}>
-      <div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
-    </div>
-  );
-
-  const handleAddressInput = (val) => {
-    setAddress(val); setShowSug(true); setLookupState("idle");
-    setPropertyData(null); setSelectedAddress("");
-    clearTimeout(debounceRef.current);
-    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
-    setSuggesting(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
-        setSuggestions(results);
-      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
-      finally { setSuggesting(false); }
-    }, 120);
-  };
-
+  // All function declarations before any conditional return (TDZ safety in minified output)
   const selectSuggestion = async (s) => {
     const addr = s.description;
     setAddress(addr); setSelectedAddress(addr);
@@ -2667,40 +2624,6 @@ function OnboardingWizard({ session, onComplete }) {
     setAddress(""); setSelectedAddress(""); setSuggestions([]);
     setLookupState("idle"); setPropertyData(null); setSuggesting(false);
   };
-
-  if (step === 4) return (
-    <div className="onb-screen">
-      <ProgressBar/>
-      <Wordmark/>
-      <div className="onb-inner">
-        <div className="onb-step">Step 4 of {TOTAL}</div>
-        <div className="onb-q">One last thing — how did you hear about us?</div>
-        <div className="onb-hint">Helps us know where to show up for people like you.</div>
-        <div className="onb-goals" style={{marginBottom:"1rem"}}>
-          {HEAR_ABOUT.map(opt => (
-            <button key={opt.id} className={`onb-goal ${hearAbout === opt.id ? "sel" : ""}`} onClick={() => setHearAbout(opt.id)}>
-              <div className="onb-goal-ico">{opt.ico}</div>
-              <div className="onb-goal-text">
-                <div className="onb-goal-label">{opt.label}</div>
-              </div>
-              <div className="onb-goal-check">
-                {hearAbout === opt.id && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              </div>
-            </button>
-          ))}
-        </div>
-        <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
-          {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
-        </button>
-        <div style={{textAlign:"center",marginTop:".5rem"}}>
-          <button className="onb-skip" onClick={() => handleFinish(true)}>
-            Skip — go to my dashboard
-          </button>
-        </div>
-        <button className="onb-back" onClick={() => setStep(3)}>← Back</button>
-      </div>
-    </div>
-  );
 
   const handleFinish = async (skipSetup = false) => {
     setSaving(true);
@@ -2752,6 +2675,87 @@ function OnboardingWizard({ session, onComplete }) {
       await onComplete({ launchSetup: false });
     }
   };
+
+
+  const pct = `${Math.round((step / TOTAL) * 100)}%`;
+  const firstName = name.split(" ")[0];
+
+  const Wordmark = () => (
+    <div className="onb-wordmark">
+      <div className="onb-wordmark-dot">
+        <svg viewBox="0 0 48 48" fill="none" width="16" height="16">
+          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <span className="onb-wordmark-name">Steadwell</span>
+    </div>
+  );
+
+  const ProgressBar = () => (
+    <div className="onb-bar-track">
+      <div className="onb-bar-fill" style={{width: pct}}/>
+    </div>
+  );
+
+  // Show loading spinner while checking for gift cookie
+  if (!giftChecked) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ECE3D2"}}>
+      <div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
+    </div>
+  );
+
+  const handleAddressInput = (val) => {
+    setAddress(val); setShowSug(true); setLookupState("idle");
+    setPropertyData(null); setSelectedAddress("");
+    clearTimeout(debounceRef.current);
+    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
+    setSuggesting(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
+        setSuggestions(results);
+      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
+      finally { setSuggesting(false); }
+    }, 120);
+  };
+
+  if (step === 4) return (
+    <div className="onb-screen">
+      <ProgressBar/>
+      <Wordmark/>
+      <div className="onb-inner">
+        <div className="onb-step">Step 4 of {TOTAL}</div>
+        <div className="onb-q">One last thing — how did you hear about us?</div>
+        <div className="onb-hint">Helps us know where to show up for people like you.</div>
+        <div className="onb-goals" style={{marginBottom:"1rem"}}>
+          {HEAR_ABOUT.map(opt => (
+            <button key={opt.id} className={`onb-goal ${hearAbout === opt.id ? "sel" : ""}`} onClick={() => setHearAbout(opt.id)}>
+              <div className="onb-goal-ico">{opt.ico}</div>
+              <div className="onb-goal-text">
+                <div className="onb-goal-label">{opt.label}</div>
+              </div>
+              <div className="onb-goal-check">
+                {hearAbout === opt.id && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+            </button>
+          ))}
+        </div>
+        <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
+          {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
+        </button>
+        <div style={{textAlign:"center",marginTop:".5rem"}}>
+          <button className="onb-skip" onClick={() => handleFinish(true)}>
+            Skip — go to my dashboard
+          </button>
+        </div>
+        <button className="onb-back" onClick={() => setStep(3)}>← Back</button>
+      </div>
+    </div>
+  );
+
+  // handleFinish moved above
+
 
 
 
