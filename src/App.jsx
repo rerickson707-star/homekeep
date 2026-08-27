@@ -2542,6 +2542,15 @@ function LandingPage({ onSignIn, onSignUp }) {
 }
 
 // ─── ONBOARDING WIZARD ───────────────────────────────────────────────────────
+const HEAR_ABOUT = [
+  { id:"google",    label:"Google search",             ico:"🔍" },
+  { id:"instagram", label:"Instagram",                 ico:"📸" },
+  { id:"friend",    label:"A friend or family member", ico:"👋" },
+  { id:"agent",     label:"My real estate agent",      ico:"🏠" },
+  { id:"reddit",    label:"Reddit",                    ico:"💬" },
+  { id:"other",     label:"Somewhere else",            ico:"✨" },
+];
+
 function OnboardingWizard({ session, onComplete }) {
   const TOTAL = 4;
   const [step, setStep]   = useState(1);
@@ -2568,14 +2577,7 @@ function OnboardingWizard({ session, onComplete }) {
   const [goals, setGoals] = useState([]);
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
   const [hearAbout, setHearAbout] = useState(null);
-  const HEAR_ABOUT = [
-    { id:"google",    label:"Google search",             ico:"🔍" },
-    { id:"instagram", label:"Instagram",                 ico:"📸" },
-    { id:"friend",    label:"A friend or family member", ico:"👋" },
-    { id:"agent",     label:"My real estate agent",      ico:"🏠" },
-    { id:"reddit",    label:"Reddit",                    ico:"💬" },
-    { id:"other",     label:"Somewhere else",            ico:"✨" },
-  ];
+
   const GOALS = [
     { id:"maintenance", label:"Stay on top of maintenance",    sub:"Reminders, seasonal tasks, service history",   ico:"🔧" },
     { id:"costs",       label:"Track costs & expenses",        sub:"Repairs, utilities, project spending",         ico:"📊" },
