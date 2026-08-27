@@ -2560,7 +2560,15 @@ const ONBOARDING_GOALS = [
 
 function OnboardingWizard({ session, onComplete }) {
   const TOTAL = 4;
-  const [step, setStep]   = useState(1);
+  const ONB_STEP_KEY = `sw_onb_step_${session?.user?.id || "anon"}`;
+  const [step, setStepRaw] = useState(() => {
+    try { const s = sessionStorage.getItem(ONB_STEP_KEY); return s ? Math.min(Number(s), 4) : 1; }
+    catch { return 1; }
+  });
+  const setStep = (n) => {
+    setStepRaw(n);
+    try { sessionStorage.setItem(ONB_STEP_KEY, String(n)); } catch {}
+  };
   const [saving, setSaving] = useState(false);
 
   // ── Gift agent detection ───────────────────────────────────────────────────
@@ -2647,6 +2655,7 @@ function OnboardingWizard({ session, onComplete }) {
       const { data: existing } = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
       if (existing?.length > 0) { await supabase.from("profiles").update(payload).eq("user_id", uid); }
       else { await supabase.from("profiles").insert([payload]); }
+      try { sessionStorage.removeItem(ONB_STEP_KEY); } catch {}
       await onComplete({ launchSetup: !skipSetup });
       // ── Gift redemption: if user came via agent gift link, activate Plus ──
       if (giftAgent) {
