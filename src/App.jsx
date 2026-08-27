@@ -1250,7 +1250,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .onb-inner{flex:1;display:flex;flex-direction:column;justify-content:center;padding:5rem 2rem 5rem;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}
 @media(max-width:480px){.onb-inner{padding:5rem 1.4rem 2rem}}
 .onb-wordmark{position:fixed;top:0;left:0;right:0;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.6rem;z-index:9}
-.onb-wordmark-dot{width:28px;height:28px;background:#C16140;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.onb-wordmark-dot{width:28px;height:28px;background:#234A3D;border-radius:7px;border:1.5px solid rgba(244,237,223,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .onb-wordmark-name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#F4EDDF;letter-spacing:-.2px}
 .onb-step{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,237,223,.38);margin-bottom:1.6rem}
 .onb-q{font-family:'Fraunces',serif;font-size:clamp(1.75rem,5vw,2.4rem);font-weight:400;color:#F4EDDF;line-height:1.15;margin-bottom:.6rem}
