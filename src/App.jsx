@@ -2551,6 +2551,13 @@ const HEAR_ABOUT = [
   { id:"other",     label:"Somewhere else",            ico:"✨" },
 ];
 
+const ONBOARDING_GOALS = [
+  { id:"maintenance", label:"Stay on top of maintenance",    sub:"Reminders, seasonal tasks, service history",   ico:"🔧" },
+  { id:"costs",       label:"Track costs & expenses",        sub:"Repairs, utilities, project spending",         ico:"📊" },
+  { id:"selling",     label:"Prepare my home for sale",      sub:"Document work done, assets, and upgrades",     ico:"🏠" },
+  { id:"warranties",  label:"Organize warranties & insurance",sub:"Never lose a policy or warranty card again",   ico:"🔒" },
+];
+
 function OnboardingWizard({ session, onComplete }) {
   const TOTAL = 4;
   const [step, setStep]   = useState(1);
@@ -2578,12 +2585,7 @@ function OnboardingWizard({ session, onComplete }) {
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
   const [hearAbout, setHearAbout] = useState(null);
 
-  const GOALS = [
-    { id:"maintenance", label:"Stay on top of maintenance",    sub:"Reminders, seasonal tasks, service history",   ico:"🔧" },
-    { id:"costs",       label:"Track costs & expenses",        sub:"Repairs, utilities, project spending",         ico:"📊" },
-    { id:"selling",     label:"Prepare my home for sale",      sub:"Document work done, assets, and upgrades",     ico:"🏠" },
-    { id:"warranties",  label:"Organize warranties & insurance",sub:"Never lose a policy or warranty card again",   ico:"🔒" },
-  ];
+
 
   useEffect(() => {
     const m = document.cookie.match(/(^| )sw_agent=([^;]+)/);
@@ -2908,7 +2910,7 @@ function OnboardingWizard({ session, onComplete }) {
         <div className="onb-q">What brings you here{firstName ? `, ${firstName}` : ""}?</div>
         <div className="onb-hint">Select all that apply — we'll personalize your experience around what matters to you.</div>
         <div className="onb-goals">
-          {GOALS.map(g => (
+          {ONBOARDING_GOALS.map(g => (
             <button key={g.id} className={`onb-goal ${goals.includes(g.id) ? "sel" : ""}`} onClick={() => toggleGoal(g.id)}>
               <div className="onb-goal-ico">{g.ico}</div>
               <div className="onb-goal-text">
