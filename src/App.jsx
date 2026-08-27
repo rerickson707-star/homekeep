@@ -2744,11 +2744,6 @@ function OnboardingWizard({ session, onComplete }) {
         <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
           {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
         </button>
-        <div style={{textAlign:"center",marginTop:".5rem"}}>
-          <button className="onb-skip" onClick={() => handleFinish(true)}>
-            Skip — go to my dashboard
-          </button>
-        </div>
         <button className="onb-back" onClick={() => setStep(3)}>← Back</button>
       </div>
     </div>
@@ -2933,14 +2928,6 @@ function OnboardingWizard({ session, onComplete }) {
         <button className="onb-btn" onClick={() => setStep(4)}>
           Continue →
         </button>
-        <div style={{textAlign:"center",marginTop:".5rem"}}>
-          <button className="onb-skip" onClick={() => setStep(4)}>
-            Skip for now
-          </button>
-          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".35rem",lineHeight:1.5}}>
-            You'll start with an empty dashboard and no maintenance schedule. Takes about 3 minutes to set up — worth it.
-          </div>
-        </div>
         <button className="onb-back" onClick={() => setStep(2)}>← Back</button>
       </div>
     </div>
