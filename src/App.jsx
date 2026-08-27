@@ -2986,6 +2986,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const clear = () => { setError(""); setSuccess(""); };
 
@@ -3003,6 +3004,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     if (!email || !password) { setError("Please fill in all fields."); return; }
     if (password !== confirm) { setError("Passwords don't match."); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (!agreedToTerms) { setError("Please agree to the Terms of Service and Privacy Policy to continue."); return; }
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
@@ -3033,7 +3035,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     setTimeout(() => onAuth(), 1500);
   };
 
-  const switchMode = (m) => { setMode(m); clear(); setPassword(""); setConfirm(""); };
+  const switchMode = (m) => { setMode(m); clear(); setPassword(""); setConfirm(""); setAgreedToTerms(false); };
 
   return (
     <div className="auth-wrap" role="main">
@@ -3087,7 +3089,25 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
               <label>Confirm Password</label>
               <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="••••••••" />
             </div>
-            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:10,margin:"4px 0 16px",cursor:"pointer"}} onClick={()=>setAgreedToTerms(a=>!a)}>
+              <div style={{
+                width:18,height:18,borderRadius:4,border:"1.5px solid",flexShrink:0,marginTop:1,
+                borderColor:agreedToTerms?"#234A3D":"#C4B9AD",
+                background:agreedToTerms?"#234A3D":"transparent",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                transition:"all .15s"
+              }}>
+                {agreedToTerms && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#F4EDDF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <span style={{fontSize:".78rem",color:"#7A7370",lineHeight:1.5,userSelect:"none"}}>
+                I agree to the{" "}
+                <button type="button" onClick={e=>{e.stopPropagation();window.open("/terms","_blank");}} style={{background:"none",border:"none",padding:0,color:"#234A3D",fontWeight:600,cursor:"pointer",fontSize:".78rem",fontFamily:"inherit",textDecoration:"underline"}}>Terms of Service</button>
+                {" "}and{" "}
+                <button type="button" onClick={e=>{e.stopPropagation();window.open("/privacy","_blank");}} style={{background:"none",border:"none",padding:0,color:"#234A3D",fontWeight:600,cursor:"pointer",fontSize:".78rem",fontFamily:"inherit",textDecoration:"underline"}}>Privacy Policy</button>
+                , including the use of analytics and error monitoring to improve the service.
+              </span>
+            </div>
+            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading || !agreedToTerms} style={{opacity:(!agreedToTerms||loading)?.6:1,transition:"opacity .15s"}}>
               {loading ? "Creating account…" : "Create Account"}
             </button>
           </form>
