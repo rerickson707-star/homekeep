@@ -2607,6 +2607,28 @@ function OnboardingWizard({ session, onComplete }) {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  // All sub-component declarations must come before any conditional return (TDZ safety)
+  const pct = `${Math.round((step / TOTAL) * 100)}%`;
+  const firstName = name.split(" ")[0];
+
+  const Wordmark = () => (
+    <div className="onb-wordmark">
+      <div className="onb-wordmark-dot">
+        <svg viewBox="0 0 48 48" fill="none" width="16" height="16">
+          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <span className="onb-wordmark-name">Steadwell</span>
+    </div>
+  );
+
+  const ProgressBar = () => (
+    <div className="onb-bar-track">
+      <div className="onb-bar-fill" style={{width: pct}}/>
+    </div>
+  );
+
   // Show loading spinner while checking for gift cookie
   if (!giftChecked) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#ECE3D2"}}>
@@ -2731,26 +2753,7 @@ function OnboardingWizard({ session, onComplete }) {
     }
   };
 
-  const pct = `${Math.round((step / TOTAL) * 100)}%`;
-  const firstName = name.split(" ")[0];
 
-  const Wordmark = () => (
-    <div className="onb-wordmark">
-      <div className="onb-wordmark-dot">
-        <svg viewBox="0 0 48 48" fill="none" width="16" height="16">
-          <path d="M12 34 L12 20 L24 10 L36 20 L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M8 35.5 L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
-      </div>
-      <span className="onb-wordmark-name">Steadwell</span>
-    </div>
-  );
-
-  const ProgressBar = () => (
-    <div className="onb-bar-track">
-      <div className="onb-bar-fill" style={{width: pct}}/>
-    </div>
-  );
 
   // ── Step 0: Gift welcome (only when agent gift cookie present) ───────────────
   if (step === 0 && giftAgent) {
