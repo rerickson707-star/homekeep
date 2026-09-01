@@ -17024,18 +17024,40 @@ function UnsubscribePage() {
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
 const ADMIN_EMAIL = "hello@trysteadwell.app";
 function AdminPage() {
-  const [authed, setAuthed]     = useState(null);
-  const [tab, setTab]           = useState("dashboard");
-  const [agents, setAgents]     = useState([]);
-  const [users, setUsers]       = useState([]);
-  const [feedback, setFeedback]       = useState([]);
+  const [authed, setAuthed]         = useState(null);
+  const [tab, setTab]               = useState("dashboard");
+  const [agents, setAgents]         = useState([]);
+  const [users, setUsers]           = useState([]);
+  const [authUsers, setAuthUsers]   = useState({}); // user_id -> email
+  const [feedback, setFeedback]     = useState([]);
   const [redemptions, setRedemptions] = useState([]);
-  const [stats, setStats]             = useState(null);
-  const [loading, setLoading]         = useState(false);
-  const [acting, setActing]           = useState(null);
-  const [msg, setMsg]                 = useState(null);
-  const [editingUser, setEditingUser] = useState(null);
-  const [savingUser, setSavingUser]   = useState(null);
+  const [giftSends, setGiftSends]   = useState([]);
+  const [stats, setStats]           = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [acting, setActing]         = useState(null);
+  const [msg, setMsg]               = useState(null);
+  const [msgType, setMsgType]       = useState("success"); // success | error
+
+  // Users tab state
+  const [userSearch, setUserSearch] = useState("");
+  const [userPlanFilter, setUserPlanFilter] = useState("all");
+  const [editCell, setEditCell]     = useState(null); // {userId, field}
+  const [editVal, setEditVal]       = useState("");
+  const [savingCell, setSavingCell] = useState(null);
+
+  // Database tab state
+  const [dbTable, setDbTable]       = useState("profiles");
+  const [dbRows, setDbRows]         = useState([]);
+  const [dbCols, setDbCols]         = useState([]);
+  const [dbLoading, setDbLoading]   = useState(false);
+  const [dbSearch, setDbSearch]     = useState("");
+  const [dbEditCell, setDbEditCell] = useState(null);
+  const [dbEditVal, setDbEditVal]   = useState("");
+  const [dbSaving, setDbSaving]     = useState(null);
+  const [dbPage, setDbPage]         = useState(0);
+  const DB_PAGE_SIZE = 50;
+
+  const notify = (m, type="success") => { setMsg(m); setMsgType(type); };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -17046,30 +17068,66 @@ function AdminPage() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [agentRes, profileRes, feedRes, redemptionRes] = await Promise.all([
+    const [agentRes, profileRes, feedRes, redemptionRes, sendsRes] = await Promise.all([
       supabase.from("agent_applications").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("user_id, name, plan, address, referred_by, admin_notes, created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("profiles").select("user_id, name, plan, address, referred_by, admin_notes, created_at, gift_expires_at, plan_cancel_at, gift_agent_token").order("created_at", { ascending: false }).limit(500),
       supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
-      supabase.from("gift_redemptions").select("agent_token, user_id, redeemed_at"),
+      supabase.from("gift_redemptions").select("agent_token, user_id, redeemed_at, client_email"),
+      supabase.from("gift_sends").select("agent_token, client_name, client_email, sent_at"),
     ]);
     const ag = agentRes.data || [];
     const pr = profileRes.data || [];
     const fb = feedRes.data || [];
     const rd = redemptionRes.data || [];
-    setAgents(ag); setUsers(pr); setFeedback(fb); setRedemptions(rd);
-    const now = new Date(); const weekAgo = new Date(now - 7*24*60*60*1000);
+    const gs = sendsRes.data || [];
+    setAgents(ag); setUsers(pr); setFeedback(fb); setRedemptions(rd); setGiftSends(gs);
+
+    // Build stats
+    const now = new Date();
+    const weekAgo  = new Date(now - 7*24*60*60*1000);
+    const monthAgo = new Date(now - 30*24*60*60*1000);
     const planCounts = { free:0, plus:0, pro:0 };
     pr.forEach(p => { const pl=(p.plan||"free").toLowerCase(); planCounts[pl]=(planCounts[pl]||0)+1; });
+
+    // Signup trend — last 8 weeks
+    const weekBuckets = Array.from({length:8}, (_,i) => {
+      const d = new Date(now - (7-i)*7*24*60*60*1000);
+      return { label: d.toLocaleDateString("en-US",{month:"short",day:"numeric"}), count:0, ts: d.getTime() };
+    });
+    pr.forEach(p => {
+      const t = new Date(p.created_at).getTime();
+      for (let i = weekBuckets.length-1; i >= 0; i--) {
+        if (t >= weekBuckets[i].ts) { weekBuckets[i].count++; break; }
+      }
+    });
+
+    // How did you hear about us
+    const hearCounts = {};
+    pr.forEach(p => {
+      if (p.referred_by) {
+        const k = p.referred_by;
+        hearCounts[k] = (hearCounts[k]||0)+1;
+      }
+    });
+
     setStats({
       total: pr.length,
       thisWeek: pr.filter(p => new Date(p.created_at) > weekAgo).length,
+      thisMonth: pr.filter(p => new Date(p.created_at) > monthAgo).length,
       free: planCounts.free, plus: planCounts.plus, pro: planCounts.pro,
       agentsPending: ag.filter(a=>a.status==="pending").length,
+      agentsApproved: ag.filter(a=>a.status==="approved").length,
+      totalRedemptions: rd.length,
+      totalGiftSends: gs.length,
       withAffiliate: pr.filter(p=>p.referred_by).length,
+      weekBuckets,
+      hearCounts,
+      feedbackUnread: fb.filter(f=>f.type!=="agent_application").length,
     });
     setLoading(false);
   };
 
+  // ── Agent actions ──────────────────────────────────────────────────────────
   const agentAction = async (action, agent, confirmMsg) => {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
     setActing(agent.id);
@@ -17078,68 +17136,136 @@ function AdminPage() {
       body: { action, agent_id: agent.id },
       headers: { Authorization: `Bearer ${s?.access_token}` },
     });
-    if (error) { setMsg(`Error: ${error.message}`); setActing(null); return; }
+    if (error) { notify(`Error: ${error.message}`, "error"); setActing(null); return; }
     if (action === "approve") {
       const giftCode = data?.gift_code || agent.gift_code;
-      setMsg(data?.welcome_email_sent
+      notify(data?.welcome_email_sent
         ? `✓ Approved ${agent.name} — welcome email sent. Gift link: trysteadwell.app/gift/${giftCode}`
-        : `✓ Approved ${agent.name} — but welcome email failed. Check edge function logs.`);
-    } else if (action === "reject")     { setMsg(`${agent.name} rejected.`); }
-    else if (action === "deactivate")   { setMsg(`${agent.name} deactivated — gift link disabled.`); }
-    else if (action === "reactivate")   { setMsg(`${agent.name} reactivated.`); }
-    else if (action === "delete")       { setMsg(data?.soft_delete ? `${agent.name} soft-deleted (redemptions preserved).` : `${agent.name} deleted.`); }
+        : `✓ Approved ${agent.name} — welcome email failed. Check edge function logs.`);
+    } else if (action === "reject")     { notify(`${agent.name} rejected.`); }
+    else if (action === "deactivate")   { notify(`${agent.name} deactivated.`); }
+    else if (action === "reactivate")   { notify(`${agent.name} reactivated.`); }
+    else if (action === "delete")       { notify(data?.soft_delete ? `${agent.name} soft-deleted.` : `${agent.name} deleted.`); }
     loadAll(); setActing(null);
   };
 
-  const approve    = (agent) => agentAction("approve", agent);
-  const reject     = (agent) => agentAction("reject", agent);
-  const deactivate = (agent) => agentAction("deactivate", agent, `Deactivate ${agent.name}? Their gift link will stop working but their record is preserved.`);
-  const reactivate = (agent) => agentAction("reactivate", agent);
-  const deleteAgent = (agent) => agentAction("delete", agent, `Permanently delete ${agent.name}? This cannot be undone.`);
+  const approve    = (a) => agentAction("approve", a);
+  const reject     = (a) => agentAction("reject", a);
+  const deactivate = (a) => agentAction("deactivate", a, `Deactivate ${a.name}?`);
+  const reactivate = (a) => agentAction("reactivate", a);
+  const deleteAgent = (a) => agentAction("delete", a, `Permanently delete ${a.name}? Cannot be undone.`);
 
-  const saveUserField = async (userId, field, value) => {
-    setSavingUser(userId + field);
-    const { error } = await supabase.from("profiles").update({ [field]: value || null }).eq("user_id", userId);
-    if (!error) {
-      setUsers(u => u.map(r => r.user_id === userId ? { ...r, [field]: value } : r));
-      if (field === "plan") {
-        setStats(s => {
-          if (!s) return s;
-          const prev = users.find(r=>r.user_id===userId)?.plan||"free";
-          const next = value||"free";
-          const c = {...s, [prev]: (s[prev]||1)-1, [next]: (s[next]||0)+1};
-          return c;
-        });
-        setMsg(`✓ Plan updated to ${value||"free"}.`);
-      }
-    } else { setMsg("Error saving: " + error.message); }
-    setSavingUser(null);
-    setEditingUser(null);
+  // ── User cell editing ──────────────────────────────────────────────────────
+  const startEdit = (userId, field, currentVal) => {
+    setEditCell({userId, field});
+    setEditVal(currentVal || "");
   };
 
+  const saveEdit = async () => {
+    if (!editCell) return;
+    const {userId, field} = editCell;
+    setSavingCell(userId + field);
+    const { error } = await supabase.from("profiles").update({ [field]: editVal || null }).eq("user_id", userId);
+    if (!error) {
+      setUsers(u => u.map(r => r.user_id === userId ? { ...r, [field]: editVal } : r));
+      notify(`✓ ${field} updated`);
+    } else { notify(`Error: ${error.message}`, "error"); }
+    setSavingCell(null);
+    setEditCell(null);
+  };
+
+  const deleteUser = async (userId, name) => {
+    if (!window.confirm(`Delete ${name || "this user"}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
+    if (!error) { setUsers(u => u.filter(r => r.user_id !== userId)); notify(`✓ User deleted.`); }
+    else { notify(`Error: ${error.message}`, "error"); }
+  };
+
+  const exportUsersCSV = () => {
+    const rows = [["Name","Plan","Address","Referred by","Created"].join(",")];
+    users.forEach(u => {
+      rows.push([u.name||"", u.plan||"free", (u.address||"").replace(/,/g," "), u.referred_by||"", u.created_at||""].map(v=>`"${v}"`).join(","));
+    });
+    const blob = new Blob([rows.join("\n")], {type:"text/csv"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `steadwell-users-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  };
+
+  // ── Database tab ───────────────────────────────────────────────────────────
+  const DB_TABLES = {
+    profiles:          { pk:"user_id",  editableCols:["name","plan","admin_notes","gift_expires_at"] },
+    warranties:        { pk:"id",       editableCols:["item","category","expiry_date","notes"] },
+    expenses:          { pk:"id",       editableCols:["title","amount","category","date","notes"] },
+    tasks:             { pk:"id",       editableCols:["title","due_date","priority","status","category","notes"] },
+    agent_applications:{ pk:"id",       editableCols:["status","note","display_name","title","phone","agent_email"] },
+    feedback:          { pk:"id",       editableCols:["message","subject"] },
+  };
+
+  const loadDbTable = async (tbl) => {
+    setDbLoading(true); setDbRows([]); setDbCols([]); setDbPage(0); setDbSearch("");
+    const { data, error } = await supabase.from(tbl).select("*").order("created_at", { ascending: false }).limit(500);
+    if (!error && data?.length) {
+      setDbCols(Object.keys(data[0]));
+      setDbRows(data);
+    }
+    setDbLoading(false);
+  };
+
+  useEffect(() => { if (tab === "database" && dbRows.length === 0) loadDbTable(dbTable); }, [tab]);
+
+  const saveDbCell = async (row, col) => {
+    const cfg = DB_TABLES[dbTable];
+    if (!cfg) return;
+    const pk = cfg.pk;
+    setDbSaving(`${row[pk]}-${col}`);
+    const { error } = await supabase.from(dbTable).update({ [col]: dbEditVal || null }).eq(pk, row[pk]);
+    if (!error) {
+      setDbRows(r => r.map(x => x[pk]===row[pk] ? {...x, [col]: dbEditVal} : x));
+      notify(`✓ Saved`);
+    } else { notify(error.message, "error"); }
+    setDbSaving(null);
+    setDbEditCell(null);
+  };
+
+  const deleteDbRow = async (row) => {
+    const cfg = DB_TABLES[dbTable];
+    if (!cfg || !window.confirm("Delete this row?")) return;
+    const { error } = await supabase.from(dbTable).delete().eq(cfg.pk, row[cfg.pk]);
+    if (!error) { setDbRows(r => r.filter(x => x[cfg.pk] !== row[cfg.pk])); notify("✓ Row deleted."); }
+    else { notify(error.message, "error"); }
+  };
+
+  // ── Styles ─────────────────────────────────────────────────────────────────
   const S = {
     page:      { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif" },
-    hdr:       { background:"#234A3D", padding:"0 28px", display:"flex", alignItems:"center", gap:16, height:56 },
+    hdr:       { background:"#234A3D", padding:"0 28px", display:"flex", alignItems:"center", gap:16, height:56, position:"sticky", top:0, zIndex:100 },
     hdrTtl:    { fontFamily:"Georgia,serif", color:"#F4EDDF", fontSize:18 },
-    tabBar:    { background:"#fff", borderBottom:"1px solid #E6DECF", display:"flex", padding:"0 16px", gap:2, overflowX:"auto" },
+    tabBar:    { background:"#fff", borderBottom:"1px solid #E6DECF", display:"flex", padding:"0 16px", gap:2, overflowX:"auto", position:"sticky", top:56, zIndex:99 },
     tab:       (on) => ({ padding:"13px 14px", fontSize:13, fontWeight:700, cursor:"pointer", border:"none", background:"none", color:on?"#234A3D":"#A8A09A", borderBottom:on?"2.5px solid #234A3D":"2.5px solid transparent", fontFamily:"inherit", whiteSpace:"nowrap" }),
-    body:      { maxWidth:920, margin:"0 auto", padding:"24px 16px" },
+    body:      { maxWidth:1200, margin:"0 auto", padding:"24px 16px" },
     card:      { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"14px 18px", marginBottom:10 },
     badge:     (st) => ({ display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:st==="approved"?"#EAF3EC":st==="rejected"?"#FCEBEB":"#FBF7EE", color:st==="approved"?"#2E7050":st==="rejected"?"#A32D2D":"#C16140" }),
-    planBadge: (pl) => ({ display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:pl==="pro"?"#EAF3EC":pl==="plus"?"#EEF0FB":"#F4F0EA", color:pl==="pro"?"#2E7050":pl==="plus"?"#4B5EC4":"#8A8076" }),
+    planBadge: (pl) => ({ display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:pl==="pro"?"#EAF3EC":pl==="plus"?"#EEF0FB":"#F4F0EA", color:pl==="pro"?"#2E7050":pl==="plus"?"#4B5EC4":"#8A8076", cursor:"pointer" }),
     statCard:  { background:"#fff", border:"1.5px solid #E6DECF", borderRadius:12, padding:"18px 14px", textAlign:"center" },
     statV:     { fontFamily:"Georgia,serif", fontSize:32, fontWeight:600, color:"#234A3D", lineHeight:1 },
     statL:     { fontSize:10, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"#A8A09A", marginTop:6 },
     secHdr:    { fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", color:"#A8A09A", marginBottom:10, marginTop:20 },
-    msgBox:    { background:"#EAF3EC", border:"1px solid #C4DEC8", borderRadius:10, padding:"12px 16px", marginBottom:16, fontSize:14, color:"#234A3D" },
+    msgBox:    (t) => ({ background:t==="error"?"#FCEBEB":"#EAF3EC", border:`1px solid ${t==="error"?"#F7C1C1":"#C4DEC8"}`, borderRadius:10, padding:"12px 16px", marginBottom:16, fontSize:14, color:t==="error"?"#A32D2D":"#234A3D" }),
     input:     { fontSize:13, fontFamily:"'Hanken Grotesk',sans-serif", border:"1.5px solid #234A3D", borderRadius:8, padding:"6px 10px", color:"#2A2723", background:"#fff", outline:"none" },
     afBadge:   { display:"inline-block", padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700, background:"#F3ECF8", color:"#7B3FA0" },
+    btn:       (variant) => {
+      const base = { border:"none", borderRadius:8, padding:"7px 14px", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit" };
+      if (variant==="primary")  return {...base, background:"#234A3D", color:"#F4EDDF"};
+      if (variant==="danger")   return {...base, background:"#FCEBEB", color:"#A32D2D", border:"1px solid #F7C1C1"};
+      if (variant==="warning")  return {...base, background:"#FBF3EC", color:"#C07A3A", border:"1px solid #EAD0BC"};
+      if (variant==="success")  return {...base, background:"#EAF3EC", color:"#2E7050", border:"1px solid #C4DEC8"};
+      return {...base, background:"none", color:"#A8A09A", border:"1px solid #E6DECF"};
+    },
   };
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"2-digit"}) : "—";
   const fmtPlan = (p) => (p||"free").toLowerCase();
-  const byStatus = (st) => agents.filter(a=>a.status===st);
-  const avatar = (name) => (
+  const avatar  = (name) => (
     <div style={{width:32,height:32,borderRadius:"50%",background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontSize:13,fontWeight:700,flexShrink:0}}>
       {(name||"?")[0].toUpperCase()}
     </div>
@@ -17151,127 +17277,235 @@ function AdminPage() {
       <div style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"40px 32px",maxWidth:360,textAlign:"center"}}>
         <div style={{fontSize:32,marginBottom:16}}>🔒</div>
         <div style={{fontFamily:"Georgia,serif",fontSize:20,color:"#234A3D",marginBottom:10}}>Admin access only</div>
-        <div style={{fontSize:14,color:"#7A7370",lineHeight:1.6,marginBottom:24}}>Sign in as the admin account to continue.</div>
-        <button onClick={()=>window.location.href="/"} style={{width:"100%",background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:10,padding:"12px",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>Go to sign in</button>
+        <button onClick={()=>window.location.href="/"} style={{...S.btn("primary"),width:"100%",fontSize:15,padding:12}}>Go to sign in</button>
       </div>
     </div>
   );
 
   // ── DASHBOARD ──────────────────────────────────────────────────────────────
-  const TabDashboard = () => (
-    <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:22}}>
-        {[
-          {v:stats?.total??"…",       l:"Total users"},
-          {v:stats?.thisWeek??"…",    l:"New this week"},
-          {v:stats?.free??"…",        l:"Free"},
-          {v:stats?.plus??"…",        l:"Plus"},
-          {v:stats?.pro??"…",         l:"Pro"},
-          {v:stats?.agentsPending??"…",l:"Agents pending",alert:stats?.agentsPending>0},
-          {v:stats?.withAffiliate??"…",l:"Via affiliate"},
-        ].map((s,i)=>(
-          <div key={i} style={S.statCard}>
-            <div style={{...S.statV,color:s.alert?"#C16140":"#234A3D"}}>{s.v}</div>
-            <div style={S.statL}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-      {stats?.agentsPending>0&&(
-        <div style={{background:"#FBF3EC",border:"1.5px solid #EAD0BC",borderRadius:12,padding:"14px 18px",marginBottom:18,display:"flex",alignItems:"center",gap:12}}>
-          <span style={{fontSize:18}}>⏳</span>
-          <div style={{flex:1}}><div style={{fontWeight:700,color:"#C16140",fontSize:14}}>{stats.agentsPending} agent{stats.agentsPending>1?"s":""} waiting for review</div><div style={{fontSize:12,color:"#A8A09A",marginTop:2}}>Go to the Agents tab</div></div>
-          <button onClick={()=>setTab("agents")} style={{background:"#C16140",color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Review →</button>
-        </div>
-      )}
-      <div style={S.secHdr}>Recent signups</div>
-      <div style={S.card}>
-        {users.slice(0,8).map((u,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<7?"1px solid #F0EAE0":"none"}}>
-            {avatar(u.name)}
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name</span>}</div>
-              {u.address&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address.split(",")[0]}</div>}
+  const TabDashboard = () => {
+    const maxBucket = Math.max(1, ...((stats?.weekBuckets||[]).map(b=>b.count)));
+    const hearEntries = Object.entries(stats?.hearCounts||{}).sort((a,b)=>b[1]-a[1]);
+    const totalHear = hearEntries.reduce((s,[,v])=>s+v, 0);
+    return (
+      <div>
+        {/* Stat grid */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:22}}>
+          {[
+            {v:stats?.total??    "…", l:"Total users"},
+            {v:stats?.thisWeek?? "…", l:"New this week"},
+            {v:stats?.thisMonth??"…", l:"This month"},
+            {v:stats?.free??     "…", l:"Free"},
+            {v:stats?.plus??     "…", l:"Plus"},
+            {v:stats?.pro??      "…", l:"Pro"},
+            {v:stats?.agentsApproved??"…", l:"Active agents"},
+            {v:stats?.totalRedemptions??"…", l:"Gift redemptions"},
+            {v:stats?.agentsPending??  "…", l:"Agents pending", alert:stats?.agentsPending>0},
+            {v:stats?.feedbackUnread?? "…", l:"Feedback items", alert:stats?.feedbackUnread>0},
+          ].map((s,i)=>(
+            <div key={i} style={S.statCard}>
+              <div style={{...S.statV,color:s.alert?"#C16140":"#234A3D"}}>{s.v}</div>
+              <div style={S.statL}>{s.l}</div>
             </div>
-            {u.referred_by&&<span style={S.afBadge}>📣 {u.referred_by}</span>}
-            <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
-            <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
+          ))}
+        </div>
+
+        {/* Alerts row */}
+        {stats?.agentsPending>0&&(
+          <div style={{background:"#FBF3EC",border:"1.5px solid #EAD0BC",borderRadius:12,padding:"14px 18px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:18}}>⏳</span>
+            <div style={{flex:1}}><div style={{fontWeight:700,color:"#C16140",fontSize:14}}>{stats.agentsPending} agent{stats.agentsPending!==1?"s":""} waiting for review</div></div>
+            <button onClick={()=>setTab("agents")} style={S.btn("warning")}>Review →</button>
           </div>
-        ))}
-        {users.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No users yet.</div>}
+        )}
+        {stats?.feedbackUnread>0&&(
+          <div style={{background:"#EEF0FB",border:"1.5px solid #C8CCEF",borderRadius:12,padding:"14px 18px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:18}}>💬</span>
+            <div style={{flex:1}}><div style={{fontWeight:700,color:"#4B5EC4",fontSize:14}}>{stats.feedbackUnread} feedback item{stats.feedbackUnread!==1?"s":""}</div></div>
+            <button onClick={()=>setTab("feedback")} style={{...S.btn("primary"),background:"#4B5EC4"}}>View →</button>
+          </div>
+        )}
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:8}}>
+          {/* Signup trend */}
+          <div style={S.card}>
+            <div style={S.secHdr}>Signups — last 8 weeks</div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:6,height:80,marginTop:8}}>
+              {(stats?.weekBuckets||[]).map((b,i)=>(
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <div style={{fontSize:10,color:"#234A3D",fontWeight:700,minHeight:14}}>{b.count>0?b.count:""}</div>
+                  <div style={{width:"100%",background:"#234A3D",borderRadius:"3px 3px 0 0",height:Math.max(4, (b.count/maxBucket)*56),transition:"height .3s",opacity:.85}}/>
+                  <div style={{fontSize:9,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{b.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* How did you hear */}
+          <div style={S.card}>
+            <div style={S.secHdr}>How did you hear about us</div>
+            {hearEntries.length===0
+              ? <div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic",marginTop:8}}>No data yet — appears as users complete onboarding.</div>
+              : hearEntries.map(([k,v])=>(
+                <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <div style={{fontSize:12,color:"#2A2723",fontWeight:600,width:140,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{k}</div>
+                  <div style={{flex:1,height:8,background:"#F0EAE0",borderRadius:4,overflow:"hidden"}}>
+                    <div style={{height:"100%",background:"#234A3D",borderRadius:4,width:`${Math.round((v/Math.max(1,totalHear))*100)}%`}}/>
+                  </div>
+                  <div style={{fontSize:12,color:"#A8A09A",width:28,textAlign:"right",flexShrink:0}}>{v}</div>
+                </div>
+              ))
+            }
+          </div>
+
+          {/* Agent program */}
+          <div style={S.card}>
+            <div style={S.secHdr}>Agent program</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginTop:8}}>
+              {[
+                {v:stats?.agentsApproved??"…", l:"Active agents"},
+                {v:stats?.totalGiftSends??"…", l:"Gifts sent"},
+                {v:stats?.totalRedemptions??"…", l:"Redeemed"},
+              ].map((s,i)=>(
+                <div key={i} style={{textAlign:"center",padding:"10px 6px",background:"#F8F4EE",borderRadius:8}}>
+                  <div style={{fontFamily:"Georgia,serif",fontSize:22,fontWeight:600,color:"#234A3D"}}>{s.v}</div>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",color:"#A8A09A",marginTop:4}}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+            {stats?.agentsApproved>0&&stats?.totalGiftSends>0&&(
+              <div style={{fontSize:12,color:"#A8A09A",marginTop:10,textAlign:"center"}}>
+                Conversion rate: <strong style={{color:"#234A3D"}}>{Math.round((stats.totalRedemptions/stats.totalGiftSends)*100)}%</strong> of gifts redeemed
+              </div>
+            )}
+          </div>
+
+          {/* Recent signups */}
+          <div style={S.card}>
+            <div style={S.secHdr}>Recent signups</div>
+            {users.slice(0,6).map((u,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<5?"1px solid #F0EAE0":"none"}}>
+                {avatar(u.name)}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"#2A2723",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name</span>}</div>
+                  {u.address&&<div style={{fontSize:11,color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address.split(",")[0]}</div>}
+                </div>
+                {u.referred_by&&<span style={S.afBadge}>{u.referred_by.substring(0,12)}</span>}
+                <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
+                <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0}}>{fmtDate(u.created_at)}</div>
+              </div>
+            ))}
+            {users.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No users yet.</div>}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ── USERS ──────────────────────────────────────────────────────────────────
-  const TabUsers = () => (
-    <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-        <div style={{fontSize:13,color:"#A8A09A"}}>{users.length} users</div>
-        <div style={{display:"flex",gap:14,fontSize:12,fontWeight:700}}>
-          <span style={{color:"#8A8076"}}>Free: {stats?.free}</span>
-          <span style={{color:"#4B5EC4"}}>Plus: {stats?.plus}</span>
-          <span style={{color:"#2E7050"}}>Pro: {stats?.pro}</span>
+  const TabUsers = () => {
+    const filtered = users.filter(u => {
+      const matchPlan = userPlanFilter==="all" || (u.plan||"free")===userPlanFilter;
+      const q = userSearch.toLowerCase();
+      const matchSearch = !q || (u.name||"").toLowerCase().includes(q) || (u.address||"").toLowerCase().includes(q) || (u.referred_by||"").toLowerCase().includes(q);
+      return matchPlan && matchSearch;
+    });
+
+    const CellEdit = ({u, field, display, type="text", opts=null}) => {
+      const isEditing = editCell?.userId===u.user_id && editCell?.field===field;
+      const isSaving  = savingCell===u.user_id+field;
+      if (isEditing) return (
+        <div style={{display:"flex",gap:4,alignItems:"center"}}>
+          {opts
+            ? <select value={editVal} onChange={e=>setEditVal(e.target.value)} style={{...S.input,fontSize:12,padding:"3px 6px"}}>
+                {opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+              </select>
+            : <input type={type} value={editVal} onChange={e=>setEditVal(e.target.value)}
+                style={{...S.input,fontSize:12,padding:"3px 8px",width:type==="date"?130:120}}
+                onKeyDown={e=>{if(e.key==="Enter")saveEdit();if(e.key==="Escape")setEditCell(null);}}
+                autoFocus/>
+          }
+          <button onClick={saveEdit} disabled={isSaving} style={{...S.btn("primary"),padding:"3px 8px",fontSize:11}}>{isSaving?"…":"✓"}</button>
+          <button onClick={()=>setEditCell(null)} style={{...S.btn("ghost"),padding:"3px 6px",fontSize:11}}>✕</button>
+        </div>
+      );
+      return (
+        <span onClick={()=>startEdit(u.user_id, field, u[field]||"")}
+          style={{cursor:"pointer",fontSize:12,color:display?"#2A2723":"#C9BFA8",padding:"2px 6px",borderRadius:6,border:"1px solid transparent"}}
+          title="Click to edit">
+          {display||<em style={{color:"#C9BFA8"}}>—</em>}
+        </span>
+      );
+    };
+
+    return (
+      <div>
+        {/* Controls */}
+        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+          <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Search name, address, referral…"
+            style={{...S.input,flex:1,minWidth:200,fontSize:13}} />
+          <select value={userPlanFilter} onChange={e=>setUserPlanFilter(e.target.value)} style={{...S.input,fontSize:13}}>
+            <option value="all">All plans</option>
+            <option value="free">Free</option>
+            <option value="plus">Plus</option>
+            <option value="pro">Pro</option>
+          </select>
+          <div style={{fontSize:12,color:"#A8A09A",whiteSpace:"nowrap"}}>{filtered.length} of {users.length}</div>
+          <button onClick={exportUsersCSV} style={S.btn("ghost")}>⬇ Export CSV</button>
+          <button onClick={loadAll} style={S.btn("primary")}>{loading?"…":"↻ Refresh"}</button>
+        </div>
+
+        {/* Table */}
+        <div style={{overflowX:"auto",borderRadius:12,border:"1.5px solid #E6DECF"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,background:"#fff"}}>
+            <thead>
+              <tr style={{background:"#F8F4EE",borderBottom:"1.5px solid #E6DECF"}}>
+                {["User","Plan","Address","Referred by","Joined","Gift expires","Notes","Actions"].map(h=>(
+                  <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",color:"#A8A09A",whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((u,i)=>(
+                <tr key={u.user_id} style={{borderBottom:"1px solid #F0EAE0",background:i%2===0?"#fff":"#FDFAF6"}}>
+                  <td style={{padding:"10px 12px",minWidth:140}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {avatar(u.name)}
+                      <div style={{minWidth:0}}>
+                        <CellEdit u={u} field="name" display={u.name} />
+                        {u.address&&<div style={{fontSize:10,color:"#A8A09A",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{u.address.split(",")[0]}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
+                    <CellEdit u={u} field="plan" display={<span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>}
+                      opts={[{v:"free",l:"Free"},{v:"plus",l:"Plus"},{v:"pro",l:"Pro"}]} />
+                    {u.plan_cancel_at&&<div style={{fontSize:10,color:"#C16140",marginTop:2}}>cancels {fmtDate(u.plan_cancel_at)}</div>}
+                    {u.gift_agent_token&&!u.plan_cancel_at&&<div style={{fontSize:10,color:"#7B3FA0",marginTop:2}}>gift user</div>}
+                  </td>
+                  <td style={{padding:"10px 12px",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#7A7370",fontSize:11}}>{u.address?u.address.split(",").slice(0,2).join(","):"—"}</td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
+                    {u.referred_by?<span style={S.afBadge}>{u.referred_by}</span>:<span style={{color:"#C9BFA8"}}>—</span>}
+                  </td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap",color:"#7A7370"}}>{fmtDate(u.created_at)}</td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
+                    <CellEdit u={u} field="gift_expires_at" display={u.gift_expires_at?fmtDate(u.gift_expires_at):null} type="date" />
+                  </td>
+                  <td style={{padding:"10px 12px",maxWidth:200}}>
+                    <CellEdit u={u} field="admin_notes" display={u.admin_notes} />
+                  </td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
+                    <button onClick={()=>deleteUser(u.user_id, u.name)} style={{...S.btn("danger"),padding:"4px 8px",fontSize:11}}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length===0&&<div style={{padding:"40px",textAlign:"center",fontSize:13,color:"#C9BFA8"}}>No users match your search.</div>}
         </div>
       </div>
-      {users.map((u,i)=>{
-        const isEditing = editingUser?.user_id===u.user_id;
-        return (
-          <div key={i} style={S.card}>
-            <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-              {avatar(u.name)}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
-                  <span style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{u.name||<span style={{color:"#C9BFA8"}}>No name yet</span>}</span>
-                  {u.referred_by&&<span style={S.afBadge}>📣 {u.referred_by}</span>}
-                </div>
-                {u.address&&<div style={{fontSize:11,color:"#7A7370",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.address.split(",").slice(0,2).join(",")}</div>}
-                {/* Plan edit */}
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <span style={{fontSize:11,color:"#A8A09A",fontWeight:700}}>PLAN:</span>
-                  {editingUser?.user_id===u.user_id&&editingUser?.field==="plan" ? (
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <select defaultValue={u.plan||"free"} id={`plan-${u.user_id}`} style={{...S.input,fontSize:12}}>
-                        <option value="free">Free</option>
-                        <option value="plus">Plus</option>
-                        <option value="pro">Pro</option>
-                      </select>
-                      <button onClick={()=>saveUserField(u.user_id,"plan",document.getElementById(`plan-${u.user_id}`).value)} disabled={savingUser===u.user_id+"plan"} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                        {savingUser===u.user_id+"plan"?"…":"Save"}
-                      </button>
-                      <button onClick={()=>setEditingUser(null)} style={{background:"#E6DECF",color:"#6B635A",border:"none",borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={S.planBadge(fmtPlan(u.plan))}>{fmtPlan(u.plan)}</span>
-                      <button onClick={()=>setEditingUser({user_id:u.user_id,field:"plan"})} style={{background:"none",border:"1px solid #E6DECF",borderRadius:7,padding:"3px 9px",fontSize:11,color:"#A8A09A",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
-                    </div>
-                  )}
-                </div>
-                {/* Admin notes */}
-                {editingUser?.user_id===u.user_id&&editingUser?.field==="notes" ? (
-                  <div style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:4}}>
-                    <textarea id={`notes-${u.user_id}`} defaultValue={u.admin_notes||""} placeholder="Private note about this user…" style={{...S.input,width:"100%",minHeight:60,resize:"vertical",fontSize:12}} />
-                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                      <button onClick={()=>saveUserField(u.user_id,"admin_notes",document.getElementById(`notes-${u.user_id}`).value)} disabled={savingUser===u.user_id+"admin_notes"} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:7,padding:"5px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
-                      <button onClick={()=>setEditingUser(null)} style={{background:"#E6DECF",color:"#6B635A",border:"none",borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                    </div>
-                  </div>
-                ) : u.admin_notes ? (
-                  <div style={{background:"#F4F0EA",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#6B635A",marginBottom:4,cursor:"pointer"}} onClick={()=>setEditingUser({user_id:u.user_id,field:"notes"})}>
-                    📝 {u.admin_notes}
-                  </div>
-                ) : (
-                  <button onClick={()=>setEditingUser({user_id:u.user_id,field:"notes"})} style={{background:"none",border:"none",fontSize:11,color:"#C9BFA8",cursor:"pointer",padding:0,fontFamily:"inherit"}}>+ Add note</button>
-                )}
-              </div>
-              <div style={{fontSize:11,color:"#C9BFA8",flexShrink:0,textAlign:"right"}}>{fmtDate(u.created_at)}</div>
-            </div>
-          </div>
-        );
-      })}
-      {users.length===0&&<div style={{fontSize:13,color:"#C9BFA8",fontStyle:"italic"}}>No users yet.</div>}
-    </div>
-  );
+    );
+  };
 
   // ── FEEDBACK ───────────────────────────────────────────────────────────────
   const TabFeedback = () => {
@@ -17306,19 +17540,12 @@ function AdminPage() {
       <div style={{textAlign:"center",padding:"60px 24px"}}>
         <div style={{fontSize:40,marginBottom:16}}>📣</div>
         <div style={{fontFamily:"Georgia,serif",fontSize:20,color:"#234A3D",marginBottom:8}}>No affiliate signups yet</div>
-        <div style={{fontSize:14,color:"#7A7370",lineHeight:1.6,maxWidth:400,margin:"0 auto"}}>When someone signs up via an affiliate link (?via=code), they'll appear here with the affiliate code tracked.</div>
       </div>
     );
-    // Group by affiliate code
-    const byCode = affiliated.reduce((acc,u) => {
-      const code = u.referred_by;
-      if (!acc[code]) acc[code] = [];
-      acc[code].push(u);
-      return acc;
-    }, {});
+    const byCode = affiliated.reduce((acc,u) => { const c=u.referred_by; if(!acc[c])acc[c]=[]; acc[c].push(u); return acc; }, {});
     return (
       <div>
-        <div style={{fontSize:13,color:"#A8A09A",marginBottom:14}}>{affiliated.length} users from {Object.keys(byCode).length} affiliate{Object.keys(byCode).length!==1?"s":""}</div>
+        <div style={{fontSize:13,color:"#A8A09A",marginBottom:14}}>{affiliated.length} users from {Object.keys(byCode).length} source{Object.keys(byCode).length!==1?"s":""}</div>
         {Object.entries(byCode).sort((a,b)=>b[1].length-a[1].length).map(([code,usrs])=>(
           <div key={code} style={{...S.card,marginBottom:16}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid #F0EAE0"}}>
@@ -17351,24 +17578,19 @@ function AdminPage() {
 
   // ── AGENTS ─────────────────────────────────────────────────────────────────
   const TabAgents = () => {
-    const redemptionCounts = redemptions.reduce((acc, r) => {
-      const key = String(r.agent_token);
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    const allStatuses = ["pending","approved","inactive","rejected"];
+    const redemptionCounts = redemptions.reduce((acc, r) => { const k=String(r.agent_token); acc[k]=(acc[k]||0)+1; return acc; }, {});
+    const sendCounts = giftSends.reduce((acc, s) => { const k=String(s.agent_token); acc[k]=(acc[k]||0)+1; return acc; }, {});
     return (
       <div>
-        {allStatuses.map(status=>{
+        {["pending","approved","inactive","rejected"].map(status=>{
           const list = agents.filter(a=>a.status===status);
           return (
             <div key={status}>
-              <div style={S.secHdr}>{status} ({list.length})</div>
+              <div style={S.secHdr}>{status.toUpperCase()} ({list.length})</div>
               {list.map(agent=>{
                 const rc = redemptionCounts[String(agent.token)] || 0;
-                const isPending  = status==="pending";
-                const isApproved = status==="approved";
-                const isInactive = status==="inactive";
+                const sc = sendCounts[String(agent.token)] || 0;
+                const isPending=status==="pending", isApproved=status==="approved", isInactive=status==="inactive";
                 return (
                   <div key={agent.id} style={S.card}>
                     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
@@ -17376,50 +17598,40 @@ function AdminPage() {
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
                           <span style={{fontSize:14,fontWeight:700,color:"#2A2723"}}>{agent.name}</span>
                           <span style={S.badge(agent.status)}>{agent.status}</span>
-                          {agent.headshot_url&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Assets</span>}
+                          {agent.headshot_url&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Photo</span>}
                           {agent.onboarded_at&&<span style={{fontSize:11,color:"#2E7050",fontWeight:700}}>✓ Profile</span>}
-                          {rc>0&&<span style={{fontSize:11,fontWeight:700,background:"#EAF3EC",color:"#2E7050",borderRadius:20,padding:"2px 8px"}}>{rc} signup{rc!==1?"s":""}</span>}
+                          {sc>0&&<span style={{fontSize:11,fontWeight:700,background:"#EEF0FB",color:"#4B5EC4",borderRadius:20,padding:"2px 8px"}}>{sc} sent</span>}
+                          {rc>0&&<span style={{fontSize:11,fontWeight:700,background:"#EAF3EC",color:"#2E7050",borderRadius:20,padding:"2px 8px"}}>{rc} redeemed</span>}
                         </div>
                         <div style={{fontSize:12,color:"#7A7370",marginBottom:2}}>{agent.email}{agent.brokerage?` · ${agent.brokerage}`:""}</div>
                         <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
                         {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
-                        <div style={{marginTop:6,fontSize:11}}>
-                          <a href={`/agent-setup?token=${agent.token}`} target="_blank" style={{color:"#C16140"}}>
-                            {agent.onboarded_at?"Setup link ↗":"Setup link (share with agent) ↗"}
-                          </a>
-                          {agent.onboarded_at&&<span style={{marginLeft:10,color:"#2E7050",fontWeight:700}}>✓ Profile complete</span>}
+                        <div style={{marginTop:6,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+                          <a href={`/agent-portal?token=${agent.token}`} target="_blank" style={{fontSize:11,color:"#C16140"}}>Agent portal ↗</a>
+                          {isApproved&&agent.gift_code&&(
+                            <>
+                              <span style={{fontSize:11,fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
+                              <button onClick={()=>{navigator.clipboard.writeText(`https://www.trysteadwell.app/gift/${agent.gift_code}`);notify("✓ Gift link copied!");}} style={{...S.btn("ghost"),padding:"3px 8px",fontSize:11}}>Copy</button>
+                              <a href={`/print-card/${agent.gift_code}`} target="_blank" style={{...S.btn("primary"),padding:"3px 8px",fontSize:11,textDecoration:"none",display:"inline-block"}}>Print card ↗</a>
+                            </>
+                          )}
                         </div>
-                        {isApproved&&agent.gift_code&&(
-                          <div style={{marginTop:5,fontSize:11,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                            <span style={{fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
-                            <button onClick={()=>{navigator.clipboard.writeText(`https://www.trysteadwell.app/gift/${agent.gift_code}`);setMsg("✓ Gift link copied!");}} style={{background:"#E6DECF",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Copy</button>
-                            <a href={`/print-card/${agent.gift_code}`} target="_blank" style={{background:"#234A3D",color:"#F4EDDF",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,textDecoration:"none"}}>Print card ↗</a>
-                          </div>
-                        )}
                         <div style={{fontSize:10,color:"#C9BFA8",marginTop:5}}>{fmtDate(agent.created_at)}</div>
                       </div>
                       <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                        {isPending&&(
-                          <>
-                            <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#234A3D",color:"#F4EDDF",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",opacity:acting===agent.id?.6:1}}>
-                              {acting===agent.id?"Sending…":"Approve →"}
-                            </button>
-                            <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={{background:"#FCEBEB",color:"#A32D2D",border:"1px solid #F7C1C1",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Reject</button>
-                          </>
-                        )}
-                        {isApproved&&(
-                          <button onClick={()=>deactivate(agent)} disabled={acting===agent.id} style={{background:"#FBF3EC",color:"#C07A3A",border:"1px solid #EAD0BC",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Deactivate</button>
-                        )}
-                        {isInactive&&(
-                          <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{background:"#EAF3EC",color:"#2E7050",border:"1px solid #C4DEC8",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Reactivate</button>
-                        )}
-                        <button onClick={()=>deleteAgent(agent)} disabled={acting===agent.id} style={{background:"none",color:"#A8A09A",border:"1px solid #E6DECF",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+                        {isPending&&(<>
+                          <button onClick={()=>approve(agent)} disabled={acting===agent.id} style={{...S.btn("primary"),opacity:acting===agent.id?.6:1}}>{acting===agent.id?"…":"Approve →"}</button>
+                          <button onClick={()=>reject(agent)} disabled={acting===agent.id} style={S.btn("danger")}>Reject</button>
+                        </>)}
+                        {isApproved&&<button onClick={()=>deactivate(agent)} disabled={acting===agent.id} style={S.btn("warning")}>Deactivate</button>}
+                        {isInactive&&<button onClick={()=>reactivate(agent)} disabled={acting===agent.id} style={S.btn("success")}>Reactivate</button>}
+                        <button onClick={()=>deleteAgent(agent)} disabled={acting===agent.id} style={S.btn("ghost")}>Delete</button>
                       </div>
                     </div>
                   </div>
                 );
               })}
-              {list.length===0&&<div style={{fontSize:12,color:"#C9BFA8",fontStyle:"italic",marginBottom:6}}>None yet.</div>}
+              {list.length===0&&<div style={{fontSize:12,color:"#C9BFA8",fontStyle:"italic",marginBottom:6}}>None.</div>}
             </div>
           );
         })}
@@ -17427,12 +17639,125 @@ function AdminPage() {
     );
   };
 
+  // ── DATABASE ───────────────────────────────────────────────────────────────
+  const TabDatabase = () => {
+    const cfg = DB_TABLES[dbTable] || {};
+    const editableCols = cfg.editableCols || [];
+    const pk = cfg.pk || "id";
+
+    const dbFiltered = dbRows.filter(row => {
+      if (!dbSearch) return true;
+      const q = dbSearch.toLowerCase();
+      return Object.values(row).some(v => String(v||"").toLowerCase().includes(q));
+    });
+    const totalPages = Math.ceil(dbFiltered.length / DB_PAGE_SIZE);
+    const pageRows = dbFiltered.slice(dbPage * DB_PAGE_SIZE, (dbPage+1) * DB_PAGE_SIZE);
+
+    const fmtCell = (v) => {
+      if (v === null || v === undefined) return "";
+      if (typeof v === "boolean") return v ? "✓" : "✗";
+      const s = String(v);
+      if (s.length > 60) return s.substring(0,60) + "…";
+      return s;
+    };
+
+    const isEditable = (col) => editableCols.includes(col);
+
+    return (
+      <div>
+        {/* Table selector + controls */}
+        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+            {Object.keys(DB_TABLES).map(t=>(
+              <button key={t} onClick={()=>{setDbTable(t);loadDbTable(t);}}
+                style={{padding:"7px 14px",border:"1.5px solid",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                  background:dbTable===t?"#234A3D":"#fff",color:dbTable===t?"#F4EDDF":"#7A7370",borderColor:dbTable===t?"#234A3D":"#E6DECF"}}>
+                {t}
+              </button>
+            ))}
+          </div>
+          <input value={dbSearch} onChange={e=>{setDbSearch(e.target.value);setDbPage(0);}} placeholder="Search all columns…"
+            style={{...S.input,minWidth:200,fontSize:13,flex:1}} />
+          <div style={{fontSize:12,color:"#A8A09A",whiteSpace:"nowrap"}}>{dbFiltered.length} rows</div>
+          <button onClick={()=>loadDbTable(dbTable)} style={S.btn("primary")}>{dbLoading?"…":"↻"}</button>
+        </div>
+
+        {dbLoading
+          ? <div style={{textAlign:"center",padding:"40px",color:"#A8A09A"}}>Loading {dbTable}…</div>
+          : dbCols.length === 0
+            ? <div style={{textAlign:"center",padding:"40px",color:"#A8A09A"}}>No data in {dbTable}.</div>
+            : <>
+                <div style={{overflowX:"auto",borderRadius:12,border:"1.5px solid #E6DECF",marginBottom:12}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,background:"#fff"}}>
+                    <thead>
+                      <tr style={{background:"#F8F4EE",borderBottom:"1.5px solid #E6DECF"}}>
+                        {dbCols.map(col=>(
+                          <th key={col} style={{padding:"9px 12px",textAlign:"left",fontSize:10,fontWeight:700,letterSpacing:.6,textTransform:"uppercase",color:isEditable(col)?"#234A3D":"#A8A09A",whiteSpace:"nowrap",borderRight:"1px solid #F0EAE0"}}>
+                            {col}{isEditable(col)&&<span style={{marginLeft:4,fontSize:9,opacity:.6}}>✎</span>}
+                          </th>
+                        ))}
+                        <th style={{padding:"9px 12px",fontSize:10,fontWeight:700,letterSpacing:.6,textTransform:"uppercase",color:"#A8A09A"}}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageRows.map((row,ri)=>(
+                        <tr key={ri} style={{borderBottom:"1px solid #F0EAE0",background:ri%2===0?"#fff":"#FDFAF6"}}>
+                          {dbCols.map(col=>{
+                            const cellKey = `${row[pk]}-${col}`;
+                            const isEditingThis = dbEditCell===cellKey;
+                            const isSavingThis  = dbSaving===cellKey;
+                            const editable = isEditable(col);
+                            return (
+                              <td key={col} style={{padding:"8px 12px",maxWidth:200,borderRight:"1px solid #F8F4EE",verticalAlign:"top"}}>
+                                {isEditingThis ? (
+                                  <div style={{display:"flex",gap:4,alignItems:"center",minWidth:120}}>
+                                    <input value={dbEditVal} onChange={e=>setDbEditVal(e.target.value)}
+                                      style={{...S.input,fontSize:11,padding:"3px 6px",width:"100%"}}
+                                      onKeyDown={e=>{if(e.key==="Enter")saveDbCell(row,col);if(e.key==="Escape")setDbEditCell(null);}}
+                                      autoFocus/>
+                                    <button onClick={()=>saveDbCell(row,col)} disabled={isSavingThis} style={{...S.btn("primary"),padding:"3px 6px",fontSize:10}}>{isSavingThis?"…":"✓"}</button>
+                                    <button onClick={()=>setDbEditCell(null)} style={{...S.btn("ghost"),padding:"3px 4px",fontSize:10}}>✕</button>
+                                  </div>
+                                ) : (
+                                  <span
+                                    onClick={editable?()=>{setDbEditCell(cellKey);setDbEditVal(String(row[col]??"")); }:undefined}
+                                    style={{color:row[col]!=null?"#2A2723":"#C9BFA8",cursor:editable?"pointer":"default",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180,padding:editable?"2px 4px":"0",borderRadius:4,border:editable?"1px solid transparent":"none"}}
+                                    title={editable?"Click to edit":String(row[col]??"")}>
+                                    {fmtCell(row[col])}
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
+                            <button onClick={()=>deleteDbRow(row)} style={{...S.btn("danger"),padding:"3px 8px",fontSize:11}}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div style={{display:"flex",gap:8,alignItems:"center",justifyContent:"center"}}>
+                    <button onClick={()=>setDbPage(p=>Math.max(0,p-1))} disabled={dbPage===0} style={S.btn("ghost")}>← Prev</button>
+                    <span style={{fontSize:12,color:"#A8A09A"}}>Page {dbPage+1} of {totalPages}</span>
+                    <button onClick={()=>setDbPage(p=>Math.min(totalPages-1,p+1))} disabled={dbPage>=totalPages-1} style={S.btn("ghost")}>Next →</button>
+                  </div>
+                )}
+              </>
+        }
+      </div>
+    );
+  };
+
   const TABS = [
     {id:"dashboard",  label:"Dashboard"},
     {id:"users",      label:`Users (${users.length})`},
-    {id:"feedback",   label:`Feedback (${feedback.filter(f=>f.type!=="agent_application").length})`},
-    {id:"affiliates", label:`Affiliates (${users.filter(u=>u.referred_by).length})`},
+    {id:"feedback",   label:`Feedback (${feedback.filter(f=>f.type!=="agent_application").length})${stats?.feedbackUnread>0?" ●":""}`},
+    {id:"affiliates", label:`Sources (${users.filter(u=>u.referred_by).length})`},
     {id:"agents",     label:`Agents${stats?.agentsPending>0?" ● "+stats.agentsPending:""}`},
+    {id:"database",   label:"Database"},
   ];
 
   return (
@@ -17440,20 +17765,24 @@ function AdminPage() {
       <div style={S.hdr}>
         <svg viewBox="0 0 48 48" fill="none" width="24" height="24"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
         <span style={S.hdrTtl}>Steadwell Admin</span>
-        <button onClick={loadAll} style={{marginLeft:"auto",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-          {loading?"Loading…":"↻ Refresh"}
-        </button>
+        <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:11,color:"rgba(244,237,223,.5)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
+          <button onClick={loadAll} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            {loading?"Loading…":"↻ Refresh"}
+          </button>
+        </div>
       </div>
       <div style={S.tabBar}>
         {TABS.map(t=><button key={t.id} style={S.tab(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
       </div>
       <div style={S.body}>
-        {msg&&<div style={S.msgBox} onClick={()=>setMsg(null)}>{msg} <span style={{float:"right",cursor:"pointer",opacity:.5}}>✕</span></div>}
+        {msg&&<div style={S.msgBox(msgType)} onClick={()=>setMsg(null)}>{msg} <span style={{float:"right",cursor:"pointer",opacity:.5}}>✕</span></div>}
         {tab==="dashboard"  &&<TabDashboard/>}
         {tab==="users"      &&<TabUsers/>}
         {tab==="feedback"   &&<TabFeedback/>}
         {tab==="affiliates" &&<TabAffiliates/>}
         {tab==="agents"     &&<TabAgents/>}
+        {tab==="database"   &&<TabDatabase/>}
       </div>
     </div>
   );
