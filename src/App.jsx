@@ -16400,9 +16400,10 @@ export default function App() {
         setNeedsPasswordReset(true);
       } else {
         setSession(session);
-        // Auto-redirect admin to /admin on sign-in
+        // Auto-redirect admin to /admin on sign-in, unless they explicitly chose to view the app
         if (event === "SIGNED_IN" && session?.user?.email === "hello@trysteadwell.app") {
-          if (window.location.pathname !== "/admin") {
+          const bypassRedirect = sessionStorage.getItem("sw_admin_view_app") === "1";
+          if (!bypassRedirect && window.location.pathname !== "/admin") {
             window.location.href = "/admin";
           }
         }
@@ -17064,6 +17065,8 @@ function AdminPage() {
   const notify = (m, type="success") => { setMsg(m); setMsgType(type); };
 
   useEffect(() => {
+    // Clear the "view app" bypass flag when entering admin
+    sessionStorage.removeItem("sw_admin_view_app");
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email === ADMIN_EMAIL) { setAuthed(true); loadAll(); }
       else { setAuthed(false); }
@@ -17771,9 +17774,10 @@ function AdminPage() {
         <span style={S.hdrTtl}>Steadwell Admin</span>
         <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:11,color:"rgba(244,237,223,.5)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
-          <a href="/" style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"rgba(244,237,223,.7)",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"none",display:"inline-block"}}>
+          <button onClick={()=>{ sessionStorage.setItem("sw_admin_view_app","1"); window.location.href="/"; }}
+            style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"rgba(244,237,223,.7)",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             View app ↗
-          </a>
+          </button>
           <button onClick={loadAll} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             {loading?"Loading…":"↻ Refresh"}
           </button>
