@@ -16396,12 +16396,16 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
-        // User clicked a reset link — hold the session but show the
-        // set-new-password screen instead of loading the app.
         setSession(session);
         setNeedsPasswordReset(true);
       } else {
         setSession(session);
+        // Auto-redirect admin to /admin on sign-in
+        if (event === "SIGNED_IN" && session?.user?.email === "hello@trysteadwell.app") {
+          if (window.location.pathname !== "/admin") {
+            window.location.href = "/admin";
+          }
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -17767,6 +17771,9 @@ function AdminPage() {
         <span style={S.hdrTtl}>Steadwell Admin</span>
         <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:11,color:"rgba(244,237,223,.5)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
+          <a href="/" style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"rgba(244,237,223,.7)",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"none",display:"inline-block"}}>
+            View app ↗
+          </a>
           <button onClick={loadAll} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             {loading?"Loading…":"↻ Refresh"}
           </button>
