@@ -2,6 +2,9 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/warranty-tracker", "destination": "/warranty-tracker.html" },
     { "source": "/guides", "destination": "/index.html" },
     { "source": "/unsubscribe", "destination": "/index.html" },
     { "source": "/recall-alerts", "destination": "/index.html" },
