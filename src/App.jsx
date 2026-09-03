@@ -16462,22 +16462,25 @@ export default function App() {
   const [contractors, setContractors] = useState([]);
   const [projects,    setProjects]    = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
-
-  // Durable resume: covers the normal post-onboarding launch AND returning from a
-  // Stripe Checkout redirect, which reloads the page and loses the transient
-  // autoOpenSetup flag above. Profile fields (DB-backed) survive that round-trip.
-  useEffect(() => {
-    if (profile?.onboarding_complete && !profile?.home_setup_complete) {
-      setTab("profile");
-      setAutoOpenSetup(true);
-    }
-  }, [profile?.onboarding_complete, profile?.home_setup_complete]);
   const [showSetup, setShowSetup] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
+
+  // Durable resume: covers the normal post-onboarding launch AND returning from a
+  // Stripe Checkout redirect, which reloads the page and loses the transient
+  // autoOpenSetup flag above. Profile fields (DB-backed) survive that round-trip.
+  // Must sit after both `profile` and `setTab` are declared above — referencing
+  // either earlier is a genuine use-before-declare, not just a minifier quirk,
+  // confirmed by reproducing this exact crash against a real build+sourcemap.
+  useEffect(() => {
+    if (profile?.onboarding_complete && !profile?.home_setup_complete) {
+      setTab("profile");
+      setAutoOpenSetup(true);
+    }
+  }, [profile?.onboarding_complete, profile?.home_setup_complete]);
   const [activePropertyId, setActivePropertyIdRaw] = useState(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [serviceLogs, setServiceLogs] = useState([]);
