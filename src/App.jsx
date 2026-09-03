@@ -2816,34 +2816,47 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       <div className="onb-screen">
         <ProgressBar/>
         <Wordmark/>
-        <div className="onb-inner" style={{paddingBottom:"7rem"}}>
-          <div style={{textAlign:"center",marginBottom:"1.25rem"}}>
+        <div className="onb-inner" style={{paddingBottom:"7rem",maxWidth:1040}}>
+          <div style={{textAlign:"center",marginBottom:"2.25rem"}}>
             <div className="onb-step">Step 5 of {TOTAL}</div>
             <div className="onb-q" style={{marginBottom:".5rem"}}>Choose your plan</div>
             <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
           </div>
 
-          <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:"1.1rem",alignItems:"stretch"}}>
             {PLAN_TIERS.map(t => {
               const isSel = chosenPlan === t.key;
               return (
                 <div key={t.key} onClick={() => setChosenPlan(t.key)}
-                  style={{position:"relative",cursor:"pointer",border:`1.5px solid ${isSel?t.color:"rgba(244,237,223,.12)"}`,background:isSel?t.bg:"rgba(244,237,223,.03)",borderRadius:16,padding:"1.1rem 1.2rem",transition:"border-color .15s,background .15s"}}>
-                  {t.badge && <div style={{position:"absolute",top:-11,right:14,background:"#C16140",color:"#fff",fontSize:".68rem",fontWeight:700,padding:".2rem .55rem",borderRadius:99}}>{t.badge}</div>}
-                  <div style={{display:"flex",alignItems:"center",gap:".7rem",marginBottom:".4rem"}}>
-                    <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.25)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      {isSel && <div style={{width:10,height:10,borderRadius:"50%",background:t.color}}/>}
+                  style={{
+                    position:"relative",cursor:"pointer",display:"flex",flexDirection:"column",
+                    border:`2px solid ${isSel?t.color:t.badge?"rgba(193,97,64,.4)":"rgba(244,237,223,.14)"}`,
+                    background:isSel?t.bg:"rgba(244,237,223,.035)",
+                    borderRadius:20,padding:"1.75rem 1.6rem",
+                    boxShadow:isSel?`0 6px 28px ${t.color}33`:"none",
+                    transition:"border-color .18s,background .18s,box-shadow .18s",
+                  }}>
+                  {t.badge && <div style={{position:"absolute",top:-13,left:"50%",transform:"translateX(-50%)",background:"#C16140",color:"#fff",fontSize:".7rem",fontWeight:700,padding:".3rem .75rem",borderRadius:99,whiteSpace:"nowrap"}}>{t.badge}</div>}
+
+                  <div style={{display:"flex",alignItems:"center",gap:".7rem",marginBottom:".6rem"}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.3)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {isSel && <div style={{width:11,height:11,borderRadius:"50%",background:t.color}}/>}
                     </div>
-                    <div style={{fontWeight:700,fontSize:"1rem",color:"#F4EDDF",flex:1}}>{t.label}</div>
-                    <div style={{textAlign:"right"}}>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",color:"#F4EDDF"}}>{t.price}</span>
-                      <span style={{fontSize:".78rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
-                    </div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#F4EDDF",flex:1}}>{t.label}</div>
                   </div>
-                  <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginLeft:"1.9rem",marginBottom:".5rem"}}>{t.pitch}</div>
-                  <div style={{marginLeft:"1.9rem",display:"flex",flexDirection:"column",gap:".2rem"}}>
+
+                  <div style={{marginBottom:"1rem"}}>
+                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",color:"#F4EDDF"}}>{t.price}</span>
+                    <span style={{fontSize:".85rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
+                  </div>
+
+                  <div style={{fontSize:".88rem",color:"rgba(244,237,223,.6)",lineHeight:1.5,marginBottom:"1.1rem"}}>{t.pitch}</div>
+
+                  <div style={{display:"flex",flexDirection:"column",gap:".55rem",marginTop:"auto"}}>
                     {t.features.map((f,i) => (
-                      <div key={i} style={{fontSize:".78rem",color:"rgba(244,237,223,.45)"}}>✓ {f}</div>
+                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".55rem",fontSize:".85rem",color:"rgba(244,237,223,.7)",lineHeight:1.4}}>
+                        <span style={{color:t.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2851,13 +2864,15 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
             })}
           </div>
 
-          <button className="onb-btn" style={{marginTop:"1.25rem"}} disabled={!chosenPlan || planSaving} onClick={handlePlanContinue}>
-            {planSaving
-              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</>
-              : chosenPlan ? "Continue →" : "Select a plan to continue"}
-          </button>
-          <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".6rem"}}>Cancel anytime · Secure payments via Stripe</div>
-          <button className="onb-back" onClick={() => setStep(4)}>← Back</button>
+          <div style={{maxWidth:460,margin:"2rem auto 0"}}>
+            <button className="onb-btn" style={{marginTop:0}} disabled={!chosenPlan || planSaving} onClick={handlePlanContinue}>
+              {planSaving
+                ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</>
+                : chosenPlan ? "Continue →" : "Select a plan to continue"}
+            </button>
+            <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".6rem"}}>Cancel anytime · Secure payments via Stripe</div>
+            <button className="onb-back" onClick={() => setStep(4)}>← Back</button>
+          </div>
         </div>
       </div>
     );
