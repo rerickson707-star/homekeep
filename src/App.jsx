@@ -2561,6 +2561,7 @@ const ONBOARDING_GOALS = [
 function OnboardingWizard({ session, onComplete, onCheckout }) {
   const TOTAL = 5;
   const [chosenPlan, setChosenPlan] = useState(null); // forced plan choice — nothing pre-selected
+  const [billingAnnual, setBillingAnnual] = useState(false);
   const [planSaving, setPlanSaving] = useState(false);
   const ONB_STEP_KEY = `sw_onb_step_${session?.user?.id || "anon"}`;
   const [step, setStepRaw] = useState(() => {
@@ -2606,14 +2607,14 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
     },
     {
-      key: "plus", label: "Plus", price: "$7.99", period: "/mo",
+      key: "plus", label: "Plus", price: "$7.99", priceAnnual: "$63.99", period: "/mo", periodAnnual: "/yr",
       color: "#D2876A", bg: "rgba(210,135,106,.12)",
       pitch: "Automation and intelligence for the serious homeowner.",
       features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
       badge: "Most popular",
     },
     {
-      key: "pro", label: "Pro", price: "$14.99", period: "/mo",
+      key: "pro", label: "Pro", price: "$14.99", priceAnnual: "$119.99", period: "/mo", periodAnnual: "/yr",
       color: "#E0A46E", bg: "rgba(224,164,110,.12)",
       pitch: "Multiple properties and shared access.",
       features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
@@ -2628,7 +2629,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       // before Stripe's webhook tries to update it.
       await handleFinish(false);
       if (chosenPlan !== "free" && onCheckout) {
-        onCheckout(chosenPlan, "monthly"); // redirects to Stripe; resumes via durable profile flags on return
+        onCheckout(chosenPlan, billingAnnual ? "annual" : "monthly"); // redirects to Stripe; resumes via durable profile flags on return
       }
     } finally {
       setPlanSaving(false);
@@ -2823,6 +2824,20 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
             <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
           </div>
 
+          <div style={{display:"flex",justifyContent:"center",marginBottom:"1.75rem"}}>
+            <div style={{display:"inline-flex",background:"rgba(244,237,223,.06)",border:"1px solid rgba(244,237,223,.14)",borderRadius:99,padding:4}}>
+              <button type="button" onClick={() => setBillingAnnual(false)}
+                style={{padding:".5rem 1.1rem",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,background:!billingAnnual?"#C16140":"transparent",color:!billingAnnual?"#fff":"rgba(244,237,223,.55)",transition:"all .15s"}}>
+                Monthly
+              </button>
+              <button type="button" onClick={() => setBillingAnnual(true)}
+                style={{padding:".5rem 1.1rem",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,background:billingAnnual?"#C16140":"transparent",color:billingAnnual?"#fff":"rgba(244,237,223,.55)",transition:"all .15s",display:"flex",alignItems:"center",gap:".4rem"}}>
+                Annual
+                <span style={{fontSize:".68rem",fontWeight:700,background:billingAnnual?"rgba(255,255,255,.25)":"rgba(159,179,168,.25)",color:billingAnnual?"#fff":"#9FB3A8",padding:".1rem .4rem",borderRadius:99}}>Save 33%</span>
+              </button>
+            </div>
+          </div>
+
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:"1.1rem",alignItems:"stretch"}}>
             {PLAN_TIERS.map(t => {
               const isSel = chosenPlan === t.key;
@@ -2846,8 +2861,8 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
                   </div>
 
                   <div style={{marginBottom:"1rem"}}>
-                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",color:"#F4EDDF"}}>{t.price}</span>
-                    <span style={{fontSize:".85rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
+                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",color:"#F4EDDF"}}>{billingAnnual && t.priceAnnual ? t.priceAnnual : t.price}</span>
+                    <span style={{fontSize:".85rem",color:"rgba(244,237,223,.5)"}}> {billingAnnual && t.periodAnnual ? t.periodAnnual : t.period}</span>
                   </div>
 
                   <div style={{fontSize:".88rem",color:"rgba(244,237,223,.6)",lineHeight:1.5,marginBottom:"1.1rem"}}>{t.pitch}</div>
