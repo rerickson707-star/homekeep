@@ -13455,8 +13455,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
   const schoolRatingColor = r => !r ? "#C2B8AE" : r>=8 ? "#1A7A44" : r>=6 ? "#E0A84A" : "#B91C1C";
 
-  // Empty state
-  if (!profile?.name && !profile?.address) {
+  // Empty state — showSetup takes priority so a resuming/active setup wizard is
+  // never silently overridden by this screen (e.g. returning from an abandoned
+  // Stripe Checkout with onboarding done but home setup not yet complete).
+  if (!showSetup && !profile?.name && !profile?.address) {
     return (
       <div>
         <div className="sh"><span className="sh-title">My Home</span></div>
