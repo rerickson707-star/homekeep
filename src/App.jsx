@@ -2595,6 +2595,46 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
   const [hearAbout, setHearAbout] = useState(null);
 
+  // Step 5 — Plan choice. Declared here (not inside the step-5 render block) because
+  // consts declared after an earlier conditional return trigger TDZ collisions once
+  // Vite minifies this file — same class of bug noted elsewhere in this codebase.
+  const PLAN_TIERS = [
+    {
+      key: "free", label: "Free", price: "$0", period: "forever",
+      color: "#9FB3A8", bg: "rgba(255,255,255,.05)",
+      pitch: "Track the basics — no cost, ever.",
+      features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
+    },
+    {
+      key: "plus", label: "Plus", price: "$7.99", period: "/mo",
+      color: "#D2876A", bg: "rgba(210,135,106,.12)",
+      pitch: "Automation and intelligence for the serious homeowner.",
+      features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
+      badge: "Most popular",
+    },
+    {
+      key: "pro", label: "Pro", price: "$14.99", period: "/mo",
+      color: "#E0A46E", bg: "rgba(224,164,110,.12)",
+      pitch: "Multiple properties and shared access.",
+      features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
+    },
+  ];
+
+  const handlePlanContinue = async () => {
+    if (!chosenPlan || planSaving) return;
+    setPlanSaving(true);
+    try {
+      // Profile is created regardless of tier — paid tiers need the row to exist
+      // before Stripe's webhook tries to update it.
+      await handleFinish(false);
+      if (chosenPlan !== "free" && onCheckout) {
+        onCheckout(chosenPlan, "monthly"); // redirects to Stripe; resumes via durable profile flags on return
+      }
+    } finally {
+      setPlanSaving(false);
+    }
+  };
+
 
 
   useEffect(() => {
@@ -2769,43 +2809,6 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   // on the durable onboarding_complete/home_setup_complete profile fields, not on
   // in-memory state, since the Stripe redirect is a full page navigation.
   if (step === 5) {
-    const tiers = [
-      {
-        key: "free", label: "Free", price: "$0", period: "forever",
-        color: "#9FB3A8", bg: "rgba(255,255,255,.05)",
-        pitch: "Track the basics — no cost, ever.",
-        features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
-      },
-      {
-        key: "plus", label: "Plus", price: "$7.99", period: "/mo",
-        color: "#D2876A", bg: "rgba(210,135,106,.12)",
-        pitch: "Automation and intelligence for the serious homeowner.",
-        features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
-        badge: "Most popular",
-      },
-      {
-        key: "pro", label: "Pro", price: "$14.99", period: "/mo",
-        color: "#E0A46E", bg: "rgba(224,164,110,.12)",
-        pitch: "Multiple properties and shared access.",
-        features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
-      },
-    ];
-
-    const handlePlanContinue = async () => {
-      if (!chosenPlan || planSaving) return;
-      setPlanSaving(true);
-      try {
-        // Profile is created regardless of tier — paid tiers need the row to exist
-        // before Stripe's webhook tries to update it.
-        await handleFinish(false);
-        if (chosenPlan !== "free" && onCheckout) {
-          onCheckout(chosenPlan, "monthly"); // redirects to Stripe; resumes via durable profile flags on return
-        }
-      } finally {
-        setPlanSaving(false);
-      }
-    };
-
     return (
       <div className="onb-screen">
         <ProgressBar/>
@@ -2818,7 +2821,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
-            {tiers.map(t => {
+            {PLAN_TIERS.map(t => {
               const isSel = chosenPlan === t.key;
               return (
                 <div key={t.key} onClick={() => setChosenPlan(t.key)}
