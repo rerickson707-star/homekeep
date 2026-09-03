@@ -2635,6 +2635,24 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
     }
   };
 
+  // Pre-existing TDZ violation found during audit: this was declared after the
+  // giftChecked early return in the original codebase. Hoisted here for the same
+  // reason as PLAN_TIERS/handlePlanContinue above.
+  const handleAddressInput = (val) => {
+    setAddress(val); setShowSug(true); setLookupState("idle");
+    setPropertyData(null); setSelectedAddress("");
+    clearTimeout(debounceRef.current);
+    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
+    setSuggesting(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
+        setSuggestions(results);
+      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
+      finally { setSuggesting(false); }
+    }, 120);
+  };
+
 
 
   useEffect(() => {
@@ -2755,21 +2773,6 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       <div style={{width:36,height:36,border:"3px solid #E6DECF",borderTop:"3px solid #234A3D",borderRadius:"50%"}}/>
     </div>
   );
-
-  const handleAddressInput = (val) => {
-    setAddress(val); setShowSug(true); setLookupState("idle");
-    setPropertyData(null); setSelectedAddress("");
-    clearTimeout(debounceRef.current);
-    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
-    setSuggesting(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
-        setSuggestions(results);
-      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
-      finally { setSuggesting(false); }
-    }, 120);
-  };
 
   if (step === 4) return (
     <div className="onb-screen">
