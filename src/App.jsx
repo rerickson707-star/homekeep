@@ -2558,8 +2558,10 @@ const ONBOARDING_GOALS = [
   { id:"warranties",  label:"Organize warranties & insurance",sub:"Never lose a policy or warranty card again",   ico:"🔒" },
 ];
 
-function OnboardingWizard({ session, onComplete }) {
-  const TOTAL = 4;
+function OnboardingWizard({ session, onComplete, onCheckout }) {
+  const TOTAL = 5;
+  const [chosenPlan, setChosenPlan] = useState(null); // forced plan choice — nothing pre-selected
+  const [planSaving, setPlanSaving] = useState(false);
   const ONB_STEP_KEY = `sw_onb_step_${session?.user?.id || "anon"}`;
   const [step, setStepRaw] = useState(() => {
     try { const s = sessionStorage.getItem(ONB_STEP_KEY); return s ? Math.min(Number(s), 4) : 1; }
@@ -2750,13 +2752,110 @@ function OnboardingWizard({ session, onComplete }) {
             </button>
           ))}
         </div>
-        <button className="onb-btn" disabled={saving} onClick={() => handleFinish(false)}>
-          {saving ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</> : "Set up my home →"}
+        <button className="onb-btn" onClick={() => setStep(5)}>
+          Continue →
         </button>
         <button className="onb-back" onClick={() => setStep(3)}>← Back</button>
       </div>
     </div>
   );
+
+  // ── Step 5: Forced plan choice — everyone sees this once, nothing pre-selected ──
+  // Placed here (right after "how did you hear") rather than at the end of the
+  // asset-setup wizard, so it can't be missed by clicking "Finish later" further
+  // down the funnel. Free continues straight into asset setup; Plus/Pro create the
+  // profile first (so the Stripe webhook has a row to attach to), then redirect to
+  // Checkout. Resuming into the asset-setup wizard after a Stripe round-trip relies
+  // on the durable onboarding_complete/home_setup_complete profile fields, not on
+  // in-memory state, since the Stripe redirect is a full page navigation.
+  if (step === 5) {
+    const tiers = [
+      {
+        key: "free", label: "Free", price: "$0", period: "forever",
+        color: "#9FB3A8", bg: "rgba(255,255,255,.05)",
+        pitch: "Track the basics — no cost, ever.",
+        features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
+      },
+      {
+        key: "plus", label: "Plus", price: "$7.99", period: "/mo",
+        color: "#D2876A", bg: "rgba(210,135,106,.12)",
+        pitch: "Automation and intelligence for the serious homeowner.",
+        features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
+        badge: "Most popular",
+      },
+      {
+        key: "pro", label: "Pro", price: "$14.99", period: "/mo",
+        color: "#E0A46E", bg: "rgba(224,164,110,.12)",
+        pitch: "Multiple properties and shared access.",
+        features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
+      },
+    ];
+
+    const handlePlanContinue = async () => {
+      if (!chosenPlan || planSaving) return;
+      setPlanSaving(true);
+      try {
+        // Profile is created regardless of tier — paid tiers need the row to exist
+        // before Stripe's webhook tries to update it.
+        await handleFinish(false);
+        if (chosenPlan !== "free" && onCheckout) {
+          onCheckout(chosenPlan, "monthly"); // redirects to Stripe; resumes via durable profile flags on return
+        }
+      } finally {
+        setPlanSaving(false);
+      }
+    };
+
+    return (
+      <div className="onb-screen">
+        <ProgressBar/>
+        <Wordmark/>
+        <div className="onb-inner" style={{paddingBottom:"7rem"}}>
+          <div style={{textAlign:"center",marginBottom:"1.25rem"}}>
+            <div className="onb-step">Step 5 of {TOTAL}</div>
+            <div className="onb-q" style={{marginBottom:".5rem"}}>Choose your plan</div>
+            <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
+          </div>
+
+          <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
+            {tiers.map(t => {
+              const isSel = chosenPlan === t.key;
+              return (
+                <div key={t.key} onClick={() => setChosenPlan(t.key)}
+                  style={{position:"relative",cursor:"pointer",border:`1.5px solid ${isSel?t.color:"rgba(244,237,223,.12)"}`,background:isSel?t.bg:"rgba(244,237,223,.03)",borderRadius:16,padding:"1.1rem 1.2rem",transition:"border-color .15s,background .15s"}}>
+                  {t.badge && <div style={{position:"absolute",top:-11,right:14,background:"#C16140",color:"#fff",fontSize:".68rem",fontWeight:700,padding:".2rem .55rem",borderRadius:99}}>{t.badge}</div>}
+                  <div style={{display:"flex",alignItems:"center",gap:".7rem",marginBottom:".4rem"}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.25)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {isSel && <div style={{width:10,height:10,borderRadius:"50%",background:t.color}}/>}
+                    </div>
+                    <div style={{fontWeight:700,fontSize:"1rem",color:"#F4EDDF",flex:1}}>{t.label}</div>
+                    <div style={{textAlign:"right"}}>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",color:"#F4EDDF"}}>{t.price}</span>
+                      <span style={{fontSize:".78rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginLeft:"1.9rem",marginBottom:".5rem"}}>{t.pitch}</div>
+                  <div style={{marginLeft:"1.9rem",display:"flex",flexDirection:"column",gap:".2rem"}}>
+                    {t.features.map((f,i) => (
+                      <div key={i} style={{fontSize:".78rem",color:"rgba(244,237,223,.45)"}}>✓ {f}</div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button className="onb-btn" style={{marginTop:"1.25rem"}} disabled={!chosenPlan || planSaving} onClick={handlePlanContinue}>
+            {planSaving
+              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</>
+              : chosenPlan ? "Continue →" : "Select a plan to continue"}
+          </button>
+          <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".6rem"}}>Cancel anytime · Secure payments via Stripe</div>
+          <button className="onb-back" onClick={() => setStep(4)}>← Back</button>
+        </div>
+      </div>
+    );
+  }
 
   // handleFinish moved above
 
@@ -16357,6 +16456,16 @@ export default function App() {
   const [contractors, setContractors] = useState([]);
   const [projects,    setProjects]    = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
+
+  // Durable resume: covers the normal post-onboarding launch AND returning from a
+  // Stripe Checkout redirect, which reloads the page and loses the transient
+  // autoOpenSetup flag above. Profile fields (DB-backed) survive that round-trip.
+  useEffect(() => {
+    if (profile?.onboarding_complete && !profile?.home_setup_complete) {
+      setTab("profile");
+      setAutoOpenSetup(true);
+    }
+  }, [profile?.onboarding_complete, profile?.home_setup_complete]);
   const [showSetup, setShowSetup] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
@@ -16628,6 +16737,7 @@ export default function App() {
         <style>{CSS}</style>
         <OnboardingWizard
           session={session}
+          onCheckout={startCheckout}
           onComplete={async ({ launchSetup } = {}) => {
             const uid = session.user.id;
             const [p, t] = await Promise.all([
@@ -16652,6 +16762,7 @@ export default function App() {
         <style>{CSS}</style>
         <OnboardingWizard
           session={session}
+          onCheckout={startCheckout}
           onComplete={async ({ launchSetup } = {}) => {
             const uid = session.user.id;
             const [p, t] = await Promise.all([
@@ -21621,7 +21732,6 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
   const [step, setStepRaw] = useState(0);
   const [saving, setSaving] = useState(false);
   const [assetDetails, setAssetDetails] = useState({});
-  const [wizardPlanChoice, setWizardPlanChoice] = useState(null); // forced plan choice — nothing pre-selected
 
   // Persist step + answers to localStorage on every change
   const setStep = (n) => {
@@ -21775,8 +21885,9 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       toast(msg);
       // Clear saved wizard state
       try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_step"); } catch {}
-      // Move into the plan-selection step — onComplete() fires once a plan choice is made
-      setStepRaw(6);
+      // Plan choice already happened earlier in onboarding (Step 5), so setup is
+      // fully done once assets/tasks/projects are saved.
+      onComplete();
     } catch (err) {
       toast("Error saving — " + err.message, "error");
     }
@@ -22341,113 +22452,6 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
               ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up your home…</>
               : `Save ${selA.length+selT.length+selP.length} items to my home →`}
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Step 6: Forced plan choice — everyone sees this once, nothing pre-selected
-  if (step === 6) {
-    const selected = wizardPlanChoice;
-    const setSelected = setWizardPlanChoice;
-    const tiers = [
-      {
-        key: "free", label: "Free", price: "$0", period: "forever",
-        color: "#9FB3A8", bg: "rgba(255,255,255,.05)",
-        pitch: "Track the basics — no cost, ever.",
-        features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
-      },
-      {
-        key: "plus", label: "Plus", price: "$7.99", period: "/mo",
-        color: "#D2876A", bg: "rgba(210,135,106,.12)",
-        pitch: "Automation and intelligence for the serious homeowner.",
-        features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
-        badge: "Most popular",
-      },
-      {
-        key: "pro", label: "Pro", price: "$14.99", period: "/mo",
-        color: "#E0A46E", bg: "rgba(224,164,110,.12)",
-        pitch: "Multiple properties and shared access.",
-        features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
-      },
-    ];
-
-    const handleContinue = () => {
-      if (!selected) return;
-      if (selected === "free") {
-        onComplete();
-      } else if (onCheckout) {
-        onCheckout(selected, "monthly"); // redirects to Stripe; webhook completes the upgrade
-      } else {
-        onComplete();
-      }
-    };
-
-    return (
-      <div className="setup-screen">
-        <Progress/><Wordmark/>
-        <div className="setup-inner" style={{paddingBottom:"9rem"}}>
-          <div style={{textAlign:"center",marginBottom:"1.5rem"}}>
-            <div style={{fontSize:"2rem",marginBottom:".5rem"}}>🎉</div>
-            <div className="setup-q" style={{marginBottom:".5rem"}}>Your home is set up!</div>
-            <div className="setup-hint" style={{maxWidth:360,margin:"0 auto"}}>
-              Choose the plan that fits how you want to manage your home. You can change this anytime.
-            </div>
-          </div>
-
-          <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
-            {tiers.map(t => {
-              const isSel = selected === t.key;
-              return (
-                <div key={t.key}
-                  onClick={()=>setSelected(t.key)}
-                  style={{
-                    background: isSel ? t.bg : "rgba(255,255,255,.04)",
-                    border: `2px solid ${isSel ? t.color : "rgba(244,237,223,.14)"}`,
-                    borderRadius:14, padding:"1.1rem 1.15rem", cursor:"pointer",
-                    transition:"all .15s", position:"relative",
-                  }}>
-                  {t.badge && (
-                    <div style={{position:"absolute",top:-9,right:14,background:"var(--rust)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 9px",borderRadius:10,letterSpacing:".03em"}}>{t.badge}</div>
-                  )}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".35rem"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.3)"}`,background:isSel?t.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                        {isSel && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#1C3D31" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      </div>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"#F4EDDF"}}>{t.label}</span>
-                    </div>
-                    <div>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:600,color:"#F4EDDF"}}>{t.price}</span>
-                      <span style={{fontSize:".72rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
-                    </div>
-                  </div>
-                  <div style={{fontSize:".78rem",color:"rgba(244,237,223,.55)",marginBottom:".55rem",marginLeft:32}}>{t.pitch}</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:".25rem",marginLeft:32}}>
-                    {t.features.map(f => (
-                      <div key={f} style={{fontSize:".76rem",color:"rgba(244,237,223,.45)",display:"flex",gap:6,alignItems:"flex-start"}}>
-                        <span style={{color:t.color,flexShrink:0}}>✓</span>{f}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="setup-actions">
-          <button
-            className="onb-btn"
-            style={{marginTop:0,width:"100%",opacity: selected ? 1 : .5}}
-            onClick={handleContinue}
-            disabled={!selected}
-          >
-            {!selected ? "Select a plan to continue" : selected === "free" ? "Continue with Free →" : `Continue to checkout →`}
-          </button>
-          <div style={{textAlign:"center",fontSize:".7rem",color:"rgba(244,237,223,.35)",marginTop:".65rem"}}>
-            Cancel anytime · Secure payments via Stripe
-          </div>
         </div>
       </div>
     );
