@@ -16927,8 +16927,22 @@ export default function App() {
           <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
         </header>
 
+        {/* ── Bounce banner — takes priority over the softer verify banner, since a bounce means
+             the address is confirmed bad, not just unconfirmed. No self-service email-change UI
+             exists yet, so this points to support rather than a dead-end "update email" button. */}
+        {session?.user?.app_metadata?.email_bounced === true && !verifyBannerDismissed && (
+          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#F8DEDA",borderBottom:"1px solid rgba(185,66,44,.35)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
+            <span style={{flex:1,minWidth:200}}>
+              <strong>{session.user.email}</strong> couldn't be delivered to — you're likely missing maintenance reminders right now.{" "}
+              <a href="mailto:hello@trysteadwell.app" style={{color:"#B9422C",fontWeight:600}}>Email us to fix it</a>
+            </span>
+            <button onClick={() => setVerifyBannerDismissed(true)}
+              style={{background:"none",border:"none",color:"#5E574F",cursor:"pointer",fontSize:"1rem",padding:0,lineHeight:1}}>×</button>
+          </div>
+        )}
+
         {/* ── Email verification banner — only shows when app_metadata.email_verified is explicitly false */}
-        {session?.user?.app_metadata?.email_verified === false && !verifyBannerDismissed && (
+        {session?.user?.app_metadata?.email_verified === false && session?.user?.app_metadata?.email_bounced !== true && !verifyBannerDismissed && (
           <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#FBF0DD",borderBottom:"1px solid rgba(193,97,64,.25)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
             <span style={{flex:1,minWidth:200}}>
               Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.

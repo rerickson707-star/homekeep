@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
     if (provider && provider !== "email") {
       // OAuth provider already verified this address -- mark verified immediately, no email needed
       await supabase.auth.admin.updateUserById(record.id, {
+        email_confirm: true, // Supabase's own native flag -- keeps OAuth account-linking working correctly
         app_metadata: { email_verified: true },
       });
       return new Response(JSON.stringify({ skipped: "oauth-provider-verified" }), { status: 200 });
@@ -34,6 +35,9 @@ Deno.serve(async (req) => {
     const token = crypto.randomUUID();
 
     const { error: updateError } = await supabase.auth.admin.updateUserById(record.id, {
+      email_confirm: true, // Supabase's own native flag, kept in sync with the product decision
+                            // to grant immediate access -- without this, a later Google sign-in
+                            // with the same email can't auto-link and creates a duplicate account
       app_metadata: {
         email_verified: false,
         email_verify_token: token,
