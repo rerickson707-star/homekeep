@@ -4,6 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Generates a verification token stored in app_metadata (NOT user_metadata --
 // app_metadata can only be written by the service role, so a user can't fake
 // their own "verified" status by editing their own profile).
+//
+// OAuth signups (Google, etc.) skip this entirely -- the provider already
+// verified the email, so sending our own confirmation link would be redundant
+// and confusing. Detected via raw_app_meta_data.provider on the auth.users row.
 Deno.serve(async (req) => {
   try {
     const payload = await req.json();
@@ -17,6 +21,15 @@ Deno.serve(async (req) => {
       Deno.env.get("DB_URL"),
       Deno.env.get("SERVICE_ROLE_KEY")
     );
+
+    const provider = record.raw_app_meta_data?.provider;
+    if (provider && provider !== "email") {
+      // OAuth provider already verified this address -- mark verified immediately, no email needed
+      await supabase.auth.admin.updateUserById(record.id, {
+        app_metadata: { email_verified: true },
+      });
+      return new Response(JSON.stringify({ skipped: "oauth-provider-verified" }), { status: 200 });
+    }
 
     const token = crypto.randomUUID();
 
