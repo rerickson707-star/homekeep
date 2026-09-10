@@ -16394,6 +16394,8 @@ export default function App() {
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
+  const [verifyResendState, setVerifyResendState] = useState("idle"); // idle | sending | sent
   const [screen, setScreen] = useState(() => {
     // If coming from a gift link or any ?action=signup link, open signup directly
     const params = new URLSearchParams(window.location.search);
@@ -16537,6 +16539,33 @@ export default function App() {
   // incorrectly reset the plan to "free".
   const primaryProfile = allProfiles.find(p => !p._shared) || profile;
   const planData = usePlan(primaryProfile);
+
+  // ── Handle return from the email-verification link (?verified=1 or ?verified=already)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verified = params.get("verified");
+    if (!verified) return;
+    if (verified === "1") {
+      // Force a fresh token so app_metadata.email_verified (just updated server-side) is picked up now
+      supabase.auth.refreshSession();
+    }
+    params.delete("verified");
+    const clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+    window.history.replaceState({}, "", clean);
+  }, []);
+
+  const handleResendVerification = async () => {
+    if (!session?.user) return;
+    setVerifyResendState("sending");
+    try {
+      await supabase.functions.invoke("send-verify-email", {
+        body: { record: { id: session.user.id, email: session.user.email } },
+      });
+      setVerifyResendState("sent");
+    } catch {
+      setVerifyResendState("idle");
+    }
+  };
 
   // ── Listen for auth state changes
   useEffect(() => {
@@ -16872,6 +16901,25 @@ export default function App() {
           />
           <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
         </header>
+
+        {/* ── Email verification banner — only shows when app_metadata.email_verified is explicitly false */}
+        {session?.user?.app_metadata?.email_verified === false && !verifyBannerDismissed && (
+          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#FBF0DD",borderBottom:"1px solid rgba(193,97,64,.25)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
+            <span style={{flex:1,minWidth:200}}>
+              Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.
+            </span>
+            {verifyResendState === "sent" ? (
+              <span style={{color:"#234A3D",fontWeight:600}}>Email sent — check your inbox</span>
+            ) : (
+              <button onClick={handleResendVerification} disabled={verifyResendState === "sending"}
+                style={{background:"none",border:"none",color:"#C16140",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",padding:0}}>
+                {verifyResendState === "sending" ? "Sending…" : "Resend email"}
+              </button>
+            )}
+            <button onClick={() => setVerifyBannerDismissed(true)}
+              style={{background:"none",border:"none",color:"#5E574F",cursor:"pointer",fontSize:"1rem",padding:0,lineHeight:1}}>×</button>
+          </div>
+        )}
 
         {/* ── WARRANTY MODULE — top-level overlay so it works from any tab ── */}
         {showWarrantyModule && (
