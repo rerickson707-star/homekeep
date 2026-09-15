@@ -2578,6 +2578,13 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   const [giftAgent, setGiftAgent]       = useState(null);  // agent row if gift link
   const [giftChecked, setGiftChecked]   = useState(false);
 
+  // Once a gift agent resolves, default Step 5 to the gifted plan rather than
+  // leaving it on the generic picker -- but only if the user hasn't already
+  // picked something themselves in the meantime.
+  useEffect(() => {
+    if (giftAgent && chosenPlan === null) setChosenPlan("gift_plus");
+  }, [giftAgent]);
+
   // Step 1 — Name
   const [name, setName] = useState("");
 
@@ -2621,20 +2628,34 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
     },
   ];
 
+  // Shown instead of the "free" card when the user arrived via an agent's gift
+  // link. Same visual slot, but it's a redeemed gift, not a purchase -- the key
+  // "gift_plus" is deliberately distinct from "plus" so handlePlanContinue below
+  // never sends this to Stripe.
+  const GIFT_TIER = {
+    key: "gift_plus", label: "Plus — Your Gift", price: "$0", period: "for 3 months",
+    color: "#D2876A", bg: "rgba(210,135,106,.14)",
+    pitch: `Gifted by ${giftAgent?.display_name || giftAgent?.name || "your agent"} — full Plus access, on the house.`,
+    features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
+    badge: "Your gift",
+  };
+
   const handlePlanContinue = async () => {
     if (!chosenPlan || planSaving) return;
     setPlanSaving(true);
     try {
       // Profile is created regardless of tier — paid tiers need the row to exist
-      // before Stripe's webhook tries to update it.
+      // before Stripe's webhook tries to update it. Gift redemption itself is
+      // handled inside handleFinish when giftAgent is set.
       await handleFinish(false);
-      if (chosenPlan !== "free" && onCheckout) {
+      if (chosenPlan !== "free" && chosenPlan !== "gift_plus" && onCheckout) {
         onCheckout(chosenPlan, billingAnnual ? "annual" : "monthly"); // redirects to Stripe; resumes via durable profile flags on return
       }
     } finally {
       setPlanSaving(false);
     }
   };
+
 
   // Pre-existing TDZ violation found during audit: this was declared after the
   // giftChecked early return in the original codebase. Hoisted here for the same
@@ -2723,11 +2744,15 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         const { data: { session: activeSession } } = await supabase.auth.getSession();
         const userToken = activeSession?.access_token;
         if (userToken) {
-          fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
-            body: JSON.stringify({ agent_token: giftAgent.token }),
-          }).catch(err => console.error("[redeem-agent-gift]", err));
+          try {
+            await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+              body: JSON.stringify({ agent_token: giftAgent.token }),
+            });
+          } catch (err) {
+            console.error("[redeem-agent-gift]", err);
+          }
         } else {
           console.error("[redeem-agent-gift] No active session token — skipping redemption");
         }
@@ -2820,8 +2845,17 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         <div className="onb-inner" style={{paddingBottom:"7rem",maxWidth:1040}}>
           <div style={{textAlign:"center",marginBottom:"2.25rem"}}>
             <div className="onb-step">Step 5 of {TOTAL}</div>
-            <div className="onb-q" style={{marginBottom:".5rem"}}>Choose your plan</div>
-            <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
+            {giftAgent ? (
+              <>
+                <div className="onb-q" style={{marginBottom:".5rem"}}>You're all set 🎁</div>
+                <div className="onb-hint">{giftAgent.display_name || giftAgent.name} gave you 3 months of Plus, free. Want more? Pro is available too.</div>
+              </>
+            ) : (
+              <>
+                <div className="onb-q" style={{marginBottom:".5rem"}}>Choose your plan</div>
+                <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
+              </>
+            )}
           </div>
 
           <div style={{display:"flex",justifyContent:"center",marginBottom:"1.75rem"}}>
@@ -2839,7 +2873,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
           </div>
 
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:"1.1rem",alignItems:"stretch"}}>
-            {PLAN_TIERS.map(t => {
+            {(giftAgent ? [GIFT_TIER, PLAN_TIERS[2]] : PLAN_TIERS).map(t => {
               const isSel = chosenPlan === t.key;
               return (
                 <div key={t.key} onClick={() => setChosenPlan(t.key)}
@@ -18658,6 +18692,15 @@ function PrintCardPage({ code }) {
   const giftUrl                 = `https://www.trysteadwell.app/gift/${code}`;
   const qrDataUri               = useQRCode(giftUrl);
 
+  // Matches the formatting already applied in send-gift-email -- this page
+  // previously rendered the raw digit string instead.
+  const formatPhone = (raw) => {
+    if (!raw) return raw;
+    const digits = String(raw).replace(/\D/g, "");
+    if (digits.length !== 10) return raw; // don't mangle non-US formats we don't recognize
+    return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  };
+
   useEffect(() => {
     if (!code) { setNotFound(true); return; }
     // Lookup via edge function — agent_applications is now admin-only at DB level
@@ -18736,7 +18779,7 @@ function PrintCardPage({ code }) {
         @media print {
           .no-print { display:none !important; }
           body { background:white !important; margin:0; padding:0; }
-          @page { size: 4in 6in; margin: 0; }
+          @page { size: 4.17in 6in; margin: 0; }
           .print-card-root { display:flex; align-items:flex-start; justify-content:center; padding:0; min-height:unset; background:white !important; }
           .print-card-wrap { width:400px; box-shadow:none !important; border:none !important; border-radius:0 !important; }
         }
@@ -18767,7 +18810,7 @@ function PrintCardPage({ code }) {
               <div style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
               {agent.title&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.title}</div>}
               {agent.brokerage&&<div style={{fontSize:10,color:"#7A7370"}}>{agent.brokerage}</div>}
-              {agent.phone&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.phone}</div>}
+              {agent.phone&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{formatPhone(agent.phone)}</div>}
               {agent.agent_email&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.agent_email}</div>}
             </div>
             {agent.logo_url&&agent.headshot_url&&(
