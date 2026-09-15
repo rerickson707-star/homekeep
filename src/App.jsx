@@ -19123,6 +19123,7 @@ function ForAgentsPage() {
             <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#C16140",marginBottom:12}}>Apply to the program</div>
             <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>Request agent access</h2>
             <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto",lineHeight:1.6}}>We're onboarding a small group of local agents to start. Tell us a bit about you and we'll be in touch within two business days.</p>
+            <p style={{fontSize:".85rem",color:"#7A7370",marginTop:10}}>Already approved? <a href="/agent" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Sign in to your agent portal →</a></p>
           </div>
           {done ? (
             <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"clamp(20px,5vw,40px) clamp(16px,4vw,32px)",maxWidth:520,margin:"0 auto",textAlign:"center"}}>
