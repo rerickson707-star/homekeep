@@ -18498,9 +18498,7 @@ function AgentPortalPage() {
     <div style={S.page}>
       <div style={{...S.wrap, paddingTop:80}}>
         <div style={{...S.card, textAlign:"center", padding:"40px 32px"}}>
-          <div style={{width:44,height:44,borderRadius:11,background:"#234A3D",margin:"0 auto 20px",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg viewBox="0 0 48 48" fill="none" style={{width:"60%",height:"60%"}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>
-          </div>
+          <img src="/icon-192.png" alt="Steadwell" style={{width:44,height:44,borderRadius:11,margin:"0 auto 20px",display:"block"}}/>
           {linkSent ? (
             <>
               <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Check your inbox</div>
@@ -18515,8 +18513,10 @@ function AgentPortalPage() {
               <input type="email" placeholder="you@brokerage.com" value={signInEmail} onChange={e=>setSignInEmail(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && sendMagicLink()} style={S.input}/>
               <button onClick={sendMagicLink} disabled={sendingLink} style={S.btn}>{sendingLink ? "Sending…" : "Send sign-in link"}</button>
+              <div style={{fontSize:13, color:"#7A7370", marginTop:18}}>Not an approved agent yet? <a href="/for-agents" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Apply here →</a></div>
             </>
           )}
+          <div style={{fontSize:12, color:"#A8A09A", marginTop:24, paddingTop:16, borderTop:"1px solid #E6DECF"}}>Trouble signing in? Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a></div>
         </div>
       </div>
     </div>
