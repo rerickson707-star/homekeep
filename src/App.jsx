@@ -18318,7 +18318,9 @@ function AgentPortalPage() {
 
   const [session,     setSession]     = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [signInEmail, setSignInEmail] = useState("");
+  const [signInEmail, setSignInEmail] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("email") || ""; } catch { return ""; }
+  });
   const [sendingLink, setSendingLink] = useState(false);
   const [linkSent,    setLinkSent]    = useState(false);
   const [signInErr,   setSignInErr]   = useState("");

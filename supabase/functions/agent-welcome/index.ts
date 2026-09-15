@@ -40,7 +40,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: CORS });
     }
 
-    const uploadLink = `${BASE_URL}/agent-portal?token=${agent.token}`;
+    // Portal is now real authentication (magic link), not a per-agent token
+    // link -- /agent?email=... just prefills the sign-in field so the agent
+    // doesn't have to retype the email their application is under.
+    const portalLink = `${BASE_URL}/agent?email=${encodeURIComponent(agent.email)}`;
     const firstName  = agent.name?.split(" ")[0] || "there";
 
     const html = `<!DOCTYPE html>
@@ -82,11 +85,11 @@ serve(async (req) => {
         <div style="display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;gap:14px;align-items:flex-start;">
             <div style="width:24px;height:24px;background:#234A3D;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#F4EDDF;">1</div>
-            <div style="font-size:13px;color:#2A2723;line-height:1.5;"><strong>Upload your brand assets below</strong> — headshot, logo, and a few details. Takes about 2 minutes.</div>
+            <div style="font-size:13px;color:#2A2723;line-height:1.5;"><strong>Sign in to your agent portal below</strong> — enter your email, click the link we send you, and add your headshot, logo, and a few details. Takes about 2 minutes.</div>
           </div>
           <div style="display:flex;gap:14px;align-items:flex-start;">
             <div style="width:24px;height:24px;background:#234A3D;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#F4EDDF;">2</div>
-            <div style="font-size:13px;color:#2A2723;line-height:1.5;">We set up your co-branded gift link and send it to you — usually within one business day.</div>
+            <div style="font-size:13px;color:#2A2723;line-height:1.5;">Your co-branded gift link is ready as soon as your profile is saved.</div>
           </div>
           <div style="display:flex;gap:14px;align-items:flex-start;">
             <div style="width:24px;height:24px;background:#234A3D;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#F4EDDF;">3</div>
@@ -97,10 +100,10 @@ serve(async (req) => {
 
       <!-- CTA -->
       <div style="text-align:center;margin-bottom:28px;">
-        <div style="font-family:Georgia,serif;font-size:17px;color:#2A2723;margin-bottom:8px;">First step: upload your brand assets</div>
-        <div style="font-size:13px;color:#A8A09A;margin-bottom:20px;line-height:1.5;">Headshot, brokerage logo, and a few details — so your clients see your name and face when they redeem their gift.</div>
-        <a href="${uploadLink}" style="background:#C16140;color:#fff;text-decoration:none;padding:14px 28px;border-radius:40px;font-size:15px;font-weight:700;display:inline-block;">Go to my agent portal &#8594;</a>
-        <div style="margin-top:12px;font-size:12px;color:#A8A09A;">This link is unique to you — bookmark it to send gifts and update your profile anytime.</div>
+        <div style="font-family:Georgia,serif;font-size:17px;color:#2A2723;margin-bottom:8px;">First step: sign in to your agent portal</div>
+        <div style="font-size:13px;color:#A8A09A;margin-bottom:20px;line-height:1.5;">Click below, confirm your email, and we'll send you a secure sign-in link — no password to set or remember.</div>
+        <a href="${portalLink}" style="background:#C16140;color:#fff;text-decoration:none;padding:14px 28px;border-radius:40px;font-size:15px;font-weight:700;display:inline-block;">Go to my agent portal &#8594;</a>
+        <div style="margin-top:12px;font-size:12px;color:#A8A09A;">Bookmark trysteadwell.app/agent — sign in with this same email anytime to send gifts or update your profile.</div>
       </div>
 
       <!-- What clients see -->
