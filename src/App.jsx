@@ -17422,7 +17422,11 @@ function AdminPage() {
 
   const deleteUser = async (userId, name) => {
     if (!window.confirm(`Delete ${name || "this user"}? This cannot be undone.`)) return;
-    const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const { error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { targetUserId: userId },
+      headers: { Authorization: `Bearer ${s?.access_token}` },
+    });
     if (!error) { setUsers(u => u.filter(r => r.user_id !== userId)); notify(`✓ User deleted.`); }
     else { notify(`Error: ${error.message}`, "error"); }
   };
