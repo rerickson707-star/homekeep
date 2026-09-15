@@ -16445,7 +16445,7 @@ export default function App() {
   if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
   if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
   if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
-  if (_path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
+  if (_path === "/agent" || _path === "/agent/" || _path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
   if (_path === "/gift" || _path === "/gift/" || _path.startsWith("/gift/")) return <GiftPage />;
   if (_path.startsWith("/print-card/")) return <PrintCardPage code={_path.replace("/print-card/","")} />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
@@ -17891,7 +17891,7 @@ function AdminPage() {
                         <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
                         {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
                         <div style={{marginTop:6,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
-                          <a href={`/agent-portal?token=${agent.token}`} target="_blank" style={{fontSize:11,color:"#C16140"}}>Agent portal ↗</a>
+                          <a href={`/agent`} target="_blank" style={{fontSize:11,color:"#C16140"}}>Agent portal ↗</a>
                           {isApproved&&agent.gift_code&&(
                             <>
                               <span style={{fontSize:11,fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
@@ -18314,9 +18314,14 @@ function AgentSetupPage() {
 // ─── AGENT PORTAL PAGE ────────────────────────────────────────────────────────
 // /agent-portal?token=TOKEN — agent dashboard: profile editing, send gifts, track sends
 function AgentPortalPage() {
-  const params  = new URLSearchParams(window.location.search);
-  const token   = params.get("token");
   const BASE_FN = "https://hjkyameroqufaojuerns.supabase.co/functions/v1";
+
+  const [session,     setSession]     = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [signInEmail, setSignInEmail] = useState("");
+  const [sendingLink, setSendingLink] = useState(false);
+  const [linkSent,    setLinkSent]    = useState(false);
+  const [signInErr,   setSignInErr]   = useState("");
 
   const [agent,       setAgent]       = useState(null);
   const [notFound,    setNotFound]    = useState(false);
@@ -18324,6 +18329,37 @@ function AgentPortalPage() {
   const [sends,       setSends]       = useState([]);
   const [redemptions, setRedemptions] = useState([]);
   const [loading,     setLoading]     = useState(true);
+
+  // Hoisted above all conditional returns below -- this codebase's minifier has a
+  // known TDZ bug when consts are declared after an earlier return. Optional
+  // chaining here since agent/redemptions can still be null/empty at this point.
+  const agentName = agent?.display_name || agent?.name || "Agent";
+  const giftUrl = `https://www.trysteadwell.app/gift/${agent?.gift_code || ""}`;
+  const redeemedTokens = new Set((redemptions || []).map(r => r.agent_token));
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const sendMagicLink = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signInEmail.trim())) { setSignInErr("Please check that email address."); return; }
+    setSendingLink(true); setSignInErr("");
+    const { error } = await supabase.auth.signInWithOtp({
+      email: signInEmail.trim(),
+      options: { emailRedirectTo: "https://www.trysteadwell.app/agent" },
+    });
+    setSendingLink(false);
+    if (error) { setSignInErr(error.message); return; }
+    setLinkSent(true);
+  };
 
   // ── Profile form state ───────────────────────────────────────────────────────
   const [form,           setForm]           = useState({ display_name:"", title:"", phone:"", agent_email:"", license:"" });
@@ -18343,8 +18379,11 @@ function AgentPortalPage() {
 
   // ── Load agent + sends + redemptions ────────────────────────────────────────
   const loadAll = () => {
-    if (!token) { setNotFound(true); setLoading(false); return; }
-    fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(token)}`)
+    if (!session?.access_token) { setLoading(false); return; }
+    fetch(`${BASE_FN}/agent-claim-account`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+    })
       .then(r => r.json())
       .then(({ data, error }) => {
         if (error || !data) { setNotFound(true); setLoading(false); return; }
@@ -18352,20 +18391,23 @@ function AgentPortalPage() {
         setForm({ display_name: data.display_name||data.name||"", title: data.title||"", phone: data.phone||"", agent_email: data.agent_email||"", license: data.license||"" });
         if (data.headshot_url) setHeadshotPreview(data.headshot_url);
         if (data.logo_url) setLogoPreview(data.logo_url);
+
+        // History still goes through the existing agent-setup-save GET,
+        // keyed by the agent's own token field (unchanged downstream) --
+        // only the access check above changed, not this.
+        fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(data.token)}&include=history`)
+          .then(r => r.json())
+          .then(({ sends: s, redemptions: r }) => {
+            setSends(s || []);
+            setRedemptions(r || []);
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
       })
       .catch(() => { setNotFound(true); setLoading(false); });
-
-    fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(token)}&include=history`)
-      .then(r => r.json())
-      .then(({ sends: s, redemptions: r }) => {
-        setSends(s || []);
-        setRedemptions(r || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
   };
 
-  useEffect(() => { loadAll(); }, [token]);
+  useEffect(() => { if (session) loadAll(); else setLoading(false); }, [session]);
 
   // ── File handling ────────────────────────────────────────────────────────────
   const handleFile = (type, file) => {
@@ -18397,12 +18439,12 @@ function AgentPortalPage() {
         license:      form.license.trim() || null,
         onboarded_at: new Date().toISOString(),
       };
-      if (headshot) updates.headshot_url = await uploadFile(headshot, `${token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
-      if (logo)     updates.logo_url     = await uploadFile(logo,     `${token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
+      if (headshot) updates.headshot_url = await uploadFile(headshot, `${agent.token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
+      if (logo)     updates.logo_url     = await uploadFile(logo,     `${agent.token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
       const res = await fetch(`${BASE_FN}/agent-setup-save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, updates }),
+        body: JSON.stringify({ token: agent.token, updates }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Save failed");
@@ -18421,7 +18463,7 @@ function AgentPortalPage() {
       const res = await fetch(`${BASE_FN}/send-gift-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_token: token, client_name: giftForm.client_name.trim(), client_email: giftForm.client_email.trim() }),
+        body: JSON.stringify({ agent_token: agent.token, client_name: giftForm.client_name.trim(), client_email: giftForm.client_email.trim() }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed to send");
@@ -18444,12 +18486,46 @@ function AgentPortalPage() {
     tabBtn: (active) => ({ padding:"10px 20px", border:"none", borderBottom: active?"2px solid #234A3D":"2px solid transparent", background:"none", fontWeight:active?700:400, color:active?"#234A3D":"#7A7370", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif", fontSize:14 }),
   };
 
-  if (!token || notFound) return (
+  if (authLoading) return (
+    <div style={{...S.page, display:"flex", alignItems:"center", justifyContent:"center"}}>
+      <div style={{width:36, height:36, border:"3px solid #E6DECF", borderTop:"3px solid #234A3D", borderRadius:"50%"}}/>
+    </div>
+  );
+
+  if (!session) return (
+    <div style={S.page}>
+      <div style={{...S.wrap, paddingTop:80}}>
+        <div style={{...S.card, textAlign:"center", padding:"40px 32px"}}>
+          <div style={{width:44,height:44,borderRadius:11,background:"#234A3D",margin:"0 auto 20px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg viewBox="0 0 48 48" fill="none" style={{width:"60%",height:"60%"}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/></svg>
+          </div>
+          {linkSent ? (
+            <>
+              <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Check your inbox</div>
+              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>We sent a sign-in link to<br/><strong style={{color:"#2A2723"}}>{signInEmail.trim()}</strong></div>
+              <button onClick={() => setLinkSent(false)} style={{...S.btn, background:"none", border:"1.5px solid #E6DECF", color:"#2A2723"}}>Use a different email</button>
+            </>
+          ) : (
+            <>
+              <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Sign in to your agent portal</div>
+              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>Enter the email you applied with — we'll send you a sign-in link.</div>
+              {signInErr && <div style={{color:"#B9422C", fontSize:13, marginBottom:12}}>{signInErr}</div>}
+              <input type="email" placeholder="you@brokerage.com" value={signInEmail} onChange={e=>setSignInEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && sendMagicLink()} style={S.input}/>
+              <button onClick={sendMagicLink} disabled={sendingLink} style={S.btn}>{sendingLink ? "Sending…" : "Send sign-in link"}</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (notFound) return (
     <div style={S.page}>
       <div style={{...S.wrap, textAlign:"center", paddingTop:80}}>
         <div style={{fontSize:40, marginBottom:16}}>🔒</div>
-        <div style={{fontFamily:"Georgia,serif", fontSize:22, color:"#234A3D", marginBottom:8}}>Portal not found</div>
-        <div style={{fontSize:14, color:"#7A7370"}}>This link may be invalid. Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a> for help.</div>
+        <div style={{fontFamily:"Georgia,serif", fontSize:22, color:"#234A3D", marginBottom:8}}>No approved application found</div>
+        <div style={{fontSize:14, color:"#7A7370"}}>We couldn't find an approved agent application for this email. Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a> if you think this is a mistake.</div>
       </div>
     </div>
   );
@@ -18460,11 +18536,7 @@ function AgentPortalPage() {
     </div>
   );
 
-  const agentName = agent.display_name || agent.name || "Agent";
-  const giftUrl   = `https://www.trysteadwell.app/gift/${agent.gift_code}`;
-
-  // Build a set of redeemed emails for quick lookup
-  const redeemedTokens = new Set(redemptions.map(r => r.agent_token));
+  // (agentName, giftUrl, redeemedTokens hoisted to top of component)
 
   return (
     <div style={S.page}>
