@@ -1,5 +1,5 @@
 // Steadwell Service Worker — keeps the app alive and caches assets
-const CACHE = "steadwell-v1";
+const CACHE = "steadwell-v2"; // bump this string whenever sw.js changes, to force old caches out
 const STATIC = ["/", "/index.html"];
 
 self.addEventListener("install", e => {
@@ -8,7 +8,11 @@ self.addEventListener("install", e => {
 });
 
 self.addEventListener("activate", e => {
-  e.waitUntil(clients.claim());
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => clients.claim())
+  );
 });
 
 // Network-first for API calls, cache-first for static assets
