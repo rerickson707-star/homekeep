@@ -1,0 +1,41 @@
+# Steadwell
+
+> Steadwell is a home management app for homeowners that tracks maintenance, appliance warranties, home insurance, expenses, renovation projects, and important documents — all in one place. Free to start, no credit card required.
+
+Steadwell is built for new and recent homeowners who want a single system to stay ahead of everything a home requires, rather than catching up after something breaks. Type an address and Steadwell fills in property details automatically. Plans: Free (1 property, core tracking), Plus ($7.99/mo — AI receipt/nameplate scanning, 5-year cost forecasting, home health score), and Pro ($14.99/mo — up to 3 properties, shared household access). Built by Steadwell LLC, based in St. Petersburg, Florida.
+
+## Product
+
+- [Home](https://www.trysteadwell.app/): Free home maintenance and warranty tracker — track warranties, maintenance, insurance, and home value in one place.
+- [AI Receipt & Nameplate Scanner](https://www.trysteadwell.app/ai-scan): Scan any receipt, appliance nameplate, or insurance document with a camera; Steadwell AI extracts the details automatically, no typing required.
+- [Home Maintenance Tracker](https://www.trysteadwell.app/home-maintenance-tracker): Track every home maintenance task with reminders, recurring schedules, and a complete service history.
+- [Home Insurance Tracker](https://www.trysteadwell.app/home-insurance-tracker): Store home insurance policies, log claims, and get annual renewal reminders.
+- [Home Expense Tracker](https://www.trysteadwell.app/home-expense-tracker): Track every dollar a home costs and see a 5-year forecast of upcoming expenses based on appliance ages.
+- [Home Renovation Tracker](https://www.trysteadwell.app/home-projects): Track renovation projects with budgets, timelines, and a Cost vs. Value ROI calculator.
+- [Home Document Vault](https://www.trysteadwell.app/home-document-vault): Store deeds, permits, inspection reports, manuals, and HOA documents in one secure place.
+- [Contractor Tracker](https://www.trysteadwell.app/contractor-tracker): Save trusted contractors, log service visits, and track what each one has cost.
+- [Recall Alerts](https://www.trysteadwell.app/recall-alerts): Automatic product safety recall checks against the CPSC database for tracked appliances and products.
+- [Email Capture](https://www.trysteadwell.app/email-capture): Forward any receipt or document to a unique Steadwell email address for automatic extraction and filing.
+
+## For real estate agents
+
+- [Agent Partner Program](https://www.trysteadwell.app/for-agents): Real estate agents can gift closing clients 3 months of Steadwell Plus, free, co-branded with the agent's name.
+
+## Guides
+
+- [First-Time Homebuyer Guides](https://www.trysteadwell.app/guides): State-specific guides covering assistance programs, disclosure laws, and inspection checklists, for all 50 states.
+- [HVAC Maintenance Schedule](https://www.trysteadwell.app/blog/hvac-maintenance-schedule): When to change filters, schedule tune-ups, and what warning signs mean an HVAC system needs attention.
+- [How to Find Your Appliance Serial Number](https://www.trysteadwell.app/blog/find-appliance-serial-number): Where to find the serial number on every major home appliance, and why it matters for warranty claims and recalls.
+- [How to Tell How Old Your Water Heater Is](https://www.trysteadwell.app/blog/how-old-is-my-water-heater): How to decode a water heater's manufacture date from its serial number, by brand, and when to replace it.
+- [Roof Lifespan by Material](https://www.trysteadwell.app/blog/roof-lifespan-when-to-replace): How long a roof lasts by material and climate, and the signs that replacement is coming.
+- [What Does a Home Warranty Actually Cover?](https://www.trysteadwell.app/blog/what-does-a-home-warranty-cover): What's typically covered, what's excluded, and how to decide if a home warranty is worth it.
+- [The Real Cost of Deferred Home Maintenance](https://www.trysteadwell.app/blog/cost-of-deferred-maintenance): What skipping maintenance actually costs homeowners, with real repair and replacement figures.
+- [Steadwell vs. HomeZada](https://www.trysteadwell.app/blog/steadwell-vs-homezada): A feature, price, and ease-of-use comparison between the two home management apps.
+- [Full Blog Index](https://www.trysteadwell.app/blog): All Steadwell guides on home maintenance, appliance care, repair costs, and home management.
+
+## Optional
+
+- [Affiliate Program](https://www.trysteadwell.app/affiliates): Earn 30% recurring commissions for 12 months on referred paid plans.
+- [Terms of Service](https://www.trysteadwell.app/terms)
+- [Privacy Policy](https://www.trysteadwell.app/privacy)
+- [Accessibility Statement](https://www.trysteadwell.app/ada)
