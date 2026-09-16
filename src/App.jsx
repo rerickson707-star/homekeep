@@ -2561,7 +2561,6 @@ const ONBOARDING_GOALS = [
 function OnboardingWizard({ session, onComplete, onCheckout }) {
   const TOTAL = 5;
   const [chosenPlan, setChosenPlan] = useState(null); // forced plan choice — nothing pre-selected
-  const [billingAnnual, setBillingAnnual] = useState(false);
   const [planSaving, setPlanSaving] = useState(false);
   const ONB_STEP_KEY = `sw_onb_step_${session?.user?.id || "anon"}`;
   const [step, setStepRaw] = useState(() => {
@@ -2577,13 +2576,6 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   // ── Gift agent detection ───────────────────────────────────────────────────
   const [giftAgent, setGiftAgent]       = useState(null);  // agent row if gift link
   const [giftChecked, setGiftChecked]   = useState(false);
-
-  // Once a gift agent resolves, default Step 5 to the gifted plan rather than
-  // leaving it on the generic picker -- but only if the user hasn't already
-  // picked something themselves in the meantime.
-  useEffect(() => {
-    if (giftAgent && chosenPlan === null) setChosenPlan("gift_plus");
-  }, [giftAgent]);
 
   // Step 1 — Name
   const [name, setName] = useState("");
@@ -2614,65 +2606,33 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       features: ["Core maintenance tracking", "Basic task reminders", "1 property"],
     },
     {
-      key: "plus", label: "Plus", price: "$7.99", priceAnnual: "$63.99", period: "/mo", periodAnnual: "/yr",
+      key: "plus", label: "Plus", price: "$7.99", period: "/mo",
       color: "#D2876A", bg: "rgba(210,135,106,.12)",
       pitch: "Automation and intelligence for the serious homeowner.",
       features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
       badge: "Most popular",
     },
     {
-      key: "pro", label: "Pro", price: "$14.99", priceAnnual: "$119.99", period: "/mo", periodAnnual: "/yr",
+      key: "pro", label: "Pro", price: "$14.99", period: "/mo",
       color: "#E0A46E", bg: "rgba(224,164,110,.12)",
       pitch: "Multiple properties and shared access.",
       features: ["Everything in Plus", "Up to 3 properties", "Shared home access", "Priority support"],
     },
   ];
 
-  // Shown instead of the "free" card when the user arrived via an agent's gift
-  // link. Same visual slot, but it's a redeemed gift, not a purchase -- the key
-  // "gift_plus" is deliberately distinct from "plus" so handlePlanContinue below
-  // never sends this to Stripe.
-  const GIFT_TIER = {
-    key: "gift_plus", label: "Plus — Your Gift", price: "$0", period: "for 3 months",
-    color: "#D2876A", bg: "rgba(210,135,106,.14)",
-    pitch: `Gifted by ${giftAgent?.display_name || giftAgent?.name || "your agent"} — full Plus access, on the house.`,
-    features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
-    badge: "Your gift",
-  };
-
   const handlePlanContinue = async () => {
     if (!chosenPlan || planSaving) return;
     setPlanSaving(true);
     try {
       // Profile is created regardless of tier — paid tiers need the row to exist
-      // before Stripe's webhook tries to update it. Gift redemption itself is
-      // handled inside handleFinish when giftAgent is set.
+      // before Stripe's webhook tries to update it.
       await handleFinish(false);
-      if (chosenPlan !== "free" && chosenPlan !== "gift_plus" && onCheckout) {
-        onCheckout(chosenPlan, billingAnnual ? "annual" : "monthly"); // redirects to Stripe; resumes via durable profile flags on return
+      if (chosenPlan !== "free" && onCheckout) {
+        onCheckout(chosenPlan, "monthly"); // redirects to Stripe; resumes via durable profile flags on return
       }
     } finally {
       setPlanSaving(false);
     }
-  };
-
-
-  // Pre-existing TDZ violation found during audit: this was declared after the
-  // giftChecked early return in the original codebase. Hoisted here for the same
-  // reason as PLAN_TIERS/handlePlanContinue above.
-  const handleAddressInput = (val) => {
-    setAddress(val); setShowSug(true); setLookupState("idle");
-    setPropertyData(null); setSelectedAddress("");
-    clearTimeout(debounceRef.current);
-    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
-    setSuggesting(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
-        setSuggestions(results);
-      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
-      finally { setSuggesting(false); }
-    }, 120);
   };
 
 
@@ -2744,15 +2704,11 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         const { data: { session: activeSession } } = await supabase.auth.getSession();
         const userToken = activeSession?.access_token;
         if (userToken) {
-          try {
-            await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
-              body: JSON.stringify({ agent_token: giftAgent.token }),
-            });
-          } catch (err) {
-            console.error("[redeem-agent-gift]", err);
-          }
+          fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/redeem-agent-gift", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+            body: JSON.stringify({ agent_token: giftAgent.token }),
+          }).catch(err => console.error("[redeem-agent-gift]", err));
         } else {
           console.error("[redeem-agent-gift] No active session token — skipping redemption");
         }
@@ -2800,6 +2756,21 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
     </div>
   );
 
+  const handleAddressInput = (val) => {
+    setAddress(val); setShowSug(true); setLookupState("idle");
+    setPropertyData(null); setSelectedAddress("");
+    clearTimeout(debounceRef.current);
+    if (val.length < 2) { setSuggestions([]); setSuggesting(false); return; }
+    setSuggesting(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await googlePlacesAutocomplete(val, GMAPS_KEY);
+        setSuggestions(results);
+      } catch(e) { console.error("Places autocomplete error:", e.message); setSuggestions([]); }
+      finally { setSuggesting(false); }
+    }, 120);
+  };
+
   if (step === 4) return (
     <div className="onb-screen">
       <ProgressBar/>
@@ -2842,70 +2813,34 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       <div className="onb-screen">
         <ProgressBar/>
         <Wordmark/>
-        <div className="onb-inner" style={{paddingBottom:"7rem",maxWidth:1040}}>
-          <div style={{textAlign:"center",marginBottom:"2.25rem"}}>
+        <div className="onb-inner" style={{paddingBottom:"7rem"}}>
+          <div style={{textAlign:"center",marginBottom:"1.25rem"}}>
             <div className="onb-step">Step 5 of {TOTAL}</div>
-            {giftAgent ? (
-              <>
-                <div className="onb-q" style={{marginBottom:".5rem"}}>You're all set 🎁</div>
-                <div className="onb-hint">{giftAgent.display_name || giftAgent.name} gave you 3 months of Plus, free. Want more? Pro is available too.</div>
-              </>
-            ) : (
-              <>
-                <div className="onb-q" style={{marginBottom:".5rem"}}>Choose your plan</div>
-                <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
-              </>
-            )}
+            <div className="onb-q" style={{marginBottom:".5rem"}}>Choose your plan</div>
+            <div className="onb-hint">Pick what fits how you want to manage your home. You can change this anytime.</div>
           </div>
 
-          <div style={{display:"flex",justifyContent:"center",marginBottom:"1.75rem"}}>
-            <div style={{display:"inline-flex",background:"rgba(244,237,223,.06)",border:"1px solid rgba(244,237,223,.14)",borderRadius:99,padding:4}}>
-              <button type="button" onClick={() => setBillingAnnual(false)}
-                style={{padding:".5rem 1.1rem",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,background:!billingAnnual?"#C16140":"transparent",color:!billingAnnual?"#fff":"rgba(244,237,223,.55)",transition:"all .15s"}}>
-                Monthly
-              </button>
-              <button type="button" onClick={() => setBillingAnnual(true)}
-                style={{padding:".5rem 1.1rem",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",fontWeight:600,background:billingAnnual?"#C16140":"transparent",color:billingAnnual?"#fff":"rgba(244,237,223,.55)",transition:"all .15s",display:"flex",alignItems:"center",gap:".4rem"}}>
-                Annual
-                <span style={{fontSize:".68rem",fontWeight:700,background:billingAnnual?"rgba(255,255,255,.25)":"rgba(159,179,168,.25)",color:billingAnnual?"#fff":"#9FB3A8",padding:".1rem .4rem",borderRadius:99}}>Save 33%</span>
-              </button>
-            </div>
-          </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:"1.1rem",alignItems:"stretch"}}>
-            {(giftAgent ? [GIFT_TIER, PLAN_TIERS[2]] : PLAN_TIERS).map(t => {
+          <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
+            {PLAN_TIERS.map(t => {
               const isSel = chosenPlan === t.key;
               return (
                 <div key={t.key} onClick={() => setChosenPlan(t.key)}
-                  style={{
-                    position:"relative",cursor:"pointer",display:"flex",flexDirection:"column",
-                    border:`2px solid ${isSel?t.color:t.badge?"rgba(193,97,64,.4)":"rgba(244,237,223,.14)"}`,
-                    background:isSel?t.bg:"rgba(244,237,223,.035)",
-                    borderRadius:20,padding:"1.75rem 1.6rem",
-                    boxShadow:isSel?`0 6px 28px ${t.color}33`:"none",
-                    transition:"border-color .18s,background .18s,box-shadow .18s",
-                  }}>
-                  {t.badge && <div style={{position:"absolute",top:-13,left:"50%",transform:"translateX(-50%)",background:"#C16140",color:"#fff",fontSize:".7rem",fontWeight:700,padding:".3rem .75rem",borderRadius:99,whiteSpace:"nowrap"}}>{t.badge}</div>}
-
-                  <div style={{display:"flex",alignItems:"center",gap:".7rem",marginBottom:".6rem"}}>
-                    <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.3)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      {isSel && <div style={{width:11,height:11,borderRadius:"50%",background:t.color}}/>}
+                  style={{position:"relative",cursor:"pointer",border:`1.5px solid ${isSel?t.color:"rgba(244,237,223,.12)"}`,background:isSel?t.bg:"rgba(244,237,223,.03)",borderRadius:16,padding:"1.1rem 1.2rem",transition:"border-color .15s,background .15s"}}>
+                  {t.badge && <div style={{position:"absolute",top:-11,right:14,background:"#C16140",color:"#fff",fontSize:".68rem",fontWeight:700,padding:".2rem .55rem",borderRadius:99}}>{t.badge}</div>}
+                  <div style={{display:"flex",alignItems:"center",gap:".7rem",marginBottom:".4rem"}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${isSel?t.color:"rgba(244,237,223,.25)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {isSel && <div style={{width:10,height:10,borderRadius:"50%",background:t.color}}/>}
                     </div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#F4EDDF",flex:1}}>{t.label}</div>
+                    <div style={{fontWeight:700,fontSize:"1rem",color:"#F4EDDF",flex:1}}>{t.label}</div>
+                    <div style={{textAlign:"right"}}>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",color:"#F4EDDF"}}>{t.price}</span>
+                      <span style={{fontSize:".78rem",color:"rgba(244,237,223,.5)"}}> {t.period}</span>
+                    </div>
                   </div>
-
-                  <div style={{marginBottom:"1rem"}}>
-                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",color:"#F4EDDF"}}>{billingAnnual && t.priceAnnual ? t.priceAnnual : t.price}</span>
-                    <span style={{fontSize:".85rem",color:"rgba(244,237,223,.5)"}}> {billingAnnual && t.periodAnnual ? t.periodAnnual : t.period}</span>
-                  </div>
-
-                  <div style={{fontSize:".88rem",color:"rgba(244,237,223,.6)",lineHeight:1.5,marginBottom:"1.1rem"}}>{t.pitch}</div>
-
-                  <div style={{display:"flex",flexDirection:"column",gap:".55rem",marginTop:"auto"}}>
+                  <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginLeft:"1.9rem",marginBottom:".5rem"}}>{t.pitch}</div>
+                  <div style={{marginLeft:"1.9rem",display:"flex",flexDirection:"column",gap:".2rem"}}>
                     {t.features.map((f,i) => (
-                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".55rem",fontSize:".85rem",color:"rgba(244,237,223,.7)",lineHeight:1.4}}>
-                        <span style={{color:t.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
-                      </div>
+                      <div key={i} style={{fontSize:".78rem",color:"rgba(244,237,223,.45)"}}>✓ {f}</div>
                     ))}
                   </div>
                 </div>
@@ -2913,15 +2848,13 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
             })}
           </div>
 
-          <div style={{maxWidth:460,margin:"2rem auto 0"}}>
-            <button className="onb-btn" style={{marginTop:0}} disabled={!chosenPlan || planSaving} onClick={handlePlanContinue}>
-              {planSaving
-                ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</>
-                : chosenPlan ? "Continue →" : "Select a plan to continue"}
-            </button>
-            <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".6rem"}}>Cancel anytime · Secure payments via Stripe</div>
-            <button className="onb-back" onClick={() => setStep(4)}>← Back</button>
-          </div>
+          <button className="onb-btn" style={{marginTop:"1.25rem"}} disabled={!chosenPlan || planSaving} onClick={handlePlanContinue}>
+            {planSaving
+              ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up…</>
+              : chosenPlan ? "Continue →" : "Select a plan to continue"}
+          </button>
+          <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".6rem"}}>Cancel anytime · Secure payments via Stripe</div>
+          <button className="onb-back" onClick={() => setStep(4)}>← Back</button>
         </div>
       </div>
     );
@@ -3178,19 +3111,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
-    setSuccess("Account created! Setting up your home…");
-  };
-
-  const handleGoogleSignIn = async () => {
-    clear();
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
-    // On success this redirects away immediately -- setLoading(false) only
-    // runs if signInWithOAuth itself failed before the redirect happened.
-    if (error) { setLoading(false); setError(error.message); }
+    setSuccess("Account created! Check your email to confirm, then log in.");
   };
 
   const handleReset = async () => {
@@ -3229,19 +3150,6 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
             <div className="auth-logo-sub">Your home, kept well</div>
           </div>
         </div>
-
-        {(mode === "login" || mode === "signup") && <>
-          <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn} disabled={loading}
-            style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:".6rem",padding:".7rem",borderRadius:10,border:"1.5px solid rgba(42,39,35,.15)",background:"#fff",fontFamily:"inherit",fontSize:".9rem",fontWeight:600,cursor:loading?"default":"pointer",opacity:loading?.6:1,marginBottom:"1rem"}}>
-            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
-            Continue with Google
-          </button>
-          <div style={{display:"flex",alignItems:"center",gap:".75rem",margin:"0 0 1rem",fontSize:".78rem",color:"rgba(42,39,35,.4)"}}>
-            <div style={{flex:1,height:1,background:"rgba(42,39,35,.12)"}}/>
-            or continue with email
-            <div style={{flex:1,height:1,background:"rgba(42,39,35,.12)"}}/>
-          </div>
-        </>}
 
         {mode === "login" && <>
           <div className="auth-title">Welcome back</div>
@@ -13514,10 +13422,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
   const schoolRatingColor = r => !r ? "#C2B8AE" : r>=8 ? "#1A7A44" : r>=6 ? "#E0A84A" : "#B91C1C";
 
-  // Empty state — showSetup takes priority so a resuming/active setup wizard is
-  // never silently overridden by this screen (e.g. returning from an abandoned
-  // Stripe Checkout with onboarding done but home setup not yet complete).
-  if (!showSetup && !profile?.name && !profile?.address) {
+  // Empty state
+  if (!profile?.name && !profile?.address) {
     return (
       <div>
         <div className="sh"><span className="sh-title">My Home</span></div>
@@ -16445,7 +16351,7 @@ export default function App() {
   if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
   if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
   if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
-  if (_path === "/agent" || _path === "/agent/" || _path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
+  if (_path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
   if (_path === "/gift" || _path === "/gift/" || _path.startsWith("/gift/")) return <GiftPage />;
   if (_path.startsWith("/print-card/")) return <PrintCardPage code={_path.replace("/print-card/","")} />;
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
@@ -16453,8 +16359,6 @@ export default function App() {
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
-  const [verifyResendState, setVerifyResendState] = useState("idle"); // idle | sending | sent
   const [screen, setScreen] = useState(() => {
     // If coming from a gift link or any ?action=signup link, open signup directly
     const params = new URLSearchParams(window.location.search);
@@ -16555,25 +16459,22 @@ export default function App() {
   const [contractors, setContractors] = useState([]);
   const [projects,    setProjects]    = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
-  const [showSetup, setShowSetup] = useState(false);
-  const [tasks, setTasks] = useState([]);
-  const [warranties, setWarranties] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [allProfiles, setAllProfiles] = useState([]);
 
   // Durable resume: covers the normal post-onboarding launch AND returning from a
   // Stripe Checkout redirect, which reloads the page and loses the transient
   // autoOpenSetup flag above. Profile fields (DB-backed) survive that round-trip.
-  // Must sit after both `profile` and `setTab` are declared above — referencing
-  // either earlier is a genuine use-before-declare, not just a minifier quirk,
-  // confirmed by reproducing this exact crash against a real build+sourcemap.
   useEffect(() => {
     if (profile?.onboarding_complete && !profile?.home_setup_complete) {
       setTab("profile");
       setAutoOpenSetup(true);
     }
   }, [profile?.onboarding_complete, profile?.home_setup_complete]);
+  const [showSetup, setShowSetup] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [warranties, setWarranties] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [allProfiles, setAllProfiles] = useState([]);
   const [activePropertyId, setActivePropertyIdRaw] = useState(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [serviceLogs, setServiceLogs] = useState([]);
@@ -16598,33 +16499,6 @@ export default function App() {
   // incorrectly reset the plan to "free".
   const primaryProfile = allProfiles.find(p => !p._shared) || profile;
   const planData = usePlan(primaryProfile);
-
-  // ── Handle return from the email-verification link (?verified=1 or ?verified=already)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const verified = params.get("verified");
-    if (!verified) return;
-    if (verified === "1") {
-      // Force a fresh token so app_metadata.email_verified (just updated server-side) is picked up now
-      supabase.auth.refreshSession();
-    }
-    params.delete("verified");
-    const clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
-    window.history.replaceState({}, "", clean);
-  }, []);
-
-  const handleResendVerification = async () => {
-    if (!session?.user) return;
-    setVerifyResendState("sending");
-    try {
-      await supabase.functions.invoke("send-verify-email", {
-        body: { record: { id: session.user.id, email: session.user.email } },
-      });
-      setVerifyResendState("sent");
-    } catch {
-      setVerifyResendState("idle");
-    }
-  };
 
   // ── Listen for auth state changes
   useEffect(() => {
@@ -16960,39 +16834,6 @@ export default function App() {
           />
           <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
         </header>
-
-        {/* ── Bounce banner — takes priority over the softer verify banner, since a bounce means
-             the address is confirmed bad, not just unconfirmed. No self-service email-change UI
-             exists yet, so this points to support rather than a dead-end "update email" button. */}
-        {session?.user?.app_metadata?.email_bounced === true && !verifyBannerDismissed && (
-          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#F8DEDA",borderBottom:"1px solid rgba(185,66,44,.35)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
-            <span style={{flex:1,minWidth:200}}>
-              <strong>{session.user.email}</strong> couldn't be delivered to — you're likely missing maintenance reminders right now.{" "}
-              <a href="mailto:hello@trysteadwell.app" style={{color:"#B9422C",fontWeight:600}}>Email us to fix it</a>
-            </span>
-            <button onClick={() => setVerifyBannerDismissed(true)}
-              style={{background:"none",border:"none",color:"#5E574F",cursor:"pointer",fontSize:"1rem",padding:0,lineHeight:1}}>×</button>
-          </div>
-        )}
-
-        {/* ── Email verification banner — only shows when app_metadata.email_verified is explicitly false */}
-        {session?.user?.app_metadata?.email_verified === false && session?.user?.app_metadata?.email_bounced !== true && !verifyBannerDismissed && (
-          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#FBF0DD",borderBottom:"1px solid rgba(193,97,64,.25)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
-            <span style={{flex:1,minWidth:200}}>
-              Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.
-            </span>
-            {verifyResendState === "sent" ? (
-              <span style={{color:"#234A3D",fontWeight:600}}>Email sent — check your inbox</span>
-            ) : (
-              <button onClick={handleResendVerification} disabled={verifyResendState === "sending"}
-                style={{background:"none",border:"none",color:"#C16140",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",padding:0}}>
-                {verifyResendState === "sending" ? "Sending…" : "Resend email"}
-              </button>
-            )}
-            <button onClick={() => setVerifyBannerDismissed(true)}
-              style={{background:"none",border:"none",color:"#5E574F",cursor:"pointer",fontSize:"1rem",padding:0,lineHeight:1}}>×</button>
-          </div>
-        )}
 
         {/* ── WARRANTY MODULE — top-level overlay so it works from any tab ── */}
         {showWarrantyModule && (
@@ -17456,11 +17297,7 @@ function AdminPage() {
 
   const deleteUser = async (userId, name) => {
     if (!window.confirm(`Delete ${name || "this user"}? This cannot be undone.`)) return;
-    const { data: { session: s } } = await supabase.auth.getSession();
-    const { error } = await supabase.functions.invoke("admin-delete-user", {
-      body: { targetUserId: userId },
-      headers: { Authorization: `Bearer ${s?.access_token}` },
-    });
+    const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
     if (!error) { setUsers(u => u.filter(r => r.user_id !== userId)); notify(`✓ User deleted.`); }
     else { notify(`Error: ${error.message}`, "error"); }
   };
@@ -17891,7 +17728,7 @@ function AdminPage() {
                         <div style={{fontSize:11,color:"#A8A09A"}}>Market: {agent.market||"—"} · Closings/yr: {agent.volume||"—"}</div>
                         {agent.note&&<div style={{fontSize:11,color:"#7A7370",marginTop:5,fontStyle:"italic"}}>"{agent.note}"</div>}
                         <div style={{marginTop:6,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
-                          <a href={`/agent`} target="_blank" style={{fontSize:11,color:"#C16140"}}>Agent portal ↗</a>
+                          <a href={`/agent-portal?token=${agent.token}`} target="_blank" style={{fontSize:11,color:"#C16140"}}>Agent portal ↗</a>
                           {isApproved&&agent.gift_code&&(
                             <>
                               <span style={{fontSize:11,fontWeight:700,color:"#234A3D"}}>trysteadwell.app/gift/{agent.gift_code}</span>
@@ -18314,16 +18151,9 @@ function AgentSetupPage() {
 // ─── AGENT PORTAL PAGE ────────────────────────────────────────────────────────
 // /agent-portal?token=TOKEN — agent dashboard: profile editing, send gifts, track sends
 function AgentPortalPage() {
+  const params  = new URLSearchParams(window.location.search);
+  const token   = params.get("token");
   const BASE_FN = "https://hjkyameroqufaojuerns.supabase.co/functions/v1";
-
-  const [session,     setSession]     = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [signInEmail, setSignInEmail] = useState(() => {
-    try { return new URLSearchParams(window.location.search).get("email") || ""; } catch { return ""; }
-  });
-  const [sendingLink, setSendingLink] = useState(false);
-  const [linkSent,    setLinkSent]    = useState(false);
-  const [signInErr,   setSignInErr]   = useState("");
 
   const [agent,       setAgent]       = useState(null);
   const [notFound,    setNotFound]    = useState(false);
@@ -18331,37 +18161,6 @@ function AgentPortalPage() {
   const [sends,       setSends]       = useState([]);
   const [redemptions, setRedemptions] = useState([]);
   const [loading,     setLoading]     = useState(true);
-
-  // Hoisted above all conditional returns below -- this codebase's minifier has a
-  // known TDZ bug when consts are declared after an earlier return. Optional
-  // chaining here since agent/redemptions can still be null/empty at this point.
-  const agentName = agent?.display_name || agent?.name || "Agent";
-  const giftUrl = `https://www.trysteadwell.app/gift/${agent?.gift_code || ""}`;
-  const redeemedTokens = new Set((redemptions || []).map(r => r.agent_token));
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setAuthLoading(false);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const sendMagicLink = async () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signInEmail.trim())) { setSignInErr("Please check that email address."); return; }
-    setSendingLink(true); setSignInErr("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email: signInEmail.trim(),
-      options: { emailRedirectTo: "https://www.trysteadwell.app/agent" },
-    });
-    setSendingLink(false);
-    if (error) { setSignInErr(error.message); return; }
-    setLinkSent(true);
-  };
 
   // ── Profile form state ───────────────────────────────────────────────────────
   const [form,           setForm]           = useState({ display_name:"", title:"", phone:"", agent_email:"", license:"" });
@@ -18381,11 +18180,8 @@ function AgentPortalPage() {
 
   // ── Load agent + sends + redemptions ────────────────────────────────────────
   const loadAll = () => {
-    if (!session?.access_token) { setLoading(false); return; }
-    fetch(`${BASE_FN}/agent-claim-account`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-    })
+    if (!token) { setNotFound(true); setLoading(false); return; }
+    fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(token)}`)
       .then(r => r.json())
       .then(({ data, error }) => {
         if (error || !data) { setNotFound(true); setLoading(false); return; }
@@ -18393,23 +18189,20 @@ function AgentPortalPage() {
         setForm({ display_name: data.display_name||data.name||"", title: data.title||"", phone: data.phone||"", agent_email: data.agent_email||"", license: data.license||"" });
         if (data.headshot_url) setHeadshotPreview(data.headshot_url);
         if (data.logo_url) setLogoPreview(data.logo_url);
-
-        // History still goes through the existing agent-setup-save GET,
-        // keyed by the agent's own token field (unchanged downstream) --
-        // only the access check above changed, not this.
-        fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(data.token)}&include=history`)
-          .then(r => r.json())
-          .then(({ sends: s, redemptions: r }) => {
-            setSends(s || []);
-            setRedemptions(r || []);
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
       })
       .catch(() => { setNotFound(true); setLoading(false); });
+
+    fetch(`${BASE_FN}/agent-setup-save?token=${encodeURIComponent(token)}&include=history`)
+      .then(r => r.json())
+      .then(({ sends: s, redemptions: r }) => {
+        setSends(s || []);
+        setRedemptions(r || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   };
 
-  useEffect(() => { if (session) loadAll(); else setLoading(false); }, [session]);
+  useEffect(() => { loadAll(); }, [token]);
 
   // ── File handling ────────────────────────────────────────────────────────────
   const handleFile = (type, file) => {
@@ -18441,12 +18234,12 @@ function AgentPortalPage() {
         license:      form.license.trim() || null,
         onboarded_at: new Date().toISOString(),
       };
-      if (headshot) updates.headshot_url = await uploadFile(headshot, `${agent.token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
-      if (logo)     updates.logo_url     = await uploadFile(logo,     `${agent.token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
+      if (headshot) updates.headshot_url = await uploadFile(headshot, `${token}/headshot-${Date.now()}.${headshot.name.split(".").pop()}`);
+      if (logo)     updates.logo_url     = await uploadFile(logo,     `${token}/logo-${Date.now()}.${logo.name.split(".").pop()}`);
       const res = await fetch(`${BASE_FN}/agent-setup-save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: agent.token, updates }),
+        body: JSON.stringify({ token, updates }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Save failed");
@@ -18465,7 +18258,7 @@ function AgentPortalPage() {
       const res = await fetch(`${BASE_FN}/send-gift-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_token: agent.token, client_name: giftForm.client_name.trim(), client_email: giftForm.client_email.trim() }),
+        body: JSON.stringify({ agent_token: token, client_name: giftForm.client_name.trim(), client_email: giftForm.client_email.trim() }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed to send");
@@ -18488,46 +18281,12 @@ function AgentPortalPage() {
     tabBtn: (active) => ({ padding:"10px 20px", border:"none", borderBottom: active?"2px solid #234A3D":"2px solid transparent", background:"none", fontWeight:active?700:400, color:active?"#234A3D":"#7A7370", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif", fontSize:14 }),
   };
 
-  if (authLoading) return (
-    <div style={{...S.page, display:"flex", alignItems:"center", justifyContent:"center"}}>
-      <div style={{width:36, height:36, border:"3px solid #E6DECF", borderTop:"3px solid #234A3D", borderRadius:"50%"}}/>
-    </div>
-  );
-
-  if (!session) return (
-    <div style={S.page}>
-      <div style={{...S.wrap, paddingTop:80}}>
-        <div style={{...S.card, textAlign:"center", padding:"40px 32px"}}>
-          <img src="/icon-192.png" alt="Steadwell" style={{width:44,height:44,borderRadius:11,margin:"0 auto 20px",display:"block"}}/>
-          {linkSent ? (
-            <>
-              <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Check your inbox</div>
-              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>We sent a sign-in link to<br/><strong style={{color:"#2A2723"}}>{signInEmail.trim()}</strong></div>
-              <button onClick={() => setLinkSent(false)} style={{...S.btn, background:"none", border:"1.5px solid #E6DECF", color:"#2A2723"}}>Use a different email</button>
-            </>
-          ) : (
-            <>
-              <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Sign in to your agent portal</div>
-              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>Enter the email you applied with — we'll send you a sign-in link.</div>
-              {signInErr && <div style={{color:"#B9422C", fontSize:13, marginBottom:12}}>{signInErr}</div>}
-              <input type="email" placeholder="you@brokerage.com" value={signInEmail} onChange={e=>setSignInEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && sendMagicLink()} style={S.input}/>
-              <button onClick={sendMagicLink} disabled={sendingLink} style={S.btn}>{sendingLink ? "Sending…" : "Send sign-in link"}</button>
-              <div style={{fontSize:13, color:"#7A7370", marginTop:18}}>Not an approved agent yet? <a href="/for-agents" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Apply here →</a></div>
-            </>
-          )}
-          <div style={{fontSize:12, color:"#A8A09A", marginTop:24, paddingTop:16, borderTop:"1px solid #E6DECF"}}>Trouble signing in? Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a></div>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (notFound) return (
+  if (!token || notFound) return (
     <div style={S.page}>
       <div style={{...S.wrap, textAlign:"center", paddingTop:80}}>
         <div style={{fontSize:40, marginBottom:16}}>🔒</div>
-        <div style={{fontFamily:"Georgia,serif", fontSize:22, color:"#234A3D", marginBottom:8}}>No approved application found</div>
-        <div style={{fontSize:14, color:"#7A7370"}}>We couldn't find an approved agent application for this email. Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a> if you think this is a mistake.</div>
+        <div style={{fontFamily:"Georgia,serif", fontSize:22, color:"#234A3D", marginBottom:8}}>Portal not found</div>
+        <div style={{fontSize:14, color:"#7A7370"}}>This link may be invalid. Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a> for help.</div>
       </div>
     </div>
   );
@@ -18538,7 +18297,11 @@ function AgentPortalPage() {
     </div>
   );
 
-  // (agentName, giftUrl, redeemedTokens hoisted to top of component)
+  const agentName = agent.display_name || agent.name || "Agent";
+  const giftUrl   = `https://www.trysteadwell.app/gift/${agent.gift_code}`;
+
+  // Build a set of redeemed emails for quick lookup
+  const redeemedTokens = new Set(redemptions.map(r => r.agent_token));
 
   return (
     <div style={S.page}>
@@ -18766,15 +18529,6 @@ function PrintCardPage({ code }) {
   const giftUrl                 = `https://www.trysteadwell.app/gift/${code}`;
   const qrDataUri               = useQRCode(giftUrl);
 
-  // Matches the formatting already applied in send-gift-email -- this page
-  // previously rendered the raw digit string instead.
-  const formatPhone = (raw) => {
-    if (!raw) return raw;
-    const digits = String(raw).replace(/\D/g, "");
-    if (digits.length !== 10) return raw; // don't mangle non-US formats we don't recognize
-    return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
-  };
-
   useEffect(() => {
     if (!code) { setNotFound(true); return; }
     // Lookup via edge function — agent_applications is now admin-only at DB level
@@ -18853,7 +18607,7 @@ function PrintCardPage({ code }) {
         @media print {
           .no-print { display:none !important; }
           body { background:white !important; margin:0; padding:0; }
-          @page { size: 4.17in 6in; margin: 0; }
+          @page { size: 4in 6in; margin: 0; }
           .print-card-root { display:flex; align-items:flex-start; justify-content:center; padding:0; min-height:unset; background:white !important; }
           .print-card-wrap { width:400px; box-shadow:none !important; border:none !important; border-radius:0 !important; }
         }
@@ -18884,7 +18638,7 @@ function PrintCardPage({ code }) {
               <div style={{fontSize:13,fontWeight:700,color:"#2A2723"}}>{agentName}</div>
               {agent.title&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.title}</div>}
               {agent.brokerage&&<div style={{fontSize:10,color:"#7A7370"}}>{agent.brokerage}</div>}
-              {agent.phone&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{formatPhone(agent.phone)}</div>}
+              {agent.phone&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.phone}</div>}
               {agent.agent_email&&<div style={{fontSize:10,color:"#7A7370",marginTop:1}}>{agent.agent_email}</div>}
             </div>
             {agent.logo_url&&agent.headshot_url&&(
@@ -19123,7 +18877,6 @@ function ForAgentsPage() {
             <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#C16140",marginBottom:12}}>Apply to the program</div>
             <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>Request agent access</h2>
             <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto",lineHeight:1.6}}>We're onboarding a small group of local agents to start. Tell us a bit about you and we'll be in touch within two business days.</p>
-            <p style={{fontSize:".85rem",color:"#7A7370",marginTop:10}}>Already approved? <a href="/agent" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Sign in to your agent portal →</a></p>
           </div>
           {done ? (
             <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"clamp(20px,5vw,40px) clamp(16px,4vw,32px)",maxWidth:520,margin:"0 auto",textAlign:"center"}}>
@@ -19432,7 +19185,7 @@ function AffiliatesPage() {
 // ─── AFFILIATE AGREEMENT PAGE ─────────────────────────────────────────────────
 function AffiliateAgreementPage() {
   useSEO({
-    title:"Affiliate Agreement | Steadwell",
+    title:"Affiliate Agreement",
     description:"Steadwell affiliate program terms — commission rates, cookie window, payout schedule, and prohibited promotion methods.",
     canonical:"https://www.trysteadwell.app/affiliate-agreement",
   });
@@ -19662,7 +19415,7 @@ function LPCTA({ h2, sub, btnLabel="Try it free →", note="Free to start · No 
 // ─── AI SCAN PAGE ─────────────────────────────────────────────────────────────
 function AIScanPage() {
   useSEO({
-    title:"AI Receipt & Nameplate Scanner for Home Management | Steadwell",
+    title:"AI Receipt & Nameplate Scanner for Home Management",
     description:"Scan any receipt, appliance nameplate, or insurance document with your camera. Steadwell AI extracts the details automatically — no typing required.",
     canonical:"https://www.trysteadwell.app/ai-scan",
   });
@@ -19732,7 +19485,7 @@ function AIScanPage() {
 // ─── EMAIL CAPTURE PAGE ───────────────────────────────────────────────────────
 function EmailCapturePage() {
   useSEO({
-    title:"Forward Receipts to Steadwell — Automatic Home Record Capture | Steadwell",
+    title:"Forward Receipts to Steadwell — Automatic Home Record Capture",
     description:"Forward any receipt, invoice, or warranty document to your unique Steadwell address. We extract the details and file them automatically. Free for all plans.",
     canonical:"https://www.trysteadwell.app/email-capture",
   });
@@ -19825,7 +19578,7 @@ function EmailCapturePage() {
 // ─── MAINTENANCE TRACKER PAGE ─────────────────────────────────────────────────
 function MaintenanceTrackerPage() {
   useSEO({
-    title:"Home Maintenance Schedule App — Never Miss a Task | Steadwell",
+    title:"Home Maintenance Schedule App — Never Miss a Task",
     description:"Track every home maintenance task with reminders, recurring schedules, and a complete service history. Free for all plans.",
     canonical:"https://www.trysteadwell.app/home-maintenance-tracker",
   });
@@ -19890,7 +19643,7 @@ function MaintenanceTrackerPage() {
 // ─── CONTRACTOR TRACKER PAGE ──────────────────────────────────────────────────
 function ContractorTrackerPage() {
   useSEO({
-    title:"Home Contractor Tracker — Save Trusted Pros | Steadwell",
+    title:"Home Contractor Tracker — Save Trusted Pros",
     description:"Save your trusted contractors, log every service visit, and track what each one has cost. Free for all plans.",
     canonical:"https://www.trysteadwell.app/contractor-tracker",
   });
@@ -19952,7 +19705,7 @@ function ContractorTrackerPage() {
 // ─── INSURANCE TRACKER PAGE ───────────────────────────────────────────────────
 function InsuranceTrackerPage() {
   useSEO({
-    title:"Home Insurance Organizer — Track Policies & Claims | Steadwell",
+    title:"Home Insurance Organizer — Track Policies & Claims",
     description:"Store your home insurance policies, log claims, and get annual renewal reminders. Everything ready before you ever need to file.",
     canonical:"https://www.trysteadwell.app/home-insurance-tracker",
   });
@@ -20014,7 +19767,7 @@ function InsuranceTrackerPage() {
 // ─── EXPENSE TRACKER PAGE ─────────────────────────────────────────────────────
 function HomeExpenseTrackerPage() {
   useSEO({
-    title:"Home Expense Tracker & 5-Year Cost Forecast | Steadwell",
+    title:"Home Expense Tracker & 5-Year Cost Forecast",
     description:"Track every dollar your home costs you and see a 5-year forecast of upcoming expenses based on your appliance ages. Free to start.",
     canonical:"https://www.trysteadwell.app/home-expense-tracker",
   });
@@ -20079,7 +19832,7 @@ function HomeExpenseTrackerPage() {
 // ─── PROJECTS PAGE ────────────────────────────────────────────────────────────
 function HomeProjectsPage() {
   useSEO({
-    title:"Home Renovation Tracker with ROI Calculator | Steadwell",
+    title:"Home Renovation Tracker with ROI Calculator",
     description:"Track every home renovation project with budgets, timelines, and a Cost vs. Value ROI calculator. See what each project adds to your home&#39;s resale value.",
     canonical:"https://www.trysteadwell.app/home-projects",
   });
@@ -20205,7 +19958,7 @@ function HomeProjectsPage() {
 // ─── DOCUMENT VAULT PAGE ──────────────────────────────────────────────────────
 function DocumentVaultPage() {
   useSEO({
-    title:"Home Document Vault — Store Deeds, Permits & More | Steadwell",
+    title:"Home Document Vault — Store Deeds, Permits & More",
     description:"Store every important home document in one secure place. Deeds, permits, inspection reports, manuals, HOA documents — always findable when you need them.",
     canonical:"https://www.trysteadwell.app/home-document-vault",
   });
@@ -20271,7 +20024,7 @@ function DocumentVaultPage() {
 function RecallAlertsPage() {
 
   useSEO({
-    title: "Product Safety Recall Alerts for Your Home | Steadwell",
+    title: "Product Safety Recall Alerts for Your Home",
     description: "Find out if anything in your home has been recalled. Steadwell checks every tracked product against the CPSC database automatically — appliances, tools, electronics, safety devices, and more.",
     canonical: "https://www.trysteadwell.app/recall-alerts",
     jsonLd: {

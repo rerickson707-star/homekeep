@@ -29,7 +29,6 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-    // Fetch the agent application
     const { data: agent, error: fetchErr } = await supabase
       .from("agent_applications")
       .select("*")
@@ -40,12 +39,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: CORS });
     }
 
-    // Portal is now real authentication (magic link), not a per-agent token
-    // link -- /agent?email=... just prefills the sign-in field so the agent
-    // doesn't have to retype the email their application is under.
     const portalLink = `${BASE_URL}/agent?email=${encodeURIComponent(agent.email)}`;
     const firstName  = agent.name?.split(" ")[0] || "there";
+    const iconUrl    = `${BASE_URL}/icon-192.png`; // hosted PNG -- inline SVG doesn't render in most email clients
 
+    // Table-based layout throughout -- matches the pattern already proven
+    // reliable in send-gift-email. No flexbox: many email clients (Outlook
+    // especially) don't support it, which is exactly what broke the
+    // numbered steps and the header icon in the previous version.
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -56,80 +57,101 @@ serve(async (req) => {
   <style>:root{color-scheme:light;supported-color-schemes:light;}</style>
 </head>
 <body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <div style="max-width:580px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ECE3D2;">
+    <tr><td align="center">
+      <table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;width:100%;background:#FBF7EE;border-radius:16px;overflow:hidden;margin:40px auto;">
 
-    <!-- Header -->
-    <div style="background:#234A3D;padding:28px 40px;display:flex;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;background:#1C3D31;border:1.5px solid rgba(244,237,223,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <svg viewBox="0 0 48 48" fill="none" width="22" height="22">
-          <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M21 33 L21 27 A3 3 0 0 1 27 27 L27 33" stroke="#F4EDDF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M11 34 L37 34" stroke="#F4EDDF" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="24" cy="18.5" r="1.8" fill="#C16140"/>
-        </svg>
-      </div>
-      <span style="color:#F4EDDF;font-size:20px;font-weight:700;font-family:Georgia,serif;">Steadwell</span>
-      <span style="color:rgba(244,237,223,.4);font-size:13px;margin-left:auto;">Agent Partner Program</span>
-    </div>
+        <!-- Header -->
+        <tr><td style="background:#234A3D;padding:24px 40px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="36" valign="middle">
+              <img src="${iconUrl}" width="36" height="36" alt="Steadwell" style="display:block;border-radius:9px;">
+            </td>
+            <td valign="middle" style="padding-left:12px;">
+              <span style="color:#F4EDDF;font-size:20px;font-weight:700;font-family:Georgia,serif;">Steadwell</span>
+            </td>
+            <td align="right" valign="middle">
+              <span style="color:rgba(244,237,223,.4);font-size:13px;">Agent Partner Program</span>
+            </td>
+          </tr></table>
+        </td></tr>
 
-    <!-- Body -->
-    <div style="padding:36px 40px;">
-      <h1 style="font-family:Georgia,serif;font-size:24px;color:#234A3D;font-weight:400;margin:0 0 8px;">
-        You're in, ${firstName}. Welcome to the program. 🎉
-      </h1>
-      <p style="font-size:14px;color:#A8A09A;margin:0 0 28px;">Here's everything you need to get started.</p>
+        <!-- Body -->
+        <tr><td style="padding:36px 40px;">
+          <h1 style="font-family:Georgia,serif;font-size:24px;color:#234A3D;font-weight:400;margin:0 0 8px;">
+            You're in, ${firstName}. Welcome to the program. 🎉
+          </h1>
+          <p style="font-size:14px;color:#A8A09A;margin:0 0 28px;">Here's everything you need to get started.</p>
 
-      <!-- How it works -->
-      <div style="background:#F4EDDF;border-radius:12px;padding:22px 24px;margin-bottom:28px;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C16140;margin-bottom:14px;">How it works</div>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="width:24px;height:24px;background:#234A3D;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#F4EDDF;">1</div>
-            <div style="font-size:13px;color:#2A2723;line-height:1.5;"><strong>Sign in to your agent portal below</strong> — enter your email, click the link we send you, and add your headshot, logo, and a few details. Takes about 2 minutes.</div>
-          </div>
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="width:24px;height:24px;background:#234A3D;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#F4EDDF;">2</div>
-            <div style="font-size:13px;color:#2A2723;line-height:1.5;">Your co-branded gift link is ready as soon as your profile is saved.</div>
-          </div>
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="width:24px;height:24px;background:#234A3D;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#F4EDDF;">3</div>
-            <div style="font-size:13px;color:#2A2723;line-height:1.5;">Share your gift link with closing clients. They get <strong>3 months of Steadwell Plus</strong>, with your name on it.</div>
-          </div>
-        </div>
-      </div>
+          <!-- How it works -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4EDDF;border-radius:12px;margin-bottom:28px;">
+            <tr><td style="padding:22px 24px;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C16140;margin-bottom:14px;">How it works</div>
 
-      <!-- CTA -->
-      <div style="text-align:center;margin-bottom:28px;">
-        <div style="font-family:Georgia,serif;font-size:17px;color:#2A2723;margin-bottom:8px;">First step: sign in to your agent portal</div>
-        <div style="font-size:13px;color:#A8A09A;margin-bottom:20px;line-height:1.5;">Click below, confirm your email, and we'll send you a secure sign-in link — no password to set or remember.</div>
-        <a href="${portalLink}" style="background:#C16140;color:#fff;text-decoration:none;padding:14px 28px;border-radius:40px;font-size:15px;font-weight:700;display:inline-block;">Go to my agent portal &#8594;</a>
-        <div style="margin-top:12px;font-size:12px;color:#A8A09A;">Bookmark trysteadwell.app/agent — sign in with this same email anytime to send gifts or update your profile.</div>
-      </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td width="24" valign="top" style="padding-bottom:12px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="24" height="24" align="center" valign="middle" style="background:#234A3D;border-radius:50%;font-size:11px;font-weight:700;color:#F4EDDF;">1</td></tr></table>
+                </td>
+                <td style="padding:0 0 12px 14px;font-size:13px;color:#2A2723;line-height:1.5;"><strong>Sign in to your agent portal below</strong> — enter your email, click the link we send you, and add your headshot, logo, and a few details. Takes about 2 minutes.</td>
+              </tr></table>
 
-      <!-- What clients see -->
-      <div style="border-top:1px solid #E0D8C9;padding-top:22px;margin-bottom:22px;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C16140;margin-bottom:12px;">What your clients see</div>
-        <div style="background:#234A3D;border-radius:10px;padding:16px 18px;font-size:13px;color:rgba(244,237,223,.8);line-height:1.6;">
-          "3 months of Steadwell Plus — gifted by <strong style="color:#F4EDDF;">${agent.name}</strong>${agent.brokerage ? `, ${agent.brokerage}` : ""}. Set up your home in minutes."
-        </div>
-      </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td width="24" valign="top" style="padding-bottom:12px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="24" height="24" align="center" valign="middle" style="background:#234A3D;border-radius:50%;font-size:11px;font-weight:700;color:#F4EDDF;">2</td></tr></table>
+                </td>
+                <td style="padding:0 0 12px 14px;font-size:13px;color:#2A2723;line-height:1.5;">Your co-branded gift link is ready as soon as your profile is saved.</td>
+              </tr></table>
 
-      <p style="font-size:13px;color:#7A7370;line-height:1.6;margin:0;">Questions? Reply to this email or reach me at <a href="mailto:hello@trysteadwell.app" style="color:#C16140;text-decoration:none;">hello@trysteadwell.app</a> — I'll get back to you same day.</p>
-      <p style="font-size:13px;color:#7A7370;margin-top:8px;">— Robert, Steadwell</p>
-    </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td width="24" valign="top">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="24" height="24" align="center" valign="middle" style="background:#234A3D;border-radius:50%;font-size:11px;font-weight:700;color:#F4EDDF;">3</td></tr></table>
+                </td>
+                <td style="padding:0 0 0 14px;font-size:13px;color:#2A2723;line-height:1.5;">Share your gift link with closing clients. They get <strong>3 months of Steadwell Plus</strong>, with your name on it.</td>
+              </tr></table>
 
-    <!-- Footer -->
-    <div style="padding:20px 40px;border-top:1px solid #E0D8C9;text-align:center;">
-      <p style="font-size:11px;color:#A8A09A;margin:0;">
-        Steadwell &middot; <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a>
-        &middot; Agent Partner Program
-      </p>
-    </div>
-  </div>
+            </td></tr>
+          </table>
+
+          <!-- CTA -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:28px;">
+            <div style="font-family:Georgia,serif;font-size:17px;color:#2A2723;margin-bottom:8px;">First step: sign in to your agent portal</div>
+            <div style="font-size:13px;color:#A8A09A;margin-bottom:20px;line-height:1.5;">Click below, confirm your email, and we'll send you a secure sign-in link — no password to set or remember.</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#C16140;border-radius:40px;">
+              <a href="${portalLink}" style="display:inline-block;padding:14px 28px;color:#fff;text-decoration:none;font-size:15px;font-weight:700;">Go to my agent portal &#8594;</a>
+            </td></tr></table>
+            <div style="margin-top:12px;font-size:12px;color:#A8A09A;">Bookmark trysteadwell.app/agent — sign in with this same email anytime to send gifts or update your profile.</div>
+          </td></tr></table>
+
+          <!-- What clients see -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #E0D8C9;">
+            <tr><td style="padding-top:22px;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C16140;margin-bottom:12px;">What your clients see</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#234A3D;border-radius:10px;">
+                <tr><td style="padding:16px 18px;font-size:13px;color:rgba(244,237,223,.8);line-height:1.6;">
+                  "3 months of Steadwell Plus — gifted by <strong style="color:#F4EDDF;">${agent.name}</strong>${agent.brokerage ? `, ${agent.brokerage}` : ""}. Set up your home in minutes."
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <p style="font-size:13px;color:#7A7370;line-height:1.6;margin:22px 0 0;">Questions? Reply to this email or reach me at <a href="mailto:hello@trysteadwell.app" style="color:#C16140;text-decoration:none;">hello@trysteadwell.app</a> — I'll get back to you same day.</p>
+          <p style="font-size:13px;color:#7A7370;margin-top:8px;">— Robert, Steadwell</p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 40px;border-top:1px solid #E0D8C9;text-align:center;">
+          <p style="font-size:11px;color:#A8A09A;margin:0;">
+            Steadwell &middot; <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a>
+            &middot; Agent Partner Program
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
 
-    // Send the email
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
