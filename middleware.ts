@@ -109,21 +109,14 @@ export default async function middleware(request) {
 }
 
 export const config = {
-  matcher: [
-    "/blog",
-    "/blog/:path*",
-    "/for-agents",
-    "/affiliates",
-    "/affiliate-agreement",
-    "/ai-scan",
-    "/email-capture",
-    "/home-maintenance-tracker",
-    "/contractor-tracker",
-    "/home-insurance-tracker",
-    "/home-expense-tracker",
-    "/home-projects",
-    "/home-document-vault",
-    "/recall-alerts",
-    "/guides",
-  ],
+  // A single broad pattern, matching the same style as the one entry that
+  // actually worked correctly in production (the /blog/:path* -style match) --
+  // Vercel's dashboard only ever registered that one path from the previous
+  // array of 15 separate literal strings, for reasons that weren't fully
+  // diagnosable from the dashboard alone. This sidesteps that entirely: the
+  // function's own internal logic already looks up STATIC_PAGES[path] and
+  // no-ops (returns undefined, passing the request through unchanged) for
+  // anything it doesn't recognize, so matching broadly here is safe -- it
+  // just means slightly more invocations, never incorrect behavior.
+  matcher: ["/((?!assets/|icon-|favicon|apple-touch-icon|og-image|manifest\\.json|sw\\.js|robots\\.txt|sitemap\\.xml|llms\\.txt).*)"],
 };
