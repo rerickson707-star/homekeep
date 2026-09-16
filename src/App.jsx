@@ -16460,6 +16460,12 @@ export default function App() {
   const [projects,    setProjects]    = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
 
+  const [showSetup, setShowSetup] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [warranties, setWarranties] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [profile, setProfile] = useState(null);
+
   // Durable resume: covers the normal post-onboarding launch AND returning from a
   // Stripe Checkout redirect, which reloads the page and loses the transient
   // autoOpenSetup flag above. Profile fields (DB-backed) survive that round-trip.
@@ -16469,11 +16475,6 @@ export default function App() {
       setAutoOpenSetup(true);
     }
   }, [profile?.onboarding_complete, profile?.home_setup_complete]);
-  const [showSetup, setShowSetup] = useState(false);
-  const [tasks, setTasks] = useState([]);
-  const [warranties, setWarranties] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
   const [activePropertyId, setActivePropertyIdRaw] = useState(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
