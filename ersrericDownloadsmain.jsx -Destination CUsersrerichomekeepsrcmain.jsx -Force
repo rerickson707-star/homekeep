@@ -1,0 +1,18 @@
+[33mcommit f7d1d45895f98b81a2cfdfaaffcbec5bd4104f89[m
+Author: rerickson707-star <153247192+rbe3business@users.noreply.github.com>
+Date:   Wed Sep 16 17:32:19 2026 -0400
+
+    App.jsx: reapply SEO title-dedup fix on top of v219 (removes duplicate | Steadwell on 10 pages); gift program, annual billing, and session-based agent portal all intact
+
+[1mdiff --git a/package.json b/package.json[m
+[1mindex 8f923fb..8a644cd 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -12,6 +12,7 @@[m
+   "dependencies": {[m
+     "@sentry/react": "^10.66.0",[m
+     "@supabase/supabase-js": "^2.106.2",[m
+[32m+[m[32m    "@vercel/analytics": "^2.0.1",[m
+     "qrcode": "^1.5.4",[m
+     "react": "^19.2.6",[m
+     "react-dom": "^19.2.6"[m
