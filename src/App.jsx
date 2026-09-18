@@ -2738,8 +2738,14 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       if (existing?.length > 0) { await supabase.from("profiles").update(payload).eq("user_id", uid); }
       else { await supabase.from("profiles").insert([payload]); }
       try { sessionStorage.removeItem(ONB_STEP_KEY); } catch {}
-      await onComplete({ launchSetup: !skipSetup });
+
       // ── Gift redemption: if user came via agent gift link, activate Plus ──
+      // This MUST complete before onComplete() below -- onComplete re-fetches
+      // `profiles` from Supabase and pushes it into the live app state (the
+      // source of `planData` everywhere else in the app). Redeeming after that
+      // fetch meant the dashboard always loaded with the pre-redemption "free"
+      // plan and nothing ever re-fetched afterward, so gifted users kept seeing
+      // upgrade prompts despite the gift having (eventually) been recorded.
       if (giftAgent) {
         const { data: { session: activeSession } } = await supabase.auth.getSession();
         const userToken = activeSession?.access_token;
@@ -2759,6 +2765,9 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         // Clear the cookie
         document.cookie = "sw_agent=;max-age=0;path=/";
       }
+
+      await onComplete({ launchSetup: !skipSetup });
+
       fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/welcome-email", {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk"},
