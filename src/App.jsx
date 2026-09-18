@@ -18399,6 +18399,15 @@ function AgentPortalPage() {
   const [sendMsg,     setSendMsg]     = useState("");
   const [sendErr,     setSendErr]     = useState("");
 
+  // ── Sent Gifts tab: resend / edit-and-resend state ───────────────────────────
+  // Hoisted here (before any conditional return below) for the same reason as
+  // everything else in this component -- see the TDZ note on `agentName` above.
+  const [editingSendId, setEditingSendId] = useState(null);
+  const [editForm,      setEditForm]      = useState({ client_name:"", client_email:"" });
+  const [resendingId,   setResendingId]   = useState(null);
+  const [historyMsg,    setHistoryMsg]    = useState("");
+  const [historyErr,    setHistoryErr]    = useState("");
+
   // ── Load agent + sends + redemptions ────────────────────────────────────────
   const loadAll = () => {
     if (!session?.access_token) { setLoading(false); return; }
@@ -18477,23 +18486,59 @@ function AgentPortalPage() {
   };
 
   // ── Send gift email ──────────────────────────────────────────────────────────
+  // Shared by the Send Gift tab above and the per-row Resend / Edit actions in the
+  // Sent Gifts tab below -- same edge function either way, just a different
+  // name/email source.
+  const sendGiftTo = async (client_name, client_email) => {
+    const res = await fetch(`${BASE_FN}/send-gift-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent_token: agent.token, client_name: client_name.trim(), client_email: client_email.trim() }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "Failed to send");
+  };
+
   const sendGift = async () => {
     if (!giftForm.client_name.trim()) { setSendErr("Please add the client's name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(giftForm.client_email.trim())) { setSendErr("Please check the email address."); return; }
     setSending(true); setSendErr("");
     try {
-      const res = await fetch(`${BASE_FN}/send-gift-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_token: agent.token, client_name: giftForm.client_name.trim(), client_email: giftForm.client_email.trim() }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Failed to send");
+      await sendGiftTo(giftForm.client_name, giftForm.client_email);
       setSendMsg(`✓ Gift sent to ${giftForm.client_name.trim()}`);
       setGiftForm({ client_name:"", client_email:"" });
       loadAll();
     } catch(e) { setSendErr(e.message || "Something went wrong."); }
     finally { setSending(false); }
+  };
+
+  // Re-send to the same client, unchanged -- a quick follow-up nudge from the
+  // Sent Gifts tab, no need to retype anything.
+  const resendGift = async (s) => {
+    setResendingId(s.id); setHistoryErr(""); setHistoryMsg("");
+    try {
+      await sendGiftTo(s.client_name, s.client_email);
+      setHistoryMsg(`✓ Resent to ${s.client_name}`);
+      loadAll();
+    } catch(e) { setHistoryErr(e.message || "Something went wrong."); }
+    finally { setResendingId(null); }
+  };
+
+  // Correct a typo'd name/email before resending. gift_sends is an append-only
+  // send log (not a single editable record per client), so this intentionally
+  // creates a fresh row via the same edge function rather than updating the old
+  // one -- the old row stays as a record that the first attempt was sent.
+  const saveEditAndResend = async () => {
+    if (!editForm.client_name.trim()) { setHistoryErr("Please add the client's name."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.client_email.trim())) { setHistoryErr("Please check the email address."); return; }
+    setResendingId(editingSendId); setHistoryErr(""); setHistoryMsg("");
+    try {
+      await sendGiftTo(editForm.client_name, editForm.client_email);
+      setHistoryMsg(`✓ Sent to ${editForm.client_name.trim()}`);
+      setEditingSendId(null);
+      loadAll();
+    } catch(e) { setHistoryErr(e.message || "Something went wrong."); }
+    finally { setResendingId(null); }
   };
 
   const S = {
@@ -18572,6 +18617,16 @@ function AgentPortalPage() {
   return (
     <div style={S.page}>
       <div style={S.wrap}>
+        {/* Steadwell branding -- was missing entirely; this page otherwise reads as
+            generic. Same logo asset the sign-in screen above already uses. */}
+        <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:16}}>
+          <img src="/icon-192.png" alt="Steadwell" style={{width:32, height:32, borderRadius:8, flexShrink:0}}/>
+          <div>
+            <div style={{fontFamily:"Georgia,serif", fontSize:16, fontWeight:700, color:"#234A3D", lineHeight:1.15}}>Steadwell</div>
+            <div style={{fontSize:11, color:"#A8A09A", letterSpacing:".04em", textTransform:"uppercase"}}>Agent Portal</div>
+          </div>
+        </div>
+
         {/* Header */}
         <div style={{background:"#234A3D", borderRadius:16, padding:"20px 24px", marginBottom:16}}>
           {/* Top row: avatar + name */}
@@ -18639,25 +18694,57 @@ function AgentPortalPage() {
               <div>
                 <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Sent gifts</div>
                 <div style={{fontSize:13, color:"#7A7370", marginBottom:20}}>Clients you've emailed a gift link. "Signed up" means they created a Steadwell account via your gift.</div>
+                {historyMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:13, fontWeight:600}}>{historyMsg}</div>}
+                {historyErr && <div style={{color:"#A32D2D", fontSize:13, marginBottom:16}}>{historyErr}</div>}
                 {sends.length === 0
                   ? <div style={{textAlign:"center", padding:"40px 0", color:"#A8A09A", fontSize:14}}>No gifts sent yet — use the Send Gift tab to get started.</div>
                   : <div>
                       {/* Header row */}
-                      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto", gap:8, padding:"8px 12px", fontSize:11, fontWeight:700, color:"#A8A09A", letterSpacing:".05em", textTransform:"uppercase", borderBottom:"1px solid #E6DECF", marginBottom:4}}>
-                        <div>Client</div><div>Email</div><div>Sent</div><div>Status</div>
+                      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto auto", gap:8, padding:"8px 12px", fontSize:11, fontWeight:700, color:"#A8A09A", letterSpacing:".05em", textTransform:"uppercase", borderBottom:"1px solid #E6DECF", marginBottom:4}}>
+                        <div>Client</div><div>Email</div><div>Sent</div><div>Status</div><div>Actions</div>
                       </div>
                       {sends.map(s => {
                         const signedUp = redemptions.some(r => r.client_email === s.client_email);
+                        const isEditingRow = editingSendId === s.id;
+                        const isBusy = resendingId === s.id;
                         return (
-                          <div key={s.id} style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto", gap:8, padding:"10px 12px", fontSize:13, borderBottom:"1px solid #F4EDDF", alignItems:"center"}}>
-                            <div style={{fontWeight:600, color:"#2A2723", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_name}</div>
-                            <div style={{color:"#7A7370", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_email}</div>
+                          <div key={s.id} style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto auto", gap:8, padding:"10px 12px", fontSize:13, borderBottom:"1px solid #F4EDDF", alignItems:"center"}}>
+                            {isEditingRow ? (
+                              <>
+                                <input value={editForm.client_name} onChange={e=>setEditForm(f=>({...f,client_name:e.target.value}))}
+                                  style={{...S.input, marginBottom:0, padding:"6px 10px", fontSize:13}} placeholder="Client name"/>
+                                <input value={editForm.client_email} onChange={e=>setEditForm(f=>({...f,client_email:e.target.value}))} type="email"
+                                  style={{...S.input, marginBottom:0, padding:"6px 10px", fontSize:13}} placeholder="Client email"/>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{fontWeight:600, color:"#2A2723", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_name}</div>
+                                <div style={{color:"#7A7370", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_email}</div>
+                              </>
+                            )}
                             <div style={{color:"#A8A09A", whiteSpace:"nowrap"}}>{new Date(s.sent_at).toLocaleDateString()}</div>
                             <div style={{whiteSpace:"nowrap"}}>
                               {signedUp
                                 ? <span style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>✓ Signed up</span>
                                 : <span style={{background:"#F4EDDF", color:"#A8A09A", borderRadius:6, padding:"3px 8px", fontSize:11}}>Pending</span>
                               }
+                            </div>
+                            <div style={{display:"flex", gap:6, whiteSpace:"nowrap"}}>
+                              {isEditingRow ? (
+                                <>
+                                  <button onClick={saveEditAndResend} disabled={isBusy}
+                                    style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"…":"Save & send"}</button>
+                                  <button onClick={()=>{ setEditingSendId(null); setHistoryErr(""); }}
+                                    style={{background:"none", border:"1px solid #E6DECF", color:"#7A7370", borderRadius:6, padding:"5px 10px", fontSize:11, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={()=>resendGift(s)} disabled={isBusy}
+                                    style={{background:"none", border:"1px solid #E6DECF", color:"#234A3D", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"Sending…":"Resend"}</button>
+                                  <button onClick={()=>{ setEditingSendId(s.id); setEditForm({client_name:s.client_name, client_email:s.client_email}); setHistoryErr(""); }}
+                                    style={{background:"none", border:"none", color:"#7A7370", fontSize:11, cursor:"pointer", fontFamily:"inherit", padding:"5px 4px"}}>Edit</button>
+                                </>
+                              )}
                             </div>
                           </div>
                         );
