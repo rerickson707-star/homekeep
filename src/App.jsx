@@ -18394,10 +18394,11 @@ function AgentPortalPage() {
   const [isEditing,      setIsEditing]      = useState(false);
 
   // ── Send gift form state ─────────────────────────────────────────────────────
-  const [giftForm,    setGiftForm]    = useState({ client_name:"", client_email:"" });
+  const [giftForm,    setGiftForm]    = useState({ client_name:"", client_email:"", personal_note:"" });
   const [sending,     setSending]     = useState(false);
   const [sendMsg,     setSendMsg]     = useState("");
   const [sendErr,     setSendErr]     = useState("");
+  const [previewing,  setPreviewing]  = useState(false); // shows the email preview before it actually sends
 
   // ── Sent Gifts tab: resend / edit-and-resend state ───────────────────────────
   // Hoisted here (before any conditional return below) for the same reason as
@@ -18407,6 +18408,17 @@ function AgentPortalPage() {
   const [resendingId,   setResendingId]   = useState(null);
   const [historyMsg,    setHistoryMsg]    = useState("");
   const [historyErr,    setHistoryErr]    = useState("");
+
+  // ── Sent Gifts tab: lightweight CRM (notes + follow-up status per client) ────
+  const [expandedId,  setExpandedId]  = useState(null);   // which row's notes panel is open
+  const [crmForm,     setCrmForm]     = useState({ notes:"", crm_status:"new" });
+  const [savingCrm,   setSavingCrm]   = useState(false);
+  const CRM_STATUS_META = {
+    new:       { label:"New",              bg:"#F4EDDF", color:"#A8A09A" },
+    contacted: { label:"Contacted",        bg:"#EAF1F7", color:"#2A5F8A" },
+    follow_up: { label:"Follow-up needed", bg:"#FFF3E0", color:"#B9670A" },
+    closed:    { label:"Closed",           bg:"#EAF3EC", color:"#1C5C35" },
+  };
 
   // ── Load agent + sends + redemptions ────────────────────────────────────────
   const loadAll = () => {
@@ -18489,11 +18501,16 @@ function AgentPortalPage() {
   // Shared by the Send Gift tab above and the per-row Resend / Edit actions in the
   // Sent Gifts tab below -- same edge function either way, just a different
   // name/email source.
-  const sendGiftTo = async (client_name, client_email) => {
+  const sendGiftTo = async (client_name, client_email, personal_note) => {
     const res = await fetch(`${BASE_FN}/send-gift-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent_token: agent.token, client_name: client_name.trim(), client_email: client_email.trim() }),
+      body: JSON.stringify({
+        agent_token: agent.token,
+        client_name: client_name.trim(),
+        client_email: client_email.trim(),
+        personal_note: (personal_note || "").trim() || undefined,
+      }),
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || "Failed to send");
@@ -18504,9 +18521,10 @@ function AgentPortalPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(giftForm.client_email.trim())) { setSendErr("Please check the email address."); return; }
     setSending(true); setSendErr("");
     try {
-      await sendGiftTo(giftForm.client_name, giftForm.client_email);
+      await sendGiftTo(giftForm.client_name, giftForm.client_email, giftForm.personal_note);
       setSendMsg(`✓ Gift sent to ${giftForm.client_name.trim()}`);
-      setGiftForm({ client_name:"", client_email:"" });
+      setGiftForm({ client_name:"", client_email:"", personal_note:"" });
+      setPreviewing(false);
       loadAll();
     } catch(e) { setSendErr(e.message || "Something went wrong."); }
     finally { setSending(false); }
@@ -18539,6 +18557,25 @@ function AgentPortalPage() {
       loadAll();
     } catch(e) { setHistoryErr(e.message || "Something went wrong."); }
     finally { setResendingId(null); }
+  };
+
+  // Saves the CRM notes/status on a gift_sends row. Ownership is checked
+  // server-side against agent_token (same trust model send-gift-email already
+  // uses), not a new auth path.
+  const saveCrm = async (sendId) => {
+    setSavingCrm(true); setHistoryErr("");
+    try {
+      const res = await fetch(`${BASE_FN}/gift-crm-update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_token: agent.token, send_id: sendId, notes: crmForm.notes, crm_status: crmForm.crm_status }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to save");
+      setExpandedId(null);
+      loadAll();
+    } catch(e) { setHistoryErr(e.message || "Something went wrong."); }
+    finally { setSavingCrm(false); }
   };
 
   const S = {
@@ -18618,12 +18655,15 @@ function AgentPortalPage() {
     <div style={S.page}>
       <div style={S.wrap}>
         {/* Steadwell branding -- was missing entirely; this page otherwise reads as
-            generic. Same logo asset the sign-in screen above already uses. */}
+            generic. Same logo asset the sign-in screen above already uses.
+            display:"block" on the img and a nested flex column (rather than two
+            bare divs) keep the wordmark's two lines vertically centered against
+            the logo regardless of font metrics. */}
         <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:16}}>
-          <img src="/icon-192.png" alt="Steadwell" style={{width:32, height:32, borderRadius:8, flexShrink:0}}/>
-          <div>
-            <div style={{fontFamily:"Georgia,serif", fontSize:16, fontWeight:700, color:"#234A3D", lineHeight:1.15}}>Steadwell</div>
-            <div style={{fontSize:11, color:"#A8A09A", letterSpacing:".04em", textTransform:"uppercase"}}>Agent Portal</div>
+          <img src="/icon-192.png" alt="Steadwell" style={{width:32, height:32, borderRadius:8, display:"block", flexShrink:0}}/>
+          <div style={{display:"flex", flexDirection:"column", justifyContent:"center"}}>
+            <div style={{fontFamily:"Georgia,serif", fontSize:16, fontWeight:700, color:"#234A3D", lineHeight:1.2, margin:0}}>Steadwell</div>
+            <div style={{fontSize:11, color:"#A8A09A", letterSpacing:".04em", textTransform:"uppercase", lineHeight:1.3, marginTop:1}}>Agent Portal</div>
           </div>
         </div>
 
@@ -18668,15 +18708,81 @@ function AgentPortalPage() {
                 <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Send a gift to a client</div>
                 <div style={{fontSize:13, color:"#7A7370", marginBottom:20, lineHeight:1.6}}>They'll receive a branded email from Steadwell with your name on it and a link to claim 3 months of Plus.</div>
                 {sendMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:13, fontWeight:600}}>{sendMsg} <button onClick={()=>setSendMsg("")} style={{marginLeft:8, background:"none", border:"none", cursor:"pointer", color:"#1C5C35", fontSize:13}}>Send another</button></div>}
-                {!sendMsg && <>
+
+                {/* ── Form step ── */}
+                {!sendMsg && !previewing && <>
                   <label style={S.label}>Client's name</label>
                   <input style={S.input} value={giftForm.client_name} onChange={e=>setGiftForm(f=>({...f,client_name:e.target.value}))} placeholder="Sarah Johnson" />
                   <label style={S.label}>Client's email</label>
-                  <input style={{...S.input, marginBottom:sendErr?8:16}} type="email" value={giftForm.client_email} onChange={e=>setGiftForm(f=>({...f,client_email:e.target.value}))} placeholder="sarah@email.com" />
+                  <input style={S.input} type="email" value={giftForm.client_email} onChange={e=>setGiftForm(f=>({...f,client_email:e.target.value}))} placeholder="sarah@email.com" />
+                  <label style={S.label}>Personal note <span style={{fontWeight:400, color:"#A8A09A"}}>(optional)</span></label>
+                  <textarea style={{...S.input, minHeight:70, resize:"vertical", fontFamily:"inherit", marginBottom:sendErr?8:16}}
+                    value={giftForm.personal_note} onChange={e=>setGiftForm(f=>({...f,personal_note:e.target.value}))}
+                    placeholder="Congrats again on closing! Thought you'd love this." />
                   {sendErr && <div style={{color:"#A32D2D", fontSize:13, marginBottom:12}}>{sendErr}</div>}
-                  <button onClick={sendGift} disabled={sending} style={{...S.btn, opacity:sending?.7:1}}>{sending?"Sending…":"Send gift email →"}</button>
-                  <div style={{fontSize:12, color:"#A8A09A", textAlign:"center", marginTop:10}}>We send from Steadwell on your behalf — the email shows your name as the gift sender.</div>
+                  <button
+                    onClick={() => {
+                      if (!giftForm.client_name.trim()) { setSendErr("Please add the client's name."); return; }
+                      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(giftForm.client_email.trim())) { setSendErr("Please check the email address."); return; }
+                      setSendErr(""); setPreviewing(true);
+                    }}
+                    style={S.btn}
+                  >Preview email →</button>
                 </>}
+
+                {/* ── Preview step ── */}
+                {/* A visual approximation of the actual branded email built by
+                    send-gift-email -- not the literal HTML (that's rendered
+                    server-side in Deno), but the same content and layout, so
+                    there are no surprises right before it goes out. */}
+                {!sendMsg && previewing && <>
+                  <div style={{fontSize:12, color:"#7A7370", marginBottom:10, fontWeight:700, letterSpacing:".04em", textTransform:"uppercase"}}>Preview</div>
+                  <div style={{border:"1px solid #E6DECF", borderRadius:12, overflow:"hidden", marginBottom:16}}>
+                    <div style={{background:"#234A3D", padding:"20px 24px", textAlign:"center"}}>
+                      <div style={{display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:12}}>
+                        <img src="/icon-192.png" alt="Steadwell" style={{width:20, height:20, borderRadius:5, display:"block"}}/>
+                        <span style={{color:"#F4EDDF", fontFamily:"Georgia,serif", fontSize:15}}>Steadwell</span>
+                      </div>
+                      <div style={{fontSize:24, marginBottom:6}}>🎁</div>
+                      <div style={{fontFamily:"Georgia,serif", fontSize:17, color:"#F4EDDF", marginBottom:4}}>A gift for your new home, {giftForm.client_name.trim().split(" ")[0] || "there"}.</div>
+                      <div style={{fontSize:12, color:"rgba(244,237,223,.65)"}}>Congratulations on your new home. {agentName} has gifted you 3 months of Steadwell Plus.</div>
+                    </div>
+                    <div style={{padding:"20px 24px", background:"#fff"}}>
+                      <div style={{background:"#F4EDDF", borderRadius:12, padding:"14px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12}}>
+                        {agent.headshot_url
+                          ? <img src={agent.headshot_url} alt={agentName} style={{width:44, height:44, borderRadius:"50%", objectFit:"cover", flexShrink:0}}/>
+                          : <div style={{width:44, height:44, borderRadius:"50%", background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", color:"#F4EDDF", fontWeight:700, flexShrink:0}}>{agentName[0]}</div>
+                        }
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:10, color:"#A8A09A", textTransform:"uppercase", letterSpacing:".04em"}}>Gifted by</div>
+                          <div style={{fontSize:14, fontWeight:700, color:"#2A2723"}}>{agentName}</div>
+                        </div>
+                      </div>
+                      {giftForm.personal_note.trim() && (
+                        <div style={{background:"#FBF7EE", borderLeft:"3px solid #C16140", padding:"12px 16px", marginBottom:16, fontSize:13, color:"#2A2723", fontStyle:"italic", lineHeight:1.5}}>
+                          "{giftForm.personal_note.trim()}"
+                        </div>
+                      )}
+                      <div style={{fontSize:10, fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#A8A09A", marginBottom:10}}>Your gift includes</div>
+                      {["Warranty tracking & expiry alerts","Monthly maintenance schedules","Cost tracking & ROI calculator","AI receipt & nameplate scanning","Document vault"].map(f => (
+                        <div key={f} style={{display:"flex", alignItems:"center", gap:8, padding:"5px 0", fontSize:12, color:"#2A2723", borderBottom:"1px solid #EFE7D6"}}>
+                          <span style={{color:"#2E7050", fontWeight:700}}>✓</span>{f}
+                        </div>
+                      ))}
+                      <div style={{textAlign:"center", marginTop:18}}>
+                        <div style={{display:"inline-block", background:"#C16140", color:"#fff", padding:"10px 22px", borderRadius:40, fontSize:13, fontWeight:700}}>Claim your gift →</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:12, color:"#7A7370", marginBottom:16}}>Sending to <strong style={{color:"#2A2723"}}>{giftForm.client_email.trim()}</strong></div>
+                  {sendErr && <div style={{color:"#A32D2D", fontSize:13, marginBottom:12}}>{sendErr}</div>}
+                  <div style={{display:"flex", gap:10}}>
+                    <button onClick={()=>{ setPreviewing(false); setSendErr(""); }} style={{...S.btn, background:"none", border:"1.5px solid #E6DECF", color:"#2A2723", flex:1}}>← Edit</button>
+                    <button onClick={sendGift} disabled={sending} style={{...S.btn, opacity:sending?.7:1, flex:1}}>{sending?"Sending…":"Send gift email →"}</button>
+                  </div>
+                </>}
+
+                {sendMsg && <div style={{fontSize:12, color:"#A8A09A", textAlign:"center"}}>We send from Steadwell on your behalf — the email shows your name as the gift sender.</div>}
 
                 {/* Gift link */}
                 <div style={{marginTop:24, paddingTop:20, borderTop:"1px solid #E6DECF"}}>
@@ -18706,46 +18812,78 @@ function AgentPortalPage() {
                       {sends.map(s => {
                         const signedUp = redemptions.some(r => r.client_email === s.client_email);
                         const isEditingRow = editingSendId === s.id;
+                        const isExpanded = expandedId === s.id;
                         const isBusy = resendingId === s.id;
+                        const statusMeta = CRM_STATUS_META[s.crm_status || "new"] || CRM_STATUS_META.new;
                         return (
-                          <div key={s.id} style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto auto", gap:8, padding:"10px 12px", fontSize:13, borderBottom:"1px solid #F4EDDF", alignItems:"center"}}>
-                            {isEditingRow ? (
-                              <>
-                                <input value={editForm.client_name} onChange={e=>setEditForm(f=>({...f,client_name:e.target.value}))}
-                                  style={{...S.input, marginBottom:0, padding:"6px 10px", fontSize:13}} placeholder="Client name"/>
-                                <input value={editForm.client_email} onChange={e=>setEditForm(f=>({...f,client_email:e.target.value}))} type="email"
-                                  style={{...S.input, marginBottom:0, padding:"6px 10px", fontSize:13}} placeholder="Client email"/>
-                              </>
-                            ) : (
-                              <>
-                                <div style={{fontWeight:600, color:"#2A2723", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_name}</div>
-                                <div style={{color:"#7A7370", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_email}</div>
-                              </>
-                            )}
-                            <div style={{color:"#A8A09A", whiteSpace:"nowrap"}}>{new Date(s.sent_at).toLocaleDateString()}</div>
-                            <div style={{whiteSpace:"nowrap"}}>
-                              {signedUp
-                                ? <span style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>✓ Signed up</span>
-                                : <span style={{background:"#F4EDDF", color:"#A8A09A", borderRadius:6, padding:"3px 8px", fontSize:11}}>Pending</span>
-                              }
-                            </div>
-                            <div style={{display:"flex", gap:6, whiteSpace:"nowrap"}}>
+                          <div key={s.id} style={{borderBottom:"1px solid #F4EDDF"}}>
+                            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto auto", gap:8, padding:"10px 12px", fontSize:13, alignItems:"center"}}>
                               {isEditingRow ? (
                                 <>
-                                  <button onClick={saveEditAndResend} disabled={isBusy}
-                                    style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"…":"Save & send"}</button>
-                                  <button onClick={()=>{ setEditingSendId(null); setHistoryErr(""); }}
-                                    style={{background:"none", border:"1px solid #E6DECF", color:"#7A7370", borderRadius:6, padding:"5px 10px", fontSize:11, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
+                                  <input value={editForm.client_name} onChange={e=>setEditForm(f=>({...f,client_name:e.target.value}))}
+                                    style={{...S.input, marginBottom:0, padding:"6px 10px", fontSize:13}} placeholder="Client name"/>
+                                  <input value={editForm.client_email} onChange={e=>setEditForm(f=>({...f,client_email:e.target.value}))} type="email"
+                                    style={{...S.input, marginBottom:0, padding:"6px 10px", fontSize:13}} placeholder="Client email"/>
                                 </>
                               ) : (
                                 <>
-                                  <button onClick={()=>resendGift(s)} disabled={isBusy}
-                                    style={{background:"none", border:"1px solid #E6DECF", color:"#234A3D", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"Sending…":"Resend"}</button>
-                                  <button onClick={()=>{ setEditingSendId(s.id); setEditForm({client_name:s.client_name, client_email:s.client_email}); setHistoryErr(""); }}
-                                    style={{background:"none", border:"none", color:"#7A7370", fontSize:11, cursor:"pointer", fontFamily:"inherit", padding:"5px 4px"}}>Edit</button>
+                                  <div style={{fontWeight:600, color:"#2A2723", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_name}</div>
+                                  <div style={{color:"#7A7370", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.client_email}</div>
                                 </>
                               )}
+                              <div style={{color:"#A8A09A", whiteSpace:"nowrap"}}>{new Date(s.sent_at).toLocaleDateString()}</div>
+                              <div style={{display:"flex", flexDirection:"column", gap:3, alignItems:"flex-start", whiteSpace:"nowrap"}}>
+                                {signedUp
+                                  ? <span style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>✓ Signed up</span>
+                                  : <span style={{background:"#F4EDDF", color:"#A8A09A", borderRadius:6, padding:"3px 8px", fontSize:11}}>Pending</span>
+                                }
+                                <span style={{background:statusMeta.bg, color:statusMeta.color, borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>{statusMeta.label}</span>
+                              </div>
+                              <div style={{display:"flex", gap:6, whiteSpace:"nowrap"}}>
+                                {isEditingRow ? (
+                                  <>
+                                    <button onClick={saveEditAndResend} disabled={isBusy}
+                                      style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"…":"Save & send"}</button>
+                                    <button onClick={()=>{ setEditingSendId(null); setHistoryErr(""); }}
+                                      style={{background:"none", border:"1px solid #E6DECF", color:"#7A7370", borderRadius:6, padding:"5px 10px", fontSize:11, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={()=>resendGift(s)} disabled={isBusy}
+                                      style={{background:"none", border:"1px solid #E6DECF", color:"#234A3D", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"Sending…":"Resend"}</button>
+                                    <button onClick={()=>{ setEditingSendId(s.id); setEditForm({client_name:s.client_name, client_email:s.client_email}); setHistoryErr(""); }}
+                                      style={{background:"none", border:"none", color:"#7A7370", fontSize:11, cursor:"pointer", fontFamily:"inherit", padding:"5px 4px"}}>Edit</button>
+                                    <button onClick={()=>{
+                                        setExpandedId(isExpanded ? null : s.id);
+                                        setCrmForm({ notes: s.notes || "", crm_status: s.crm_status || "new" });
+                                        setHistoryErr("");
+                                      }}
+                                      style={{background:"none", border:"none", color:"#7A7370", fontSize:11, cursor:"pointer", fontFamily:"inherit", padding:"5px 4px"}}>{isExpanded ? "Close" : "Notes"}</button>
+                                  </>
+                                )}
+                              </div>
                             </div>
+
+                            {/* ── CRM notes/status panel ── */}
+                            {isExpanded && (
+                              <div style={{padding:"4px 12px 16px 12px", background:"#FBF7EE"}}>
+                                <label style={{...S.label, fontSize:11, marginBottom:4}}>Follow-up status</label>
+                                <select value={crmForm.crm_status} onChange={e=>setCrmForm(f=>({...f,crm_status:e.target.value}))}
+                                  style={{...S.input, marginBottom:10, padding:"7px 10px", fontSize:13}}>
+                                  {Object.entries(CRM_STATUS_META).map(([val, meta]) => <option key={val} value={val}>{meta.label}</option>)}
+                                </select>
+                                <label style={{...S.label, fontSize:11, marginBottom:4}}>Notes</label>
+                                <textarea value={crmForm.notes} onChange={e=>setCrmForm(f=>({...f,notes:e.target.value}))}
+                                  style={{...S.input, minHeight:60, resize:"vertical", fontFamily:"inherit", marginBottom:10, padding:"8px 10px", fontSize:13}}
+                                  placeholder="e.g. Called 9/20, interested but waiting on inspection to close first." />
+                                <div style={{display:"flex", gap:8}}>
+                                  <button onClick={()=>saveCrm(s.id)} disabled={savingCrm}
+                                    style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:6, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{savingCrm?"Saving…":"Save"}</button>
+                                  <button onClick={()=>{ setExpandedId(null); setHistoryErr(""); }}
+                                    style={{background:"none", border:"1px solid #E6DECF", color:"#7A7370", borderRadius:6, padding:"7px 14px", fontSize:12, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
