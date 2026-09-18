@@ -18409,16 +18409,38 @@ function AgentPortalPage() {
   const [historyMsg,    setHistoryMsg]    = useState("");
   const [historyErr,    setHistoryErr]    = useState("");
 
-  // ── Sent Gifts tab: lightweight CRM (notes + follow-up status per client) ────
-  const [expandedId,  setExpandedId]  = useState(null);   // which row's notes panel is open
+  // ── Clients tab: lightweight CRM (notes + follow-up status per client) ──────
+  // Notes/status live on the gift_sends row (no separate clients table), so a
+  // "client" here is derived by grouping sends by email -- see `clients` below.
+  // Edits are saved against that client's most recent send id.
+  const [expandedId,  setExpandedId]  = useState(null);   // which client card's notes panel is open
   const [crmForm,     setCrmForm]     = useState({ notes:"", crm_status:"new" });
   const [savingCrm,   setSavingCrm]   = useState(false);
+  const [clientQuery, setClientQuery] = useState("");
   const CRM_STATUS_META = {
     new:       { label:"New",              bg:"#F4EDDF", color:"#A8A09A" },
     contacted: { label:"Contacted",        bg:"#EAF1F7", color:"#2A5F8A" },
     follow_up: { label:"Follow-up needed", bg:"#FFF3E0", color:"#B9670A" },
     closed:    { label:"Closed",           bg:"#EAF3EC", color:"#1C5C35" },
   };
+
+  // sends is already ordered most-recent-first (server query), so the first
+  // send seen per email is that client's latest -- no extra date comparison needed.
+  const clients = useMemo(() => {
+    const map = new Map();
+    for (const s of sends) {
+      const key = (s.client_email || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, { email: s.client_email, name: s.client_name, latest: s, history: [] });
+      map.get(key).history.push(s);
+    }
+    let list = Array.from(map.values());
+    if (clientQuery.trim()) {
+      const q = clientQuery.trim().toLowerCase();
+      list = list.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q));
+    }
+    return list;
+  }, [sends, clientQuery]);
 
   // ── Load agent + sends + redemptions ────────────────────────────────────────
   const loadAll = () => {
@@ -18695,8 +18717,8 @@ function AgentPortalPage() {
         {/* Tabs */}
         <div style={{background:"#fff", borderRadius:12, border:"1px solid #E6DECF", marginBottom:16, overflow:"hidden"}}>
           <div style={{display:"flex", borderBottom:"1px solid #E6DECF"}}>
-            {[["profile","My Profile"],["send","Send Gift"],["history","Sent Gifts"]].map(([id,label]) => (
-              <button key={id} style={S.tabBtn(tab===id)} onClick={()=>setTab(id)}>{label}{id==="history"&&sends.length>0&&<span style={{marginLeft:6, background:"#234A3D", color:"#F4EDDF", borderRadius:10, padding:"1px 7px", fontSize:11}}>{sends.length}</span>}</button>
+            {[["profile","My Profile"],["send","Send Gift"],["history","Sent Gifts"],["clients","Clients"]].map(([id,label]) => (
+              <button key={id} style={S.tabBtn(tab===id)} onClick={()=>setTab(id)}>{label}{id==="history"&&sends.length>0&&<span style={{marginLeft:6, background:"#234A3D", color:"#F4EDDF", borderRadius:10, padding:"1px 7px", fontSize:11}}>{sends.length}</span>}{id==="clients"&&clients.length>0&&<span style={{marginLeft:6, background:"#234A3D", color:"#F4EDDF", borderRadius:10, padding:"1px 7px", fontSize:11}}>{clients.length}</span>}</button>
             ))}
           </div>
 
@@ -18812,9 +18834,7 @@ function AgentPortalPage() {
                       {sends.map(s => {
                         const signedUp = redemptions.some(r => r.client_email === s.client_email);
                         const isEditingRow = editingSendId === s.id;
-                        const isExpanded = expandedId === s.id;
                         const isBusy = resendingId === s.id;
-                        const statusMeta = CRM_STATUS_META[s.crm_status || "new"] || CRM_STATUS_META.new;
                         return (
                           <div key={s.id} style={{borderBottom:"1px solid #F4EDDF"}}>
                             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto auto auto", gap:8, padding:"10px 12px", fontSize:13, alignItems:"center"}}>
@@ -18832,12 +18852,11 @@ function AgentPortalPage() {
                                 </>
                               )}
                               <div style={{color:"#A8A09A", whiteSpace:"nowrap"}}>{new Date(s.sent_at).toLocaleDateString()}</div>
-                              <div style={{display:"flex", flexDirection:"column", gap:3, alignItems:"flex-start", whiteSpace:"nowrap"}}>
+                              <div style={{whiteSpace:"nowrap"}}>
                                 {signedUp
                                   ? <span style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>✓ Signed up</span>
                                   : <span style={{background:"#F4EDDF", color:"#A8A09A", borderRadius:6, padding:"3px 8px", fontSize:11}}>Pending</span>
                                 }
-                                <span style={{background:statusMeta.bg, color:statusMeta.color, borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>{statusMeta.label}</span>
                               </div>
                               <div style={{display:"flex", gap:6, whiteSpace:"nowrap"}}>
                                 {isEditingRow ? (
@@ -18853,41 +18872,81 @@ function AgentPortalPage() {
                                       style={{background:"none", border:"1px solid #E6DECF", color:"#234A3D", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isBusy?"Sending…":"Resend"}</button>
                                     <button onClick={()=>{ setEditingSendId(s.id); setEditForm({client_name:s.client_name, client_email:s.client_email}); setHistoryErr(""); }}
                                       style={{background:"none", border:"none", color:"#7A7370", fontSize:11, cursor:"pointer", fontFamily:"inherit", padding:"5px 4px"}}>Edit</button>
-                                    <button onClick={()=>{
-                                        setExpandedId(isExpanded ? null : s.id);
-                                        setCrmForm({ notes: s.notes || "", crm_status: s.crm_status || "new" });
-                                        setHistoryErr("");
-                                      }}
-                                      style={{background:"none", border:"none", color:"#7A7370", fontSize:11, cursor:"pointer", fontFamily:"inherit", padding:"5px 4px"}}>{isExpanded ? "Close" : "Notes"}</button>
                                   </>
                                 )}
                               </div>
                             </div>
-
-                            {/* ── CRM notes/status panel ── */}
-                            {isExpanded && (
-                              <div style={{padding:"4px 12px 16px 12px", background:"#FBF7EE"}}>
-                                <label style={{...S.label, fontSize:11, marginBottom:4}}>Follow-up status</label>
-                                <select value={crmForm.crm_status} onChange={e=>setCrmForm(f=>({...f,crm_status:e.target.value}))}
-                                  style={{...S.input, marginBottom:10, padding:"7px 10px", fontSize:13}}>
-                                  {Object.entries(CRM_STATUS_META).map(([val, meta]) => <option key={val} value={val}>{meta.label}</option>)}
-                                </select>
-                                <label style={{...S.label, fontSize:11, marginBottom:4}}>Notes</label>
-                                <textarea value={crmForm.notes} onChange={e=>setCrmForm(f=>({...f,notes:e.target.value}))}
-                                  style={{...S.input, minHeight:60, resize:"vertical", fontFamily:"inherit", marginBottom:10, padding:"8px 10px", fontSize:13}}
-                                  placeholder="e.g. Called 9/20, interested but waiting on inspection to close first." />
-                                <div style={{display:"flex", gap:8}}>
-                                  <button onClick={()=>saveCrm(s.id)} disabled={savingCrm}
-                                    style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:6, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{savingCrm?"Saving…":"Save"}</button>
-                                  <button onClick={()=>{ setExpandedId(null); setHistoryErr(""); }}
-                                    style={{background:"none", border:"1px solid #E6DECF", color:"#7A7370", borderRadius:6, padding:"7px 14px", fontSize:12, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         );
                       })}
                     </div>
+                }
+              </div>
+            )}
+
+            {/* ── CLIENTS TAB (lightweight CRM) ── */}
+            {tab === "clients" && (
+              <div>
+                <div style={{fontFamily:"Georgia,serif", fontSize:18, color:"#234A3D", marginBottom:4}}>Clients</div>
+                <div style={{fontSize:13, color:"#7A7370", marginBottom:20, lineHeight:1.6}}>Track follow-up status and notes on each client after the sale. One card per client — grouped by email, even if you've sent them more than one gift.</div>
+                {historyMsg && <div style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:13, fontWeight:600}}>{historyMsg}</div>}
+                {historyErr && <div style={{color:"#A32D2D", fontSize:13, marginBottom:16}}>{historyErr}</div>}
+
+                {sends.length === 0
+                  ? <div style={{textAlign:"center", padding:"40px 0", color:"#A8A09A", fontSize:14}}>No clients yet — use the Send Gift tab to get started.</div>
+                  : <>
+                      <input value={clientQuery} onChange={e=>setClientQuery(e.target.value)} placeholder="Search by name or email…"
+                        style={{...S.input, marginBottom:16, maxWidth:320}} />
+
+                      {clients.length === 0
+                        ? <div style={{textAlign:"center", padding:"24px 0", color:"#A8A09A", fontSize:14}}>No clients match "{clientQuery}".</div>
+                        : clients.map(c => {
+                            const isExpanded = expandedId === c.email;
+                            const statusMeta = CRM_STATUS_META[c.latest.crm_status || "new"] || CRM_STATUS_META.new;
+                            const signedUp = redemptions.some(r => r.client_email === c.email);
+                            return (
+                              <div key={c.email} style={{border:"1px solid #E6DECF", borderRadius:10, marginBottom:12, overflow:"hidden"}}>
+                                <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, padding:"14px 16px", flexWrap:"wrap"}}>
+                                  <div style={{minWidth:180}}>
+                                    <div style={{fontWeight:700, color:"#2A2723", fontSize:14}}>{c.name}</div>
+                                    <div style={{color:"#7A7370", fontSize:12, marginTop:1}}>{c.email}</div>
+                                  </div>
+                                  <div style={{display:"flex", alignItems:"center", gap:8, flexWrap:"wrap"}}>
+                                    {signedUp && <span style={{background:"#EAF3EC", color:"#1C5C35", borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>✓ Signed up</span>}
+                                    <span style={{background:statusMeta.bg, color:statusMeta.color, borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700}}>{statusMeta.label}</span>
+                                    <span style={{color:"#A8A09A", fontSize:11}}>{c.history.length > 1 ? `${c.history.length} gifts · last ` : "Gift sent "}{new Date(c.latest.sent_at).toLocaleDateString()}</span>
+                                    <button onClick={()=>{
+                                        setExpandedId(isExpanded ? null : c.email);
+                                        setCrmForm({ notes: c.latest.notes || "", crm_status: c.latest.crm_status || "new" });
+                                        setHistoryErr("");
+                                      }}
+                                      style={{background:isExpanded?"#F4EDDF":"none", border:"1px solid #E6DECF", color:"#234A3D", borderRadius:6, padding:"5px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{isExpanded ? "Close" : "Notes & status"}</button>
+                                  </div>
+                                </div>
+
+                                {isExpanded && (
+                                  <div style={{padding:"4px 16px 16px 16px", background:"#FBF7EE", borderTop:"1px solid #E6DECF"}}>
+                                    <label style={{...S.label, fontSize:11, marginBottom:4, marginTop:12}}>Follow-up status</label>
+                                    <select value={crmForm.crm_status} onChange={e=>setCrmForm(f=>({...f,crm_status:e.target.value}))}
+                                      style={{...S.input, marginBottom:10, padding:"7px 10px", fontSize:13, maxWidth:220}}>
+                                      {Object.entries(CRM_STATUS_META).map(([val, meta]) => <option key={val} value={val}>{meta.label}</option>)}
+                                    </select>
+                                    <label style={{...S.label, fontSize:11, marginBottom:4}}>Notes</label>
+                                    <textarea value={crmForm.notes} onChange={e=>setCrmForm(f=>({...f,notes:e.target.value}))}
+                                      style={{...S.input, minHeight:80, resize:"vertical", fontFamily:"inherit", marginBottom:10, padding:"8px 10px", fontSize:13}}
+                                      placeholder="e.g. 9/20 — called, interested but waiting on inspection before deciding on Plus." />
+                                    <div style={{display:"flex", gap:8}}>
+                                      <button onClick={()=>saveCrm(c.latest.id)} disabled={savingCrm}
+                                        style={{background:"#234A3D", color:"#F4EDDF", border:"none", borderRadius:6, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>{savingCrm?"Saving…":"Save"}</button>
+                                      <button onClick={()=>{ setExpandedId(null); setHistoryErr(""); }}
+                                        style={{background:"none", border:"1px solid #E6DECF", color:"#7A7370", borderRadius:6, padding:"7px 14px", fontSize:12, cursor:"pointer", fontFamily:"inherit"}}>Cancel</button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                    </>
                 }
               </div>
             )}
