@@ -18537,7 +18537,7 @@ function AgentPortalPage() {
           ) : (
             <>
               <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Sign in to your agent portal</div>
-              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>Enter the email you applied with — we'll send you a 6-digit code.</div>
+              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>Enter the email you applied with — we'll send you a sign-in code.</div>
               {signInErr && <div style={{color:"#B9422C", fontSize:13, marginBottom:12}}>{signInErr}</div>}
               <input type="email" placeholder="you@brokerage.com" value={signInEmail} onChange={e=>setSignInEmail(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && sendCode()} style={S.input}/>
