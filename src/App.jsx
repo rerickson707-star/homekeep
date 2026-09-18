@@ -18321,8 +18321,10 @@ function AgentPortalPage() {
   const [signInEmail, setSignInEmail] = useState(() => {
     try { return new URLSearchParams(window.location.search).get("email") || ""; } catch { return ""; }
   });
-  const [sendingLink, setSendingLink] = useState(false);
-  const [linkSent,    setLinkSent]    = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeSent,    setCodeSent]    = useState(false);
+  const [otpCode,     setOtpCode]     = useState("");
+  const [verifying,   setVerifying]   = useState(false);
   const [signInErr,   setSignInErr]   = useState("");
 
   const [agent,       setAgent]       = useState(null);
@@ -18351,16 +18353,34 @@ function AgentPortalPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const sendMagicLink = async () => {
+  const sendCode = async () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signInEmail.trim())) { setSignInErr("Please check that email address."); return; }
-    setSendingLink(true); setSignInErr("");
+    setSendingCode(true); setSignInErr("");
     const { error } = await supabase.auth.signInWithOtp({
       email: signInEmail.trim(),
-      options: { emailRedirectTo: "https://www.trysteadwell.app/agent" },
     });
-    setSendingLink(false);
+    setSendingCode(false);
     if (error) { setSignInErr(error.message); return; }
-    setLinkSent(true);
+    setOtpCode("");
+    setCodeSent(true);
+  };
+
+  // Supabase's own OTP verification -- no custom code-generation or storage needed.
+  // The same signInWithOtp() call above sends either a link or a code depending on
+  // the Supabase email template; verifyOtp's `type: "email"` covers both, since
+  // they're the same underlying token just delivered differently. On success, the
+  // onAuthStateChange listener above picks up the new session automatically -- no
+  // manual setSession call needed here.
+  const verifyCode = async () => {
+    if (!/^\d{6}$/.test(otpCode.trim())) { setSignInErr("Enter the 6-digit code from your email."); return; }
+    setVerifying(true); setSignInErr("");
+    const { error } = await supabase.auth.verifyOtp({
+      email: signInEmail.trim(),
+      token: otpCode.trim(),
+      type: "email",
+    });
+    setVerifying(false);
+    if (error) { setSignInErr(error.message); return; }
   };
 
   // ── Profile form state ───────────────────────────────────────────────────────
@@ -18499,20 +18519,29 @@ function AgentPortalPage() {
       <div style={{...S.wrap, paddingTop:80}}>
         <div style={{...S.card, textAlign:"center", padding:"40px 32px"}}>
           <img src="/icon-192.png" alt="Steadwell" style={{width:44,height:44,borderRadius:11,margin:"0 auto 20px",display:"block"}}/>
-          {linkSent ? (
+          {codeSent ? (
             <>
-              <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Check your inbox</div>
-              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>We sent a sign-in link to<br/><strong style={{color:"#2A2723"}}>{signInEmail.trim()}</strong></div>
-              <button onClick={() => setLinkSent(false)} style={{...S.btn, background:"none", border:"1.5px solid #E6DECF", color:"#2A2723"}}>Use a different email</button>
+              <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Enter your code</div>
+              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>We sent a 6-digit code to<br/><strong style={{color:"#2A2723"}}>{signInEmail.trim()}</strong></div>
+              {signInErr && <div style={{color:"#B9422C", fontSize:13, marginBottom:12}}>{signInErr}</div>}
+              <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={6} placeholder="000000" autoFocus
+                value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,"").slice(0,6))}
+                onKeyDown={e => e.key === "Enter" && verifyCode()}
+                style={{...S.input, textAlign:"center", letterSpacing:"0.5em", fontSize:22, fontWeight:700}}/>
+              <button onClick={verifyCode} disabled={verifying || otpCode.length !== 6} style={S.btn}>{verifying ? "Verifying…" : "Verify & sign in"}</button>
+              <div style={{fontSize:13, color:"#7A7370", marginTop:14}}>
+                Didn't get it? <a onClick={sendCode} style={{color:"#C16140",fontWeight:600,textDecoration:"none",cursor:"pointer"}}>Resend code</a>
+              </div>
+              <button onClick={() => { setCodeSent(false); setOtpCode(""); setSignInErr(""); }} style={{...S.btn, background:"none", border:"1.5px solid #E6DECF", color:"#2A2723", marginTop:10}}>Use a different email</button>
             </>
           ) : (
             <>
               <div style={{fontFamily:"Georgia,serif", fontSize:20, color:"#234A3D", marginBottom:8}}>Sign in to your agent portal</div>
-              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>Enter the email you applied with — we'll send you a sign-in link.</div>
+              <div style={{fontSize:14, color:"#7A7370", marginBottom:20}}>Enter the email you applied with — we'll send you a 6-digit code.</div>
               {signInErr && <div style={{color:"#B9422C", fontSize:13, marginBottom:12}}>{signInErr}</div>}
               <input type="email" placeholder="you@brokerage.com" value={signInEmail} onChange={e=>setSignInEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && sendMagicLink()} style={S.input}/>
-              <button onClick={sendMagicLink} disabled={sendingLink} style={S.btn}>{sendingLink ? "Sending…" : "Send sign-in link"}</button>
+                onKeyDown={e => e.key === "Enter" && sendCode()} style={S.input}/>
+              <button onClick={sendCode} disabled={sendingCode} style={S.btn}>{sendingCode ? "Sending…" : "Send code"}</button>
               <div style={{fontSize:13, color:"#7A7370", marginTop:18}}>Not an approved agent yet? <a href="/for-agents" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Apply here →</a></div>
             </>
           )}
