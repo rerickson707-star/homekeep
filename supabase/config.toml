@@ -64,3 +64,36 @@ entrypoint = "./functions/ai-document-scan/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/ai-document-scan/*.html" ]
+
+# ── Added: functions that must NOT require a Supabase login token ──────────────
+# stripe-webhook is called by Stripe (verified via its own signing secret, not a
+# Supabase JWT). send-gift-email, gift-crm-update, and agent-setup-save are
+# called by the agent portal using an agent_token/token in the request itself,
+# not a logged-in Steadwell user session. Without an entry here, a plain
+# `supabase functions deploy <name>` (no --no-verify-jwt flag) silently resets
+# this to true and every external call starts failing with 401 again -- this is
+# exactly what happened to stripe-webhook on 2026-09-20.
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/stripe-webhook/deno.json"
+entrypoint = "./functions/stripe-webhook/index.ts"
+
+[functions.send-gift-email]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-gift-email/deno.json"
+entrypoint = "./functions/send-gift-email/index.ts"
+
+[functions.gift-crm-update]
+enabled = true
+verify_jwt = false
+import_map = "./functions/gift-crm-update/deno.json"
+entrypoint = "./functions/gift-crm-update/index.ts"
+
+[functions.agent-setup-save]
+enabled = true
+verify_jwt = false
+import_map = "./functions/agent-setup-save/deno.json"
+entrypoint = "./functions/agent-setup-save/index.ts"
