@@ -126,6 +126,18 @@ serve(async (req) => {
     }
   } catch (err) {
     console.error("[stripe-webhook] Handler error:", err);
+
+    // Surface this in /admin -- best-effort: if the alert insert itself fails,
+    // don't let that mask the original error or crash the response.
+    try {
+      await supabase.from("system_alerts").insert([{
+        source:  "stripe-webhook",
+        message: `Handler error on ${event.type} (event ${event.id}): ${err?.message || String(err)}`,
+      }]);
+    } catch (alertErr) {
+      console.error("[stripe-webhook] Also failed to write system_alerts:", alertErr);
+    }
+
     return new Response("Handler error", { status: 500 });
   }
 

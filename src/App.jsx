@@ -17324,6 +17324,8 @@ function AdminPage() {
   const [acting, setActing]         = useState(null);
   const [msg, setMsg]               = useState(null);
   const [msgType, setMsgType]       = useState("success"); // success | error
+  const [alerts, setAlerts]         = useState([]); // unresolved system_alerts rows
+  const [resolvingAlert, setResolvingAlert] = useState(null);
 
   // Users tab state
   const [userSearch, setUserSearch] = useState("");
@@ -17346,6 +17348,21 @@ function AdminPage() {
 
   const notify = (m, type="success") => { setMsg(m); setMsgType(type); };
 
+  // Marks a system_alerts row resolved once you've looked into/fixed whatever
+  // it flagged (e.g. a stripe-webhook crash). Doesn't undo the underlying
+  // issue -- just clears the banner.
+  const resolveAlert = async (id) => {
+    setResolvingAlert(id);
+    try {
+      await supabase.from("system_alerts").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", id);
+      setAlerts(a => a.filter(x => x.id !== id));
+    } catch (e) {
+      notify("Failed to resolve alert.", "error");
+    } finally {
+      setResolvingAlert(null);
+    }
+  };
+
   useEffect(() => {
     // Clear the "view app" bypass flag when entering admin
     sessionStorage.removeItem("sw_admin_view_app");
@@ -17357,18 +17374,20 @@ function AdminPage() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [agentRes, profileRes, feedRes, redemptionRes, sendsRes] = await Promise.all([
+    const [agentRes, profileRes, feedRes, redemptionRes, sendsRes, alertRes] = await Promise.all([
       supabase.from("agent_applications").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, name, plan, address, referred_by, admin_notes, created_at, gift_expires_at, plan_cancel_at, gift_agent_token").order("created_at", { ascending: false }).limit(500),
       supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("gift_redemptions").select("agent_token, user_id, redeemed_at, client_email"),
       supabase.from("gift_sends").select("agent_token, client_name, client_email, sent_at"),
+      supabase.from("system_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }),
     ]);
     const ag = agentRes.data || [];
     const pr = profileRes.data || [];
     const fb = feedRes.data || [];
     const rd = redemptionRes.data || [];
     const gs = sendsRes.data || [];
+    setAlerts(alertRes.data || []);
     setAgents(ag); setUsers(pr); setFeedback(fb); setRedemptions(rd); setGiftSends(gs);
 
     // Build stats
@@ -18069,6 +18088,25 @@ function AdminPage() {
           </button>
         </div>
       </div>
+      {/* System alert banner -- shows regardless of which tab is active, since
+          these are operational issues (e.g. a stripe-webhook crash) rather
+          than something scoped to one tab. Populated by system_alerts, which
+          server-side functions write to on an internal error. */}
+      {alerts.length > 0 && (
+        <div style={{background:"#FDEDEA", borderBottom:"2px solid #C0392B", padding:"10px 24px"}}>
+          {alerts.map(a => (
+            <div key={a.id} style={{display:"flex", alignItems:"center", gap:12, padding:"4px 0", fontSize:13}}>
+              <span style={{color:"#A32D2D", fontWeight:700, flexShrink:0}}>⚠ {a.source}</span>
+              <span style={{color:"#7A2020", flex:1}}>{a.message}</span>
+              <span style={{color:"#A8A09A", fontSize:11, flexShrink:0}}>{new Date(a.created_at).toLocaleString()}</span>
+              <button onClick={()=>resolveAlert(a.id)} disabled={resolvingAlert===a.id}
+                style={{background:"#fff", border:"1px solid #C0392B", color:"#A32D2D", borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0}}>
+                {resolvingAlert===a.id ? "…" : "Resolve"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={S.tabBar}>
         {TABS.map(t=><button key={t.id} style={S.tab(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
       </div>
