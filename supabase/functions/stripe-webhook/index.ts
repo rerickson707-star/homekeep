@@ -18,6 +18,18 @@ const PRICE_TO_PLAN: Record<string, { plan: string; interval: string }> = {
   "price_1ToVMmQLebP2eyKuamqnD0iN": { plan: "pro",   interval: "annual"  },
 };
 
+// As of the API version this Stripe account is now sending events on,
+// `current_period_end`/`current_period_start` live on each subscription ITEM,
+// not on the subscription object itself (that top-level field is gone). Read
+// from the first item, with a fallback to the old top-level field in case an
+// older API version or a differently-shaped object still has it there, and
+// return null instead of crashing if genuinely neither is present.
+function getPeriodEnd(subscription: Stripe.Subscription): number | null {
+  const fromItem = (subscription.items?.data?.[0] as any)?.current_period_end;
+  const fromTop  = (subscription as any).current_period_end;
+  return fromItem ?? fromTop ?? null;
+}
+
 serve(async (req) => {
   const body      = await req.text();
   const signature = req.headers.get("stripe-signature");
@@ -56,11 +68,14 @@ serve(async (req) => {
 
         if (!planInfo) { console.error("[stripe-webhook] Unknown price ID:", priceId); break; }
 
+        const periodEnd = getPeriodEnd(subscription);
+        if (periodEnd == null) console.error("[stripe-webhook] No current_period_end found on subscription", subscription.id);
+
         await supabase.from("profiles").update({
           plan:                   planInfo.plan,
           plan_interval:          planInfo.interval,
           stripe_subscription_id: subscription.id,
-          plan_expires_at:        new Date(subscription.current_period_end * 1000).toISOString(),
+          plan_expires_at:        periodEnd != null ? new Date(periodEnd * 1000).toISOString() : null,
         }).eq("id", userId);
 
         console.log(`[stripe-webhook] Upgraded user ${userId} to ${planInfo.plan} ${planInfo.interval}`);
@@ -77,10 +92,13 @@ serve(async (req) => {
         const planInfo = priceId ? PRICE_TO_PLAN[priceId] : null;
 
         if (subscription.status === "active" && planInfo) {
+          const periodEnd = getPeriodEnd(subscription);
+          if (periodEnd == null) console.error("[stripe-webhook] No current_period_end found on subscription", subscription.id);
+
           await supabase.from("profiles").update({
             plan:                   planInfo.plan,
             plan_interval:          planInfo.interval,
-            plan_expires_at:        new Date(subscription.current_period_end * 1000).toISOString(),
+            plan_expires_at:        periodEnd != null ? new Date(periodEnd * 1000).toISOString() : null,
           }).eq("id", userId);
         }
         break;
