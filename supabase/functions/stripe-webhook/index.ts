@@ -76,7 +76,7 @@ serve(async (req) => {
           plan_interval:          planInfo.interval,
           stripe_subscription_id: subscription.id,
           plan_expires_at:        periodEnd != null ? new Date(periodEnd * 1000).toISOString() : null,
-        }).eq("id", userId);
+        }).eq("user_id", userId);
 
         console.log(`[stripe-webhook] Upgraded user ${userId} to ${planInfo.plan} ${planInfo.interval}`);
         break;
@@ -99,7 +99,7 @@ serve(async (req) => {
             plan:                   planInfo.plan,
             plan_interval:          planInfo.interval,
             plan_expires_at:        periodEnd != null ? new Date(periodEnd * 1000).toISOString() : null,
-          }).eq("id", userId);
+          }).eq("user_id", userId);
         }
         break;
       }
@@ -115,7 +115,7 @@ serve(async (req) => {
           plan_interval:          null,
           stripe_subscription_id: null,
           plan_expires_at:        null,
-        }).eq("id", userId);
+        }).eq("user_id", userId);
 
         console.log(`[stripe-webhook] Downgraded user ${userId} to free`);
         break;
