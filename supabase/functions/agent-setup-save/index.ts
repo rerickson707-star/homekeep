@@ -51,7 +51,10 @@ serve(async (req) => {
       if (url.searchParams.get("include") === "history" && data.token) {
         const [sendsRes, redemptionsRes] = await Promise.all([
           supabase.from("gift_sends")
-            .select("id, client_name, client_email, sent_at")
+            // notes + crm_status added for the portal's lean-CRM notes panel --
+            // without these listed explicitly here, the portal always sees
+            // them as undefined even after the DB migration adds the columns.
+            .select("id, client_name, client_email, sent_at, notes, crm_status")
             .eq("agent_token", data.token)
             .order("sent_at", { ascending: false }),
           supabase.from("gift_redemptions")

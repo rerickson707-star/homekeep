@@ -17,11 +17,24 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Basic HTML-escaping for free-text fields (the personal note) that get
+// interpolated into the outgoing email -- this one is agent-typed, not
+// system-generated, so it needs it in a way the existing template variables
+// historically haven't.
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const { agent_token, client_name, client_email } = await req.json();
+    const { agent_token, client_name, client_email, personal_note } = await req.json();
 
     if (!agent_token || !client_name || !client_email) {
       return new Response(JSON.stringify({ error: "agent_token, client_name, and client_email required" }), { status: 400, headers: CORS });
@@ -125,6 +138,10 @@ serve(async (req) => {
         ${contactRowHtml}
       </div>
 
+      <!-- Personal note — agent-typed free text, so it's HTML-escaped before
+           being placed here. Matches the styling used in the in-portal preview. -->
+      ${personal_note ? `<div style="background:#FBF7EE;border-left:3px solid #C16140;padding:14px 18px;margin-bottom:24px;font-size:14px;color:#2A2723;font-style:italic;line-height:1.6;">"${escapeHtml(personal_note)}"</div>` : ""}
+
       <!-- What's included -->
       <div style="margin-bottom:24px;">
         <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A8A09A;margin-bottom:12px;">Your gift includes</div>
@@ -175,7 +192,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Email failed", detail: result }), { status: 500, headers: CORS });
     }
 
-    // Record the send for portal history tracking
+    // Record the send for portal history tracking. CRM notes/status are left
+    // to their column defaults here (crm_status defaults to 'new' in the DB) --
+    // the personal note is part of the email, not the CRM notes field, so it's
+    // intentionally not copied into `notes`.
     const { error: sendErr } = await supabase.from("gift_sends").insert([{
       agent_token:  agent.token,
       client_name:  client_name,

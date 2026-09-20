@@ -77,23 +77,19 @@ entrypoint = "./functions/ai-document-scan/index.ts"
 [functions.stripe-webhook]
 enabled = true
 verify_jwt = false
-import_map = "./functions/stripe-webhook/deno.json"
 entrypoint = "./functions/stripe-webhook/index.ts"
 
 [functions.send-gift-email]
 enabled = true
 verify_jwt = false
-import_map = "./functions/send-gift-email/deno.json"
 entrypoint = "./functions/send-gift-email/index.ts"
 
 [functions.gift-crm-update]
 enabled = true
 verify_jwt = false
-import_map = "./functions/gift-crm-update/deno.json"
 entrypoint = "./functions/gift-crm-update/index.ts"
 
 [functions.agent-setup-save]
 enabled = true
 verify_jwt = false
-import_map = "./functions/agent-setup-save/deno.json"
 entrypoint = "./functions/agent-setup-save/index.ts"
