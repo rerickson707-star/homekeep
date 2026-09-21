@@ -12,6 +12,14 @@ const SUPABASE_SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY")!;
 const FROM                  = "Steadwell <hello@trysteadwell.app>";
 const BASE_URL              = "https://www.trysteadwell.app";
 
+// CAN-SPAM requires a valid physical postal address in every commercial email.
+// This is a gift/promotional send to a non-user, so it counts. Set this env
+// var once a PO box or registered mailbox exists (compliance audit finding
+// #6/#11) -- until then it falls back to a placeholder that's obviously not
+// a real address, which is safer than silently shipping without one.
+const MAILING_ADDRESS = Deno.env.get("COMPANY_MAILING_ADDRESS")
+  || "Steadwell, LLC — mailing address pending, see hello@trysteadwell.app";
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -164,8 +172,10 @@ serve(async (req) => {
     <div style="padding:16px 36px;border-top:1px solid #E0D8C9;text-align:center;">
       <p style="font-size:11px;color:#A8A09A;margin:0;">
         Steadwell · <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a>
-        · This gift was sent on behalf of ${agentName}.
+        · This gift was sent on behalf of ${agentName} at their request.
       </p>
+      <p style="font-size:11px;color:#A8A09A;margin:6px 0 0;">${MAILING_ADDRESS}</p>
+      <p style="font-size:11px;color:#A8A09A;margin:6px 0 0;">Don't want future emails from Steadwell? <a href="mailto:hello@trysteadwell.app?subject=Unsubscribe" style="color:#A8A09A;">Let us know</a> and we'll stop.</p>
     </div>
   </div>
 </body>
@@ -183,6 +193,14 @@ serve(async (req) => {
         subject: `${agentName} sent you a gift for your new home 🎁`,
         html,
         reply_to: agent.email || undefined,
+        // CAN-SPAM: List-Unsubscribe headers give mail clients (Gmail, etc.)
+        // a one-click unsubscribe surface even without a web suppression
+        // list wired up yet -- mailto: works today, a real link can replace
+        // it once /unsubscribe supports non-account recipients.
+        headers: {
+          "List-Unsubscribe": "<mailto:hello@trysteadwell.app?subject=Unsubscribe>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       }),
     });
 
