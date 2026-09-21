@@ -8,13 +8,28 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // OAuth signups (Google, etc.) skip this entirely -- the provider already
 // verified the email, so sending our own confirmation link would be redundant
 // and confusing. Detected via raw_app_meta_data.provider on the auth.users row.
+//
+// Also called directly from the browser (App.jsx's "resend verification"
+// button, via supabase.functions.invoke) -- that's a second caller besides
+// the Database Webhook, and it's the one that actually needs CORS handling:
+// a Postgres-originated webhook call is server-to-server and was never
+// affected by this, but a browser's preflight OPTIONS request has nothing to
+// answer it without the block below, which every other function in this
+// codebase already has and this one was missing.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
   try {
     const payload = await req.json();
     const record = payload.record;
 
     if (!record || !record.id || !record.email) {
-      return new Response(JSON.stringify({ error: "No id/email in payload" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "No id/email in payload" }), { status: 400, headers: CORS });
     }
 
     const supabase = createClient(
@@ -29,7 +44,7 @@ Deno.serve(async (req) => {
         email_confirm: true, // Supabase's own native flag -- keeps OAuth account-linking working correctly
         app_metadata: { email_verified: true },
       });
-      return new Response(JSON.stringify({ skipped: "oauth-provider-verified" }), { status: 200 });
+      return new Response(JSON.stringify({ skipped: "oauth-provider-verified" }), { status: 200, headers: CORS });
     }
 
     const token = crypto.randomUUID();
@@ -45,7 +60,7 @@ Deno.serve(async (req) => {
     });
 
     if (updateError) {
-      return new Response(JSON.stringify({ error: updateError.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: updateError.message }), { status: 500, headers: CORS });
     }
 
     const verifyUrl = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/verify-email"
@@ -72,11 +87,11 @@ Deno.serve(async (req) => {
 
     if (!resendResponse.ok) {
       const errText = await resendResponse.text();
-      return new Response(JSON.stringify({ error: errText }), { status: 500 });
+      return new Response(JSON.stringify({ error: errText }), { status: 500, headers: CORS });
     }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: CORS });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS });
   }
 });

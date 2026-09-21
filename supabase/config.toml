@@ -93,3 +93,8 @@ entrypoint = "./functions/gift-crm-update/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/agent-setup-save/index.ts"
+
+[functions.send-verify-email]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/send-verify-email/index.ts"
