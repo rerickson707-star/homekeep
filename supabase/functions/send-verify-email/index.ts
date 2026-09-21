@@ -67,6 +67,64 @@ Deno.serve(async (req) => {
       + "?uid=" + encodeURIComponent(record.id)
       + "&token=" + encodeURIComponent(token);
 
+    // Same visual system as the other branded Steadwell emails (send-gift-email,
+    // the Supabase "Confirm signup" template): table-based layout, dark-green
+    // header with the hosted app icon + wordmark, cream card, terracotta CTA
+    // pill. Kept as a template literal here rather than the +-concatenation
+    // style above, purely because a multi-line HTML block reads better that way.
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <style>:root{color-scheme:light;}</style>
+</head>
+<body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:480px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
+
+    <!-- Header -->
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#234A3D;">
+      <tr>
+        <td style="padding:28px 36px;text-align:center;">
+          <img src="https://www.trysteadwell.app/icon-192.png" width="36" height="36" alt="Steadwell" style="display:block;margin:0 auto 10px;border-radius:8px;">
+          <span style="color:#F4EDDF;font-size:19px;font-family:Georgia,serif;">Steadwell</span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Body -->
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+      <tr>
+        <td style="padding:36px 36px 8px;text-align:center;">
+          <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2723;font-weight:400;margin:0 0 12px;">Confirm your email address</h1>
+          <p style="font-size:14px;color:#7A7370;line-height:1.6;margin:0 0 28px;">Welcome to Steadwell. Confirm your email so you don't miss maintenance reminders, warranty alerts, and recall notices.</p>
+
+          <a href="${verifyUrl}" style="display:inline-block;background:#C16140;color:#fff;text-decoration:none;padding:13px 32px;border-radius:40px;font-size:15px;font-weight:700;">Confirm my email</a>
+
+          <p style="font-size:12px;color:#A8A09A;line-height:1.6;margin:24px 0 0;">Or copy and paste this link into your browser:<br>
+            <a href="${verifyUrl}" style="color:#C16140;word-break:break-all;">${verifyUrl}</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Footer -->
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+      <tr>
+        <td style="padding:16px 36px 28px;border-top:1px solid #E0D8C9;text-align:center;">
+          <p style="font-size:11px;color:#A8A09A;margin:16px 0 0;">
+            Steadwell &middot; <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a>
+          </p>
+          <p style="font-size:11px;color:#A8A09A;margin:6px 0 0;">Didn't sign up for Steadwell? You can safely ignore this email.</p>
+        </td>
+      </tr>
+    </table>
+
+  </div>
+</body>
+</html>`;
+
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -77,11 +135,7 @@ Deno.serve(async (req) => {
         from: "Steadwell <hello@trysteadwell.app>",
         to: [record.email],
         subject: "Confirm your email for Steadwell",
-        html:
-          "<p>Welcome to Steadwell.</p>" +
-          "<p>Click the link below to confirm your email address, so you don't miss maintenance reminders, warranty alerts, and recall notices:</p>" +
-          "<p><a href=\"" + verifyUrl + "\">Confirm my email</a></p>" +
-          "<p>If you didn't sign up for Steadwell, you can ignore this email.</p>",
+        html,
       }),
     });
 
