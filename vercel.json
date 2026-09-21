@@ -2,10 +2,6 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/terms", "destination": "/terms.html" },
-    { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/warranty-tracker", "destination": "/warranty-tracker.html" },
-    { "source": "/ada", "destination": "/ada.html" },
     { "source": "/unsubscribe", "destination": "/index.html" },
     { "source": "/blog/:slug", "destination": "/index.html" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },

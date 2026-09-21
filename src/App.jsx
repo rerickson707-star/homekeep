@@ -16441,7 +16441,8 @@ export default function App() {
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
   if (_path === "/terms" || _path === "/terms.html") return <TermsPage />;
   if (_path === "/privacy" || _path === "/privacy.html") return <PrivacyPage />;
-  if (_path === "/ada" || _path === "/accessibility" || _path === "/ada/") return <ADAPage />;
+  if (_path === "/ada" || _path === "/accessibility" || _path === "/ada/" || _path === "/ada.html") return <ADAPage />;
+  if (_path === "/warranty-tracker" || _path === "/warranty-tracker/" || _path === "/warranty-tracker.html") return <WarrantyTrackerPage />;
   if (_path === "/blog" || _path === "/blog/") return <BlogIndex />;
   if (_path.startsWith("/blog/")) return <BlogPost slug={_path.replace("/blog/","")} />;
   if (_path === "/guides" || _path === "/guides/") return <GuidesPage />;
@@ -20020,6 +20021,81 @@ function LPCTA({ h2, sub, btnLabel="Try it free →", note="Free to start · No 
         <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>{note}</div>
       </div>
     </section>
+  );
+}
+
+// ─── WARRANTY TRACKER LANDING PAGE ────────────────────────────────────────────
+// Rebuilt to render from App.jsx instead of a hand-maintained warranty-tracker.html
+// (which never existed in the deployed build — see compliance audit finding #3/#7).
+// Pricing here reads from the same figures as PricingSection/TermsPage so it can't
+// drift out of sync with the rest of the product again.
+function WarrantyTrackerPage() {
+  useSEO({
+    title:"Home Warranty Tracker — Never Miss an Expiry",
+    description:"Track every appliance warranty in one place. Get alerts 30 and 7 days before expiry, plus safety recall notices. Free to start.",
+    canonical:"https://www.trysteadwell.app/warranty-tracker",
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/contractor-tracker",label:"Contractor Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
+      <LPHero eyebrow="Warranty Tracker" h1="Every warranty," h1em="tracked in one place." sub="Scan a receipt or nameplate and Steadwell tracks the warranty automatically — with alerts 30 and 7 days before it expires, so you never miss a claim window." badge="Free to start · No credit card required"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="What warranty tracking includes" sub="Unlimited warranties on every plan, including Free."/>
+          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+            {[
+              {icon:"🔔",title:"Expiry alerts",fields:["30-day advance warning","7-day final warning","Email alerts, no digest opt-out needed for these","Recall alerts for the same items"]},
+              {icon:"📎",title:"AI receipt & nameplate scan",fields:["Photograph a receipt or appliance label","Purchase date, price, and vendor filled in","Available on Plus and Pro"]},
+              {icon:"🗂️",title:"Warranty records",fields:["Unlimited warranties, every plan","Attach the original receipt or PDF","Linked to the asset it covers"]},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
+                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
+                </div>
+                {s.fields.map((f,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
+                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
+                  </div>
+                ))}
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt narrow>
+          <LPSectionHead h2="Plans and pricing"/>
+          <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={16}>
+            <LPCard><div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>Free</div><div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:6}}>$0</div><div style={{fontSize:".82rem",color:"#7A7370"}}>Unlimited warranty tracking, expiry and recall alerts, one property.</div></LPCard>
+            <LPCard><div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>Plus</div><div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:6}}>$7.99<span style={{fontSize:".75rem",fontWeight:500}}>/mo</span></div><div style={{fontSize:".78rem",color:"#7A7370",marginBottom:4}}>or $63.99/year</div><div style={{fontSize:".82rem",color:"#7A7370"}}>Everything in Free, plus AI receipt and nameplate scanning.</div></LPCard>
+            <LPCard><div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>Pro</div><div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:6}}>$14.99<span style={{fontSize:".75rem",fontWeight:500}}>/mo</span></div><div style={{fontSize:".78rem",color:"#7A7370",marginBottom:4}}>or $119.99/year</div><div style={{fontSize:".82rem",color:"#7A7370"}}>Everything in Plus, plus up to 3 properties and shared household access.</div></LPCard>
+          </LPGrid>
+          <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:16}}>Paid plans auto-renew until cancelled — see our <a href="/terms" style={{color:"#C16140"}}>Terms of Service</a> for full billing details. Prices shown here are kept in sync with the app; if you ever see a different number at sign-up, the in-app price is the one that applies.</p>
+        </LPSection>
+        <LPSection>
+          <LPSectionHead h2="How it works"/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Add a warranty",text:"Scan a receipt or nameplate, or enter it manually — item, purchase date, and warranty length."},
+              {num:"02",title:"We track the expiry",text:"Steadwell calculates the expiry date and watches it for you."},
+              {num:"03",title:"Get alerted in time",text:"An email lands 30 days out, then again at 7 days, so you still have time to file a claim."},
+              {num:"04",title:"Stay covered on recalls",text:"The same appliance records are checked against the CPSC recall database automatically."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={[
+            ["Is warranty tracking free?","Yes — unlimited warranties on the Free plan, no credit card required to start."],
+            ["How do I add a warranty?","Scan a receipt or appliance nameplate with AI (Plus and Pro), or enter the details yourself on any plan."],
+            ["What alerts do I get?","An email 30 days before expiry and another at 7 days, plus a separate alert if the item is subject to a safety recall."],
+            ["Is this an appraisal or guarantee of coverage?","No — Steadwell tracks the dates and documents you give it. Always confirm coverage details directly with the manufacturer or retailer."],
+          ]}/>
+        </LPSection>
+        <LPCTA h2="Stop losing track of warranties." sub="Free to start, no credit card required." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
   );
 }
 
