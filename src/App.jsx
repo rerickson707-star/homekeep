@@ -20098,13 +20098,13 @@ function WarrantyTrackerPage() {
               {icon:"🗄️",title:"Asset retirement & history",badge:"Free",desc:"When something's replaced or sold, its record moves to history instead of just disappearing."},
               {icon:"🔎",title:"Smart Fill — instant model lookup",badge:"Plus & Pro",desc:"Type a model number and Steadwell fills in the typical warranty length and spec details from public data."},
             ].map((f,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:10}}>
-                  <span style={{fontSize:"1.4rem"}}>{f.icon}</span>
-                  <span style={{fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:f.badge==="Free"?"#2E7050":"#C16140",background:f.badge==="Free"?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{f.badge}</span>
+              <LPCard key={i} style={{display:"flex",flexDirection:"column",height:"100%"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <span style={{fontSize:"1.4rem",flexShrink:0}}>{f.icon}</span>
+                  <div style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",lineHeight:1.3}}>{f.title}</div>
                 </div>
-                <div style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:6}}>{f.title}</div>
-                <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55}}>{f.desc}</div>
+                <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,flex:1,marginBottom:12}}>{f.desc}</div>
+                <span style={{alignSelf:"flex-start",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:f.badge==="Free"?"#2E7050":"#C16140",background:f.badge==="Free"?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{f.badge}</span>
               </LPCard>
             ))}
           </LPGrid>
@@ -20132,9 +20132,9 @@ function WarrantyTrackerPage() {
               {icon:"🔧",title:"Tools & Equipment",desc:"Power tools, generators, mowers"},
               {icon:"💍",title:"Jewelry & Valuables",desc:"Rings, watches, fine jewelry"},
               {icon:"🌳",title:"Outdoor",desc:"Pool equipment, grills, patio"},
-              {icon:"🏗️",title:"Structural",desc:"Roof, siding, windows, foundation"},
+              {icon:"🧱",title:"Structural",desc:"Roof, siding, windows, foundation"},
             ].map((c,i)=>(
-              <LPCard key={i} style={{textAlign:"center"}}>
+              <LPCard key={i} style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",height:"100%"}}>
                 <div style={{fontSize:"1.5rem",marginBottom:6}}>{c.icon}</div>
                 <div style={{fontWeight:700,fontSize:".82rem",color:"#234A3D",marginBottom:3}}>{c.title}</div>
                 <div style={{fontSize:".72rem",color:"#A8A09A",lineHeight:1.4}}>{c.desc}</div>
@@ -20190,11 +20190,22 @@ function WarrantyTrackerPage() {
         <LPSection narrow>
           <LPSectionHead h2="Plans and pricing"/>
           <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={16}>
-            <LPCard><div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>Free</div><div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:6}}>$0</div><div style={{fontSize:".82rem",color:"#7A7370"}}>Unlimited warranty tracking, expiry and recall alerts, one property.</div></LPCard>
-            <LPCard style={{border:"2px solid #C16140"}}><div style={{fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>Most popular</div><div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>Plus</div><div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:6}}>$7.99<span style={{fontSize:".75rem",fontWeight:500}}>/mo</span></div><div style={{fontSize:".78rem",color:"#7A7370",marginBottom:4}}>or $63.99/year</div><div style={{fontSize:".82rem",color:"#7A7370"}}>Everything in Free, plus AI scanning, maintenance schedules, and the PDF report.</div></LPCard>
-            <LPCard><div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>Pro</div><div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:6}}>$14.99<span style={{fontSize:".75rem",fontWeight:500}}>/mo</span></div><div style={{fontSize:".78rem",color:"#7A7370",marginBottom:4}}>or $119.99/year</div><div style={{fontSize:".82rem",color:"#7A7370"}}>Everything in Plus, plus up to 3 properties and shared household access.</div></LPCard>
+            {[
+              {plan:"Free",price:"$0",period:"",annual:"",desc:"Unlimited warranty tracking, expiry and recall alerts, one property.",cta:"Start free",popular:false},
+              {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"Everything in Free, plus AI scanning, maintenance schedules, and the PDF report.",cta:"Start Plus",popular:true},
+              {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"Everything in Plus, plus up to 3 properties and shared household access.",cta:"Start Pro",popular:false},
+            ].map((p,i)=>(
+              <LPCard key={i} style={{display:"flex",flexDirection:"column",height:"100%",position:"relative",border:p.popular?"2px solid #C16140":"1px solid #E6DECF",paddingTop:p.popular?34:20}}>
+                {p.popular && <div style={{position:"absolute",top:14,left:20,fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em"}}>Most popular</div>}
+                <div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>{p.plan}</div>
+                <div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:2}}>{p.price}<span style={{fontSize:".75rem",fontWeight:500}}>{p.period}</span></div>
+                {p.annual && <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:6}}>{p.annual}</div>}
+                <div style={{fontSize:".82rem",color:"#7A7370",flex:1,marginBottom:16}}>{p.desc}</div>
+                <a href="/" style={{display:"block",textAlign:"center",background:p.popular?"#C16140":"transparent",color:p.popular?"#fff":"#234A3D",border:p.popular?"none":"1.5px solid #234A3D",textDecoration:"none",padding:".6rem 1rem",borderRadius:9,fontWeight:700,fontSize:".85rem"}}>{p.cta}</a>
+              </LPCard>
+            ))}
           </LPGrid>
-          <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:16}}>Paid plans auto-renew until cancelled — see our <a href="/terms" style={{color:"#C16140"}}>Terms of Service</a> for full billing details. Prices shown here are kept in sync with the app; if you ever see a different number at sign-up, the in-app price is the one that applies.</p>
+          <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:16}}>Paid plans auto-renew until cancelled — see our <a href="/terms" style={{color:"#C16140"}}>Terms of Service</a> for full billing details.</p>
         </LPSection>
 
         <LPSection narrow>
