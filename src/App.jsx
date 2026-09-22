@@ -19824,7 +19824,7 @@ function AffiliateAgreementPage() {
     {t:"11. Modification and Termination",b:"Steadwell may modify the commission structure, cookie window, or other Program terms at any time with 30 days written notice to active affiliates. Changes to prohibited conduct provisions may take effect immediately. Either party may terminate this Agreement at any time with written notice. Upon termination, unpaid commissions for confirmed, non-refunded referrals made prior to the termination date will be paid at the next regular payout date."},
     {t:"12. Disclaimers and Limitation of Liability",b:"THE PROGRAM IS PROVIDED AS IS. STEADWELL MAKES NO WARRANTIES ABOUT COMMISSION EARNINGS, CONVERSION RATES, OR THE CONTINUED AVAILABILITY OF THE PROGRAM. TO THE FULLEST EXTENT PERMITTED BY LAW, STEADWELL'S LIABILITY TO ANY AFFILIATE SHALL NOT EXCEED THE TOTAL COMMISSIONS PAID TO THAT AFFILIATE IN THE 3 MONTHS PRECEDING THE CLAIM."},
     {t:"13. Governing Law",b:"This Agreement is governed by the laws of the State of Florida. Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Pinellas County, Florida."},
-    {t:"14. Contact",b:"Affiliate program questions: affiliates@trysteadwell.app · Steadwell, LLC · 7901 4th Street N. #36148, St. Petersburg, FL 33702 · 727-658-4491"},
+    {t:"14. Contact",b:"Affiliate program questions: affiliates@trysteadwell.app · Steadwell, LLC · 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 · 727-658-4491"},
   ];
 
   return (
@@ -21556,7 +21556,7 @@ function TermsPage() {
     {t:"17. Force Majeure",b:"Steadwell shall not be liable for any failure or delay in performance resulting from causes beyond our reasonable control, including but not limited to acts of God, internet or telecommunications outages, third-party service provider failures (including Supabase, Stripe, or Resend), cyberattacks, natural disasters, or government actions."},
     {t:"18. Changes to These Terms",b:"We may update these Terms from time to time. For material changes, we will notify you by email or in-app notice at least 30 days before they take effect. Continued use after that date constitutes acceptance. If you do not agree, stop using the Service before the effective date."},
     {t:"19. DMCA and Copyright",b:"Steadwell complies with the Digital Millennium Copyright Act (DMCA). If you believe that content available through the Service infringes your copyright, please send a written notice to our designated DMCA agent at hello@trysteadwell.app with: (1) identification of the copyrighted work you claim has been infringed; (2) identification of the material you claim is infringing, with enough detail for us to locate it; (3) your contact information (name, address, phone number, and email); (4) a statement that you have a good-faith belief that the disputed use is not authorized by the copyright owner, its agent, or the law; (5) a statement, made under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorized to act on the owner's behalf; and (6) your physical or electronic signature. Upon receipt of a valid notice, we will remove or disable access to the allegedly infringing content and notify the account holder. Steadwell has a policy of terminating the accounts of repeat infringers. Counter-notices may be submitted to the same address. This policy is intended to comply with 17 U.S.C. § 512 (the DMCA safe harbor provision)."},
-    {t:"20. Contact",b:"Steadwell, LLC · 7901 4th Street N. #36148, St. Petersburg, FL 33702 · hello@trysteadwell.app · 727-658-4491"},
+    {t:"20. Contact",b:"Steadwell, LLC · 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 · hello@trysteadwell.app · 727-658-4491"},
   ];
   return (
     <div style={S.page}>
@@ -21577,7 +21577,7 @@ function TermsPage() {
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Questions About These Terms?</h2>
           <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact us at <a href="mailto:hello@trysteadwell.app" style={{color:"#F4EDDF"}}>hello@trysteadwell.app</a></p>
-          <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell, LLC &middot; 7901 4th Street N. #36148, St. Petersburg, FL 33702 &middot; 727-658-4491</p>
+          <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell, LLC &middot; 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 &middot; 727-658-4491</p>
         </div>
       </main>
       <footer role="contentinfo" style={S.ft}>
@@ -21612,7 +21612,7 @@ function PrivacyPage() {
     {t:"14. California Residents (CCPA/CPRA)",b:"California residents have the right to: know what personal information we collect and how it's used; request deletion of your personal information; correct inaccurate personal information; opt out of the sale or sharing of personal information (we do not sell or share personal information for cross-context behavioral advertising); and non-discrimination for exercising these rights. To submit a California Privacy Request, email privacy@trysteadwell.app with the subject line \"California Privacy Request.\""},
     {t:"15. Children's Privacy",b:"Steadwell is intended for users 18 years of age and older. We do not knowingly collect personal information from anyone under 13. If you believe we have inadvertently collected information from a child under 13, contact privacy@trysteadwell.app immediately and we will delete it promptly."},
     {t:"16. Changes to This Policy",b:"We may update this Privacy Policy from time to time. For material changes, we will notify you by email or in-app notice at least 30 days before the changes take effect. The \"Last updated\" date at the top of this page reflects the most recent revision. Continued use of the Service after the effective date constitutes acceptance of the updated policy."},
-    {t:"17. Contact",b:"Steadwell, LLC · 7901 4th Street N. #36148, St. Petersburg, FL 33702 · privacy@trysteadwell.app · 727-658-4491"},
+    {t:"17. Contact",b:"Steadwell, LLC · 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 · privacy@trysteadwell.app · 727-658-4491"},
   ];
   return (
     <div style={S.page}>
@@ -21633,7 +21633,7 @@ function PrivacyPage() {
         <div style={S.cta}>
           <h2 style={{...S.h2,color:"#F4EDDF",marginTop:0}}>Privacy Questions?</h2>
           <p style={{...S.p,color:"rgba(244,237,223,.82)"}}>Contact <a href="mailto:privacy@trysteadwell.app" style={{color:"#F4EDDF"}}>privacy@trysteadwell.app</a> &mdash; we respond within 45 days.</p>
-          <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell, LLC &middot; 7901 4th Street N. #36148, St. Petersburg, FL 33702 &middot; 727-658-4491</p>
+          <p style={{fontSize:".85rem",color:"rgba(244,237,223,.6)"}}>Steadwell, LLC &middot; 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 &middot; 727-658-4491</p>
         </div>
       </main>
       <footer role="contentinfo" style={S.ft}>
