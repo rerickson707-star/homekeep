@@ -20098,7 +20098,7 @@ function WarrantyTrackerPage() {
               {icon:"🗄️",title:"Asset retirement & history",badge:"Free",desc:"When something's replaced or sold, its record moves to history instead of just disappearing."},
               {icon:"🔎",title:"Smart Fill — instant model lookup",badge:"Plus & Pro",desc:"Type a model number and Steadwell fills in the typical warranty length and spec details from public data."},
             ].map((f,i)=>(
-              <LPCard key={i} style={{display:"flex",flexDirection:"column",height:"100%"}}>
+              <LPCard key={i} style={{display:"flex",flexDirection:"column"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <span style={{fontSize:"1.4rem",flexShrink:0}}>{f.icon}</span>
                   <div style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",lineHeight:1.3}}>{f.title}</div>
@@ -20123,7 +20123,7 @@ function WarrantyTrackerPage() {
 
         <LPSection alt>
           <LPSectionHead h2="Every warranty you own. One place." sub="Most warranty apps only track appliances. Steadwell tracks everything."/>
-          <LPGrid cols="repeat(auto-fit,minmax(150px,1fr))" gap={12}>
+          <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={12}>
             {[
               {icon:"🏠",title:"Home Systems",desc:"HVAC, water heater, well pump"},
               {icon:"🧊",title:"Appliances",desc:"Fridge, dishwasher, washer, dryer"},
@@ -20134,7 +20134,7 @@ function WarrantyTrackerPage() {
               {icon:"🌳",title:"Outdoor",desc:"Pool equipment, grills, patio"},
               {icon:"🧱",title:"Structural",desc:"Roof, siding, windows, foundation"},
             ].map((c,i)=>(
-              <LPCard key={i} style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",height:"100%"}}>
+              <LPCard key={i} style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center"}}>
                 <div style={{fontSize:"1.5rem",marginBottom:6}}>{c.icon}</div>
                 <div style={{fontWeight:700,fontSize:".82rem",color:"#234A3D",marginBottom:3}}>{c.title}</div>
                 <div style={{fontSize:".72rem",color:"#A8A09A",lineHeight:1.4}}>{c.desc}</div>
