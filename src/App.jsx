@@ -20045,7 +20045,7 @@ function WarrantyTrackerPage() {
 
       {/* Hero */}
       <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(40px,6vw,56px)"}}>
-        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr",gap:36}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:36,alignItems:"center"}}>
           <div style={{maxWidth:620}}>
             <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#D2876A",marginBottom:20}}>Free forever · No credit card</div>
             <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.1rem,4.6vw,3.1rem)",color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.02em",margin:"0 0 18px"}}>The warranty tracker that actually <em style={{fontStyle:"italic",color:"#D2876A"}}>does</em> something useful.</h1>
@@ -20145,8 +20145,8 @@ function WarrantyTrackerPage() {
 
         {/* Recall check — claim softened from an absolute, unsubstantiated "no one else does this" */}
         <LPSection>
-          <div style={{display:"grid",gridTemplateColumns:"minmax(260px,380px) 1fr",gap:40,alignItems:"center"}}>
-            <div style={{background:"#234A3D",borderRadius:16,padding:"18px 20px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:40,alignItems:"center"}}>
+            <div style={{background:"#234A3D",borderRadius:16,padding:"18px 20px",maxWidth:420}}>
               <div style={{fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:12}}>🛡 Safety Recall Check <span style={{fontWeight:500,color:"rgba(244,237,223,.5)"}}>(example)</span></div>
               {[
                 {name:"Carrier 3HACX0A0400",ok:true},
@@ -20195,11 +20195,11 @@ function WarrantyTrackerPage() {
               {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"Everything in Free, plus AI scanning, maintenance schedules, and the PDF report.",cta:"Start Plus",popular:true},
               {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"Everything in Plus, plus up to 3 properties and shared household access.",cta:"Start Pro",popular:false},
             ].map((p,i)=>(
-              <LPCard key={i} style={{display:"flex",flexDirection:"column",height:"100%",position:"relative",border:p.popular?"2px solid #C16140":"1px solid #E6DECF",paddingTop:p.popular?34:20}}>
-                {p.popular && <div style={{position:"absolute",top:14,left:20,fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em"}}>Most popular</div>}
+              <LPCard key={i} style={{display:"flex",flexDirection:"column",border:p.popular?"2px solid #C16140":"1px solid #E6DECF"}}>
+                <div style={{fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8,minHeight:12,visibility:p.popular?"visible":"hidden"}}>Most popular</div>
                 <div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>{p.plan}</div>
                 <div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:2}}>{p.price}<span style={{fontSize:".75rem",fontWeight:500}}>{p.period}</span></div>
-                {p.annual && <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:6}}>{p.annual}</div>}
+                <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:6,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "placeholder"}</div>
                 <div style={{fontSize:".82rem",color:"#7A7370",flex:1,marginBottom:16}}>{p.desc}</div>
                 <a href="/" style={{display:"block",textAlign:"center",background:p.popular?"#C16140":"transparent",color:p.popular?"#fff":"#234A3D",border:p.popular?"none":"1.5px solid #234A3D",textDecoration:"none",padding:".6rem 1rem",borderRadius:9,fontWeight:700,fontSize:".85rem"}}>{p.cta}</a>
               </LPCard>
