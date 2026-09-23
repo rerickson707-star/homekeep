@@ -1,8 +1,12 @@
 // supabase/functions/send-price-change-notice/index.ts
 //
 // Sends the price-increase notice the Terms of Service (Section 5) promise:
-// "If we increase the price of your plan, we will notify you by email at
-// least 30 days before the change takes effect."
+// "If we increase the price of your plan, we will provide at least 45 days'
+// advance notice by email before the new price applies to you."
+// (Updated 2026-09-22: Terms now commit to 45 days, not 30 -- CA requires
+// 15-45 days and FL requires 30-60 for 12-month+ terms, so 45 satisfies both.
+// This function's own floor below was bumped to match; if you ever loosen the
+// Terms back down, bump this back down too so the two can't drift apart.)
 //
 // This is NOT a cron job -- a price change is something you decide to do,
 // not a recurring event, so it's triggered on demand (e.g. from an /admin
@@ -82,11 +86,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "effectiveDate must be a valid date" }), { status: 400, headers: CORS });
     }
 
-    // Enforce the Terms' own promise: at least 30 days' notice.
-    const minEffective = new Date(Date.now() + 30 * DAY_MS);
+    // Enforce the Terms' own promise: at least 45 days' notice.
+    const minEffective = new Date(Date.now() + 45 * DAY_MS);
     if (effective.getTime() < minEffective.getTime()) {
       return new Response(JSON.stringify({
-        error: `effectiveDate must be at least 30 days from now (earliest allowed: ${minEffective.toISOString().slice(0, 10)}). This function refuses to send a notice that would itself violate the Terms' 30-day promise.`,
+        error: `effectiveDate must be at least 45 days from now (earliest allowed: ${minEffective.toISOString().slice(0, 10)}). This function refuses to send a notice that would itself violate the Terms' 45-day promise.`,
       }), { status: 400, headers: CORS });
     }
 
