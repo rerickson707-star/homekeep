@@ -76,6 +76,15 @@ serve(async (req) => {
           plan_interval:          planInfo.interval,
           stripe_subscription_id: subscription.id,
           plan_expires_at:        periodEnd != null ? new Date(periodEnd * 1000).toISOString() : null,
+          // Anchor date for the renewal-reminder function: this is a brand new
+          // checkout, so it's the true start of this subscription. Used as the
+          // once-a-year "recurring charge" reminder date for monthly plans,
+          // which don't otherwise have a single yearly date to count down to.
+          // Also reset the dedup markers so a resubscribe after cancellation
+          // starts its own reminder cycle instead of inheriting the old one's.
+          plan_started_at:                    new Date().toISOString(),
+          last_renewal_reminder_sent_at:       null,
+          last_annual_charge_reminder_sent_at: null,
         }).eq("user_id", userId);
 
         console.log(`[stripe-webhook] Upgraded user ${userId} to ${planInfo.plan} ${planInfo.interval}`);
