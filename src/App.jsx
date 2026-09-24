@@ -1,4 +1,4 @@
-// Steadwell v178 — 2026-07-05T00:00:00.000Z
+// Steadwell v241 — 2026-09-23T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9211,14 +9211,23 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Retire an asset — sets retired_at to today, keeps all history
   const retireAsset = async (id) => {
     const today = localISO();
-    const { error } = await supabase.from("warranties")
+    // .select("id") is required here, not cosmetic: a Postgres RLS policy that
+    // rejects the write returns zero matched rows with error === null (RLS
+    // doesn't throw, it just filters), so checking error alone made this look
+    // successful, flip the UI, and then silently revert on the next reload.
+    // Checking that a row actually came back catches that case for real.
+    const { data, error } = await supabase.from("warranties")
       .update({ retired_at: today })
-      .eq("id", id).eq("user_id", userId);
-    if (!error) {
+      .eq("id", id).eq("user_id", userId)
+      .select("id");
+    if (!error && data?.length) {
       setAssets(assets.map(a => a.id === id ? {...a, retired_at: today} : a));
       toast("Asset retired — history preserved ✓");
       setSelectedAsset(null);
-    } else toast("Error retiring asset","error");
+    } else {
+      console.error("Retire asset failed:", error?.message || "no row matched update (check RLS policy on warranties)");
+      toast("Error retiring asset","error");
+    }
     setRetirePrompt(null);
   };
 
@@ -9424,8 +9433,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               </div>
             </div>
             <button onClick={async()=>{
-                const{error}=await supabase.from("warranties").update({retired_at:null,retired_reason:""}).eq("id",asset.id).eq("user_id",userId);
-                if(!error){setAssets(assets.map(a=>a.id===asset.id?{...a,retired_at:null,retired_reason:""}:a));setShowRetired(false);toast("Asset restored ✓");}
+                const{data,error}=await supabase.from("warranties").update({retired_at:null,retired_reason:""}).eq("id",asset.id).eq("user_id",userId).select("id");
+                if(!error && data?.length){setAssets(assets.map(a=>a.id===asset.id?{...a,retired_at:null,retired_reason:""}:a));setShowRetired(false);toast("Asset restored ✓");}
                 else toast("Error restoring","error");
               }}
               style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".4rem .85rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
@@ -22634,6 +22643,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     setSaving(true);
     try {
       const keyToId = {}; // _key → real DB asset id
+      const failedAssets = []; // item names that failed to save, for the end-of-save toast
 
       // 1. Save selected assets
       for (let i = 0; i < generated.assets.length; i++) {
@@ -22655,20 +22665,32 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
         if (dup && res === "skip") continue;
         if (dup && res === "update") {
           const notes = [dup.notes, enriched.notes].filter(Boolean).join(" · ");
-          await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id).eq("user_id",userId);
-          keyToId[_key] = dup.id;
+          const { error: updErr } = await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id).eq("user_id",userId);
+          if (updErr) {
+            console.error(`Asset update error (${enriched.item}):`, updErr.message);
+            failedAssets.push(enriched.item);
+          } else {
+            keyToId[_key] = dup.id;
+          }
         } else {
-          const { data } = await supabase.from("warranties").insert([{...enriched, user_id:userId, property_id:profile?.id}]).select("id");
-          if (data?.[0]) keyToId[_key] = data[0].id;
+          const { data, error: insErr } = await supabase.from("warranties").insert([{...enriched, user_id:userId, property_id:profile?.id}]).select("id");
+          if (insErr || !data?.[0]) {
+            console.error(`Asset insert error (${enriched.item}):`, insErr?.message || "no row returned");
+            failedAssets.push(enriched.item);
+          } else {
+            keyToId[_key] = data[0].id;
+          }
         }
       }
 
-      // 2. Save selected tasks (resolve asset_id from keyToId)
+      // 2. Save selected tasks (resolve asset_id from keyToId — falls back to
+      // null only when that task's asset itself failed to save above, rather
+      // than always saving orphaned, unlinked tasks)
       const TASK_FIELDS = ["title","status","priority","due_date","category","notes","recurring","vendor"];
       const taskRows = generated.tasks
         .filter((_,i) => taskChecks[i])
         .map(({ _assetKey, ...t }) => {
-          const base = { user_id: userId, asset_id: null, property_id: profile?.id };
+          const base = { user_id: userId, asset_id: keyToId[_assetKey] || null, property_id: profile?.id };
           TASK_FIELDS.forEach(f => { if (t[f] !== undefined) base[f] = t[f]; });
           return base;
         });
@@ -22687,22 +22709,37 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       }
 
       // Mark setup complete — write to DB (persists across devices) + localStorage (fast read)
+      let setupCompleteWriteFailed = false;
       if (profile?.id) {
-        await supabase.from("profiles")
+        const { error: setupErr } = await supabase.from("profiles")
           .update({ home_setup_complete: true })
           .eq("id", profile.id)
           .eq("user_id", userId);
+        if (setupErr) {
+          // If this silently fails, a later reload re-derives home_setup_complete
+          // as still false from the DB and can re-trigger the auto-open-wizard
+          // flow from scratch (the "dumped back to Step 1" report) even though
+          // the assets/tasks above did save. Surface it instead of hiding it.
+          console.error("home_setup_complete update error:", setupErr.message);
+          setupCompleteWriteFailed = true;
+        }
       }
       try { localStorage.setItem(`sw_setup_${userId}`, "1"); } catch {}
 
       // Update parent profile state so banner hides immediately without a reload
       if (setProfile) setProfile(prev => ({ ...prev, home_setup_complete: true }));
 
-      const aCount = Object.values(assetChecks).filter(Boolean).length;
+      const aCount = Object.values(assetChecks).filter(Boolean).length - failedAssets.length;
       const tCount = Object.values(taskChecks).filter(Boolean).length;
       const pCount = Object.values(projectChecks).filter(Boolean).length;
       const msg = `✓ Home profile set up — ${aCount} assets, ${tCount} tasks${pCount ? `, ${pCount} projects` : ""} created`;
       toast(msg);
+      if (failedAssets.length) {
+        toast(`Couldn't save: ${failedAssets.join(", ")} — please add ${failedAssets.length===1?"it":"them"} manually from Assets`, "error");
+      }
+      if (setupCompleteWriteFailed) {
+        toast("Setup may reopen on next visit — we couldn't confirm it as complete. Your assets and tasks are saved.", "error");
+      }
       // Clear saved wizard state
       try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_step"); } catch {}
       // Plan choice already happened earlier in onboarding (Step 5), so setup is
