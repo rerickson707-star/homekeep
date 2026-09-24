@@ -1,4 +1,4 @@
-// Steadwell v248 — 2026-09-24T19:22:56.000Z
+// Steadwell v249 — 2026-09-24T20:33:48.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4291,7 +4291,7 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
           </div>
         )}
       </div>
-      <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={data.cost||""} onChange={e=>f("cost",e.target.value===""?"":Math.max(0,Number(e.target.value)))} placeholder="0" /></div>
+      <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
       <div className="field"><label>Contractor</label>
         <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="DIY or company name"/>
       </div>
@@ -5567,7 +5567,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
         <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Where purchased or installed by"/>
       </div>
       <div className="field"><label>Purchase Date</label><input type="date" value={data.purchase_date||""} onChange={e=>f("purchase_date",e.target.value)} /></div>
-      <div className="field"><label>Install Date</label><input type="date" value={data.install_date||""} onChange={e=>f("install_date",e.target.value)} /></div>
+      <div className="field"><label>Install Date</label><input type="date" max={localISO()} value={data.install_date||""} onChange={e=>f("install_date",e.target.value)} /></div>
       <div className="field"><label>Purchase Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} /></div>
       <div className="field"><label>Replacement Cost ($)</label><input type="number" value={data.replacement_cost||""} onChange={e=>f("replacement_cost",e.target.value)} placeholder="Est. today's cost" /></div>
       <div className="field"><label>Expected Lifespan (yrs)</label><input type="number" value={data.lifespan_years||""} onChange={e=>f("lifespan_years",e.target.value)} placeholder="e.g. 20" /></div>
@@ -6218,7 +6218,7 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
       <div className="fg">
         <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. HVAC Service Call" /></div>
         <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-        <div className="field"><label>Amount ($)</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value===""?"":Math.max(0,Number(e.target.value)))} placeholder="0" /></div>
+        <div className="field"><label>Amount ($)</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
         <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
         <div className="field s2"><label>Contractor</label>
           <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Who did the work"/>
@@ -6779,10 +6779,23 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
       // 1. Retire every currently-active asset for this property — preserves full
       //    history (service logs, photos, warranties) but removes it from the
       //    active list, exactly like the existing single-asset retire flow.
+      // Same defense as the single-asset retireAsset(): scope to this user
+      // (RLS should already enforce that, but a stray policy gap shouldn't
+      // touch another account's rows) and check that rows actually came
+      // back, since RLS silently filters a rejected update to zero rows
+      // rather than throwing — an unchecked call here would look like it
+      // archived everything and then have them reappear on reload.
       const today = localISO();
       const activeIds = warranties.filter(w => !w.retired_at).map(w => w.id);
       if (activeIds.length > 0) {
-        await supabase.from("warranties").update({ retired_at: today }).in("id", activeIds);
+        const { data: retiredRows, error: retireErr } = await supabase.from("warranties")
+          .update({ retired_at: today })
+          .in("id", activeIds).eq("user_id", userId)
+          .select("id");
+        if (retireErr || (retiredRows?.length || 0) < activeIds.length) {
+          console.error("Move — retire assets failed or partial:", retireErr?.message || `${retiredRows?.length||0}/${activeIds.length} rows updated`);
+          throw new Error("Could not archive all existing items");
+        }
       }
 
       // 2. Reset the property's identity fields — anything that describes what
@@ -6792,6 +6805,8 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
       const resetFields = {
         address: "", type: "", year: "", sqft: "", bedrooms: "", bathrooms: "",
         zestimate: "", rent_zestimate: "", tax_history: "", price_history: "", schools: "",
+        last_sale_price: "", last_sale_date: "", zpid: "", photo_url: "", description: "",
+        hoa_fee: "", lot_size: "",
         ins_company: "", ins_policy_number: "", ins_agent_name: "", ins_agent_phone: "",
         ins_premium: "", ins_deductible: "", ins_dwelling_coverage: "", ins_personal_property: "",
         ins_liability_coverage: "", ins_loss_of_use: "", ins_renewal_date: "", ins_notes: "",
@@ -8539,7 +8554,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           </div>
           <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
             {[
-              { key:"email",       icon:"📬", label:"Email",       action:()=>onNavigate("profile"),    done: usedFeatures.email },
+              { key:"email",       icon:"📬", label:"Email Inbox", action:()=>onNavigate("profile"),    done: usedFeatures.email },
               { key:"warranties",  icon:"🔖", label:"Warranties",  action:()=>onNavigate("warranties"), done: usedFeatures.warranties },
               { key:"tasks",       icon:"📋", label:"Maintenance", action:()=>onNavigate("tasks"),      done: usedFeatures.tasks },
               { key:"recall",      icon:"🔔", label:"Recalls",     action:()=>{ runCheck && runCheck(); }, done: checked },
@@ -8701,8 +8716,13 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 
   const save = async () => {
     if(!editData.title?.trim()) { toast("Please enter a task title","error"); return; }
-    // Ensure asset_id is numeric or null; clamp cost to a non-negative number
-    const cost = editData.cost==="" || editData.cost==null ? null : Math.max(0, Number(editData.cost));
+    // Reject a negative cost outright rather than silently rewriting it —
+    // clamping on every keystroke previously mangled values like "-250" into
+    // something else entirely as the field re-rendered mid-type.
+    if(editData.cost!=="" && editData.cost!=null && Number(editData.cost) < 0) {
+      toast("Cost can't be negative","error"); return;
+    }
+    const cost = editData.cost==="" || editData.cost==null ? null : Number(editData.cost);
     const payload = {
       ...editData,
       asset_id: editData.asset_id || null,
@@ -9087,12 +9107,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // the detail view showed it, but the list card next to it still said
   // "Healthy" for the same asset.
   const { recalls: recallHits } = useRecallAlerts(assets);
-  // Only a high-confidence (brand + model) match forces "Needs attention" —
-  // a brand-only match is a real risk of a false positive, since two very
-  // different products from the same manufacturer would otherwise both get
-  // flagged. Lower-confidence hits still show up for the user to review
-  // (see the recall list in Profile), they just don't drive asset health.
-  const recalledAssetIds = useMemo(() => new Set(recallHits.filter(r => r.recall.confidence === "high").map(r => r.asset.id)), [recallHits]);
+  // Any open recall match forces "Needs attention" here — this must match
+  // the Dashboard's own recall feed (which also doesn't filter by
+  // confidence), otherwise the same asset can show "urgent" on the
+  // Dashboard and "Healthy" on this page for the same recall.
+  const recalledAssetIds = useMemo(() => new Set(recallHits.map(r => r.asset.id)), [recallHits]);
   // Age fallback for assets with no install/purchase date -- same estimate
   // the "My Home" system-age widget already uses (age of the house itself),
   // so a decades-old roof or panel with no recorded install date doesn't
@@ -9124,6 +9143,35 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   useEffect(() => {
     if (resetSignal) setSelectedAsset(null);
   }, [resetSignal]);
+
+  // One-time data fix: water heaters saved before getDefaultLifespan() had
+  // its item-name check baked in could get an explicit lifespan_years of 50
+  // (the generic "Plumbing" category default — copper pipe genuinely lasts
+  // that long, a water heater doesn't). A stored lifespan_years always wins
+  // over the computed default (see the `Number(asset.lifespan_years) ||
+  // getDefaultLifespan(asset)` lookup), so the fixed function never gets a
+  // chance to correct these existing rows on its own. Clear the stale value
+  // once so they fall back to the corrected 12-year default; runs at most
+  // once per user, guarded by a localStorage flag.
+  useEffect(() => {
+    if (!assets || assets.length === 0) return;
+    const FIX_KEY = `sw_fixed_wh_lifespan_${userId}`;
+    let already = false;
+    try { already = !!localStorage.getItem(FIX_KEY); } catch {}
+    if (already) return;
+    try { localStorage.setItem(FIX_KEY, "1"); } catch {}
+    const stale = assets.filter(a =>
+      Number(a.lifespan_years) === 50 &&
+      /water\s*heater|hot\s*water\s*(tank|heater)/i.test(a.item || "")
+    );
+    if (stale.length === 0) return;
+    (async () => {
+      for (const a of stale) {
+        const { data } = await supabase.from("warranties").update({ lifespan_years: null }).eq("id", a.id).eq("user_id", userId).select("id");
+        if (data?.length) setAssets(prev => prev.map(x => x.id === a.id ? { ...x, lifespan_years: null } : x));
+      }
+    })();
+  }, [assets, userId]);
 
   // Warranty-only modal state
   const [warrantyModal, setWarrantyModal] = useState(false);
@@ -9358,6 +9406,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     if(editData.purchase_date && editData.expiry_date && editData.expiry_date < editData.purchase_date) {
       toast("Warranty expiry can't be before the purchase date","error"); return;
     }
+    if(editData.install_date && editData.install_date > localISO()) {
+      toast("Install date can't be in the future","error"); return;
+    }
     const payload = {
       item:                 editData.item||"",
       category:             editData.category||"",
@@ -9558,13 +9609,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
   const saveTaskEdit = async () => {
     if (!editingTask) return;
+    if (taskEditData.cost && Number(taskEditData.cost) < 0) { toast("Cost can't be negative","error"); return; }
     const payload = {
       title:    taskEditData.title||"",
       status:   taskEditData.status||"Scheduled",
       priority: taskEditData.priority||"Medium",
       due_date: taskEditData.due_date||null,
       notes:    taskEditData.notes||"",
-      cost:     taskEditData.cost ? Math.max(0, Number(taskEditData.cost)) : null,
+      cost:     taskEditData.cost ? Number(taskEditData.cost) : null,
     };
     const {error} = await supabase.from("tasks").update(payload).eq("id",editingTask.id).eq("user_id",userId);
     if (!error) {
@@ -9578,19 +9630,25 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Separate retired from active
   const retiredAssets = assets.filter(a => a.retired_at);
   const activeAssets  = assets.filter(a => !a.retired_at);
+  // Warranty-only records ("Refrigerator – Warranty only") don't have
+  // condition/age data and aren't a tracked system — they're excluded from
+  // the "All" count and health totals below (they still appear as cards in
+  // the list itself; this only keeps them out of the tallies, matching
+  // computeHealthScore's activeAssets which already excludes them).
+  const systemAssets  = activeAssets.filter(a => !a.warranty_only);
 
   let list = showRetired ? [...retiredAssets] : [...activeAssets];
   if (!showRetired) {
     if(filter==="Warranty Active")    list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
-    else if(filter==="Needs attention") list = list.filter(a=>{ const h=health(a); return h.key==="bad"||h.key==="due"; });
-    else if(filter==="Healthy")       list = list.filter(a=>{ const h=health(a); return h.key==="ok"; });
+    else if(filter==="Needs attention") list = list.filter(a=>!a.warranty_only).filter(a=>{ const h=health(a); return h.key==="bad"||h.key==="due"; });
+    else if(filter==="Healthy")       list = list.filter(a=>!a.warranty_only).filter(a=>{ const h=health(a); return h.key==="ok"; });
   }
   list = list.sort((a,b)=>(a.item||"").localeCompare(b.item||""));
 
-  // Health summary — counts across all ACTIVE assets (not the filtered list,
-  // and not retired ones -- a retired asset's last-known health shouldn't
-  // still count toward "All N systems are in good shape").
-  const healthCounts = activeAssets.reduce((acc,a)=>{ const h=health(a); acc[h.key]=(acc[h.key]||0)+1; return acc; },{});
+  // Health summary — counts across all ACTIVE, non-warranty-only assets (not
+  // the filtered list, and not retired ones -- a retired asset's last-known
+  // health shouldn't still count toward "All N systems are in good shape").
+  const healthCounts = systemAssets.reduce((acc,a)=>{ const h=health(a); acc[h.key]=(acc[h.key]||0)+1; return acc; },{});
   const okCount    = healthCounts.ok    || 0;
   const headsCount = healthCounts.heads || 0;
   const dueCount   = healthCounts.due   || 0;
@@ -10161,7 +10219,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
                 </select>
               </div>
-              <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={taskEditData.cost||""} onChange={e=>setTaskEditData(d=>({...d,cost:e.target.value===""?"":Math.max(0,Number(e.target.value))}))} placeholder="0"/></div>
+              <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={taskEditData.cost||""} onChange={e=>setTaskEditData(d=>({...d,cost:e.target.value}))} placeholder="0"/></div>
               <div className="field s2"><label>Notes</label><textarea value={taskEditData.notes||""} onChange={e=>setTaskEditData(d=>({...d,notes:e.target.value}))} placeholder="Details, technician, parts needed…"/></div>
             </div>
           </Modal>
@@ -10231,7 +10289,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       {/* Filter chips — health vocabulary */}
       {activeAssets.length > 0 && (
         <div className="toolbar" style={{marginBottom:".9rem"}}>
-          {[["All",activeAssets.length],["Needs attention",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
+          {[["All",systemAssets.length],["Needs attention",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
             <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>
               {f}{count!==null && count!==undefined ? ` ${count}` : ""}
             </button>
@@ -10250,9 +10308,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             <div style={{flex:1}}>
               <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Warranties</div>
               <div style={{fontSize:".75rem",color:"#8A8178",marginTop:1}}>
-                {assets.filter(w=>w.warranty_only).length > 0
-                  ? `${assets.filter(w=>w.warranty_only && daysTo(w.expiry_date) >= 0).length} active · ${assets.filter(w=>w.warranty_only && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0).length > 0 ? assets.filter(w=>w.warranty_only && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0).length + " expired" : "all current"}`
-                  : "Track warranties for any item you own"}
+                {(()=>{
+                  // Include both standalone warranty-only records AND full assets that
+                  // have a warranty (expiry_date) saved on them — not just warranty_only rows.
+                  const trackedW = assets.filter(w=>w.warranty_only || w.expiry_date);
+                  const activeCount = trackedW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
+                  const expiredCount = trackedW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; }).length;
+                  return trackedW.length > 0
+                    ? `${activeCount} active · ${expiredCount > 0 ? expiredCount + " expired" : "all current"}`
+                    : "Track warranties for any item you own";
+                })()}
               </div>
             </div>
             <span style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)"}}>View all →</span>
@@ -10622,7 +10687,7 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade }) {
         <div className="scan-divider">or fill in manually</div>
       </div>
       <div className="field"><label>Bill Date *</label><input type="date" value={data.bill_date||""} onChange={e=>f("bill_date",e.target.value)} /></div>
-      <div className="field"><label>Amount ($) *</label><input type="number" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0.00" step="0.01" /></div>
+      <div className="field"><label>Amount ($) *</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0.00" step="0.01" /></div>
       {ut.unit && (
         <>
           <div className="field"><label>Usage ({ut.unit})</label><input type="number" value={data.usage||""} onChange={e=>f("usage",e.target.value)} placeholder="0" /></div>
@@ -10714,9 +10779,12 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
   const save = async () => {
     if(!editData.description?.trim()) return;
+    if(editData.amount!=="" && editData.amount!=null && Number(editData.amount) < 0) {
+      toast("Amount can't be negative","error"); return;
+    }
     const payload = pickExpense(editData);
     if(!payload.project_id) payload.project_id = null;
-    if(payload.amount!=="" && payload.amount!=null) payload.amount = Math.max(0, Number(payload.amount));
+    if(payload.amount!=="" && payload.amount!=null) payload.amount = Number(payload.amount);
     if(editId) {
       const {error} = await supabase.from("expenses").update(payload).eq("id",editId).eq("user_id",userId);
       if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId,user_id:userId}:e)); toast("Expense updated ✓"); }
@@ -10809,8 +10877,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const saveBill = async () => {
-    if(!billEditData.amount || !billEditData.bill_date) return;
-    const payload = {...billEditData};
+    if(!billEditData.amount || !billEditData.bill_date) { toast("Amount and bill date are required","error"); return; }
+    if(Number(billEditData.amount) < 0) { toast("Amount can't be negative","error"); return; }
+    const payload = {...billEditData, amount: Number(billEditData.amount)};
     if(billEditId) {
       const {error} = await supabase.from("utility_bills").update(payload).eq("id",billEditId).eq("user_id",userId);
       if(!error) { setBills(bills.map(b=>b.id===billEditId?{...payload,id:billEditId}:b)); toast("Bill updated ✓"); }
@@ -10852,16 +10921,34 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       };
     });
 
-  // Combine expenses + service log line items for display
-  const allExpenseItems = [...expenses, ...serviceAsExpenses];
+  // Convert utility bills to expense-like objects too — previously they were
+  // folded into allTotal/thisYrTotalWithService but never appeared in
+  // allExpenseItems, so "All time home spend" counted them while the "All"
+  // category list (and its item count) never listed them at all.
+  const billsAsExpenses = bills.map(b => ({
+    id: `bill-${b.id}`,
+    description: `${UTIL_TYPES[b.type]?.label || "Utility"} bill`,
+    amount: b.amount,
+    date: b.bill_date,
+    category: "Utilities",
+    vendor: "",
+    notes: b.notes || "",
+    _isBill: true,
+    _billId: b.id,
+  }));
+
+  // Combine expenses + service log line items + utility bills for display
+  const allExpenseItems = [...expenses, ...serviceAsExpenses, ...billsAsExpenses];
 
   const thisYear = allExpenseItems.filter(e=>e.date?.startsWith(String(yr)));
-  const lastYear = expenses.filter(e=>e.date?.startsWith(String(yr-1)));
+  const lastYear = allExpenseItems.filter(e=>e.date?.startsWith(String(yr-1)));
   const thisYrTotal = thisYear.reduce((s,e)=>s+Number(e.amount||0),0);
   const lastYrTotal = lastYear.reduce((s,e)=>s+Number(e.amount||0),0);
   const utilThisYr = bills.filter(b=>b.bill_date?.startsWith(String(yr))).reduce((s,b)=>s+Number(b.amount||0),0);
-  const allTotal = allExpenseItems.reduce((s,e)=>s+Number(e.amount||0),0) + bills.reduce((s,b)=>s+Number(b.amount||0),0);
-  const thisYrTotalWithService = thisYrTotal + utilThisYr;
+  // allExpenseItems now already includes bills, so this is the one true total —
+  // no more adding bills a second time on top of it.
+  const allTotal = allExpenseItems.reduce((s,e)=>s+Number(e.amount||0),0);
+  const thisYrTotalWithService = thisYrTotal;
   const trend = lastYrTotal > 0 ? ((thisYrTotalWithService - lastYrTotal) / lastYrTotal * 100).toFixed(0) : null;
 
   // Monthly chart data — current year, ALL sources: expenses + service logs + utility bills
@@ -10900,9 +10987,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const thisMonthStr = String(thisMonthNum).padStart(2,"0");
   const thisMonthTotal = allExpenseItems
     .filter(e => e.date?.startsWith(`${yr}-${thisMonthStr}`))
-    .reduce((s,e) => s + Number(e.amount||0), 0) +
-    bills.filter(b => b.bill_date?.startsWith(`${yr}-${thisMonthStr}`))
-    .reduce((s,b) => s + Number(b.amount||0), 0);
+    .reduce((s,e) => s + Number(e.amount||0), 0);
 
   // ── Project status helper ──────────────────────────────────────────────────
   const projStatusStyle = s => ({
@@ -11059,11 +11144,13 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   const isImage=e.file_url&&e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
                   const isPdf=e.file_url&&e.file_url.match(/\.pdf/i);
                   const isServiceLog=e._isServiceLog;
+                  const isBill=e._isBill;
                   const catColor=CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length];
 
                   // Determine where tapping this expense navigates to
                   const getDestination = () => {
                     if (isServiceLog && e._assetId && onOpenAsset) return { label: e._assetName||"Asset", icon:"→", action:()=>onOpenAsset(e._assetId) };
+                    if (isBill) return { label: "Utilities", icon:"→", action:()=>setView("utilities") };
                     if (proj && onNavigate) return { label: proj.name, icon:"→", action:()=>{setView("projects");setSelectedProject(proj.id);} };
                     return null;
                   };
@@ -11074,7 +11161,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       {/* Main row */}
                       <div style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:".9rem 1rem",cursor:dest?"pointer":"default"}}
                         onClick={dest?dest.action:undefined}>
-                        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:isServiceLog?"var(--rust-light)":catColor+"22"}}>{isServiceLog?"⚙️":CAT_ICONS[e.category]||"🔧"}</div>
+                        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:isServiceLog?"var(--rust-light)":isBill?"rgba(35,74,61,.08)":catColor+"22"}}>{isServiceLog?"⚙️":isBill?"⚡":CAT_ICONS[e.category]||"🔧"}</div>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:".2rem"}}>{e.description}</div>
                           <div style={{fontSize:".8rem",color:"#8A8178",display:"flex",gap:".45rem",flexWrap:"wrap",alignItems:"center"}}>
@@ -11086,7 +11173,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                             {isServiceLog&&!e._assetName&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>Asset service</span>}
                             {e.file_url&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>📎 Receipt</span>}
                           </div>
-                          {!isServiceLog&&e.file_url&&(
+                          {!isServiceLog&&!isBill&&e.file_url&&(
                             <div style={{marginTop:".4rem"}} onClick={ev=>ev.stopPropagation()}>
                               {isImage?<img src={e.file_url} alt="Receipt" style={{width:60,height:60,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/>:
                                isPdf?<a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a>:null}
@@ -11098,7 +11185,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                           {/* Show chevron if navigable, else edit/delete */}
                           {dest ? (
                             <span style={{fontSize:".75rem",color:"var(--pine)",fontWeight:700}}>{dest.icon}</span>
-                          ) : !isServiceLog&&(
+                          ) : !isServiceLog&&!isBill&&(
                             <div style={{display:"flex",gap:3}} onClick={ev=>ev.stopPropagation()}>
                               <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Edit</button>
                               <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Delete</button>
@@ -11110,7 +11197,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       {dest && (
                         <div onClick={dest.action} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".45rem 1rem .55rem 3.7rem",background:"rgba(35,74,61,.03)",borderTop:"1px solid var(--cream2)",cursor:"pointer"}}>
                           <span style={{fontSize:".78rem",color:"var(--pine)",fontWeight:600}}>
-                            {isServiceLog ? `View in ${dest.label} service history` : `View in project: ${dest.label}`}
+                            {isServiceLog ? `View in ${dest.label} service history` : isBill ? `View in ${dest.label}` : `View in project: ${dest.label}`}
                           </span>
                           <span style={{fontSize:".8rem",color:"var(--pine)",fontWeight:700}}>→</span>
                         </div>
@@ -13459,9 +13546,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // own useRecallAlerts calls -- so the System Health cards below agree
   // with what those screens show for the same linked asset.
   const { recalls: profileRecallHits } = useRecallAlerts(warranties);
-  // Same high-confidence-only rule as Assets' recalledAssetIds — a brand-only
-  // match shouldn't force asset health into "Needs attention" on its own.
-  const recalledAssetIds = useMemo(() => new Set(profileRecallHits.filter(r => r.recall.confidence === "high").map(r => r.asset.id)), [profileRecallHits]);
+  // Same rule as Assets' recalledAssetIds — any open recall counts, matching
+  // the Dashboard's unfiltered recall feed so status doesn't disagree.
+  const recalledAssetIds = useMemo(() => new Set(profileRecallHits.map(r => r.asset.id)), [profileRecallHits]);
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [streetViewUrl, setStreetViewUrl] = useState(null);
   const [primaryPhotoFailed, setPrimaryPhotoFailed] = useState(false);
@@ -13836,6 +13923,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             planData={planData}
             onCheckout={onCheckout}
             onComplete={() => setShowSetup(false)}
+            onDataRefresh={() => onSwitchProperty?.(propertyId)}
           />
         </div>
       )}
@@ -22602,8 +22690,9 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
   // Only count active, fully-tracked assets — exclude retired items and
   // warranty-only records (they don't have condition/age data worth scoring).
   const activeAssets = (warranties || []).filter(a => !a.retired_at && !a.warranty_only);
-  // High-confidence only — see recalledAssetIds in Assets/Profile for why.
-  const recalledAssetIds = new Set((recalls || []).filter(r => r.recall.confidence === "high").map(r => r.asset.id));
+  // Any open recall counts — matches recalledAssetIds in Assets/Profile,
+  // which in turn matches the Dashboard's unfiltered recall feed.
+  const recalledAssetIds = new Set((recalls || []).map(r => r.asset.id));
   // Same home-age fallback the Assets tab and "My Home" system-age widget
   // use for an asset with no recorded install date -- keeps this score
   // consistent with what those screens show for the same assets.
@@ -22864,7 +22953,7 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
 }
 
 
-function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete, onCheckout }) {
+function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete, onCheckout, onDataRefresh }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Appliances","Review"];
   const LS_KEY = `sw_wizard_${userId}`;
 
@@ -23059,7 +23148,11 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       // Update parent profile state so banner hides immediately without a reload
       if (setProfile) setProfile(prev => ({ ...prev, home_setup_complete: true }));
 
-      const aCount = Object.values(assetChecks).filter(Boolean).length - failedAssets.length;
+      // Exclude assets whose duplicate-resolution choice was "Skip" — the loop
+      // above never inserts/updates them (`if (dup && res === "skip") continue`),
+      // so they shouldn't be counted as "created" in this success message.
+      const skippedDupCount = generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"add_new")==="skip").length;
+      const aCount = Object.values(assetChecks).filter(Boolean).length - failedAssets.length - skippedDupCount;
       const tCount = Object.values(taskChecks).filter(Boolean).length;
       const pCount = Object.values(projectChecks).filter(Boolean).length;
       const msg = `✓ Home profile set up — ${aCount} assets, ${tCount} tasks${pCount ? `, ${pCount} projects` : ""} created`;
@@ -23072,6 +23165,11 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       }
       // Clear saved wizard state
       try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_step"); } catch {}
+      // Refetch the property's data from the DB so My Home / Assets reflect
+      // what was just saved immediately — without this, the parent's
+      // in-memory warranties/tasks/projects arrays still only hold what was
+      // loaded before the wizard ran, so counts look stale until a reload.
+      try { await onDataRefresh?.(); } catch {}
       // Plan choice already happened earlier in onboarding (Step 5), so setup is
       // fully done once assets/tasks/projects are saved.
       onComplete();
@@ -23443,6 +23541,12 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     const selA = generated.assets.filter((_,i)  => assetChecks[i]);
     const selT = generated.tasks.filter((_,i)   => taskChecks[i]);
     const selP = generated.projects.filter((_,i) => projectChecks[i]);
+    // Checked assets whose duplicate-resolution choice is "Skip" are counted
+    // in selA above but save() itself skips inserting/updating them (see its
+    // `if (dup && res === "skip") continue`) — exclude them here too so the
+    // review count matches what actually gets saved.
+    const selASkipped = generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"add_new")==="skip").length;
+    const selACount = selA.length - selASkipped;
 
     const SECTIONS = [
       {
@@ -23638,7 +23742,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
           >
             {saving
               ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up your home…</>
-              : `Save ${selA.length+selT.length+selP.length} items to my home →`}
+              : `Save ${selACount+selT.length+selP.length} items to my home →`}
           </button>
         </div>
       </div>
