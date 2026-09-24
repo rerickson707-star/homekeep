@@ -1,4 +1,4 @@
-// Steadwell v241 — 2026-09-23T00:00:00.000Z
+// Steadwell v242 — 2026-09-24T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8958,6 +8958,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     delete payload._asset;
 
     let savedId = warrantyEditId;
+    // Resolve once up front — used both to skip the duplicate insert below
+    // and to drive the backfill afterward.
+    const linkedAsset = warrantyData.asset_id ? assets.find(a => a.id === warrantyData.asset_id) : null;
 
     if (warrantyEditId) {
       const { error } = await supabase.from("warranties").update(payload).eq("id", warrantyEditId).eq("user_id", userId);
@@ -8965,6 +8968,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         setAssets(assets.map(a => a.id === warrantyEditId ? {...payload, id:warrantyEditId} : a));
         toast("Warranty updated ✓");
       } else { toast("Error saving","error"); return; }
+    } else if (linkedAsset) {
+      // This is a brand-new warranty entry, but the user picked "link to
+      // existing asset" instead of leaving it standalone. Linking means the
+      // warranty info belongs to that asset -- inserting a second
+      // warranty_only row here as well as backfilling the asset (below) was
+      // producing two cards for the same physical item (the real asset, plus
+      // a stray "X (Warranty only)" record pointing back at it). Skip the
+      // insert; the backfill below folds the details into the existing
+      // asset instead.
+      savedId = linkedAsset.id;
     } else {
       const { data, error } = await supabase.from("warranties").insert([payload]).select();
       if (!error && data?.[0]) {
@@ -8975,28 +8988,30 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     }
 
     // ── Direction 2: backfill linked asset with any new info ──────────────
-    if (warrantyData.asset_id) {
-      const linkedAsset = assets.find(a => a.id === warrantyData.asset_id);
-      if (linkedAsset) {
-        const updates = {};
-        // Only write fields the asset is missing and the warranty has
-        if (!linkedAsset.serial_number && warrantyData.serial_number) updates.serial_number = warrantyData.serial_number;
-        if (!linkedAsset.brand         && warrantyData.brand)         updates.brand         = warrantyData.brand;
-        if (!linkedAsset.model         && warrantyData.model)         updates.model         = warrantyData.model;
-        if (!linkedAsset.cost          && warrantyData.cost)          updates.cost          = warrantyData.cost;
-        if (!linkedAsset.expiry_date   && warrantyData.expiry_date)   updates.expiry_date   = warrantyData.expiry_date;
-        if (!linkedAsset.purchase_date && warrantyData.purchase_date) updates.purchase_date = warrantyData.purchase_date;
+    if (linkedAsset) {
+      const updates = {};
+      // Only write fields the asset is missing and the warranty has
+      if (!linkedAsset.serial_number && warrantyData.serial_number) updates.serial_number = warrantyData.serial_number;
+      if (!linkedAsset.brand         && warrantyData.brand)         updates.brand         = warrantyData.brand;
+      if (!linkedAsset.model         && warrantyData.model)         updates.model         = warrantyData.model;
+      if (!linkedAsset.cost          && warrantyData.cost)          updates.cost          = warrantyData.cost;
+      if (!linkedAsset.expiry_date   && warrantyData.expiry_date)   updates.expiry_date   = warrantyData.expiry_date;
+      if (!linkedAsset.purchase_date && warrantyData.purchase_date) updates.purchase_date = warrantyData.purchase_date;
 
-        if (Object.keys(updates).length > 0) {
-          const { error: assetErr } = await supabase.from("warranties")
-            .update(updates)
-            .eq("id", warrantyData.asset_id)
-            .eq("user_id", userId);
-          if (!assetErr) {
-            setAssets(assets.map(a => a.id === warrantyData.asset_id ? {...a, ...updates} : a));
-            toast(`Warranty saved & ${Object.keys(updates).length} field${Object.keys(updates).length>1?"s":""} added to ${linkedAsset.item} ✓`);
-          }
+      if (Object.keys(updates).length > 0) {
+        const { error: assetErr } = await supabase.from("warranties")
+          .update(updates)
+          .eq("id", linkedAsset.id)
+          .eq("user_id", userId);
+        if (!assetErr) {
+          setAssets(assets.map(a => a.id === linkedAsset.id ? {...a, ...updates} : a));
+          toast(`Warranty saved & ${Object.keys(updates).length} field${Object.keys(updates).length>1?"s":""} added to ${linkedAsset.item} ✓`);
         }
+      } else if (!warrantyEditId) {
+        // New entry linked straight to an asset that already had every field
+        // filled in -- nothing to backfill, but still confirm the link so
+        // the save doesn't look like it silently did nothing.
+        toast(`Linked to ${linkedAsset.item} ✓`);
       }
     }
 
@@ -22686,12 +22701,24 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       // 2. Save selected tasks (resolve asset_id from keyToId — falls back to
       // null only when that task's asset itself failed to save above, rather
       // than always saving orphaned, unlinked tasks)
+      // Recurring-interval gating: TaskForm only offers monthly/annually to
+      // Free-plan users (planData.recurring !== "full"), but these
+      // onboarding-generated suggestions are built without any plan
+      // awareness and were being inserted straight to the DB, so a Free
+      // account could end up with weekly/quarterly recurring tasks that the
+      // manual task editor would never let them choose. Downgrade to the
+      // nearest interval Free actually gets, same list TaskForm allows.
+      const canRecurSetup = planData?.recurring === "full";
+      const DOWNGRADE_RECURRING = { daily:"monthly", weekly:"monthly", biweekly:"monthly", quarterly:"annually", "every 6 months":"annually" };
       const TASK_FIELDS = ["title","status","priority","due_date","category","notes","recurring","vendor"];
       const taskRows = generated.tasks
         .filter((_,i) => taskChecks[i])
         .map(({ _assetKey, ...t }) => {
           const base = { user_id: userId, asset_id: keyToId[_assetKey] || null, property_id: profile?.id };
           TASK_FIELDS.forEach(f => { if (t[f] !== undefined) base[f] = t[f]; });
+          if (!canRecurSetup && base.recurring && DOWNGRADE_RECURRING[base.recurring]) {
+            base.recurring = DOWNGRADE_RECURRING[base.recurring];
+          }
           return base;
         });
       if (taskRows.length) {
