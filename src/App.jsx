@@ -1,4 +1,4 @@
-// Steadwell v247 — 2026-09-24T16:15:00.000Z
+// Steadwell v248 — 2026-09-24T19:22:56.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1249,7 +1249,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .onb-bar-fill{height:100%;background:#C16140;transition:width .4s cubic-bezier(.4,0,.2,1)}
 .onb-inner{flex:1;display:flex;flex-direction:column;justify-content:center;padding:5rem 2rem 5rem;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}
 @media(max-width:480px){.onb-inner{padding:5rem 1.4rem 2rem}}
-.onb-wordmark{position:fixed;top:0;left:0;right:0;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.6rem;z-index:9}
+.onb-wordmark{position:fixed;top:0;left:0;right:0;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.6rem;z-index:9;pointer-events:none}
 .onb-wordmark-dot{width:28px;height:28px;background:#234A3D;border-radius:7px;border:1.5px solid rgba(244,237,223,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .onb-wordmark-name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;color:#F4EDDF;letter-spacing:-.2px}
 .onb-step{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,237,223,.38);margin-bottom:1.6rem}
@@ -1702,6 +1702,15 @@ function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
 }
 const wPct = (p,e) => { const start=new Date(p+"T00:00:00"),end=new Date(e+"T00:00:00"),now=new Date(); return Math.min(100,Math.max(0,Math.round(((now-start)/(end-start))*100))); };
 const initials = email => email ? email.substring(0,2).toUpperCase() : "?";
+// Prefer the person's own name over their email for avatar initials — e.g.
+// "Robert Erickson" -> "RE", a single "Robert" -> "RO". Falls back to email
+// initials only when no name is on file yet.
+const nameInitials = (name, email) => {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].substring(0,2).toUpperCase();
+  return initials(email);
+};
 
 // ─── TOAST HOOK ──────────────────────────────────────────────────────────────
 function useToast() {
@@ -2574,6 +2583,13 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   };
   const [saving, setSaving] = useState(false);
 
+  // Same fixed, reused-across-steps overlay as HomeSetupWizard's .setup-screen
+  // — reset scroll on every step change so the new step's heading isn't left
+  // hidden above the fold from the previous step's scroll position.
+  useEffect(() => {
+    document.querySelector(".onb-screen")?.scrollTo(0, 0);
+  }, [step]);
+
   // ── Gift agent detection ───────────────────────────────────────────────────
   const [giftAgent, setGiftAgent]       = useState(null);  // agent row if gift link
   const [giftChecked, setGiftChecked]   = useState(false);
@@ -2585,23 +2601,41 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
     if (giftAgent && chosenPlan === null) setChosenPlan("gift_plus");
   }, [giftAgent]);
 
+  // Answers already given are persisted the same way `step` is above, so that
+  // going back and forth (or a remount from a token refresh / reload mid-flow)
+  // doesn't wipe out what the user already entered on earlier steps.
+  const ONB_DATA_KEY = `sw_onb_data_${session?.user?.id || "anon"}`;
+  const loadOnbData = () => {
+    try { return JSON.parse(sessionStorage.getItem(ONB_DATA_KEY) || "{}"); }
+    catch { return {}; }
+  };
+  const saveOnbData = (patch) => {
+    try { sessionStorage.setItem(ONB_DATA_KEY, JSON.stringify({...loadOnbData(), ...patch})); } catch {}
+  };
+
   // Step 1 — Name
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => loadOnbData().name || "");
 
   // Step 2 — Address
-  const [address, setAddress]         = useState("");
+  const [address, setAddress]         = useState(() => loadOnbData().address || "");
   const [suggestions, setSuggestions] = useState([]);
   const [showSug, setShowSug]         = useState(false);
-  const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound | error
-  const [propertyData, setPropertyData] = useState(null);
+  const [lookupState, setLookupState] = useState(() => loadOnbData().lookupState || "idle"); // idle | loading | found | notfound | error
+  const [propertyData, setPropertyData] = useState(() => loadOnbData().propertyData || null);
   const [suggesting, setSuggesting]   = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState(() => loadOnbData().selectedAddress || "");
   const debounceRef = useRef(null);
   const suggestRef  = useRef(null);
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-  const [goals, setGoals] = useState([]);
+  const [goals, setGoals] = useState(() => loadOnbData().goals || []);
   const toggleGoal = (id) => setGoals(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]);
-  const [hearAbout, setHearAbout] = useState(null);
+  const [hearAbout, setHearAbout] = useState(() => loadOnbData().hearAbout ?? null);
+
+  // Keep the persisted copy in sync as each answer changes.
+  useEffect(() => { saveOnbData({name}); }, [name]);
+  useEffect(() => { saveOnbData({address, selectedAddress, lookupState, propertyData}); }, [address, selectedAddress, lookupState, propertyData]);
+  useEffect(() => { saveOnbData({goals}); }, [goals]);
+  useEffect(() => { saveOnbData({hearAbout}); }, [hearAbout]);
 
   // Step 5 — Plan choice. Declared here (not inside the step-5 render block) because
   // consts declared after an earlier conditional return trigger TDZ collisions once
@@ -2765,7 +2799,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       const { data: existing } = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
       if (existing?.length > 0) { await supabase.from("profiles").update(payload).eq("user_id", uid); }
       else { await supabase.from("profiles").insert([payload]); }
-      try { sessionStorage.removeItem(ONB_STEP_KEY); } catch {}
+      try { sessionStorage.removeItem(ONB_STEP_KEY); sessionStorage.removeItem(ONB_DATA_KEY); } catch {}
 
       // ── Gift redemption: if user came via agent gift link, activate Plus ──
       // This MUST complete before onComplete() below -- onComplete re-fetches
@@ -2843,7 +2877,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       <Wordmark/>
       <div className="onb-inner">
         <div className="onb-step">Step 4 of {TOTAL}</div>
-        <div className="onb-q">One last thing — how did you hear about us?</div>
+        <div className="onb-q">How did you hear about us?</div>
         <div className="onb-hint">Helps us know where to show up for people like you.</div>
         <div className="onb-goals" style={{marginBottom:"1rem"}}>
           {HEAR_ABOUT.map(opt => (
@@ -3125,7 +3159,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         >
           {lookupState === "found" ? "That's my home →" : "Continue →"}
         </button>
-        <button className="onb-back" onClick={() => { resetAddress(); setStep(1); }}>← Back</button>
+        <button className="onb-back" onClick={() => setStep(1)}>← Back</button>
       </div>
     </div>
   );
@@ -3400,7 +3434,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
-function UserMenu({ user, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount }) {
+function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -3412,7 +3446,7 @@ function UserMenu({ user, onSignOut, onFeedback, onExport, onPrivacySettings, on
   return (
     <div className="user-menu" ref={ref} role="navigation" aria-label="User menu">
       <div className="user-btn" onClick={()=>setOpen(o=>!o)}>
-        <span className="user-avatar">{initials(user.email)}</span>
+        <span className="user-avatar">{nameInitials(profile?.name, user.email)}</span>
         <span style={{opacity:.5,fontSize:".7rem"}}>▾</span>
       </div>
       {open && (
@@ -3539,6 +3573,71 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
 const DELETE_ACCOUNT_URL      = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/delete-account";
 const CANCEL_SUBSCRIPTION_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/cancel-subscription";
 
+// ─── NAME + PASSWORD (My Account) ───────────────────────────────────────────
+// Previously there was no way to edit your display name or change your
+// password from within the app at all.
+function NameAndPasswordSection({ profile, setProfile, userId, toast }) {
+  const [name, setName] = useState(profile?.name || "");
+  const [savingName, setSavingName] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
+
+  useEffect(() => { setName(profile?.name || ""); }, [profile?.name]);
+
+  const saveName = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === profile?.name) return;
+    setSavingName(true);
+    const { error } = await supabase.from("profiles").update({ name: trimmed }).eq("id", profile.id).eq("user_id", userId);
+    if (!error) { setProfile(p => ({ ...p, name: trimmed })); toast("Name updated ✓"); }
+    else toast("Could not update name — try again", "error");
+    setSavingName(false);
+  };
+
+  const savePassword = async () => {
+    if (pw1.length < 8) { toast("Password must be at least 8 characters", "error"); return; }
+    if (pw1 !== pw2) { toast("Passwords don't match", "error"); return; }
+    setSavingPw(true);
+    const { error } = await supabase.auth.updateUser({ password: pw1 });
+    if (!error) { toast("Password updated ✓"); setPw1(""); setPw2(""); setShowPw(false); }
+    else toast(error.message || "Could not update password — try again", "error");
+    setSavingPw(false);
+  };
+
+  return (
+    <div style={{padding:"1rem",background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:"1rem"}}>
+      <div style={{fontSize:".78rem",fontWeight:700,color:"#8A8178",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".6rem"}}>Name & Password</div>
+      <div style={{display:"flex",gap:".5rem",marginBottom:showPw?".85rem":0}}>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
+          style={{flex:1,padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
+        <button className="btn btn-ghost btn-sm" disabled={savingName || !name.trim() || name.trim()===profile?.name} onClick={saveName}>
+          {savingName ? "Saving…" : "Save"}
+        </button>
+      </div>
+      {!showPw ? (
+        <button className="btn btn-ghost btn-sm" style={{padding:0,fontSize:".82rem",fontWeight:600,color:"var(--pine)"}} onClick={()=>setShowPw(true)}>
+          Change password
+        </button>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+          <input type="password" value={pw1} onChange={e=>setPw1(e.target.value)} placeholder="New password (min. 8 characters)"
+            style={{padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
+          <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Confirm new password"
+            style={{padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
+          <div style={{display:"flex",gap:".5rem"}}>
+            <button className="btn btn-primary btn-sm" disabled={savingPw || !pw1 || !pw2} onClick={savePassword}>
+              {savingPw ? "Saving…" : "Update password"}
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{setShowPw(false);setPw1("");setPw2("");}}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow, onCheckout, checkoutLoading }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -3644,13 +3743,16 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           {/* Identity card */}
           <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem",background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:"1rem"}}>
             <div style={{width:48,height:48,borderRadius:"50%",background:"var(--pine)",color:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,flexShrink:0}}>
-              {initials(session?.user?.email)}
+              {nameInitials(profile?.name, session?.user?.email)}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{session?.user?.email}</div>
-              {tenureLabel && <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2}}>{tenureLabel}</div>}
+              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.name || session?.user?.email}</div>
+              <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.name ? session?.user?.email : ""}{profile?.name && tenureLabel ? " · " : ""}{tenureLabel}</div>
             </div>
           </div>
+
+          {/* Name + password — editable account basics */}
+          <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} toast={toast}/>
 
           {/* Segmented plan card — native app style */}
           {(() => {
@@ -4189,7 +4291,7 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
           </div>
         )}
       </div>
-      <div className="field"><label>Est. Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} placeholder="0" /></div>
+      <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={data.cost||""} onChange={e=>f("cost",e.target.value===""?"":Math.max(0,Number(e.target.value)))} placeholder="0" /></div>
       <div className="field"><label>Contractor</label>
         <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="DIY or company name"/>
       </div>
@@ -5234,7 +5336,7 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
         </div>
         <div className="field">
           <label>Warranty expires *</label>
-          <input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)}/>
+          <input type="date" min={data.purchase_date||undefined} value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)}/>
         </div>
         <div className="field s2">
           <label>Notes</label>
@@ -5469,7 +5571,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
       <div className="field"><label>Purchase Cost ($)</label><input type="number" value={data.cost||""} onChange={e=>f("cost",e.target.value)} /></div>
       <div className="field"><label>Replacement Cost ($)</label><input type="number" value={data.replacement_cost||""} onChange={e=>f("replacement_cost",e.target.value)} placeholder="Est. today's cost" /></div>
       <div className="field"><label>Expected Lifespan (yrs)</label><input type="number" value={data.lifespan_years||""} onChange={e=>f("lifespan_years",e.target.value)} placeholder="e.g. 20" /></div>
-      <div className="field"><label>Warranty Expiry</label><input type="date" value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
+      <div className="field"><label>Warranty Expiry</label><input type="date" min={data.purchase_date||undefined} value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
       <div className="field"><label>Last Serviced</label><input type="date" value={data.last_serviced||""} onChange={e=>f("last_serviced",e.target.value)} /></div>
       <div className="field s2"><label>Document Location</label><input value={data.document_ref||""} onChange={e=>f("document_ref",e.target.value)} placeholder="e.g. Filing Cabinet, Google Drive" /></div>
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Coverage details, serial numbers, service contacts…" /></div>
@@ -6116,7 +6218,7 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
       <div className="fg">
         <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. HVAC Service Call" /></div>
         <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-        <div className="field"><label>Amount ($)</label><input type="number" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
+        <div className="field"><label>Amount ($)</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value===""?"":Math.max(0,Number(e.target.value)))} placeholder="0" /></div>
         <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
         <div className="field s2"><label>Contractor</label>
           <ContractorPicker value={data.vendor||""} onChange={v=>f("vendor",v)} contractors={contractors} placeholder="Who did the work"/>
@@ -6538,7 +6640,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       <div className="field"><label>Status</label><select value={data.status||"Planning"} onChange={e=>f("status",e.target.value)}>{PROJECT_STATUSES.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Budget ($)</label><input type="number" value={data.budget||""} onChange={e=>f("budget",e.target.value)} placeholder="0" /></div>
       <div className="field"><label>Start Date</label><input type="date" value={data.start_date||""} onChange={e=>f("start_date",e.target.value)} /></div>
-      <div className="field"><label>End Date</label><input type="date" value={data.end_date||""} onChange={e=>f("end_date",e.target.value)} /></div>
+      <div className="field"><label>End Date</label><input type="date" min={data.start_date||undefined} value={data.end_date||""} onChange={e=>f("end_date",e.target.value)} /></div>
       <div className="field s2"><label>Description</label><textarea value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="What work is being done…" /></div>
       <div className="field s2"><label>Contractor</label>
         <ContractorPicker value={data.contractor_name||""} onChange={v=>f("contractor_name",v)} contractors={contractors} placeholder="General contractor or company"/>
@@ -7227,7 +7329,7 @@ function ClaimEntryForm({ data, onChange }) {
 }
 
 // ─── SEARCH BAR ───────────────────────────────────────────────────────────────
-function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], onNavigate, onOpenAsset, onNavigateToTask, onNavigateToExpense }) {
+function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], onNavigate, onOpenAsset, onNavigateToTask, onOpenExpense }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -7293,7 +7395,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
           icon:   "💸",
           label:  e.description,
           sub:    [fmt$(e.amount), e.vendor, e.date ? fmtD(e.date) : null].filter(Boolean).join(" · "),
-          action: () => { onNavigate("expenses"); },
+          action: () => { if (onOpenExpense) onOpenExpense(e.id); else onNavigate("expenses"); },
         })),
     },
     {
@@ -7362,6 +7464,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
         value={q}
         onChange={e=>{ setQ(e.target.value); setOpen(true); }}
         onFocus={()=>{ setOpen(true); setFocused(true); }}
+        onKeyDown={e=>{ if(e.key==="Escape"){ setOpen(false); setFocused(false); setMobileOpen(false); inputRef.current?.blur(); } }}
         placeholder="Search assets, tasks, expenses…"
         aria-label="Search your home data"
       />
@@ -8153,7 +8256,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
   );
 }
 
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup }) {
+function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[] }) {
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
@@ -8212,10 +8315,10 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     tasks: tasks.length > 0,
     expenses: expenses.length > 0,
     email: !!profile?.inbound_email,
-    contractors: serviceLogs.length > 0,
+    contractors: contractors.length > 0,
     insurance: !!profile?.ins_company,
     documents: false, // checked at render via expenses proxy
-    projects: false,  // checked at render via expenses proxy
+    projects: projects.length > 0,
   };
   const usedCount = Object.values(usedFeatures).filter(Boolean).length;
 
@@ -8443,7 +8546,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
               { key:"contractors", icon:"👷", label:"Contractors", action:()=>onNavigate("profile"),    done: usedFeatures.contractors },
               { key:"insurance",   icon:"🛡️", label:"Insurance",   action:()=>onNavigate("profile"),    done: usedFeatures.insurance },
               { key:"expenses",    icon:"💸", label:"Expenses",    action:()=>onNavigate("expenses"),   done: usedFeatures.expenses },
-              { key:"projects",    icon:"🏗️", label:"Projects",    action:()=>onNavigate("expenses"),   done: false },
+              { key:"projects",    icon:"🏗️", label:"Projects",    action:()=>onNavigate("expenses"),   done: usedFeatures.projects },
             ].map(f => (
               <button key={f.key} onClick={f.action}
                 style={{display:"flex",alignItems:"center",gap:".3rem",padding:"4px 10px",borderRadius:20,border:"1.5px solid",borderColor:f.done?"transparent":"var(--stone)",background:f.done?"var(--ok-bg)":"var(--cream)",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}
@@ -8597,11 +8700,13 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
   }, [showCatFilter]);
 
   const save = async () => {
-    if(!editData.title?.trim()) return;
-    // Ensure asset_id is numeric or null
+    if(!editData.title?.trim()) { toast("Please enter a task title","error"); return; }
+    // Ensure asset_id is numeric or null; clamp cost to a non-negative number
+    const cost = editData.cost==="" || editData.cost==null ? null : Math.max(0, Number(editData.cost));
     const payload = {
       ...editData,
       asset_id: editData.asset_id || null,
+      cost,
     };
     if(editId) {
       const {error} = await supabase.from("tasks").update(payload).eq("id",editId).eq("user_id",userId);
@@ -8974,7 +9079,7 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0 }) {
   // Recall-aware health: Dashboard already runs this same hook (it shares
   // the "sw_recall_cache" localStorage cache, so this normally reads that
   // cache rather than re-hitting the CPSC endpoint). Previously an asset's
@@ -8982,7 +9087,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // the detail view showed it, but the list card next to it still said
   // "Healthy" for the same asset.
   const { recalls: recallHits } = useRecallAlerts(assets);
-  const recalledAssetIds = useMemo(() => new Set(recallHits.map(r => r.asset.id)), [recallHits]);
+  // Only a high-confidence (brand + model) match forces "Needs attention" —
+  // a brand-only match is a real risk of a false positive, since two very
+  // different products from the same manufacturer would otherwise both get
+  // flagged. Lower-confidence hits still show up for the user to review
+  // (see the recall list in Profile), they just don't drive asset health.
+  const recalledAssetIds = useMemo(() => new Set(recallHits.filter(r => r.recall.confidence === "high").map(r => r.asset.id)), [recallHits]);
   // Age fallback for assets with no install/purchase date -- same estimate
   // the "My Home" system-age widget already uses (age of the house itself),
   // so a decades-old roof or panel with no recorded install date doesn't
@@ -9008,6 +9118,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [editingTask, setEditingTask] = useState(null);
   const [taskEditData, setTaskEditData] = useState({});
 
+  // Tapping the nav tab you're already on (this tab is always-mounted, so a
+  // plain re-click doesn't remount it) should back out of an asset's detail
+  // view to the list, like tapping a "home" tab normally would.
+  useEffect(() => {
+    if (resetSignal) setSelectedAsset(null);
+  }, [resetSignal]);
+
   // Warranty-only modal state
   const [warrantyModal, setWarrantyModal] = useState(false);
   const [warrantyData, setWarrantyData] = useState({});
@@ -9021,6 +9138,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
   const saveWarranty = async () => {
     if (!warrantyData.item?.trim()) { toast("Item name is required","error"); return; }
+    if (warrantyData.purchase_date && warrantyData.expiry_date && warrantyData.expiry_date < warrantyData.purchase_date) {
+      toast("Warranty expiry can't be before the purchase date","error"); return;
+    }
 
     // Spread warrantyData but convert empty strings to null for typed columns
     const nullify = (v) => (v === "" || v === undefined) ? null : v;
@@ -9051,7 +9171,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       const { error } = await supabase.from("warranties").update(payload).eq("id", warrantyEditId).eq("user_id", userId);
       if (!error) {
         setAssets(assets.map(a => a.id === warrantyEditId ? {...payload, id:warrantyEditId} : a));
-        toast("Warranty updated ✓");
+        // When linked to an asset, the backfill block below shows its own
+        // single confirmation toast — showing this one too was producing
+        // two toasts on one save.
+        if (!linkedAsset) toast("Warranty updated ✓");
       } else { toast("Error saving","error"); return; }
     } else if (linkedAsset) {
       // This is a brand-new warranty entry, but the user picked "link to
@@ -9097,6 +9220,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         // filled in -- nothing to backfill, but still confirm the link so
         // the save doesn't look like it silently did nothing.
         toast(`Linked to ${linkedAsset.item} ✓`);
+      } else {
+        // Editing an existing linked warranty with nothing new to backfill —
+        // the update toast above was suppressed, so confirm here instead.
+        toast("Warranty updated ✓");
       }
     }
 
@@ -9228,6 +9355,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
   const save = async () => {
     if(!editData.item?.trim()) return;
+    if(editData.purchase_date && editData.expiry_date && editData.expiry_date < editData.purchase_date) {
+      toast("Warranty expiry can't be before the purchase date","error"); return;
+    }
     const payload = {
       item:                 editData.item||"",
       category:             editData.category||"",
@@ -9434,7 +9564,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       priority: taskEditData.priority||"Medium",
       due_date: taskEditData.due_date||null,
       notes:    taskEditData.notes||"",
-      cost:     taskEditData.cost ? Number(taskEditData.cost) : null,
+      cost:     taskEditData.cost ? Math.max(0, Number(taskEditData.cost)) : null,
     };
     const {error} = await supabase.from("tasks").update(payload).eq("id",editingTask.id).eq("user_id",userId);
     if (!error) {
@@ -10031,7 +10161,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
                 </select>
               </div>
-              <div className="field"><label>Est. Cost ($)</label><input type="number" value={taskEditData.cost||""} onChange={e=>setTaskEditData(d=>({...d,cost:e.target.value}))} placeholder="0"/></div>
+              <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={taskEditData.cost||""} onChange={e=>setTaskEditData(d=>({...d,cost:e.target.value===""?"":Math.max(0,Number(e.target.value))}))} placeholder="0"/></div>
               <div className="field s2"><label>Notes</label><textarea value={taskEditData.notes||""} onChange={e=>setTaskEditData(d=>({...d,notes:e.target.value}))} placeholder="Details, technician, parts needed…"/></div>
             </div>
           </Modal>
@@ -10505,7 +10635,7 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade }) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress }) {
+function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress, pendingSelectedExpense=null, onClearPendingSelectedExpense }) {
   const { roiData } = useProjectROIData();
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
@@ -10568,10 +10698,25 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const openNew = () => { setEditData({date:localISO()}); setEditId(null); setModal(true); };
   const openEdit = e => { setEditData({...e}); setEditId(e.id); setModal(true); };
 
+  // Jumping here from search (or anywhere else) with a specific expense in
+  // mind should land on that expense — not just whichever tab/view this page
+  // happened to be left on last time.
+  useEffect(() => {
+    if (!pendingSelectedExpense) return;
+    const exp = expenses.find(e => e.id === pendingSelectedExpense);
+    if (exp) {
+      setView("expenses");
+      setSelectedProject(null);
+      openEdit(exp);
+    }
+    onClearPendingSelectedExpense?.();
+  }, [pendingSelectedExpense]);
+
   const save = async () => {
     if(!editData.description?.trim()) return;
     const payload = pickExpense(editData);
     if(!payload.project_id) payload.project_id = null;
+    if(payload.amount!=="" && payload.amount!=null) payload.amount = Math.max(0, Number(payload.amount));
     if(editId) {
       const {error} = await supabase.from("expenses").update(payload).eq("id",editId).eq("user_id",userId);
       if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId,user_id:userId}:e)); toast("Expense updated ✓"); }
@@ -10599,6 +10744,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
   const saveProject = async () => {
     if(!projectEditData.name?.trim()) { toast("Project name is required","error"); return; }
+    if(projectEditData.start_date && projectEditData.end_date && projectEditData.end_date < projectEditData.start_date) {
+      toast("End date can't be before the start date","error"); return;
+    }
     const payload = pickProject(projectEditData);
     if(projectEditId) {
       const {error} = await supabase.from("projects").update(payload).eq("id",projectEditId).eq("user_id",userId);
@@ -10831,7 +10979,10 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             const slotW=barAreaW/12;
             const barW=Math.max(slotW*0.62,14);
             const mag=Math.pow(10,Math.floor(Math.log10(maxMonth)));
-            const niceMax=Math.ceil(maxMonth/(mag/2))*(mag/2)||1;
+            // Minimum of 4 keeps the 4 quarter-gridlines (0/25/50/75/100%) from
+            // rounding to duplicate dollar labels when spending is tiny or zero
+            // (e.g. maxMonth=1 used to produce "$1,$1,$1,$0,$0").
+            const niceMax=Math.max(Math.ceil(maxMonth/(mag/2))*(mag/2)||1, 4);
             const fmtY=v=>v===0?"$0":v>=1000?`$${(v/1000)%1===0?(v/1000):(v/1000).toFixed(1)}k`:`$${v}`;
             const font="'Hanken Grotesk',Arial,sans-serif";
             return (
@@ -13308,7 +13459,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // own useRecallAlerts calls -- so the System Health cards below agree
   // with what those screens show for the same linked asset.
   const { recalls: profileRecallHits } = useRecallAlerts(warranties);
-  const recalledAssetIds = useMemo(() => new Set(profileRecallHits.map(r => r.asset.id)), [profileRecallHits]);
+  // Same high-confidence-only rule as Assets' recalledAssetIds — a brand-only
+  // match shouldn't force asset health into "Needs attention" on its own.
+  const recalledAssetIds = useMemo(() => new Set(profileRecallHits.filter(r => r.recall.confidence === "high").map(r => r.asset.id)), [profileRecallHits]);
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [streetViewUrl, setStreetViewUrl] = useState(null);
   const [primaryPhotoFailed, setPrimaryPhotoFailed] = useState(false);
@@ -14821,6 +14974,14 @@ function generateHomeProfile(answers) {
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
+  // Short label for a free-text setup note — previously the whole note was
+  // used verbatim as the asset's name (item), which could run to a full
+  // sentence or more. The full text is still kept in the asset's notes field.
+  const noteAssetName = (text) => {
+    const t = text.trim();
+    return t.length <= 40 ? t : t.slice(0, 40).trimEnd() + "…";
+  };
+
   // Estimated install year from age bracket
   // Estimate an install_date (ISO string) from an age bracket the user selected.
   // Uses Jan 1 of the midpoint year as a reasonable default — exact day is unknown,
@@ -15055,10 +15216,10 @@ function generateHomeProfile(answers) {
   if (hvac?.notes?.trim()) {
     assets.push({
       _key:      "hvac_custom",
-      item:      hvac.notes.trim(),
+      item:      noteAssetName(hvac.notes),
       category:  "HVAC",
       condition: "Good",
-      notes:     "Added from home setup — review and add maintenance tasks manually",
+      notes:     `${hvac.notes.trim()} — added from home setup, review and add maintenance tasks manually`,
     });
   }
 
@@ -15215,10 +15376,10 @@ function generateHomeProfile(answers) {
   if (water?.notes?.trim()) {
     assets.push({
       _key:      "water_custom",
-      item:      water.notes.trim(),
+      item:      noteAssetName(water.notes),
       category:  "Plumbing",
       condition: "Good",
-      notes:     "Added from home setup — review and add maintenance tasks manually",
+      notes:     `${water.notes.trim()} — added from home setup, review and add maintenance tasks manually`,
     });
   }
 
@@ -15411,16 +15572,20 @@ function generateHomeProfile(answers) {
   if (structure?.notes?.trim()) {
     assets.push({
       _key:      "structure_custom",
-      item:      structure.notes.trim(),
+      item:      noteAssetName(structure.notes),
       category:  "Structure",
       condition: "Good",
-      notes:     "Added from home setup — review and add maintenance tasks manually",
+      notes:     `${structure.notes.trim()} — added from home setup, review and add maintenance tasks manually`,
     });
   }
 
   // ── EXTRAS ───────────────────────────────────────────────────────────────────
 
   if (extras?.hasPool) {
+    // Only treat chemistry as known when the step was actually answered —
+    // previously "not saltwater" (including never-answered) silently
+    // rendered as "Chlorine" even when the question was skipped.
+    const chemistryKnown = extras.poolChemistry === "saltwater" || extras.poolChemistry === "chlorine";
     const isSalt   = extras.poolChemistry === "saltwater";
     const hasPool  = extras.poolType !== "hot_tub";
     const hasTub   = extras.poolType === "hot_tub" || extras.poolType === "both";
@@ -15429,9 +15594,9 @@ function generateHomeProfile(answers) {
     utilSet.add("Water"); // pools evaporate and need refilling
 
     if (hasPool) {
-      const poolLabel = `Swimming Pool (${isSalt ? "Saltwater" : "Chlorine"})`;
+      const poolLabel = chemistryKnown ? `Swimming Pool (${isSalt ? "Saltwater" : "Chlorine"})` : "Swimming Pool";
       addAsset("pool", poolLabel, "Other", {
-        notes: `Pool type: ${isSalt ? "saltwater" : "chlorine"} · ${extras.poolType === "both" ? "with hot tub" : "pool only"}`,
+        notes: `Pool type: ${chemistryKnown ? (isSalt ? "saltwater" : "chlorine") : "not specified"} · ${extras.poolType === "both" ? "with hot tub" : "pool only"}`,
       });
 
       addTask("pool", "Test and balance pool chemistry", "weekly", {
@@ -15603,10 +15768,10 @@ function generateHomeProfile(answers) {
   if (extras?.notes?.trim()) {
     assets.push({
       _key:      "extras_custom",
-      item:      extras.notes.trim(),
+      item:      noteAssetName(extras.notes),
       category:  "Other",
       condition: "Good",
-      notes:     "Added from home setup — review and add maintenance tasks manually",
+      notes:     `${extras.notes.trim()} — added from home setup, review and add maintenance tasks manually`,
     });
   }
 
@@ -15698,10 +15863,10 @@ function generateHomeProfile(answers) {
   if (appliances?.notes?.trim()) {
     assets.push({
       _key: "appliances_custom",
-      item: appliances.notes.trim(),
+      item: noteAssetName(appliances.notes),
       category: "Appliance",
       condition: "Good",
-      notes: "Added from home setup — add maintenance tasks manually",
+      notes: `${appliances.notes.trim()} — added from home setup, add maintenance tasks manually`,
     });
   }
 
@@ -15709,10 +15874,10 @@ function generateHomeProfile(answers) {
   if (custom?.trim()) {
     assets.push({
       _key:      "custom_freeform",
-      item:      custom.trim(),
+      item:      noteAssetName(custom),
       category:  "Other",
       condition: "Good",
-      notes:     "Added from home setup questionnaire — add specific maintenance tasks manually",
+      notes:     `${custom.trim()} — added from home setup questionnaire, add specific maintenance tasks manually`,
     });
   }
 
@@ -16644,6 +16809,8 @@ export default function App() {
   const [pendingNewAsset, setPendingNewAsset] = useState(null); // {category, item} — pre-fill new asset form
   const [pendingWarrantyTracker, setPendingWarrantyTracker] = useState(false);
   const [pendingSelectedAsset, setPendingSelectedAsset] = useState(null);
+  const [pendingSelectedExpense, setPendingSelectedExpense] = useState(null);
+  const [assetsResetSignal, setAssetsResetSignal] = useState(0);
   const [showWarrantyModule, setShowWarrantyModule] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -17107,9 +17274,12 @@ export default function App() {
               setTab("warranties");
             }}
             onNavigateToTask={()=>setTab("tasks")}
-            onNavigateToExpense={()=>setTab("expenses")}
+            onOpenExpense={(id)=>{
+              setPendingSelectedExpense(id);
+              setTab("expenses");
+            }}
           />
-          <UserMenu user={session.user} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
+          <UserMenu user={session.user} profile={profile} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
         </header>
 
         {/* ── Bounce banner — takes priority over the softer verify banner, since a bounce means
@@ -17301,10 +17471,10 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
-              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal}/></div>
+              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
@@ -17313,7 +17483,7 @@ export default function App() {
         {/* ── Navigation — hidden when Documents is open ── */}
         <nav className="bottom-nav" style={(showDocs||showContractors||showSetup) ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
+            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>{ if(tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
               <span className="bnav-icon" aria-hidden="true">{t.icon}</span>
               <span className="bnav-label">{t.label}</span>
@@ -22432,7 +22602,8 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
   // Only count active, fully-tracked assets — exclude retired items and
   // warranty-only records (they don't have condition/age data worth scoring).
   const activeAssets = (warranties || []).filter(a => !a.retired_at && !a.warranty_only);
-  const recalledAssetIds = new Set((recalls || []).map(r => r.asset.id));
+  // High-confidence only — see recalledAssetIds in Assets/Profile for why.
+  const recalledAssetIds = new Set((recalls || []).filter(r => r.recall.confidence === "high").map(r => r.asset.id));
   // Same home-age fallback the Assets tab and "My Home" system-age widget
   // use for an asset with no recorded install date -- keeps this score
   // consistent with what those screens show for the same assets.
@@ -22706,6 +22877,14 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     setStepRaw(n);
     try { localStorage.setItem(LS_KEY + "_step", String(n)); } catch {}
   };
+
+  // The fixed-position .setup-screen overlay is reused across steps (same
+  // node, new content), so its scroll position carried over from whatever
+  // step came before — leaving the new step's heading scrolled off the top.
+  // Reset it to the top every time the step actually changes.
+  useEffect(() => {
+    document.querySelector(".setup-screen")?.scrollTo(0, 0);
+  }, [step]);
 
   const DEFAULT_A = {
     hvac:      { hasCentralAC:null, acType:null, acAge:null, hasFurnace:null, furnaceFuel:null, furnaceAge:null, hasHumidifier:null, notes:"" },
@@ -23196,8 +23375,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     <div className="setup-screen">
       <Progress/><Wordmark/>
       <div className="setup-inner">
-      <StepHeader stepNum={5} title="Appliances" hint="Tell us about your major appliances and we'll track maintenance."/>
-      <div className="setup-hint">Tell us about your major appliances. We'll track their age and create maintenance reminders. Skip anything you don't have.</div>
+      <StepHeader stepNum={5} title="Appliances" hint="Tell us about your major appliances. We'll track their age and create maintenance reminders. Skip anything you don't have."/>
 
       <div>
         <div className="setup-label">Refrigerator</div>
@@ -23366,7 +23544,9 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
                             <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(244,237,223,.3)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>Add details — optional</div>
                             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".35rem"}}>
                               {[{k:"brand",ph:"Brand"},{k:"model",ph:"Model #"},{k:"serial",ph:"Serial #"},{k:"year",ph:"Year"},{k:"vendor",ph:"Purchased from"}].map(({k,ph})=>(
-                                <input key={k} value={det[k]||""} onChange={e=>setDetail(i,k,e.target.value)} placeholder={ph}
+                                <input key={k} value={det[k]||""}
+                                  onChange={e=>setDetail(i,k,k==="year"?e.target.value.replace(/\D/g,"").slice(0,4):e.target.value)}
+                                  placeholder={ph} inputMode={k==="year"?"numeric":undefined} maxLength={k==="year"?4:undefined}
                                   className="setup-free" style={{padding:".38rem .65rem",fontSize:".76rem",borderRadius:"9px",gridColumn:k==="vendor"?"1 / -1":undefined}}/>
                               ))}
                             </div>
