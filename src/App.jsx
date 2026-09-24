@@ -1,4 +1,4 @@
-// Steadwell v242 — 2026-09-24T00:00:00.000Z
+// Steadwell v247 — 2026-09-24T16:15:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2088,7 +2088,7 @@ function LandingPage({ onSignIn, onSignUp }) {
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>,
       title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home’s systems.", tag: "Free",
-      drawer: "Set recurring tasks for HVAC filters, gutter cleaning, smoke detector tests, and more. Get email reminders 3 days before anything is due. On Plus, unlock all recurrence intervals including monthly, quarterly, and seasonal schedules.",
+      drawer: "Set recurring tasks for HVAC filters, smoke detector tests, and more — monthly or annual repeats, free on every plan. Get email reminders 3 days before anything is due. On Plus, unlock every interval — weekly, biweekly, quarterly, and every 6 months — for tighter-cadence jobs like gutter cleaning, pest control, and pool care.",
       drawerCta: "Free on all plans · Full intervals on Plus →",
       href: "/home-maintenance-tracker",
     },
@@ -2592,7 +2592,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   const [address, setAddress]         = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSug, setShowSug]         = useState(false);
-  const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound
+  const [lookupState, setLookupState] = useState("idle"); // idle | loading | found | notfound | error
   const [propertyData, setPropertyData] = useState(null);
   const [suggesting, setSuggesting]   = useState(false);
   const [selectedAddress, setSelectedAddress] = useState("");
@@ -2698,16 +2698,44 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   }, []);
 
   // All function declarations before any conditional return (TDZ safety in minified output)
-  const selectSuggestion = async (s) => {
-    const addr = s.description;
-    setAddress(addr); setSelectedAddress(addr);
-    setSuggestions([]); setShowSug(false); setSuggesting(false);
+  const runAddressLookup = async (addr) => {
     setLookupState("loading");
     try {
       const result = await lookupProperty(addr);
       if (result) { setPropertyData(result); setLookupState("found"); }
       else setLookupState("notfound");
-    } catch { setLookupState("notfound"); }
+    } catch (err) {
+      // A thrown error means the lookup itself failed (timeout, network
+      // drop, edge function error) -- genuinely different from a clean "no
+      // match" result. Collapsing both into "notfound" told the user "we
+      // looked and there's nothing" when the truth was "the lookup never
+      // finished," with no way to tell the difference or retry. Keep them
+      // separate so a real failure says so and offers a retry instead of
+      // quietly resolving to the same "nothing here" copy.
+      console.error("Property lookup failed:", err?.message);
+      setLookupState("error");
+    }
+  };
+
+  const selectSuggestion = async (s) => {
+    const addr = s.description;
+    setAddress(addr); setSelectedAddress(addr);
+    setSuggestions([]); setShowSug(false); setSuggesting(false);
+    await runAddressLookup(addr);
+  };
+
+  // Continuing from the address step used to just call setStep(3) -- if the
+  // user typed a full address but pressed Continue without ever clicking a
+  // suggestion from the dropdown, lookupState was still "idle" and no
+  // lookup had run at all, so they'd move on with a bare typed string and
+  // none of the auto-filled property data. Run the lookup against what
+  // they typed before advancing, same as picking a suggestion would.
+  const continueFromAddress = () => {
+    if (lookupState === "idle" && address.trim()) {
+      runAddressLookup(address.trim());
+      return;
+    }
+    setStep(3);
   };
 
   const resetAddress = () => {
@@ -3012,7 +3040,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         <div className="onb-q">Where's your home?</div>
         <div className="onb-hint">We'll look up your home's details automatically — year built, square footage, and more.</div>
 
-        {(lookupState === "found" || lookupState === "notfound") ? (
+        {(lookupState === "found" || lookupState === "notfound" || lookupState === "error") ? (
           <div className="onb-addr-pill">
             <span>{selectedAddress || address}</span>
             <button onClick={resetAddress}>Change</button>
@@ -3077,12 +3105,25 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
           </div>
         )}
 
+        {lookupState === "error" && (
+          <div className="onb-notfound">
+            Something went wrong looking up this address.{" "}
+            <button
+              type="button"
+              onClick={() => runAddressLookup(selectedAddress || address)}
+              style={{background:"none",border:"none",padding:0,color:"inherit",textDecoration:"underline",cursor:"pointer",font:"inherit"}}
+            >
+              Try again
+            </button>, or continue and add details manually.
+          </div>
+        )}
+
         <button
           className="onb-btn"
           disabled={!address.trim() || lookupState === "loading" || saving}
-          onClick={() => setStep(3)}
+          onClick={continueFromAddress}
         >
-          {lookupState === "found" ? "That's my home →" : address.trim() ? "Continue →" : "Continue →"}
+          {lookupState === "found" ? "That's my home →" : "Continue →"}
         </button>
         <button className="onb-back" onClick={() => { resetAddress(); setStep(1); }}>← Back</button>
       </div>
@@ -4186,6 +4227,19 @@ const DEFAULT_LIFESPAN = {
   Roofing:25, Plumbing:50, Electrical:40, Structure:50,
   Safety:10, Landscaping:15, "Jewelry & Valuables":50, Outdoor:15, Other:15,
 };
+
+// A handful of items share a broad category with things that age
+// completely differently -- a water heater is filed under "Plumbing" just
+// like copper pipe, but pipe genuinely lasts ~50 years and a water heater
+// lasts a fraction of that (typically 8-12). Category-only lookups were
+// defaulting every water heater to Plumbing's 50-year figure. Checked by
+// item-name keyword before falling back to the plain category default.
+function getDefaultLifespan(asset) {
+  const cat = CAT_NORMALIZE_MAP[asset?.category] || asset?.category || "Other";
+  const text = (asset?.item || "").toLowerCase();
+  if (/water\s*heater|hot\s*water\s*(tank|heater)/.test(text)) return 12;
+  return Number(DEFAULT_LIFESPAN[cat]) || 15;
+}
 const ASSET_ICONS = {
   HVAC:"🌡️", Appliance:"🍳", Electronics:"💻", Vehicle:"🚗", Tools:"🔧",
   Roofing:"🏚️", Plumbing:"🚿", Electrical:"⚡", Structure:"🧱",
@@ -4335,12 +4389,28 @@ const HEALTH_STATES = {
   bad:   { key:"bad",   label:"Needs attention", color:"#B0432B", bg:"#F7E0DA", ring:"#E3B2A6" },
 };
 
-function getAssetHealth(asset, serviceLogs = [], tasks = []) {
+function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
+  const { hasOpenRecall = false, fallbackAgeYears = null } = opts;
   const cat = CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other";
   const installDate = asset.install_date || asset.purchase_date;
-  const ageYears = installDate ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000) : null;
-  const lifespan = Number(asset.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
-  const lifePct = ageYears !== null ? Math.min(100, Math.round((ageYears / lifespan) * 100)) : null;
+  // When the asset itself has no recorded install/purchase date, fall back
+  // to a caller-supplied estimate (e.g. the home's build year) rather than
+  // silently treating age as unknown -- an asset with no install date was
+  // otherwise skipping every age-based check below and defaulting to
+  // "Healthy" regardless of how old it actually is.
+  const ageYears = installDate
+    ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000)
+    : fallbackAgeYears;
+  const lifespan = Number(asset.lifespan_years) || getDefaultLifespan(asset);
+  // A future install date (typo, or a warranty/PO date entered by mistake)
+  // makes ageYears negative -- clamp the displayed percentage to 0 instead
+  // of letting a negative number flow into the "% of lifespan used" bar,
+  // where it was rendering as a full bar instead of an empty one.
+  const lifePct = ageYears !== null ? Math.max(0, Math.min(100, Math.round((ageYears / lifespan) * 100))) : null;
+
+  // An open safety recall outranks everything else -- a recalled item isn't
+  // "Healthy" just because its condition/age/tasks look fine.
+  if (hasOpenRecall) return { ...HEALTH_STATES.bad, reason:"Open safety recall", lifePct, ageYears, lifespan };
 
   if (asset.condition === "Failed") return { ...HEALTH_STATES.bad, reason:"Marked as failed", lifePct, ageYears, lifespan };
   if (asset.condition === "Needs Attention") return { ...HEALTH_STATES.bad, reason:"Marked as needs attention", lifePct, ageYears, lifespan };
@@ -5197,7 +5267,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
     }
   };
   const handleCategory = (cat) => {
-    const updated = {...data, category:cat, lifespan_years: data.lifespan_years || DEFAULT_LIFESPAN[cat] || 15};
+    const updated = {...data, category:cat, lifespan_years: data.lifespan_years || getDefaultLifespan({...data, category:cat})};
     onChange(updated);
     if (draftKey) { try { localStorage.setItem(draftKey, JSON.stringify(updated)); } catch {} }
   };
@@ -8904,7 +8974,22 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset }) {
+  // Recall-aware health: Dashboard already runs this same hook (it shares
+  // the "sw_recall_cache" localStorage cache, so this normally reads that
+  // cache rather than re-hitting the CPSC endpoint). Previously an asset's
+  // health pill here had no idea a recall existed at all -- RecallBadge in
+  // the detail view showed it, but the list card next to it still said
+  // "Healthy" for the same asset.
+  const { recalls: recallHits } = useRecallAlerts(assets);
+  const recalledAssetIds = useMemo(() => new Set(recallHits.map(r => r.asset.id)), [recallHits]);
+  // Age fallback for assets with no install/purchase date -- same estimate
+  // the "My Home" system-age widget already uses (age of the house itself),
+  // so a decades-old roof or panel with no recorded install date doesn't
+  // default to "Healthy" here while that widget correctly flags it as aging.
+  const homeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
+  const health = (a) => getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge });
+
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
   const [editId, setEditId] = useState(null);
@@ -9367,13 +9452,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   let list = showRetired ? [...retiredAssets] : [...activeAssets];
   if (!showRetired) {
     if(filter==="Warranty Active")    list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
-    else if(filter==="Needs attention") list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="bad"||h.key==="due"; });
-    else if(filter==="Healthy")       list = list.filter(a=>{ const h=getAssetHealth(a,serviceLogs,tasks); return h.key==="ok"; });
+    else if(filter==="Needs attention") list = list.filter(a=>{ const h=health(a); return h.key==="bad"||h.key==="due"; });
+    else if(filter==="Healthy")       list = list.filter(a=>{ const h=health(a); return h.key==="ok"; });
   }
   list = list.sort((a,b)=>(a.item||"").localeCompare(b.item||""));
 
-  // Health summary — counts across ALL assets (not the filtered list)
-  const healthCounts = assets.reduce((acc,a)=>{ const h=getAssetHealth(a,serviceLogs,tasks); acc[h.key]=(acc[h.key]||0)+1; return acc; },{});
+  // Health summary — counts across all ACTIVE assets (not the filtered list,
+  // and not retired ones -- a retired asset's last-known health shouldn't
+  // still count toward "All N systems are in good shape").
+  const healthCounts = activeAssets.reduce((acc,a)=>{ const h=health(a); acc[h.key]=(acc[h.key]||0)+1; return acc; },{});
   const okCount    = healthCounts.ok    || 0;
   const headsCount = healthCounts.heads || 0;
   const dueCount   = healthCounts.due   || 0;
@@ -9397,9 +9484,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const assetLogs = serviceLogs.filter(s => s.asset_id === asset.id).sort((a,b)=>new Date(b.service_date)-new Date(a.service_date));
     const assetTasks = (tasks||[]).filter(t => t.asset_id === asset.id);
     const installDate = asset.install_date || asset.purchase_date;
-    const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
-    const lifespanYears = Number(asset.lifespan_years || DEFAULT_LIFESPAN[asset.category] || 15);
-    const lifespanPct = ageYears !== null ? Math.min(100, Math.round((ageYears/lifespanYears)*100)) : null;
+    // Reuse getAssetHealth's own age/lifespan math (below) instead of a
+    // second, separately-drifting copy of it -- this copy was using the
+    // bare category default (Plumbing -> 50yr for a water heater) instead
+    // of the water-heater-aware getDefaultLifespan(), and displayed a
+    // future install date's negative age as-is ("-4yr old") instead of
+    // clamping it to 0.
+    const health = getAssetHealth(asset, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(asset.id), fallbackAgeYears: homeAge });
+    const ageYears = health.ageYears !== null ? Math.max(0, Math.floor(health.ageYears)) : null;
+    const lifespanYears = health.lifespan;
+    const lifespanPct = health.lifePct;
     const warrantyDays = asset.expiry_date ? daysTo(asset.expiry_date) : null;
     const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
     const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
@@ -9407,7 +9501,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
     const catColor = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Other;
     const supportUrl = (() => { const m = (asset.notes||"").match(/Support: (https?:\/\/\S+)/); return m?m[1]:null; })();
-    const health = getAssetHealth(asset, serviceLogs, tasks);
     const hasManualLink = asset.document_ref?.startsWith("http");
     const hasUploadedDoc = asset.document_ref && !asset.document_ref.startsWith("http");
 
@@ -9977,23 +10070,23 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       </div>
 
       {/* Home health hero */}
-      {assets.length > 0 && (
+      {activeAssets.length > 0 && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",borderRadius:"var(--r)",padding:"1.2rem 1.25rem",marginBottom:"1.1rem",color:"#fff",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
           <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700,marginBottom:".5rem"}}>Home health</div>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,lineHeight:1.25,marginBottom:"1rem"}}>
             {attentionCount===0 ? (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {assets.length}</b> of your systems are in good shape.</>
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {activeAssets.length}</b> of your systems are in good shape.</>
             ) : (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {assets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}</>
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {activeAssets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}</>
             )}
           </div>
           {/* Stacked health bar */}
           <div style={{display:"flex",height:10,borderRadius:6,overflow:"hidden",background:"rgba(255,255,255,.12)",marginBottom:".85rem"}}>
-            {okCount>0    && <span style={{width:`${(okCount/assets.length)*100}%`,background:"#3E7D5A"}}/>}
-            {headsCount>0 && <span style={{width:`${(headsCount/assets.length)*100}%`,background:"#D9A93E"}}/>}
-            {dueCount>0   && <span style={{width:`${(dueCount/assets.length)*100}%`,background:"#C16140"}}/>}
-            {badCount>0   && <span style={{width:`${(badCount/assets.length)*100}%`,background:"#B0432B"}}/>}
+            {okCount>0    && <span style={{width:`${(okCount/activeAssets.length)*100}%`,background:"#3E7D5A"}}/>}
+            {headsCount>0 && <span style={{width:`${(headsCount/activeAssets.length)*100}%`,background:"#D9A93E"}}/>}
+            {dueCount>0   && <span style={{width:`${(dueCount/activeAssets.length)*100}%`,background:"#C16140"}}/>}
+            {badCount>0   && <span style={{width:`${(badCount/activeAssets.length)*100}%`,background:"#B0432B"}}/>}
           </div>
           {/* Legend */}
           <div style={{display:"flex",gap:"1.1rem",flexWrap:"wrap"}}>
@@ -10006,9 +10099,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       )}
 
       {/* Filter chips — health vocabulary */}
-      {assets.length > 0 && (
+      {activeAssets.length > 0 && (
         <div className="toolbar" style={{marginBottom:".9rem"}}>
-          {[["All",assets.length],["Needs attention",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
+          {[["All",activeAssets.length],["Needs attention",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
             <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>
               {f}{count!==null && count!==undefined ? ` ${count}` : ""}
             </button>
@@ -10123,10 +10216,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               }
 
               // ── Full asset card ────────────────────────────────────────────
-              const health = getAssetHealth(a, serviceLogs, tasks);
+              const health = getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge });
               const installDate = a.install_date || a.purchase_date;
-              const ageYears = installDate ? Math.floor((new Date()-new Date(installDate+"T00:00:00"))/(365.25*86400000)) : null;
-              const lifespanYears = health.lifespan || Number(a.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
+              // Clamped to 0 -- a future install date (typo or wrong date
+              // picked) otherwise displayed as e.g. "-4yr old".
+              const ageYears = health.ageYears !== null ? Math.max(0, Math.floor(health.ageYears)) : null;
+              const lifespanYears = health.lifespan;
               const lifespanPct = health.lifePct;
               const assetLogs = serviceLogs.filter(s => s.asset_id === a.id).sort((x,y)=>new Date(y.service_date)-new Date(x.service_date));
               const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
@@ -13209,6 +13304,11 @@ function RecallCheckPanel({ warranties }) {
 
 function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const { roiData } = useProjectROIData();
+  // Shares the "sw_recall_cache" localStorage cache with Dashboard/Assets'
+  // own useRecallAlerts calls -- so the System Health cards below agree
+  // with what those screens show for the same linked asset.
+  const { recalls: profileRecallHits } = useRecallAlerts(warranties);
+  const recalledAssetIds = useMemo(() => new Set(profileRecallHits.map(r => r.asset.id)), [profileRecallHits]);
   const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const [streetViewUrl, setStreetViewUrl] = useState(null);
   const [primaryPhotoFailed, setPrimaryPhotoFailed] = useState(false);
@@ -13480,36 +13580,37 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     {name:"Plumbing",             icon:"🛠️", lifespan:50, ageNote:"40–70 year lifespan", categories:["Plumbing"],    keywords:["plumbing","pipe"]},
   ];
 
+  // Maps getAssetHealth()'s ok/heads/due/bad vocabulary onto this widget's
+  // own ok/warn/alert one, so a linked asset gets the exact same verdict
+  // here as it does in Assets/Dashboard -- this used to run entirely
+  // separate age/condition math (no overdue-task or recall check at all),
+  // which is why the same HVAC unit could be "Needs attention" here and
+  // "Healthy" everywhere else.
+  const HEALTH_KEY_TO_ALERT_STATUS = { ok:"ok", heads:"warn", due:"warn", bad:"alert" };
   const systemAlerts = homeAge ? SYSTEMS.map(s => {
-    // Try to find a matching asset — check category and item name keywords
-    const linkedAsset = warranties.find(a => {
-      const catMatch = s.categories.includes(a.category);
-      const nameMatch = s.keywords.some(kw => a.item?.toLowerCase().includes(kw));
-      return catMatch || nameMatch;
-    }) || null;
+    // Match by item-name keyword first, and only fall back to a bare
+    // category match when no asset's name fits. Several distinct assets
+    // share one broad category (a water heater and a water softener are
+    // both "Plumbing"), so a category-only match could grab the wrong one
+    // -- e.g. the "Water Heater" card matching the softener instead (which
+    // has no install date), showing the home's age as a fallback instead
+    // of the water heater's own, correctly-given install year.
+    const linkedAsset = warranties.find(a => !a.retired_at && s.keywords.some(kw => a.item?.toLowerCase().includes(kw)))
+      || warranties.find(a => !a.retired_at && s.categories.includes(a.category))
+      || null;
 
     let ageYears, status, detail, fromAsset;
 
     if (linkedAsset) {
-      // Use actual asset data
+      // Same shared health function used everywhere else, with the home's
+      // age as the fallback when the asset itself has no install date.
+      const health = getAssetHealth(linkedAsset, serviceLogs, tasks, {
+        hasOpenRecall: recalledAssetIds.has(linkedAsset.id),
+        fallbackAgeYears: homeAge,
+      });
       const installDate = linkedAsset.install_date || linkedAsset.purchase_date;
-      ageYears = installDate
-        ? Math.floor((new Date() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000))
-        : homeAge;
-      const lifespan = Number(linkedAsset.lifespan_years || s.lifespan);
-      const pct = ageYears / lifespan;
-
-      // Condition overrides age calculation
-      if (linkedAsset.condition === "Good") {
-        status = "ok";
-      } else if (linkedAsset.condition === "Failed") {
-        status = "alert";
-      } else if (linkedAsset.condition === "Needs Attention") {
-        status = "warn";
-      } else {
-        status = pct >= 1 ? "alert" : pct >= 0.75 ? "warn" : "ok";
-      }
-
+      ageYears = health.ageYears !== null ? Math.floor(health.ageYears) : homeAge;
+      status = HEALTH_KEY_TO_ALERT_STATUS[health.key] || "ok";
       fromAsset = true;
       detail = `${linkedAsset.item}${installDate ? ` · installed ${fmtD(installDate)}` : ""} · ${ageYears}yr old`;
     } else {
@@ -16808,7 +16909,20 @@ export default function App() {
           window.history.replaceState({}, "", "/");
         });
     }
-  }, [session]);
+  // Deliberately keyed on the user id, not the `session` object itself.
+  // supabase-js's onAuthStateChange fires TOKEN_REFRESHED (roughly hourly,
+  // and also on tab refocus if the token was near expiry) with a *new*
+  // session object for the same user, which was re-triggering this entire
+  // effect -- including the stale `profiles` SELECT above. That refetch
+  // could land after HomeSetupWizard's save() had already optimistically
+  // set profile.home_setup_complete=true locally but before its own DB
+  // UPDATE had committed, so the refetch's stale row (home_setup_complete
+  // still false) overwrote the fresh local state, which flipped the
+  // top-level auto-open-wizard effect back on and bounced the user to
+  // Step 1 right after they saved (the "dumped back to Step 1" report).
+  // Keying on the user id means a real sign-in/sign-out still reloads
+  // everything, but a token refresh for the same user no longer does.
+  }, [session?.user?.id]);
 
   // ── Switch active property and reload all scoped data
   const switchProperty = async (propertyId) => {
@@ -17189,7 +17303,7 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
@@ -22311,13 +22425,18 @@ async function checkFileLimit(userId, planData) {
 
 // ─── HEALTH SCORE ENGINE ──────────────────────────────────────────────────────
 // Pure function — returns { score, grade, factors }
-function computeHealthScore(tasks, warranties, profile, serviceLogs=[]) {
+function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=[]) {
   const now = new Date();
   const today = localISO(now);
 
   // Only count active, fully-tracked assets — exclude retired items and
   // warranty-only records (they don't have condition/age data worth scoring).
   const activeAssets = (warranties || []).filter(a => !a.retired_at && !a.warranty_only);
+  const recalledAssetIds = new Set((recalls || []).map(r => r.asset.id));
+  // Same home-age fallback the Assets tab and "My Home" system-age widget
+  // use for an asset with no recorded install date -- keeps this score
+  // consistent with what those screens show for the same assets.
+  const homeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
 
   // Factor 1: Task health (0-100) — penalise overdue/incomplete
   const totalTasks = tasks.length;
@@ -22327,11 +22446,11 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[]) {
     : Math.max(0, 100 - (overdue / totalTasks) * 60 - ((totalTasks - completed) / totalTasks) * 20);
 
   // Factor 2: Asset health (0-100) — reuses the same per-asset logic shown
-  // in the Assets tab (real install_date, lifespan, condition, overdue PM —
-  // not a regex guess against free-text notes).
+  // in the Assets tab (real install_date, lifespan, condition, overdue PM,
+  // open recalls — not a regex guess against free-text notes).
   const ASSET_HEALTH_POINTS = { ok:100, heads:70, due:40, bad:10 };
   const assetScore = activeAssets.length === 0 ? 70 : (() => {
-    const scores = activeAssets.map(a => ASSET_HEALTH_POINTS[getAssetHealth(a, serviceLogs, tasks).key] ?? 50);
+    const scores = activeAssets.map(a => ASSET_HEALTH_POINTS[getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge }).key] ?? 50);
     return scores.reduce((s,v) => s+v, 0) / scores.length;
   })();
 
@@ -22394,7 +22513,7 @@ function computeCostForecast(warranties, years=5) {
 
   activeAssets.forEach(asset => {
     const cat = CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other";
-    const lifespan = Number(asset.lifespan_years || DEFAULT_LIFESPAN[cat] || 15);
+    const lifespan = Number(asset.lifespan_years) || getDefaultLifespan(asset);
     const replaceCost = Number(asset.replacement_cost) || FORECAST_DEFAULT_COST[cat] || 1000;
     if (replaceCost <= 0) return; // skip items with no meaningful replacement cost (e.g. jewelry)
 
@@ -22438,7 +22557,12 @@ function UpgradePrompt({ icon="✨", title, sub, target="plus", onUpgrade }) {
 
 // ─── HEALTH SCORE WIDGET ──────────────────────────────────────────────────────
 function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade, serviceLogs=[] }) {
-  const { score, grade, color, factors } = computeHealthScore(tasks, warranties, profile, serviceLogs);
+  // Shares the "sw_recall_cache" localStorage cache with Dashboard/Assets'
+  // own useRecallAlerts calls, so this normally reads that cache instead of
+  // re-hitting the CPSC endpoint -- keeps the score consistent with what
+  // the Assets tab shows for the same assets.
+  const { recalls } = useRecallAlerts(warranties);
+  const { score, grade, color, factors } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
   const locked = !planData.healthScore;
   const r = 28, C = 2 * Math.PI * r;
   const dash = (score / 100) * C;
