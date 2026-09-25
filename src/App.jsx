@@ -1,4 +1,4 @@
-// Steadwell v249 — 2026-09-24T20:33:48.000Z
+// Steadwell v251 — 2026-09-25T00:36:43.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9432,6 +9432,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       pm_schedule:          editData.pm_schedule ? (typeof editData.pm_schedule === "string" ? editData.pm_schedule : JSON.stringify(editData.pm_schedule)) : "[]",
       maintenance_tip:      editData.maintenance_tip||"",
       upc:                  editData.upc||"",
+      // The form's own "Retire asset" / "Restore" toggle (AssetForm) sets
+      // editData.retired_at locally via the generic field setter, but this
+      // payload never included it — the DB update silently omitted it while
+      // the optimistic local-state merge below still showed it as retired,
+      // so retiring via this form looked like it worked and then reverted
+      // on reload. Persist it like every other field.
+      retired_at:           editData.retired_at || null,
     };
 
     // Smart Fill needs at least brand OR model (model alone is often enough)
@@ -9682,6 +9689,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const ageYears = health.ageYears !== null ? Math.max(0, Math.floor(health.ageYears)) : null;
     const lifespanYears = health.lifespan;
     const lifespanPct = health.lifePct;
+    // No install/purchase date on file -- the age above is standing in with
+    // the home's build year, not this asset's actual age.
+    const ageIsEstimate = !installDate && homeAge != null;
     const warrantyDays = asset.expiry_date ? daysTo(asset.expiry_date) : null;
     const warrantyExpired = warrantyDays !== null && warrantyDays < 0;
     const warrantySoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 90;
@@ -9772,7 +9782,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               {[
                 {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
                 {label:"Replace",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
-                {label:"Age",val:ageYears!==null?`${ageYears} yr${ageYears===1?"":"s"}`:"—"},
+                {label:"Age",val:ageYears!==null?`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"}`:"—"},
               ].map(s=>(
                 <div key={s.label} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:".7rem .5rem",textAlign:"center"}}>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700}}>{s.val}</div>
@@ -9790,6 +9800,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 <div style={{height:8,background:"rgba(255,255,255,.14)",borderRadius:5,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.color==="#3E7D5A"?"#6EE7B7":"#E8825F"}}/>
                 </div>
+                {ageIsEstimate && (
+                  <div onClick={()=>openEdit(asset)} style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginTop:".45rem",cursor:"pointer"}}>
+                    Age is estimated from your home's build year · add install date →
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -10258,23 +10273,23 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       </div>
 
       {/* Home health hero */}
-      {activeAssets.length > 0 && (
+      {systemAssets.length > 0 && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",borderRadius:"var(--r)",padding:"1.2rem 1.25rem",marginBottom:"1.1rem",color:"#fff",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
           <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700,marginBottom:".5rem"}}>Home health</div>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,lineHeight:1.25,marginBottom:"1rem"}}>
             {attentionCount===0 ? (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {activeAssets.length}</b> of your systems are in good shape.</>
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {systemAssets.length}</b> of your systems are in good shape.</>
             ) : (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {activeAssets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}</>
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {systemAssets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}</>
             )}
           </div>
           {/* Stacked health bar */}
           <div style={{display:"flex",height:10,borderRadius:6,overflow:"hidden",background:"rgba(255,255,255,.12)",marginBottom:".85rem"}}>
-            {okCount>0    && <span style={{width:`${(okCount/activeAssets.length)*100}%`,background:"#3E7D5A"}}/>}
-            {headsCount>0 && <span style={{width:`${(headsCount/activeAssets.length)*100}%`,background:"#D9A93E"}}/>}
-            {dueCount>0   && <span style={{width:`${(dueCount/activeAssets.length)*100}%`,background:"#C16140"}}/>}
-            {badCount>0   && <span style={{width:`${(badCount/activeAssets.length)*100}%`,background:"#B0432B"}}/>}
+            {okCount>0    && <span style={{width:`${(okCount/systemAssets.length)*100}%`,background:"#3E7D5A"}}/>}
+            {headsCount>0 && <span style={{width:`${(headsCount/systemAssets.length)*100}%`,background:"#D9A93E"}}/>}
+            {dueCount>0   && <span style={{width:`${(dueCount/systemAssets.length)*100}%`,background:"#C16140"}}/>}
+            {badCount>0   && <span style={{width:`${(badCount/systemAssets.length)*100}%`,background:"#B0432B"}}/>}
           </div>
           {/* Legend */}
           <div style={{display:"flex",gap:"1.1rem",flexWrap:"wrap"}}>
@@ -10413,6 +10428,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               // ── Full asset card ────────────────────────────────────────────
               const health = getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge });
               const installDate = a.install_date || a.purchase_date;
+              // No install/purchase date on file — the age shown (and the
+              // health bar behind it) is only the home's build year standing
+              // in as an estimate. Flag that inline instead of presenting it
+              // as if the asset's actual age were known.
+              const ageIsEstimate = !installDate && homeAge != null;
               // Clamped to 0 -- a future install date (typo or wrong date
               // picked) otherwise displayed as e.g. "-4yr old".
               const ageYears = health.ageYears !== null ? Math.max(0, Math.floor(health.ageYears)) : null;
@@ -10465,8 +10485,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
                       <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                        {[a.brand, a.model, ageYears!==null?`${ageYears} yr${ageYears===1?"":"s"} old`:null].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
+                        {[a.brand, a.model, ageYears!==null?`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old${ageIsEstimate?" (est.)":""}`:null].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
                       </div>
+                      {ageIsEstimate && (
+                        <div onClick={e=>{e.stopPropagation();openEdit(a);}}
+                          style={{fontSize:".68rem",color:"#A8A09A",marginTop:"1px",cursor:"pointer"}}
+                          onMouseEnter={e=>e.currentTarget.style.color="var(--pine)"}
+                          onMouseLeave={e=>e.currentTarget.style.color="#A8A09A"}>
+                          Age is estimated from your home's build year · add install date →
+                        </div>
+                      )}
                     </div>
                     <span style={{display:"inline-flex",alignItems:"center",gap:".4rem",padding:".35rem .7rem",borderRadius:20,fontSize:".82rem",fontWeight:700,flexShrink:0,whiteSpace:"nowrap",background:health.bg,color:health.color}}>
                       <span style={{width:8,height:8,borderRadius:"50%",background:health.color}}/>{health.label}
@@ -10951,13 +10979,14 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const thisYrTotalWithService = thisYrTotal;
   const trend = lastYrTotal > 0 ? ((thisYrTotalWithService - lastYrTotal) / lastYrTotal * 100).toFixed(0) : null;
 
-  // Monthly chart data — current year, ALL sources: expenses + service logs + utility bills
+  // Monthly chart data — current year, ALL sources: expenses + service logs + utility bills.
+  // allExpenseItems already folds bills in (billsAsExpenses), so adding
+  // bills.filter(...) again here was double-counting every bill into the
+  // month it fell in — same mistake as the totals below, just missed here.
   const curMonth = new Date().getMonth();
   const monthlyData = Array.from({length:12},(_,i)=>{
     const m = String(i+1).padStart(2,"0");
-    const expTotal  = allExpenseItems.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
-    const billTotal = bills.filter(b=>b.bill_date?.startsWith(`${yr}-${m}`)).reduce((s,b)=>s+Number(b.amount||0),0);
-    const total = expTotal + billTotal;
+    const total = allExpenseItems.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
     return {month:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i], total, isCur: i===curMonth};
   });
   const maxMonth = Math.max(...monthlyData.map(m=>m.total), 1);
@@ -11105,7 +11134,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                 <div style={{fontSize:"1.1rem",marginBottom:".2rem"}}>🏠</div>
                 <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)"}}>All</div>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(allTotal)}</div>
-                <div style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{expenses.length} items</div>
+                <div style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{allExpenseItems.length} item{allExpenseItems.length!==1?"s":""}</div>
               </div>
               {catData.map(([cat,{total,count}],i)=>(
                 <div key={cat} onClick={()=>setCatF(catF===cat?"All":cat)} style={{flexShrink:0,background:catF===cat?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF===cat?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:90}}>
@@ -12384,9 +12413,34 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   const openNew  = ()    => { setEditData({}); setEditId(null); setModal(true); };
   const openEdit = (c)   => { setEditData({...c}); setEditId(c.id); setModal(true); setSelected(null); };
 
+  // This page replaces <main>'s content in place (it isn't a fresh route),
+  // so it was inheriting whatever scroll position the previously-open tab
+  // was left at — opening already scrolled down, with its own heading cut
+  // off above the fold. Reset to the top whenever it mounts.
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   const save = async () => {
     if (!editData.name?.trim()) { toast("Name is required","error"); return; }
-    const payload = {...editData, user_id:userId};
+    // Phone/email were being saved as literally-typed text ("abc", "notanemail")
+    // and then wired straight into tel:/mailto: links — reject obviously
+    // invalid values instead of storing them.
+    if (editData.phone?.trim() && !/^[0-9+\-.() ]{7,}$/.test(editData.phone.trim())) { toast("Phone number doesn't look valid","error"); return; }
+    if (editData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.email.trim())) { toast("Email doesn't look valid","error"); return; }
+    // Website was being stored verbatim, including non-http(s) schemes like
+    // "javascript:alert(1)" — React blocked that as an href in-app, but the raw
+    // value is still what's stored, and anywhere else it's rendered outside
+    // React's own escaping (PDF home report, emails) it could execute. Only
+    // allow http(s) links; bare domains ("smithhvac.com") get https:// added.
+    let website = editData.website?.trim() || "";
+    if (website) {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(website) && !/^https?:\/\//i.test(website)) {
+        toast("Website must be a valid http:// or https:// link","error");
+        return;
+      }
+      if (!/^https?:\/\//i.test(website)) website = "https://" + website;
+      try { new URL(website); } catch { toast("Website doesn't look like a valid link","error"); return; }
+    }
+    const payload = {...editData, website: website || "", user_id:userId};
     if (editId) {
       const {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
       if (!error) { setContractors(contractors.map(c=>c.id===editId?{...payload,id:editId}:c)); toast("Contractor updated ✓"); }
@@ -13650,11 +13704,13 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const openEditPolicy  = (i)   => { setPolicyData({...additionalPolicies[i]}); setEditPolicyIdx(i); setEditPolicyModal(true); };
   const saveAddPolicy   = async () => {
     if (!policyData.company && !policyData.type) return;
+    if (policyData.premium!=="" && policyData.premium!=null && Number(policyData.premium) < 0) { toast("Premium can't be negative","error"); return; }
     const updated = [...additionalPolicies, {...policyData, id: Date.now()}];
     if (await saveAdditionalPolicies(updated)) { toast("Policy added ✓"); setAddPolicyModal(false); refetchInsuranceDocs(); }
     else toast("Error saving","error");
   };
   const saveEditPolicy  = async () => {
+    if (policyData.premium!=="" && policyData.premium!=null && Number(policyData.premium) < 0) { toast("Premium can't be negative","error"); return; }
     const updated = additionalPolicies.map((p,i) => i===editPolicyIdx ? {...policyData} : p);
     if (await saveAdditionalPolicies(updated)) { toast("Policy updated ✓"); setEditPolicyModal(false); }
     else toast("Error saving","error");
@@ -13774,6 +13830,16 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   };
 
   const saveIns = async () => {
+    // Reject nonsensical numbers before they ever reach the DB — a negative
+    // premium/deductible or a deductible larger than the dwelling coverage
+    // isn't a real policy and was silently accepted (and displayed as
+    // "$-1,200") with no warning.
+    const premiumNum    = insData.ins_premium!=="" && insData.ins_premium!=null ? Number(insData.ins_premium) : null;
+    const deductibleNum = insData.ins_deductible!=="" && insData.ins_deductible!=null ? Number(insData.ins_deductible) : null;
+    const dwellingNum   = insData.ins_dwelling_coverage!=="" && insData.ins_dwelling_coverage!=null ? Number(insData.ins_dwelling_coverage) : null;
+    if (premiumNum!=null && premiumNum < 0) { toast("Annual premium can't be negative","error"); return; }
+    if (deductibleNum!=null && deductibleNum < 0) { toast("Deductible can't be negative","error"); return; }
+    if (deductibleNum!=null && dwellingNum!=null && deductibleNum > dwellingNum) { toast("Deductible can't be larger than the dwelling coverage","error"); return; }
     const insFields = {
       ins_company:            insData.ins_company||"",
       ins_policy_number:      insData.ins_policy_number||"",
@@ -13827,6 +13893,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // which is why the same HVAC unit could be "Needs attention" here and
   // "Healthy" everywhere else.
   const HEALTH_KEY_TO_ALERT_STATUS = { ok:"ok", heads:"warn", due:"warn", bad:"alert" };
+  // Word-boundary match, not a bare substring — "heat" as a plain .includes()
+  // check also matches inside "water heater", which was pulling the Water
+  // Heater asset into the HVAC System row instead of the actual AC unit.
+  const kwMatch = (item, kw) => new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\b`, "i").test(item || "");
   const systemAlerts = homeAge ? SYSTEMS.map(s => {
     // Match by item-name keyword first, and only fall back to a bare
     // category match when no asset's name fits. Several distinct assets
@@ -13835,11 +13905,11 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     // -- e.g. the "Water Heater" card matching the softener instead (which
     // has no install date), showing the home's age as a fallback instead
     // of the water heater's own, correctly-given install year.
-    const linkedAsset = warranties.find(a => !a.retired_at && s.keywords.some(kw => a.item?.toLowerCase().includes(kw)))
+    const linkedAsset = warranties.find(a => !a.retired_at && s.keywords.some(kw => kwMatch(a.item, kw)))
       || warranties.find(a => !a.retired_at && s.categories.includes(a.category))
       || null;
 
-    let ageYears, status, detail, fromAsset;
+    let ageYears, status, detail, fromAsset, ageIsEstimate = false;
 
     if (linkedAsset) {
       // Same shared health function used everywhere else, with the home's
@@ -13852,7 +13922,13 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       ageYears = health.ageYears !== null ? Math.floor(health.ageYears) : homeAge;
       status = HEALTH_KEY_TO_ALERT_STATUS[health.key] || "ok";
       fromAsset = true;
-      detail = `${linkedAsset.item}${installDate ? ` · installed ${fmtD(installDate)}` : ""} · ${ageYears}yr old`;
+      // A linked asset with no install date of its own is still showing the
+      // home's build year standing in for its age (fallbackAgeYears above) —
+      // say so, instead of presenting the estimate as this asset's actual age.
+      ageIsEstimate = !installDate;
+      detail = installDate
+        ? `${linkedAsset.item} · installed ${fmtD(installDate)} · ${ageYears}yr old`
+        : `${linkedAsset.item} · ~${ageYears}yr old (estimated from home age)`;
     } else {
       // Fall back to home age estimate
       const pct = homeAge / s.lifespan;
@@ -13862,7 +13938,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       detail = `${s.ageNote} · estimated from home age (${homeAge}yr)`;
     }
 
-    return {...s, ageYears, status, detail, fromAsset, linkedAsset};
+    return {...s, ageYears, status, detail, fromAsset, ageIsEstimate, linkedAsset};
   }) : [];
 
   // Insurance renewal
@@ -13916,6 +13992,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         <div className="wizard-card" style={{margin:"1rem"}}>
           <HomeSetupWizard
             existingAssets={warranties}
+            existingTasks={tasks}
             profile={profile}
             setProfile={setProfile}
             toast={toast}
@@ -14106,7 +14183,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {!showSetup && (
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1px",background:"var(--stone)",margin:"1rem 0"}}>
           {[
-            {val:warranties.length, lbl:"Assets",       color:"var(--pine)"},
+            {val:warranties.filter(w=>!w.retired_at && !w.warranty_only).length, lbl:"Assets", color:"var(--pine)"},
             {val:activeW,           lbl:"Warranties",   color:"#B8861E"},
             {val:fmt$(totalCost),   lbl:"Invested",     color:"var(--rust)"},
             {val:totalValueAdded > 0 ? fmt$(Math.round(totalValueAdded)) : "—", lbl:"Est. Value Added", color:"var(--ok)"},
@@ -14201,6 +14278,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                   <span style={{fontSize:".75rem",color:s.fromAsset?"#8A8178":"#C2B8AE"}}>{s.detail}</span>
                   {!s.fromAsset && (
                     <span style={{fontSize:".7rem",fontWeight:700,color:"var(--pine)",flexShrink:0,whiteSpace:"nowrap"}}>+ Add real data →</span>
+                  )}
+                  {s.fromAsset && s.ageIsEstimate && (
+                    <span style={{fontSize:".7rem",fontWeight:700,color:"var(--pine)",flexShrink:0,whiteSpace:"nowrap"}}>Add install date →</span>
                   )}
                 </div>
               </div>
@@ -15090,6 +15170,19 @@ function generateHomeProfile(answers) {
     return localISO(d);
   };
 
+  // Due date for a seasonally-named task (e.g. "AC tune-up (spring)",
+  // "... winterization") — the next upcoming occurrence of that season's
+  // start month, not a fixed day-count from whatever day the wizard happens
+  // to run. Without this, running the wizard in September gave a "(spring)"
+  // task a due date in November.
+  const SEASON_START_MO = { spring:2, summer:5, fall:8, winter:11 }; // Mar/Jun/Sep/Dec
+  const nextSeason = (season, daysIntoSeason = 7) => {
+    const mo = SEASON_START_MO[season];
+    let d = new Date(yr, mo, 1 + daysIntoSeason);
+    if (d < now) d = new Date(yr + 1, mo, 1 + daysIntoSeason);
+    return localISO(d);
+  };
+
   // Age urgency helpers
   const isOld  = (age) => age === "16+";
   const isAging= (age) => age === "11-15";
@@ -15159,7 +15252,7 @@ function generateHomeProfile(answers) {
     // Seasonal tune-up
     addTask("hvac_ac", isHeatPump ? "Heat pump seasonal service" : "AC tune-up (spring)", "every 6 months", {
       priority: "Medium",
-      due_date: dueIn(45),
+      due_date: isHeatPump ? dueIn(45) : nextSeason("spring"),
       category: "HVAC",
       notes: "Refrigerant check, coil cleaning, electrical inspection, thermostat calibration",
     });
@@ -15548,52 +15641,55 @@ function generateHomeProfile(answers) {
     );
   }
 
-  // Exterior
-  const extLabels = {
-    brick:        "Brick Exterior",
-    vinyl_siding: "Vinyl Siding",
-    stucco:       "Stucco Exterior",
-    wood:         "Wood Siding",
-    mixed:        "Mixed Exterior",
-  };
-  const extLabel = extLabels[structure?.exteriorType] || "Exterior";
+  // Exterior — only when the user actually answered this (previously
+  // unconditional, so an "Exterior" asset and its "Annual exterior
+  // inspection" task were created even for someone who skipped this
+  // question entirely).
+  if (structure?.exteriorType) {
+    const extLabels = {
+      brick:        "Brick Exterior",
+      vinyl_siding: "Vinyl Siding",
+      stucco:       "Stucco Exterior",
+      wood:         "Wood Siding",
+      mixed:        "Mixed Exterior",
+    };
+    const extLabel = extLabels[structure.exteriorType] || "Exterior";
 
-  addAsset("exterior", extLabel, "Structural", {
-    notes: structure?.exteriorType
-      ? `Material: ${structure.exteriorType.replace(/_/g," ")}`
-      : "Exterior cladding",
-  });
+    addAsset("exterior", extLabel, "Structural", {
+      notes: `Material: ${structure.exteriorType.replace(/_/g," ")}`,
+    });
 
-  const extTaskMap = {
-    wood: {
-      title: "Inspect and re-caulk wood siding — check for rot and peeling paint",
-      notes: "Scrape and repaint any peeling areas. Seal all gaps around windows and trim. Wood typically needs repainting every 5-7 years.",
-    },
-    vinyl_siding: {
-      title: "Clean and inspect vinyl siding",
-      notes: "Power wash from top down. Check for warping, cracks, or loose panels — particularly after storms.",
-    },
-    stucco: {
-      title: "Inspect stucco for cracks and water intrusion",
-      notes: "Even hairline cracks allow moisture infiltration. Seal any cracks with elastomeric caulk before water season.",
-    },
-    brick: {
-      title: "Inspect brick and repoint mortar joints",
-      notes: "Look for spalling, efflorescence (white staining), and mortar crumbling. Tuckpoint deteriorated joints to prevent water damage.",
-    },
-    mixed: {
-      title: "Annual exterior inspection — all materials",
-      notes: "Inspect each material type separately. Pay special attention to transitions where different materials meet.",
-    },
-  };
+    const extTaskMap = {
+      wood: {
+        title: "Inspect and re-caulk wood siding — check for rot and peeling paint",
+        notes: "Scrape and repaint any peeling areas. Seal all gaps around windows and trim. Wood typically needs repainting every 5-7 years.",
+      },
+      vinyl_siding: {
+        title: "Clean and inspect vinyl siding",
+        notes: "Power wash from top down. Check for warping, cracks, or loose panels — particularly after storms.",
+      },
+      stucco: {
+        title: "Inspect stucco for cracks and water intrusion",
+        notes: "Even hairline cracks allow moisture infiltration. Seal any cracks with elastomeric caulk before water season.",
+      },
+      brick: {
+        title: "Inspect brick and repoint mortar joints",
+        notes: "Look for spalling, efflorescence (white staining), and mortar crumbling. Tuckpoint deteriorated joints to prevent water damage.",
+      },
+      mixed: {
+        title: "Annual exterior inspection — all materials",
+        notes: "Inspect each material type separately. Pay special attention to transitions where different materials meet.",
+      },
+    };
 
-  const extTask = extTaskMap[structure?.exteriorType] || { title: "Annual exterior inspection", notes: "" };
-  addTask("exterior", extTask.title, "annually", {
-    priority: "Low",
-    due_date: dueIn(90),
-    category: "Structure",
-    notes: extTask.notes,
-  });
+    const extTask = extTaskMap[structure.exteriorType] || { title: "Annual exterior inspection", notes: "" };
+    addTask("exterior", extTask.title, "annually", {
+      priority: "Low",
+      due_date: dueIn(90),
+      category: "Structure",
+      notes: extTask.notes,
+    });
+  }
 
   // Foundation
   if (structure?.foundationType === "crawlspace") {
@@ -15762,13 +15858,13 @@ function generateHomeProfile(answers) {
     });
     addTask("irrigation", "Irrigation system spring startup and zone check", "annually", {
       priority: "Medium",
-      due_date: dueIn(30),
+      due_date: nextSeason("spring"),
       category: "Landscaping",
       notes: "Inspect all heads for damage and proper coverage. Adjust timer for season. Check backflow preventer.",
     });
     addTask("irrigation", "Irrigation system winterization (blowout)", "annually", {
       priority: "High",
-      due_date: dueIn(180),
+      due_date: nextSeason("fall"),
       category: "Landscaping",
       notes: "Blow out all lines with compressed air before first hard freeze. Failing to winterize will burst lines.",
     });
@@ -17413,13 +17509,26 @@ export default function App() {
             </div>
             <div style={{flex:1,padding:"0 0 3rem"}}>
               {(()=>{
-                const allW  = warranties.filter(w=>w.warranty_only);
+                const allAssetW    = warranties.filter(w=>!w.warranty_only && w.expiry_date);
+                // A warranty-only record shouldn't be double-listed alongside a
+                // real asset that's actually the same physical item — either
+                // because it's formally linked (w.asset_id), or because it
+                // shares an exact item name with a full asset that already has
+                // its own tracked expiry date (the common case when a
+                // warranty-only card and a full asset both ended up named
+                // "Refrigerator"). Without this, the same item could show as
+                // both "Expired" and "Expired asset warranties".
+                const assetItemNames = new Set(allAssetW.map(w => (w.item||"").trim().toLowerCase()).filter(Boolean));
+                const allW  = warranties.filter(w =>
+                  w.warranty_only &&
+                  !(w.asset_id && warranties.find(a=>a.id===w.asset_id)) &&
+                  !assetItemNames.has((w.item||"").trim().toLowerCase())
+                );
                 const active   = allW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; });
                 const urgent   = active.filter(w=>daysTo(w.expiry_date)<=30);
                 const upcoming = active.filter(w=>daysTo(w.expiry_date)>30);
                 const expired  = allW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; });
                 const noDate   = allW.filter(w=>!w.expiry_date);
-                const allAssetW    = warranties.filter(w=>!w.warranty_only && w.expiry_date);
                 const assetActive  = allAssetW.filter(w=>daysTo(w.expiry_date)>=0);
                 const assetExp     = allAssetW.filter(w=>daysTo(w.expiry_date)>=0&&daysTo(w.expiry_date)<=90);
                 const assetExpired = allAssetW.filter(w=>daysTo(w.expiry_date)<0);
@@ -17568,10 +17677,14 @@ export default function App() {
           )}
         </main>
 
-        {/* ── Navigation — hidden when Documents is open ── */}
-        <nav className="bottom-nav" style={(showDocs||showContractors||showSetup) ? {display:"none"} : {}}>
+        {/* ── Navigation — hidden when Documents or the setup wizard is open.
+             Contractors used to hide it too, leaving that page with no way
+             to jump straight to another tab (only "← Back" then re-pick a
+             tab) — keep it visible there and let picking a tab exit
+             Contractors like it would exit any other view. ── */}
+        <nav className="bottom-nav" style={(showDocs||showSetup) ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`bnav-btn ${tab===t.id?"active":""}`} onClick={()=>{ if(tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-label={t.label} aria-current={tab===t.id?"page":undefined}>
+            <button key={t.id} className={`bnav-btn ${(!showContractors&&tab===t.id)?"active":""}`} onClick={()=>{ setShowContractors(false); if(!showContractors&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-label={t.label} aria-current={(!showContractors&&tab===t.id)?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
               <span className="bnav-icon" aria-hidden="true">{t.icon}</span>
               <span className="bnav-label">{t.label}</span>
@@ -22953,7 +23066,7 @@ function CostForecastWidget({ warranties, planData, onUpgrade }) {
 }
 
 
-function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId, planData, onComplete, onCheckout, onDataRefresh }) {
+function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProfile, toast, userId, planData, onComplete, onCheckout, onDataRefresh }) {
   const STEPS = ["HVAC","Water","Structure","Extras","Appliances","Review"];
   const LS_KEY = `sw_wizard_${userId}`;
 
@@ -23027,17 +23140,38 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     ) || null;
   };
 
+  // The wizard only ever checked its OWN generated assets/tasks against each
+  // other (and existing assets) for duplicates — it never checked generated
+  // tasks against tasks the user already has (hand-added, or from a previous
+  // wizard run). Exact-title match (normalized) against any not-yet-completed
+  // existing task, e.g. "Replace HVAC filter" already added by hand.
+  const findDupTask = (task) => {
+    if (!existingTasks.length) return null;
+    const norm = (s) => (s||"").toLowerCase().replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
+    const tn = norm(task.title);
+    if (!tn) return null;
+    return existingTasks.find(et => et.status !== "Completed" && norm(et.title) === tn) || null;
+  };
+
   // Navigate to review — generate output and auto-expand assets
   const goReview = () => {
     const result = generateHomeProfile(A);
     setGenerated(result);
     const ac={}, tc={}, pc={};
     result.assets.forEach((_,i)   => ac[i] = true);
-    result.tasks.forEach((_,i)    => tc[i] = true);
+    // Leave a generated task unchecked by default when a not-yet-completed
+    // task with the same title already exists — e.g. re-running the wizard
+    // (or a hand-added "Replace HVAC filter") was creating an exact second
+    // copy every time, since nothing here ever looked at existing tasks.
+    result.tasks.forEach((t,i)    => tc[i] = !findDupTask(t));
     result.projects.forEach((_,i) => pc[i] = true);
     setAssetChecks(ac); setTaskChecks(tc); setProjectChecks(pc);
     const dr={};
-    result.assets.forEach((a,i) => { if(findDup(a)) dr[i] = "add_new"; });
+    // Pre-fill "skip" (not "add_new") for every duplicate found — this is the
+    // value the Review screen's buttons and save() both start from, so
+    // pre-filling "add_new" here made every unresolved duplicate visually look
+    // deliberately chosen AND silently create a second copy of the asset.
+    result.assets.forEach((a,i) => { if(findDup(a)) dr[i] = "skip"; });
     setDupResolutions(dr);
     setExpanded(null); // don't auto-expand — let user choose
     setStepRaw(5);
@@ -23051,25 +23185,39 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     try {
       const keyToId = {}; // _key → real DB asset id
       const failedAssets = []; // item names that failed to save, for the end-of-save toast
+      // Asset keys whose duplicate-resolution was "Skip" — their tasks must
+      // be skipped too (see the taskRows filter below), otherwise a task
+      // like "Roof inspection" still gets inserted, orphaned, for a roof the
+      // user chose not to add because it already exists.
+      const skippedAssetKeys = new Set();
 
       // 1. Save selected assets
       for (let i = 0; i < generated.assets.length; i++) {
         if (!assetChecks[i]) continue;
         const { _key, ...assetData } = generated.assets[i];
         const dup = findDup(generated.assets[i]);
-        const res = dupResolutions[i] || "add_new";
+        // Default to "skip" (not "add_new") when the user hasn't explicitly chosen a
+        // resolution: wizard answers now persist across re-runs (see LS_KEY above), so a
+        // "Similar exists" match will surface far more often, and silently creating a
+        // duplicate asset is worse than silently skipping one the user meant to keep.
+        const res = dupResolutions[i] || "skip";
         // Merge user-entered details from Review screen
         const det = assetDetails[i] || {};
+        // A hand-typed 4-digit year here (det.year) skips the Assets tab's
+        // own future-date guard entirely — reject a future year rather than
+        // building an install_date from it, same rule as that form.
+        const detYearNum = det.year ? Number(det.year) : null;
+        const detYearValid = detYearNum && detYearNum <= new Date().getFullYear();
         const enriched = {
           ...assetData,
           item:          det.brand ? `${det.brand} ${assetData.item}` : assetData.item,
           model:         det.model  || assetData.model  || "",
           serial_number: det.serial || "",
           vendor:        det.vendor || assetData.vendor || "",
-          install_date:  det.year   ? `${det.year}-01-01` : assetData.install_date,
+          install_date:  detYearValid ? `${det.year}-01-01` : assetData.install_date,
         };
 
-        if (dup && res === "skip") continue;
+        if (dup && res === "skip") { skippedAssetKeys.add(_key); continue; }
         if (dup && res === "update") {
           const notes = [dup.notes, enriched.notes].filter(Boolean).join(" · ");
           const { error: updErr } = await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id).eq("user_id",userId);
@@ -23105,6 +23253,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       const TASK_FIELDS = ["title","status","priority","due_date","category","notes","recurring","vendor"];
       const taskRows = generated.tasks
         .filter((_,i) => taskChecks[i])
+        .filter(t => !skippedAssetKeys.has(t._assetKey))
         .map(({ _assetKey, ...t }) => {
           const base = { user_id: userId, asset_id: keyToId[_assetKey] || null, property_id: profile?.id };
           TASK_FIELDS.forEach(f => { if (t[f] !== undefined) base[f] = t[f]; });
@@ -23151,9 +23300,12 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       // Exclude assets whose duplicate-resolution choice was "Skip" — the loop
       // above never inserts/updates them (`if (dup && res === "skip") continue`),
       // so they shouldn't be counted as "created" in this success message.
-      const skippedDupCount = generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"add_new")==="skip").length;
+      const skippedDupCount = generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"skip")==="skip").length;
       const aCount = Object.values(assetChecks).filter(Boolean).length - failedAssets.length - skippedDupCount;
-      const tCount = Object.values(taskChecks).filter(Boolean).length;
+      // taskRows is exactly what got inserted (already excludes tasks whose
+      // asset was skipped as a duplicate), so use its length rather than the
+      // raw checkbox count.
+      const tCount = taskRows.length;
       const pCount = Object.values(projectChecks).filter(Boolean).length;
       const msg = `✓ Home profile set up — ${aCount} assets, ${tCount} tasks${pCount ? `, ${pCount} projects` : ""} created`;
       toast(msg);
@@ -23163,8 +23315,14 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
       if (setupCompleteWriteFailed) {
         toast("Setup may reopen on next visit — we couldn't confirm it as complete. Your assets and tasks are saved.", "error");
       }
-      // Clear saved wizard state
-      try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_step"); } catch {}
+      // Clear the step tracker only — keep the answers themselves (LS_KEY) so
+      // re-running the wizard later (e.g. after "I've moved" resets
+      // home_setup_complete) starts pre-filled with what was answered last
+      // time instead of blank. Starting blank meant re-answering every
+      // question from scratch, and re-submitting the same systems relies on
+      // the duplicate-detection (Add new/Update/Skip) on the Review step to
+      // avoid creating a second copy of everything.
+      try { localStorage.removeItem(LS_KEY + "_step"); } catch {}
       // Refetch the property's data from the DB so My Home / Assets reflect
       // what was just saved immediately — without this, the parent's
       // in-memory warranties/tasks/projects arrays still only hold what was
@@ -23545,17 +23703,24 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
     // in selA above but save() itself skips inserting/updating them (see its
     // `if (dup && res === "skip") continue`) — exclude them here too so the
     // review count matches what actually gets saved.
-    const selASkipped = generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"add_new")==="skip").length;
+    const selASkipped = generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"skip")==="skip").length;
     const selACount = selA.length - selASkipped;
+    // A task whose asset was skipped as a duplicate never gets inserted
+    // either (save() drops it — see taskRows' skippedAssetKeys filter), so
+    // exclude those here too.
+    const skippedAssetKeysForReview = new Set(
+      generated.assets.filter((a,i) => assetChecks[i] && findDup(a) && (dupResolutions[i]||"skip")==="skip").map(a=>a._key)
+    );
+    const selTCount = selT.filter(t => !skippedAssetKeysForReview.has(t._assetKey)).length;
 
     const SECTIONS = [
       {
-        key:"assets", label:"Assets to track", count:selA.length, total:generated.assets.length,
+        key:"assets", label:"Assets to track", count:selACount, total:generated.assets.length,
         icon:"🏠", sub:"Your home's systems and appliances",
         hint:"Tap any item to include or exclude it. Add details like brand and model number now — or anytime from the Assets tab.",
       },
       {
-        key:"tasks", label:"Maintenance tasks", count:selT.length, total:generated.tasks.length,
+        key:"tasks", label:"Maintenance tasks", count:selTCount, total:generated.tasks.length,
         icon:"✓", sub:"Scheduled reminders and to-dos",
         hint:"All tasks are selected by default. Tap any to remove it. You can always add or edit tasks later from the Tasks tab.",
       },
@@ -23618,7 +23783,11 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
                   {key === "assets" && generated.assets.map((a,i) => {
                     const included = !!assetChecks[i];
                     const dup = findDup(a);
-                    const res = dupResolutions[i] || "add_new";
+                    // Default to "skip" (not "add_new") when the user hasn't explicitly chosen a
+                    // resolution: wizard answers now persist across re-runs (see LS_KEY above), so a
+                    // "Similar exists" match will surface far more often, and silently creating a
+                    // duplicate asset is worse than silently skipping one the user meant to keep.
+                    const res = dupResolutions[i] || "skip";
                     const det = assetDetails[i] || {};
                     return (
                       <div key={i} style={{borderBottom:"1px solid rgba(244,237,223,.06)"}}>
@@ -23683,6 +23852,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
                       {generated.tasks.map((t,i) => {
                         const included = !!taskChecks[i];
                         const priorityColor = t.priority==="Urgent"?"#FF7B5C":t.priority==="High"?"#FFB830":"rgba(244,237,223,.35)";
+                        const dupTask = findDupTask(t);
                         return (
                           <div key={i}
                             onClick={()=>setTaskChecks(c=>({...c,[i]:!c[i]}))}
@@ -23697,6 +23867,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
                                 <span style={{color:priorityColor,fontWeight:600}}>{t.priority}</span>{t.recurring?` · ${t.recurring}`:""} · due {new Date(t.due_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
                               </div>
                             </div>
+                            {dupTask && <span className="hsw-dup-badge" style={{flexShrink:0}}>Already have this</span>}
                           </div>
                         );
                       })}
@@ -23742,7 +23913,7 @@ function HomeSetupWizard({ existingAssets=[], profile, setProfile, toast, userId
           >
             {saving
               ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Setting up your home…</>
-              : `Save ${selACount+selT.length+selP.length} items to my home →`}
+              : `Save ${selACount+selTCount+selP.length} items to my home →`}
           </button>
         </div>
       </div>
