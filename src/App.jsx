@@ -1,4 +1,4 @@
-// Steadwell v252 — 2026-09-25T01:00:30.000Z
+// Steadwell v255 — 2026-09-25T01:37:47.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -194,6 +194,7 @@ const CSS = `
   --r:20px; --r-sm:12px; --r-xs:8px;
   --hdr:62px; --bottom-nav:68px;
   --max:1180px;
+  --sidebar-w:236px;
 }
 
 html{scroll-behavior:smooth}
@@ -255,6 +256,16 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 @media(min-width:769px){.bnav-btn{max-width:140px;flex:0 1 140px;gap:5px}}
 @media(min-width:769px){.bnav-label{font-size:.68rem}}
 @media(min-width:769px){.bnav-icon{font-size:1.25rem}}
+
+/* ══ SIDEBAR NAV (desktop only — see desktop media query below for the
+   breakpoint that actually shows it and hides bottom-nav) ══ */
+.sidebar{display:none;position:fixed;top:var(--hdr);bottom:0;left:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--stone);flex-direction:column;padding:1.5rem 1rem;box-sizing:border-box;z-index:150;overflow-y:auto;gap:2px}
+.sbar-btn{display:flex;align-items:center;gap:.7rem;padding:.65rem .85rem;border-radius:12px;border:none;background:none;cursor:pointer;width:100%;text-align:left;font-family:'Hanken Grotesk',sans-serif;font-size:.88rem;font-weight:600;color:#7A7370;transition:background .15s,color .15s}
+.sbar-btn:hover{background:var(--cream)}
+.sbar-btn.active{background:var(--rust-light);color:var(--rust)}
+.sbar-icon{font-size:1.1rem;width:22px;text-align:center;flex-shrink:0}
+.sbar-badge{margin-left:auto;background:var(--red);color:#fff;border-radius:10px;font-size:.62rem;padding:1px 6px;font-weight:700;flex-shrink:0}
+.sbar-divider{height:1px;background:var(--stone);margin:.6rem .3rem}
 
 /* ══ MAIN ══ */
 .main{flex:1;padding:1.25rem 1rem;max-width:var(--max);margin:0 auto;width:100%;box-sizing:border-box}
@@ -1572,6 +1583,32 @@ img,.lp-root img{max-width:100%;height:auto}
 @media(min-width:1100px){
   .main{padding:1.75rem 2.5rem}
   .hdr{padding:0 2.5rem}
+}
+
+/* Desktop (≥1024px): a real sidebar-nav layout instead of the phone app
+   stretched wide — left sidebar replaces the bottom tab bar, and the main
+   column widens and left-aligns next to it instead of floating centered
+   with empty space on both sides. */
+@media(min-width:1024px){
+  .app{padding-left:var(--sidebar-w);padding-bottom:0}
+  .hdr{padding-left:calc(var(--sidebar-w) + 1.5rem)}
+  .bottom-nav{display:none}
+  .sidebar{display:flex}
+  .main{max-width:1320px;margin:0;padding:2rem 3rem}
+  .toast-wrap{bottom:1.5rem}
+}
+
+/* Assets: a responsive grid on desktop instead of one long stacked column */
+.assets-grid{display:flex;flex-direction:column}
+@media(min-width:900px){.assets-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 1rem}}
+@media(min-width:1300px){.assets-grid{grid-template-columns:repeat(3,1fr)}}
+
+/* Tasks: calendar sits beside the list on desktop instead of stacked above it */
+.tasks-layout{display:flex;flex-direction:column;gap:1rem}
+@media(min-width:1024px){
+  .tasks-layout{flex-direction:row-reverse;align-items:flex-start;gap:1.5rem}
+  .tasks-main{flex:1;min-width:0}
+  .tasks-cal{flex:0 0 380px}
 }
 
 /* Desktop header: more breathing room */
@@ -4485,10 +4522,14 @@ function AssetIcon({ asset, name, size = 24 }) {
 
 // ─── ASSET HEALTH SYSTEM ─────────────────────────────────────────────────────
 const HEALTH_STATES = {
-  ok:    { key:"ok",    label:"Healthy",         color:"#3E7D5A", bg:"#E9F1EA", ring:"#C5DCC9" },
-  heads: { key:"heads", label:"Heads up",        color:"#B8861E", bg:"#FBF3DE", ring:"#EAD9A6" },
-  due:   { key:"due",   label:"Service due",     color:"#C16140", bg:"#F8E8E1", ring:"#E7C3B4" },
-  bad:   { key:"bad",   label:"Needs attention", color:"#B0432B", bg:"#F7E0DA", ring:"#E3B2A6" },
+  ok:        { key:"ok",        label:"Healthy",         color:"#3E7D5A", bg:"#E9F1EA", ring:"#C5DCC9" },
+  heads:     { key:"heads",     label:"Heads up",        color:"#B8861E", bg:"#FBF3DE", ring:"#EAD9A6" },
+  due:       { key:"due",       label:"Service due",     color:"#C16140", bg:"#F8E8E1", ring:"#E7C3B4" },
+  bad:       { key:"bad",       label:"Needs attention", color:"#B0432B", bg:"#F7E0DA", ring:"#E3B2A6" },
+  // A neutral, non-alarming state for an age-based verdict that's only a
+  // guess (the home's build year standing in for an asset with no install
+  // date) rather than a confirmed reading -- see getAssetHealth below.
+  estimated: { key:"estimated", label:"Age unknown",     color:"#8A8178", bg:"#EFEBE4", ring:"#D8D2C7" },
 };
 
 function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
@@ -4521,12 +4562,25 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   const overdue = assetTasks.some(t => { const d = t.due_date ? daysTo(t.due_date) : null; return d !== null && d < 0; });
   if (overdue) return { ...HEALTH_STATES.bad, reason:"Service overdue", lifePct, ageYears, lifespan };
 
-  if (lifePct !== null && lifePct >= 100) return { ...HEALTH_STATES.bad, reason:"Past expected lifespan", lifePct, ageYears, lifespan };
+  // A REAL install date makes lifePct a fact worth flagging red/orange over.
+  // A home-age fallback estimate (no install date) makes it only a guess --
+  // an old house doesn't mean this specific item is actually old, so an
+  // estimate alone shouldn't read as "Needs attention"/"Service due". Give
+  // it the neutral "Age unknown" state instead and let the person confirm
+  // the real age; recalls, overdue tasks and marked-Failed/Fair above still
+  // flag normally regardless of whether the age itself is known.
+  if (lifePct !== null && lifePct >= 100) {
+    if (!installDate) return { ...HEALTH_STATES.estimated, reason:"Age estimated from home's build year — add install date for an accurate reading", lifePct, ageYears, lifespan };
+    return { ...HEALTH_STATES.bad, reason:"Past expected lifespan", lifePct, ageYears, lifespan };
+  }
 
   const taskDueSoon = assetTasks.some(t => { const d = t.due_date ? daysTo(t.due_date) : null; return d !== null && d >= 0 && d <= 30; });
   if (taskDueSoon) return { ...HEALTH_STATES.due, reason:"Task due soon", lifePct, ageYears, lifespan };
 
-  if (lifePct !== null && lifePct >= 75) return { ...HEALTH_STATES.due, reason:"Aging — service recommended", lifePct, ageYears, lifespan };
+  if (lifePct !== null && lifePct >= 75) {
+    if (!installDate) return { ...HEALTH_STATES.estimated, reason:"Age estimated from home's build year — add install date for an accurate reading", lifePct, ageYears, lifespan };
+    return { ...HEALTH_STATES.due, reason:"Aging — service recommended", lifePct, ageYears, lifespan };
+  }
 
   const logs = (serviceLogs || []).filter(s => s.asset_id === asset.id);
   let pm = asset.pm_schedule;
@@ -8283,6 +8337,11 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
 
 function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[] }) {
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
+  // The ONE Home Health score — same computeHealthScore() the "My Home" tab's
+  // HealthScoreWidget shows, so this never disagrees with it. This hero stays
+  // focused on "what needs doing today" (urgency, below); this is only a
+  // pointer to the single canonical score and its factor breakdown.
+  const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -8533,6 +8592,20 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── HOME HEALTH — a pointer to the one canonical score (My Home's
+           HealthScoreWidget), never a second number computed here, so this
+           can't drift out of sync with what "My Home" shows. ── */}
+      {!isNewUser && (
+        <div onClick={()=>onNavigate("profile")}
+          style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",cursor:"pointer"}}>
+          <span style={{fontSize:".95rem"}}>🏠</span>
+          <span style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",flex:1}}>
+            Home Health{planData.healthScore ? <> — <span style={{color:homeHealthColor,fontWeight:700}}>{homeHealthScore} · {homeHealthGrade}</span></> : null}
+          </span>
+          <span style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,whiteSpace:"nowrap"}}>See breakdown →</span>
         </div>
       )}
 
@@ -8913,8 +8986,14 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
         <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
       </div>
 
-      {/* Calendar — always on top */}
+      {/* Calendar stacks above the list on mobile (unchanged); on desktop
+          .tasks-layout lays them out side by side instead — list first
+          (wider, primary) with the calendar as a narrower column beside it. */}
+      <div className="tasks-layout">
+      <div className="tasks-cal">
       <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} onEditTask={openEdit}/>
+      </div>
+      <div className="tasks-main">
 
       {/* ── Task List ── */}
       <div style={{margin:"1.1rem 0 .6rem",display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
@@ -9028,6 +9107,9 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
         </div>
       )}
 
+      </div>
+      </div>
+
       {modal && <Modal title={editId?"Edit Task":"New Task"} onClose={()=>setModal(false)} onSave={save}><TaskForm data={editData} onChange={setEditData} assets={assets} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/></Modal>}
       {confirm && <Confirm message="This task will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
     </div>
@@ -9109,7 +9191,7 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0 }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, onNavigate, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0 }) {
   // Recall-aware health: Dashboard already runs this same hook (it shares
   // the "sw_recall_cache" localStorage cache, so this normally reads that
   // cache rather than re-hitting the CPSC endpoint). Previously an asset's
@@ -9128,6 +9210,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // default to "Healthy" here while that widget correctly flags it as aging.
   const homeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
   const health = (a) => getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge });
+  // The ONE Home Health score — same computeHealthScore() the "My Home" tab's
+  // HealthScoreWidget shows and Dashboard links to. This page's own hero
+  // below stays a per-system breakdown (a different, more detailed view of
+  // the same asset condition data); this is only a pointer to the single
+  // canonical score, never a second number computed here.
+  const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor } = computeHealthScore(tasks, assets, profile, serviceLogs, recallHits);
 
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({condition:"Good"});
@@ -9675,6 +9763,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const headsCount = healthCounts.heads || 0;
   const dueCount   = healthCounts.due   || 0;
   const badCount   = healthCounts.bad   || 0;
+  // Age-is-only-a-guess assets -- kept out of both okCount and attentionCount
+  // so they don't inflate "in good shape" or "need attention"; shown as
+  // their own neutral bucket below instead.
+  const estimatedCount = healthCounts.estimated || 0;
   const attentionCount = dueCount + badCount;
 
   // If an asset is selected, show detail view
@@ -9730,6 +9822,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         const od = (tasks||[]).filter(t=>t.asset_id===asset.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d<0).sort((x,y)=>x-y)[0];
         heroStatusLine = od!=null ? `Service overdue by ${Math.abs(od)} days` : "Service overdue";
       }
+    } else if (health.key === "estimated") {
+      heroStatusLine = "Add install date for an accurate reading";
     }
 
     return (
@@ -9788,7 +9882,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
             {/* Status line */}
             <div style={{display:"inline-flex",alignItems:"center",gap:".5rem",padding:".5rem .9rem",borderRadius:22,fontSize:".92rem",fontWeight:700,background:"rgba(255,255,255,.14)",marginBottom:"1.1rem"}}>
-              <span style={{width:9,height:9,borderRadius:"50%",background:health.color==="#3E7D5A"?"#7DCBA1":health.color==="#B8861E"?"#F0CE7A":health.color==="#C16140"?"#F0A57F":"#F0A58E"}}/>
+              <span style={{width:9,height:9,borderRadius:"50%",background:health.key==="ok"?"#7DCBA1":health.key==="heads"?"#F0CE7A":health.key==="due"?"#F0A57F":health.key==="estimated"?"rgba(244,237,223,.45)":"#F0A58E"}}/>
               {health.label}{heroStatusLine && heroStatusLine!==health.label ? ` · ${heroStatusLine.toLowerCase()}` : ""}
             </div>
 
@@ -9813,7 +9907,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   <span>Expected lifespan</span><span style={{color:"#E8A87C",fontWeight:700}}>{ageYears} of {lifespanYears} years</span>
                 </div>
                 <div style={{height:8,background:"rgba(255,255,255,.14)",borderRadius:5,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.color==="#3E7D5A"?"#6EE7B7":"#E8825F"}}/>
+                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.key==="ok"?"#6EE7B7":health.key==="estimated"?"rgba(244,237,223,.4)":"#E8825F"}}/>
                 </div>
                 {ageIsEstimate && (
                   <div onClick={()=>openEdit(asset)} style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginTop:".45rem",cursor:"pointer"}}>
@@ -10291,27 +10385,36 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       {systemAssets.length > 0 && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",borderRadius:"var(--r)",padding:"1.2rem 1.25rem",marginBottom:"1.1rem",color:"#fff",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
-          <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700,marginBottom:".5rem"}}>Home health</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",marginBottom:".5rem"}}>
+            <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700}}>Home health</div>
+            {onNavigate && (
+              <span onClick={()=>onNavigate("profile")} style={{fontSize:".74rem",fontWeight:700,color:"rgba(244,237,223,.85)",cursor:"pointer",whiteSpace:"nowrap"}}>
+                {planData.healthScore ? <>Home Health: {homeHealthScore} · {homeHealthGrade} →</> : "Home Health score →"}
+              </span>
+            )}
+          </div>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,lineHeight:1.25,marginBottom:"1rem"}}>
-            {attentionCount===0 ? (
+            {attentionCount===0 && estimatedCount===0 ? (
               <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {systemAssets.length}</b> of your systems are in good shape.</>
             ) : (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {systemAssets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}</>
+              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {systemAssets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}{estimatedCount>0&&<> <b style={{color:"rgba(244,237,223,.75)",fontWeight:700}}>{estimatedCount}</b> {estimatedCount===1?"has":"have"} an unknown age.</>}</>
             )}
           </div>
           {/* Stacked health bar */}
           <div style={{display:"flex",height:10,borderRadius:6,overflow:"hidden",background:"rgba(255,255,255,.12)",marginBottom:".85rem"}}>
-            {okCount>0    && <span style={{width:`${(okCount/systemAssets.length)*100}%`,background:"#3E7D5A"}}/>}
-            {headsCount>0 && <span style={{width:`${(headsCount/systemAssets.length)*100}%`,background:"#D9A93E"}}/>}
-            {dueCount>0   && <span style={{width:`${(dueCount/systemAssets.length)*100}%`,background:"#C16140"}}/>}
-            {badCount>0   && <span style={{width:`${(badCount/systemAssets.length)*100}%`,background:"#B0432B"}}/>}
+            {okCount>0        && <span style={{width:`${(okCount/systemAssets.length)*100}%`,background:"#3E7D5A"}}/>}
+            {headsCount>0     && <span style={{width:`${(headsCount/systemAssets.length)*100}%`,background:"#D9A93E"}}/>}
+            {dueCount>0       && <span style={{width:`${(dueCount/systemAssets.length)*100}%`,background:"#C16140"}}/>}
+            {badCount>0       && <span style={{width:`${(badCount/systemAssets.length)*100}%`,background:"#B0432B"}}/>}
+            {estimatedCount>0 && <span style={{width:`${(estimatedCount/systemAssets.length)*100}%`,background:"rgba(244,237,223,.4)"}}/>}
           </div>
           {/* Legend */}
           <div style={{display:"flex",gap:"1.1rem",flexWrap:"wrap"}}>
-            {okCount>0    && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#3E7D5A"}}/>{okCount} healthy</span>}
-            {headsCount>0 && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#D9A93E"}}/>{headsCount} heads up</span>}
-            {dueCount>0   && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#C16140"}}/>{dueCount} service due</span>}
-            {badCount>0   && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#B0432B"}}/>{badCount} needs attention</span>}
+            {okCount>0        && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#3E7D5A"}}/>{okCount} healthy</span>}
+            {headsCount>0     && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#D9A93E"}}/>{headsCount} heads up</span>}
+            {dueCount>0       && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#C16140"}}/>{dueCount} service due</span>}
+            {badCount>0       && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#B0432B"}}/>{badCount} needs attention</span>}
+            {estimatedCount>0 && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.72)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"rgba(244,237,223,.4)"}}/>{estimatedCount} unknown age</span>}
           </div>
         </div>
       )}
@@ -10406,7 +10509,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               <span style={{fontSize:".8rem",fontWeight:700,color:"var(--mid)",background:"var(--cream2)",borderRadius:20,padding:".1rem .6rem"}}>{catAssets.length}</span>
             </div>
 
-            {/* Cards in this category */}
+            {/* Cards in this category — a single column on mobile, a
+                responsive grid on desktop (see .assets-grid) so Assets makes
+                use of the extra width instead of one long narrow column. */}
+            <div className="assets-grid">
             {catAssets.map(a => {
               // ── Warranty-only simplified card ──────────────────────────────
               if (a.warranty_only) {
@@ -10488,6 +10594,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               } else if (health.key === "heads") {
                 factIcon = "•";
                 factText = "Maintenance recommended";
+              } else if (health.key === "estimated") {
+                factIcon = "?";
+                factText = "Age unknown — add install date for an accurate reading";
               } else {
                 factIcon = "✓";
                 if (warrantyActive && lastService) factText = `Serviced ${fmtD(lastService.service_date)} · warranty active`;
@@ -10496,6 +10605,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 else factText = "In good shape";
               }
 
+              // "estimated" intentionally gets no colored edge -- it isn't a
+              // confirmed issue, just an unconfirmed guess.
               const edgeStyle = health.key==="bad" ? {borderLeft:"4px solid #B0432B"} : health.key==="due" ? {borderLeft:"4px solid #C16140"} : {};
 
               return (
@@ -10548,6 +10659,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 </div>
               );
             })}
+            </div>
           </div>
         );
       })}
@@ -13919,7 +14031,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // separate age/condition math (no overdue-task or recall check at all),
   // which is why the same HVAC unit could be "Needs attention" here and
   // "Healthy" everywhere else.
-  const HEALTH_KEY_TO_ALERT_STATUS = { ok:"ok", heads:"warn", due:"warn", bad:"alert" };
+  // "estimated" maps to "ok" here (not "alert"/"warn") -- this widget already
+  // has its own ageIsEstimate-driven detail text below ("~Xyr old (estimated
+  // from home age)") that flags the uncertainty without an alarming badge;
+  // getAssetHealth's "estimated" state exists so red/orange is reserved for
+  // a REAL confirmed reading, same intent, so it shouldn't re-introduce one here.
+  const HEALTH_KEY_TO_ALERT_STATUS = { ok:"ok", heads:"warn", due:"warn", bad:"alert", estimated:"ok" };
   // Word-boundary match, not a bare substring — "heat" as a plain .includes()
   // check also matches inside "water heater", which was pulling the Water
   // Heater asset into the HVAC System row instead of the actual AC unit.
@@ -17503,6 +17620,29 @@ export default function App() {
           <UserMenu user={session.user} profile={profile} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
         </header>
 
+        {/* ── Desktop sidebar — mirrors bottom-nav's tabs/handlers exactly so the
+             two stay in sync; CSS shows only one of them at a time by viewport
+             width. Hidden in the same cases bottom-nav is (Documents, the setup
+             wizard), and stays visible over Contractors like bottom-nav does. ── */}
+        <nav className="sidebar" aria-label="Primary" style={(showDocs||showSetup) ? {display:"none"} : {}}>
+          {TABS.map(t=>(
+            <button key={t.id} className={`sbar-btn ${(!showContractors&&tab===t.id)?"active":""}`} onClick={()=>{ setShowContractors(false); if(!showContractors&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&tab===t.id)?"page":undefined}>
+              <span className="sbar-icon" aria-hidden="true">{t.icon}</span>
+              <span>{t.label}</span>
+              {t.badge>0 && <span className="sbar-badge">{t.badge}</span>}
+            </button>
+          ))}
+          <div className="sbar-divider"/>
+          <button className={`sbar-btn ${showContractors?"active":""}`} onClick={()=>setShowContractors(true)} aria-current={showContractors?"page":undefined}>
+            <span className="sbar-icon" aria-hidden="true">👥</span>
+            <span>Contractors</span>
+          </button>
+          <button className={`sbar-btn ${showDocs?"active":""}`} onClick={()=>setShowDocs(true)} aria-current={showDocs?"page":undefined}>
+            <span className="sbar-icon" aria-hidden="true">📄</span>
+            <span>Documents</span>
+          </button>
+        </nav>
+
         {/* ── Bounce banner — takes priority over the softer verify banner, since a bounce means
              the address is confirmed bad, not just unconfirmed. No self-service email-change UI
              exists yet, so this points to support rather than a dead-end "update email" button. */}
@@ -17707,7 +17847,7 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
@@ -22858,7 +22998,10 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
   // Factor 2: Asset health (0-100) — reuses the same per-asset logic shown
   // in the Assets tab (real install_date, lifespan, condition, overdue PM,
   // open recalls — not a regex guess against free-text notes).
-  const ASSET_HEALTH_POINTS = { ok:100, heads:70, due:40, bad:10 };
+  // "estimated" (age is only a home-build-year guess, not a confirmed
+  // reading) scores high, not middling -- it isn't a confirmed problem, so it
+  // shouldn't drag the score down the way a real "due"/"bad" reading does.
+  const ASSET_HEALTH_POINTS = { ok:100, heads:70, due:40, bad:10, estimated:85 };
   const assetScore = activeAssets.length === 0 ? 70 : (() => {
     const scores = activeAssets.map(a => ASSET_HEALTH_POINTS[getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge }).key] ?? 50);
     return scores.reduce((s,v) => s+v, 0) / scores.length;
