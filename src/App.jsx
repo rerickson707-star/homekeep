@@ -1,4 +1,4 @@
-// Steadwell v251 — 2026-09-25T00:36:43.000Z
+// Steadwell v252 — 2026-09-25T01:00:30.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6901,6 +6901,15 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
   };
 
   const runLookup = async () => {
+    // A different, non-blank previous address means this is a genuine change
+    // of property, not a refresh of the same one. Every field below used to
+    // fall back to the OLD data whenever the new lookup didn't return a
+    // value for it -- fine for re-running a lookup on the same address, but
+    // for an actual address change it silently kept the previous house's
+    // stale values (e.g. "Purchased $94,000" surviving a move because the
+    // new address's lookup came back with no sale price on file). Clear
+    // instead of carrying over once the address itself has changed.
+    const isAddressChange = !!(data.address && data.address.trim() !== lookupAddr.trim());
     setLookupState("loading");
     setLookupMsg("Looking up property data — this takes 10–30 seconds…");
     setPreview(null);
@@ -6914,26 +6923,27 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
         setLookupMsg("");
         return;
       }
+      const carry = (field) => result[field] || (isAddressChange ? "" : data[field]);
       onChange({
         ...data,
         address:         result.address        || lookupAddr,
-        type:            result.type           || data.type,
-        year:            result.year           || data.year,
-        sqft:            result.sqft           || data.sqft,
-        bedrooms:        result.bedrooms       || data.bedrooms,
-        bathrooms:       result.bathrooms      || data.bathrooms,
-        lot_size:        result.lot_size       || data.lot_size,
-        last_sale_price: result.last_sale_price|| data.last_sale_price,
-        last_sale_date:  result.last_sale_date || data.last_sale_date,
-        zestimate:       result.zestimate      || data.zestimate,
-        rent_zestimate:  result.rent_zestimate || data.rent_zestimate,
-        hoa_fee:         result.hoa_fee        || data.hoa_fee,
-        photo_url:       result.photo_url      || data.photo_url,
-        description:     result.description    || data.description,
-        zpid:            result.zpid           || data.zpid,
-        tax_history:     result.tax_history    || data.tax_history,
-        price_history:   result.price_history  || data.price_history,
-        schools:         result.schools        || data.schools,
+        type:            carry("type"),
+        year:            carry("year"),
+        sqft:            carry("sqft"),
+        bedrooms:        carry("bedrooms"),
+        bathrooms:       carry("bathrooms"),
+        lot_size:        carry("lot_size"),
+        last_sale_price: carry("last_sale_price"),
+        last_sale_date:  carry("last_sale_date"),
+        zestimate:       carry("zestimate"),
+        rent_zestimate:  carry("rent_zestimate"),
+        hoa_fee:         carry("hoa_fee"),
+        photo_url:       carry("photo_url"),
+        description:     carry("description"),
+        zpid:            carry("zpid"),
+        tax_history:     carry("tax_history"),
+        price_history:   carry("price_history"),
+        schools:         carry("schools"),
       });
       setPreview(result);
       setLookupState("ok");
@@ -9647,7 +9657,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   let list = showRetired ? [...retiredAssets] : [...activeAssets];
   if (!showRetired) {
     if(filter==="Warranty Active")    list = list.filter(a=>{ const d=daysTo(a.expiry_date); return d!==null&&d>=0; });
-    else if(filter==="Needs attention") list = list.filter(a=>!a.warranty_only).filter(a=>{ const h=health(a); return h.key==="bad"||h.key==="due"; });
+    // Label says "or service" now — this chip's count (badCount + dueCount)
+    // always did include items that are merely due for service, not just
+    // ones actually needing attention, but the old label didn't say so,
+    // which made it look like it disagreed with the header's separate
+    // "N need attention + M service due" breakdown of that same total.
+    else if(filter==="Needs attention or service") list = list.filter(a=>!a.warranty_only).filter(a=>{ const h=health(a); return h.key==="bad"||h.key==="due"; });
     else if(filter==="Healthy")       list = list.filter(a=>!a.warranty_only).filter(a=>{ const h=health(a); return h.key==="ok"; });
   }
   list = list.sort((a,b)=>(a.item||"").localeCompare(b.item||""));
@@ -10304,7 +10319,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       {/* Filter chips — health vocabulary */}
       {activeAssets.length > 0 && (
         <div className="toolbar" style={{marginBottom:".9rem"}}>
-          {[["All",systemAssets.length],["Needs attention",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
+          {[["All",systemAssets.length],["Needs attention or service",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
             <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>
               {f}{count!==null && count!==undefined ? ` ${count}` : ""}
             </button>
@@ -10326,7 +10341,19 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 {(()=>{
                   // Include both standalone warranty-only records AND full assets that
                   // have a warranty (expiry_date) saved on them — not just warranty_only rows.
-                  const trackedW = assets.filter(w=>w.warranty_only || w.expiry_date);
+                  // Must match the Warranty Module's own dedup exactly (see the
+                  // top-level "WARRANTY MODULE" overlay), or a warranty-only record that's
+                  // really the same item as a full tracked asset (e.g. two "Refrigerator"
+                  // rows) gets counted here but not there, so this tile disagreed with the
+                  // module it's a shortcut to.
+                  const allAssetW = assets.filter(w=>!w.warranty_only && w.expiry_date);
+                  const assetItemNames = new Set(allAssetW.map(w => (w.item||"").trim().toLowerCase()).filter(Boolean));
+                  const allW = assets.filter(w =>
+                    w.warranty_only &&
+                    !(w.asset_id && assets.find(a=>a.id===w.asset_id)) &&
+                    !assetItemNames.has((w.item||"").trim().toLowerCase())
+                  );
+                  const trackedW = [...allAssetW, ...allW];
                   const activeCount = trackedW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
                   const expiredCount = trackedW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; }).length;
                   return trackedW.length > 0
@@ -13905,8 +13932,18 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     // -- e.g. the "Water Heater" card matching the softener instead (which
     // has no install date), showing the home's age as a fallback instead
     // of the water heater's own, correctly-given install year.
-    const linkedAsset = warranties.find(a => !a.retired_at && s.keywords.some(kw => kwMatch(a.item, kw)))
-      || warranties.find(a => !a.retired_at && s.categories.includes(a.category))
+    // A warranty-only card (no install date, no brand/model, not what the
+    // recall check runs against -- see useRecallAlerts' checkable filter)
+    // can share the exact same name and category as the real tracked asset
+    // for the same physical system, e.g. a "Water Heater" warranty-only
+    // record alongside the actual "Water Heater" asset that carries the
+    // brand/model an open recall was matched against. Matching either one
+    // indiscriminately meant this row could land on the warranty-only stub
+    // and report "Healthy" while the asset it's actually describing has an
+    // open recall. Only match real tracked assets here, same as the
+    // "systemAssets" (non-warranty-only) rule used everywhere else.
+    const linkedAsset = warranties.find(a => !a.retired_at && !a.warranty_only && s.keywords.some(kw => kwMatch(a.item, kw)))
+      || warranties.find(a => !a.retired_at && !a.warranty_only && s.categories.includes(a.category))
       || null;
 
     let ageYears, status, detail, fromAsset, ageIsEstimate = false;
