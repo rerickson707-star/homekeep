@@ -1,4 +1,4 @@
-// Steadwell v257 — 2026-09-29T18:10:00.000Z
+// Steadwell v258 — 2026-09-29T18:30:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1615,6 +1615,13 @@ img,.lp-root img{max-width:100%;height:auto}
   .dash-systems-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
 }
 @media(min-width:1300px){.dash-systems-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Dashboard hero: live counts + score factors */
+.dash-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem;margin-top:1.25rem;position:relative}
+.dash-stat{display:flex;flex-direction:column;align-items:flex-start;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.75rem .85rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:background .15s}
+.dash-stat:hover{background:rgba(255,255,255,.14)}
+.dash-factors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);position:relative}
+@media(max-width:600px){.dash-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-factors{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Assets: a responsive grid on desktop instead of one long stacked column */
 .assets-grid{display:flex;flex-direction:column}
@@ -8359,7 +8366,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   // HealthScoreWidget shows, so this never disagrees with it. This hero stays
   // focused on "what needs doing today" (urgency, below); this is only a
   // pointer to the single canonical score and its factor breakdown.
-  const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
+  const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor, factors: homeHealthFactors } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -8512,9 +8519,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const heroGrad     = heroLevel === "bad"  ? "linear-gradient(150deg,#2A0C06,#6B2012)"
                      : heroLevel === "warn" ? "linear-gradient(150deg,#2A1F06,#5A3B00)"
                      : "linear-gradient(150deg,var(--pine-deep),var(--pine-soft))";
-  const heroStatus   = heroLevel === "bad"  ? "Needs action"
-                     : heroLevel === "warn" ? "Needs attention"
-                     : "All good";
+  const heroStatus   = heroLevel === "bad"  ? "Action required"
+                     : heroLevel === "warn" ? "Attention needed"
+                     : "On track";
   const heroSub      = heroLevel === "bad"  ? `${urgentCount} urgent item${urgentCount !== 1 ? "s" : ""} — take care of these today`
                      : heroLevel === "warn" ? `${warnCount} thing${warnCount !== 1 ? "s" : ""} to take care of soon`
                      : upcoming.length > 0  ? `Next task due ${fmtD(upcoming[0]?.due_date)}`
@@ -8587,56 +8594,94 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         </div>
       )}
 
-      {/* ── STATUS HERO ── */}
-      {!isNewUser && (
-        <div style={{background:heroGrad,padding:"1.5rem 1.25rem 1.6rem",position:"relative",overflow:"hidden"}}>
+      {/* ── STATUS HERO — status, the one Home Health score, live counts and
+           the score's factors in a single card (score comes from
+           computeHealthScore, same as My Home, so they never disagree) ── */}
+      {!isNewUser && (() => {
+        const scoreOn = !!planData.healthScore;
+        const overdueN = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
+        const scoreRing = homeHealthScore >= 90 ? "#7DCBA1" : homeHealthScore >= 75 ? "#A9D8B5" : homeHealthScore >= 60 ? "#F0CE7A" : "#F0A57F";
+        const R = 34, C = 2 * Math.PI * R;
+        const stats = [
+          { label:"Overdue tasks",       value:overdueN,          hot:overdueN>0,          go:"tasks" },
+          { label:"Due in 30 days",      value:upcoming.length,   hot:false,               go:"tasks" },
+          { label:"Warranties ending",   value:expiringW.length,  hot:expiringW.length>0,  go:"warranties", sub:"within 90 days" },
+          { label:"Open recalls",        value:(recalls||[]).length, hot:(recalls||[]).length>0, go:"warranties" },
+        ];
+        return (
+        <div style={{background:heroGrad,padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
           <div style={{position:"absolute",left:-30,bottom:-60,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.03)",pointerEvents:"none"}}/>
 
           {/* Top row */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.2rem"}}>
-            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"rgba(244,237,223,.4)"}}>{profile?.address?.split(",")[0] || profile?.name || "My Home"}</span>
-            <span style={{fontSize:".75rem",fontWeight:600,color:"rgba(244,237,223,.3)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.1rem",position:"relative"}}>
+            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"rgba(244,237,223,.55)"}}>{profile?.address?.split(",")[0] || profile?.name || "My Home"}</span>
+            <span style={{fontSize:".75rem",fontWeight:600,color:"rgba(244,237,223,.45)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
           </div>
 
-          {/* Status + ring */}
-          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:"1rem"}}>
-            <div>
-              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"rgba(244,237,223,.4)",marginBottom:".4rem"}}>Home status</div>
+          {/* Status + score */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",position:"relative"}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"rgba(244,237,223,.55)",marginBottom:".4rem"}}>Home status</div>
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.5px"}}>{heroStatus}</div>
-              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.5)",marginTop:".35rem",lineHeight:1.4,maxWidth:220}}>{heroSub}</div>
+              <div style={{fontSize:".85rem",color:"rgba(244,237,223,.7)",marginTop:".4rem",lineHeight:1.4,maxWidth:360}}>{heroSub}</div>
             </div>
-            <div style={{flexShrink:0,position:"relative",width:64,height:64}}>
-              <svg width="64" height="64" viewBox="0 0 64 64" style={{transform:"rotate(-90deg)"}}>
-                <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="6"/>
-                <circle cx="32" cy="32" r="26" fill="none" stroke={ringColor} strokeWidth="6"
-                  strokeDasharray={`${ringDash} 163`} strokeLinecap="round"/>
-              </svg>
-              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
-                {heroLevel === "ok"
-                  ? <span style={{fontSize:"1.1rem",color:"#7DCBA1",lineHeight:1}}>✓</span>
-                  : <><span style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{urgentCount + warnCount}</span>
-                     <span style={{fontSize:".5rem",textTransform:"uppercase",letterSpacing:".08em",color:"rgba(244,237,223,.4)",fontWeight:700,marginTop:2}}>items</span></>
-                }
-              </div>
+            <div onClick={()=>onNavigate("profile")} title="See Home Health breakdown" style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}>
+              {scoreOn ? (
+                <>
+                  <div style={{position:"relative",width:88,height:88,margin:"0 auto"}}>
+                    <svg width="88" height="88" viewBox="0 0 88 88" style={{transform:"rotate(-90deg)"}}>
+                      <circle cx="44" cy="44" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="7"/>
+                      <circle cx="44" cy="44" r={R} fill="none" stroke={scoreRing} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(homeHealthScore/100)*C} ${C}`}/>
+                    </svg>
+                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{homeHealthScore}</span>
+                      <span style={{fontSize:".55rem",color:"rgba(244,237,223,.6)",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",marginTop:3}}>of 100</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:".74rem",fontWeight:700,color:scoreRing,marginTop:".4rem",letterSpacing:".04em",textTransform:"uppercase"}}>Home Health · {homeHealthGrade}</div>
+                </>
+              ) : (
+                <>
+                  <div style={{width:88,height:88,borderRadius:"50%",border:"7px solid rgba(255,255,255,.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",boxSizing:"border-box"}}>
+                    {heroLevel === "ok"
+                      ? <span style={{fontSize:"1.6rem",color:"#7DCBA1"}}>✓</span>
+                      : <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:600,color:"#F4EDDF"}}>{urgentCount + warnCount}</span>}
+                  </div>
+                  <div style={{fontSize:".72rem",fontWeight:700,color:"rgba(244,237,223,.7)",marginTop:".4rem"}}>Home Health score →</div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ── HOME HEALTH — a pointer to the one canonical score (My Home's
-           HealthScoreWidget), never a second number computed here, so this
-           can't drift out of sync with what "My Home" shows. ── */}
-      {!isNewUser && (
-        <div onClick={()=>onNavigate("profile")}
-          style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",cursor:"pointer"}}>
-          <span style={{fontSize:".95rem"}}>🏠</span>
-          <span style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",flex:1}}>
-            Home Health{planData.healthScore ? <> — <span style={{color:homeHealthColor,fontWeight:700}}>{homeHealthScore} · {homeHealthGrade}</span></> : null}
-          </span>
-          <span style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,whiteSpace:"nowrap"}}>See breakdown →</span>
+          {/* Live counts */}
+          <div className="dash-stats">
+            {stats.map(st => (
+              <button key={st.label} onClick={()=>onNavigate(st.go)} className="dash-stat">
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,lineHeight:1,color:st.hot?"#F0A57F":"#F4EDDF"}}>{st.value}</span>
+                <span style={{fontSize:".72rem",color:"rgba(244,237,223,.7)",fontWeight:600,marginTop:".3rem",textAlign:"left"}}>{st.label}{st.sub?<span style={{display:"block",fontWeight:500,color:"rgba(244,237,223,.5)"}}>{st.sub}</span>:null}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Score factors */}
+          {scoreOn && (
+            <div onClick={()=>onNavigate("profile")} className="dash-factors" style={{cursor:"pointer"}}>
+              {homeHealthFactors.map(f => (
+                <div key={f.label}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",fontWeight:600,color:"rgba(244,237,223,.75)",marginBottom:4}}>
+                    <span>{f.label}</span><span>{f.val}</span>
+                  </div>
+                  <div style={{height:5,borderRadius:3,background:"rgba(255,255,255,.14)",overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${f.val}%`,borderRadius:3,background:f.val>=75?"#7DCBA1":f.val>=60?"#F0CE7A":"#F0A57F"}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ── QUICK ACTIONS — front and center ── */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".65rem",padding:".85rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)"}}>
@@ -23098,7 +23143,7 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
     docScore     * 0.15
   );
 
-  const grade = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 60 ? "Fair" : "Needs attention";
+  const grade = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 60 ? "Fair" : "At risk";
   const color = score >= 90 ? "#2A9D6A" : score >= 75 ? "#234A3D" : score >= 60 ? "#B8861E" : "#C16140";
 
   return {
