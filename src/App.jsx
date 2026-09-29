@@ -1,4 +1,4 @@
-// Steadwell v258 — 2026-09-29T18:30:00.000Z
+// Steadwell v259 — 2026-09-29T18:50:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8380,6 +8380,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const completed = tasks.filter(t=>t.status==="Completed").length;
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
+  const [showScoreInfo, setShowScoreInfo] = useState(false);
 
   const handleDayClick = (date, dayTasks) => {
     setSelectedDay(date);
@@ -8601,7 +8602,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         const scoreOn = !!planData.healthScore;
         const overdueN = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
         const scoreRing = homeHealthScore >= 90 ? "#7DCBA1" : homeHealthScore >= 75 ? "#A9D8B5" : homeHealthScore >= 60 ? "#F0CE7A" : "#F0A57F";
-        const R = 34, C = 2 * Math.PI * R;
+        const R = 40, C = 2 * Math.PI * R;
         const stats = [
           { label:"Overdue tasks",       value:overdueN,          hot:overdueN>0,          go:"tasks" },
           { label:"Due in 30 days",      value:upcoming.length,   hot:false,               go:"tasks" },
@@ -8629,17 +8630,17 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
             <div onClick={()=>onNavigate("profile")} title="See Home Health breakdown" style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}>
               {scoreOn ? (
                 <>
-                  <div style={{position:"relative",width:88,height:88,margin:"0 auto"}}>
-                    <svg width="88" height="88" viewBox="0 0 88 88" style={{transform:"rotate(-90deg)"}}>
-                      <circle cx="44" cy="44" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="7"/>
-                      <circle cx="44" cy="44" r={R} fill="none" stroke={scoreRing} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(homeHealthScore/100)*C} ${C}`}/>
+                  <div style={{position:"relative",width:104,height:104,margin:"0 auto"}}>
+                    <svg width="104" height="104" viewBox="0 0 104 104" style={{transform:"rotate(-90deg)"}}>
+                      <circle cx="52" cy="52" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="8"/>
+                      <circle cx="52" cy="52" r={R} fill="none" stroke={scoreRing} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(homeHealthScore/100)*C} ${C}`}/>
                     </svg>
-                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{homeHealthScore}</span>
-                      <span style={{fontSize:".55rem",color:"rgba(244,237,223,.6)",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",marginTop:3}}>of 100</span>
+                    <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#F4EDDF",lineHeight:1,letterSpacing:"-.5px"}}>{homeHealthScore}</span>
                     </div>
                   </div>
-                  <div style={{fontSize:".74rem",fontWeight:700,color:scoreRing,marginTop:".4rem",letterSpacing:".04em",textTransform:"uppercase"}}>Home Health · {homeHealthGrade}</div>
+                  <div style={{fontSize:".74rem",fontWeight:700,color:scoreRing,marginTop:".5rem",letterSpacing:".04em",textTransform:"uppercase"}}>Home Health · {homeHealthGrade}</div>
+                  <div style={{fontSize:".68rem",color:"rgba(244,237,223,.55)",marginTop:2}}>out of 100</div>
                 </>
               ) : (
                 <>
@@ -8666,17 +8667,35 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 
           {/* Score factors */}
           {scoreOn && (
-            <div onClick={()=>onNavigate("profile")} className="dash-factors" style={{cursor:"pointer"}}>
+            <div className="dash-factors">
               {homeHealthFactors.map(f => (
                 <div key={f.label}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",fontWeight:600,color:"rgba(244,237,223,.75)",marginBottom:4}}>
-                    <span>{f.label}</span><span>{f.val}</span>
+                    <span>{f.label} <span style={{opacity:.55,fontWeight:500}}>· {({Assets:"35%",Tasks:"30%",Warranties:"20%",Profile:"15%"})[f.label]}</span></span><span>{f.val}</span>
                   </div>
                   <div style={{height:5,borderRadius:3,background:"rgba(255,255,255,.14)",overflow:"hidden"}}>
                     <div style={{height:"100%",width:`${f.val}%`,borderRadius:3,background:f.val>=75?"#7DCBA1":f.val>=60?"#F0CE7A":"#F0A57F"}}/>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {scoreOn && (
+            <div style={{position:"relative",marginTop:".85rem"}}>
+              <button onClick={()=>setShowScoreInfo(v=>!v)} style={{background:"none",border:"none",color:"rgba(244,237,223,.75)",fontSize:".76rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>
+                {showScoreInfo ? "Hide how it's scored ▴" : "How is this scored? ▾"}
+              </button>
+              <button onClick={()=>onNavigate("profile")} style={{float:"right",background:"none",border:"none",color:"rgba(244,237,223,.75)",fontSize:".76rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>Full breakdown →</button>
+              {showScoreInfo && (
+                <div style={{marginTop:".7rem",background:"rgba(0,0,0,.18)",borderRadius:12,padding:".85rem 1rem",fontSize:".78rem",lineHeight:1.55,color:"rgba(244,237,223,.85)"}}>
+                  <div style={{marginBottom:".4rem"}}>Your score is a weighted average of four parts (each 0–100):</div>
+                  <div><b>Assets · 35%</b> — average condition of your tracked appliances and systems. Healthy = 100, age unknown = 85, heads up = 70, service due = 40, needs attention = 10.</div>
+                  <div><b>Tasks · 30%</b> — starts at 100 and drops for overdue tasks (heavily) and for tasks still open (lightly).</div>
+                  <div><b>Warranties · 20%</b> — drops as more of your tracked warranties are expired or ending within 30 days.</div>
+                  <div><b>Profile · 15%</b> — how complete your home details are (address, type, year, size, beds, baths, insurance, renewal date).</div>
+                  <div style={{marginTop:".4rem",opacity:.8}}>90+ Excellent · 75+ Good · 60+ Fair · below 60 At risk. Parts with no data yet get a neutral starting value.</div>
+                </div>
+              )}
             </div>
           )}
         </div>
