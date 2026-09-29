@@ -1,4 +1,4 @@
-// Steadwell v260 — 2026-09-29T18:40:00.000Z
+// Steadwell v261 — 2026-09-29T18:45:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8616,7 +8616,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 
           {/* Top row */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.1rem",position:"relative"}}>
-            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"rgba(244,237,223,.55)"}}>{profile?.address?.split(",")[0] || profile?.name || "My Home"}</span>
+            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"rgba(244,237,223,.55)",minWidth:0,lineHeight:1.35}}>{profile?.address || profile?.name || "My Home"}</span>
             <span style={{fontSize:".75rem",fontWeight:600,color:"rgba(244,237,223,.45)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
           </div>
 
