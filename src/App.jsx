@@ -1,4 +1,4 @@
-// Steadwell v265 — 2026-09-29T21:00:00.000Z
+// Steadwell v266 — 2026-09-29T21:30:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8483,6 +8483,16 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
   const [showScoreInfo, setShowScoreInfo] = useState(false);
   const [showAllFeed, setShowAllFeed] = useState(false);
+  // "Got it" acknowledgements for informational feed items (warranty and
+  // insurance notices). Stored per user on this device; each key embeds the
+  // thing it acknowledges (e.g. the expiry date), so a genuinely new notice
+  // shows up again instead of staying hidden forever.
+  const ACK_KEY = `sw_feed_ack_${userId}`;
+  const [ackKeys, setAckKeys] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem(ACK_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+  });
+  const saveAcks = (next) => { setAckKeys(next); try { localStorage.setItem(ACK_KEY, JSON.stringify(next)); } catch {} };
+  const ackItem = (key) => { if (!ackKeys.includes(key)) saveAcks([...ackKeys, key]); };
 
   const handleDayClick = (date, dayTasks) => {
     setSelectedDay(date);
@@ -8536,11 +8546,11 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 
   // ── Build unified action feed ────────────────────────────────────────────
   const insRenewalDays = profile?.ins_renewal_date ? daysTo(profile.ins_renewal_date) : null;
-  const feedItems = [];
+  const allFeedItems = [];
 
   // 1. Recalls — highest priority
   recalls.forEach(r => {
-    feedItems.push({
+    allFeedItems.push({
       id:      `recall-${r.asset.id}`,
       level:   "urgent",
       icon:    "⚠️",
@@ -8556,7 +8566,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   // 2. Overdue tasks
   tasks.filter(t => t.status === "Overdue").forEach(t => {
     const d = daysTo(t.due_date);
-    feedItems.push({
+    allFeedItems.push({
       id:     `overdue-${t.id}`,
       level:  "urgent",
       icon:   CAT_ICONS[t.category] || "🔧",
@@ -8570,8 +8580,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 
   // 3. Insurance renewal ≤ 90 days
   if (insRenewalDays !== null && insRenewalDays <= 90) {
-    feedItems.push({
+    allFeedItems.push({
       id:     "ins-renewal",
+      ackKey: `ins:${profile.ins_renewal_date}`,
       level:  insRenewalDays <= 30 ? "urgent" : "warn",
       icon:   "🛡️",
       iconBg: insRenewalDays <= 30 ? "#F7E0DA" : "#FBF3DE",
@@ -8587,8 +8598,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const expiredWarr = warranties.filter(w => !w.retired_at && w.expiry_date && !w.exclude_warranty_from_score && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0);
   if (expiredWarr.length > 0) {
     const names = expiredWarr.slice(0, 2).map(w => w.item).filter(Boolean).join(", ");
-    feedItems.push({
+    allFeedItems.push({
       id:     "warranties-expired",
+      ackKey: `wexp:${expiredWarr.map(w => w.id).sort().join(",")}`,
       level:  "warn",
       icon:   "🛡️",
       iconBg: "#FBF3DE",
@@ -8605,8 +8617,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     .sort((a,b) => daysTo(a.expiry_date) - daysTo(b.expiry_date))
     .forEach(w => {
       const d = daysTo(w.expiry_date);
-      feedItems.push({
+      allFeedItems.push({
         id:     `warranty-${w.id}`,
+        ackKey: `wsoon:${w.id}:${w.expiry_date}`,
         level:  d <= 30 ? "warn" : "ok",
         icon:   ASSET_ICONS[w.category] || "📋",
         iconBg: d <= 30 ? "#FBF3DE" : "#E9F1EA",
@@ -8620,7 +8633,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   // 5. Upcoming tasks (next 7 days, after overdue)
   upcoming.filter(t => t.status !== "Overdue").slice(0, 5).forEach(t => {
     const d = daysTo(t.due_date);
-    feedItems.push({
+    allFeedItems.push({
       id:     `upcoming-${t.id}`,
       level:  "ok",
       icon:   CAT_ICONS[t.category] || "🔧",
@@ -8631,6 +8644,10 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       action: () => onNavigate("tasks"),
     });
   });
+
+  // Drop informational items the user has acknowledged
+  const feedItems = allFeedItems.filter(f => !f.ackKey || !ackKeys.includes(f.ackKey));
+  const ackedCount = allFeedItems.length - feedItems.length;
 
   // Urgency score for hero
   const urgentCount  = feedItems.filter(f => f.level === "urgent").length;
@@ -8690,6 +8707,12 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.3}}>{item.sub}</div>
         </div>
         <div style={{fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:20,flexShrink:0,background:levelStyle.badgeBg,color:levelStyle.badgeColor,whiteSpace:"nowrap"}}>{item.badge}</div>
+        {item.ackKey && (
+          <button onClick={e=>{e.stopPropagation(); ackItem(item.ackKey);}} title="Dismiss this notice — you've seen it"
+            style={{flexShrink:0,fontSize:".72rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--stone)",borderRadius:20,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+            ✓ Got it
+          </button>
+        )}
         <span style={{fontSize:".9rem",color:"#C2B8AE",flexShrink:0,marginLeft:2}}>›</span>
       </div>
     );
@@ -8923,6 +8946,11 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           </>
         )}
 
+        {ackedCount > 0 && (
+          <button onClick={()=>saveAcks(ackKeys.filter(k => !allFeedItems.some(f => f.ackKey === k)))} style={{display:"block",width:"100%",padding:".65rem 1.25rem",background:"var(--white)",border:"none",borderTop:"1px solid var(--cream2)",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"#A8A09A",cursor:"pointer",textAlign:"left"}}>
+            {ackedCount} dismissed notice{ackedCount!==1?"s":""} · Show again
+          </button>
+        )}
         {hiddenFeedCount > 0 && (
           <button onClick={()=>setShowAllFeed(v=>!v)} style={{display:"block",width:"100%",padding:".8rem 1.25rem",background:"var(--white)",border:"none",borderTop:"1px solid var(--cream2)",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",textAlign:"left"}}>
             {showAllFeed ? "Show top 5 only ▴" : `View all ${orderedFeed.length} items →`}
