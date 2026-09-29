@@ -1,4 +1,4 @@
-// Steadwell v266 — 2026-09-29T21:30:00.000Z
+// Steadwell v267 — 2026-09-29T22:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -116,23 +116,270 @@ function getClimateZone(profile) {
 // hot/humid Florida & the Gulf Coast the Atlantic hurricane season runs
 // June 1 – Nov 30 (peaking mid-Aug to mid-Oct), so storm PREP happens in
 // April–May and September is about staying ready, not starting to prepare.
+// Seasonal task builder: title, category, day of month, priority, why-now line
+// and an array of checklist steps (stored in the task's notes as "☐ step").
+const S = (title, category, day, priority, why, steps) => ({ title, category, day, priority, why, steps });
+const buildSeasonalNotes = (o) => (!o.steps || !o.steps.length) ? "" : `${o.why || ""}\n\n${o.steps.map(x => "☐ " + x).join("\n")}`;
+
+// Checklist helpers — notes hold a short intro followed by "☐ step" / "☑ step" lines.
+function parseChecklist(notes) {
+  const lines = String(notes || "").split("\n");
+  const items = [], intro = [];
+  lines.forEach((ln, idx) => {
+    const m = ln.match(/^\s*([☐☑])\s+(.*)$/);
+    if (m) items.push({ line: idx, done: m[1] === "☑", text: m[2] });
+    else if (ln.trim()) intro.push(ln.trim());
+  });
+  return { items, intro: intro.join(" "), done: items.filter(i => i.done).length };
+}
+function toggleChecklistItem(notes, lineIdx) {
+  const lines = String(notes || "").split("\n");
+  lines[lineIdx] = lines[lineIdx].replace(/^(\s*)([☐☑])/, (_, sp, c) => sp + (c === "☐" ? "☑" : "☐"));
+  return lines.join("\n");
+}
+
 const CLIMATE_TASKS = {
-  // Zone 1-2: Hot/Humid (FL, Gulf Coast, HI)
+  // Zone 1-2: Hot/Humid (FL, Gulf Coast, HI) — written for Florida's Gulf Coast
+  // (Tampa Bay / Pinellas). Each entry is a real job with a checklist, not a reminder.
   hot_humid: {
     label: "Hot & Humid Climate",
     months: [
-      /* Jan */ ["Replace HVAC filter","Protect plants, irrigation backflow & pool equipment during cold snaps","Review homeowners policy & wind-mitigation credits before renewal","Deep-clean dryer vent and lint trap"],
-      /* Feb */ ["Book AC tune-up before the spring rush","Inspect for termite swarmers, mud tubes & wood damage","Check irrigation zones & set timer to local watering restrictions","Replace HVAC filter"],
-      /* Mar */ ["Schedule annual termite / pest inspection","Pressure-wash exterior, driveway & lanai; treat mildew","Repair or replace torn lanai / window screens","Flush AC condensate drain line with vinegar"],
-      /* Apr */ ["Trim trees & palms away from roof, wires and fences","Inspect roof: shingles/tile, flashing, vents & sealant","Service or rinse outdoor AC condenser coil","Test GFCI outlets and smoke & CO detectors"],
-      /* May */ ["Hurricane prep: build or restock kit (water, batteries, meds, radio, cash)","Test shutters / storm panels and confirm hardware is complete","Test generator and stock fuel safely (if you have one)","Review windstorm & flood insurance; photo-inventory your home","Know your evacuation zone and route"],
-      /* Jun */ ["Hurricane season started (Jun 1): verify kit, documents & evacuation plan","Clear gutters, downspouts & yard drains before daily storms","Flush AC condensate drain line (clogs cause leaks in rainy season)","Replace HVAC filter"],
-      /* Jul */ ["Check whole-home surge protection ahead of lightning season","Look for mold / mildew in bathrooms, closets & attic; run dehumidifier","Inspect caulk & seals around windows and doors for water intrusion","Check attic for leaks, moisture and adequate ventilation"],
-      /* Aug */ ["Peak hurricane season begins: refresh water, batteries & medications","Secure or store loose outdoor items and know your storm-day plan","Inspect fascia, soffits & trim for rot and pest entry","Replace HVAC filter"],
-      /* Sep */ ["Peak hurricane season: keep kit stocked and fuel tanks/phones charged when storms form","Clear yard debris, gutters and drains before each storm","Photograph your home & valuables and store documents in a waterproof bag","Check AC drain line and filter (system runs nonstop)"],
-      /* Oct */ ["Hurricane season ends Nov 30: keep supplies ready until then","Inspect roof and screens for storm-season damage","Clean gutters and dryer vent","Pest control: rodents & roaches move indoors as nights cool"],
-      /* Nov */ ["Season ends Nov 30: rotate expired kit items & restock","Test heat mode on heat pump / furnace before first cold front","Replace smoke & CO detector batteries","Replace HVAC filter"],
-      /* Dec */ ["Flush water heater and check anode rod","Check exterior lighting and holiday electrical loads (no overloaded outlets)","Prepare for freeze nights: cover plants, insulate outdoor spigots","Review insurance renewal and update your home inventory"],
+      /* Jan */ [
+        S("Quarterly perimeter pest-control service", "Other", 12, "Medium", "Florida homes are typically treated every 3 months (Jan / Apr / Jul / Oct). Ants, roaches and rodents are active year-round.", [
+          "Book a state-licensed pest-control company (or confirm your existing plan)",
+          "Ask for exterior perimeter treatment plus eaves, entry points and garage",
+          "Have the technician check the attic, garage and lanai for droppings and nesting",
+          "Save the service report to Documents"]),
+        S("Water-leak check: meter test and supply lines", "Plumbing", 20, "Medium", "Catches hidden leaks before they become mold or slab damage.", [
+          "Shut off every fixture, then watch the water meter's low-flow dial for 15 minutes; movement means a leak",
+          "Inspect washer hoses (replace braided hoses every 5 years) and toilet supply lines",
+          "Look under every sink and behind toilets for drips or staining",
+          "Turn the main shutoff and each angle stop to confirm they work",
+          "Dye-test toilet flappers (food coloring in the tank, no flushing for 15 minutes)"]),
+        S("Update home inventory with photos and video", "Other", 26, "Low", "A dated inventory speeds up insurance claims after a storm, fire or theft.", [
+          "Video each room and open closets and cabinets",
+          "Photograph serial-number plates on major appliances and systems",
+          "Store a copy in cloud storage, not only on your phone",
+          "Add any missing appliances to Assets in Steadwell"]),
+      ],
+      /* Feb */ [
+        S("File or verify your Homestead exemption (deadline March 1)", "Other", 10, "High", "Florida's Homestead exemption must be on file with the county Property Appraiser by March 1 to apply for this tax year.", [
+          "Confirm on your county Property Appraiser website that the exemption is active",
+          "If new to the home, file online with your Florida ID, vehicle registration and voter registration",
+          "Confirm portability of Save Our Homes benefits if you moved within Florida",
+          "Save the confirmation to Documents"]),
+        S("Book a full AC tune-up before the cooling season", "HVAC", 15, "High", "Florida AC systems run 9-10 months a year. Book a licensed technician now, before the April and May rush.", [
+          "Schedule a licensed HVAC contractor for a full maintenance visit",
+          "Ask for: refrigerant pressure check, evaporator and condenser coil cleaning, capacitor and contactor test, blower amp draw, thermostat calibration",
+          "Ask the technician to flush the condensate drain and test the float switch and drain pan",
+          "Ask for duct and attic air-handler inspection for leaks or sweating",
+          "Note system age; 12-15 years is typical life in Florida, less near the coast"]),
+        S("Termite swarm-season inspection (February to June)", "Structure", 22, "High", "Subterranean termites swarm from late winter; drywood and Formosan swarms follow in spring and early summer.", [
+          "Look for discarded wings on windowsills, near lights and in spider webs",
+          "Check the slab edge, garage walls and foundation for mud tubes",
+          "Tap baseboards and door frames for hollow sounds; look for small pellet piles (drywood frass)",
+          "Keep mulch and soil at least 6 inches below siding or stucco",
+          "Schedule a licensed wood-destroying-organism inspection and renew any termite bond"]),
+        S("Flush the water heater and inspect the anode rod", "Plumbing", 27, "Medium", "Florida water is mineral-heavy; sediment shortens tank life and wastes energy.", [
+          "Turn off power (electric) or set gas to pilot",
+          "Drain 2-3 gallons from the drain valve until water runs clear",
+          "Lift the T&P relief valve lever briefly to confirm it flows and reseats",
+          "Inspect the anode rod every 3 years and replace if heavily corroded",
+          "Check the pan and drain line for moisture; note the manufacture date on the label"]),
+      ],
+      /* Mar */ [
+        S("Test all GFCI outlets and AFCI breakers", "Electrical", 5, "Medium", "Outdoor, garage, lanai and bathroom outlets fail more often in humid climates.", [
+          "Press TEST then RESET on every GFCI (kitchen, baths, garage, exterior, lanai, laundry)",
+          "Press the test button on each AFCI breaker at the panel",
+          "Confirm exterior outlet covers close over plugs and are weatherproof",
+          "Replace any outlet that fails to trip or reset"]),
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 12, "Medium", "Algae in the drain line is the top cause of AC water leaks in Florida. Repeat in June, September and December.", [
+          "Locate the PVC access tee on the drain line near the air handler",
+          "Pour about a cup of white vinegar (or per manufacturer) into the access tee and wait 30 minutes",
+          "Flush with clean water and confirm it drains freely at the outside outlet",
+          "Check that the secondary drain pan is dry and the float switch is intact"]),
+        S("Inspect stucco, paint and caulk before the rainy season", "Structure", 19, "Medium", "Hairline stucco and caulk cracks let wind-driven rain into walls. Seal them before June.", [
+          "Walk the exterior and mark stucco or paint cracks wider than a hairline",
+          "Re-caulk window and door frames and wall penetrations (hose bibs, dryer vent, electrical)",
+          "Patch cracks with elastomeric patching compound and touch up paint",
+          "Check garage door and slider weatherstripping"]),
+        S("Repair window, door and lanai screens", "Structure", 26, "Low", "No-see-ums and mosquitoes peak from spring through fall.", [
+          "Inspect every screen for tears or loose spline",
+          "Re-screen or patch damaged panels; check lanai screen door latches",
+          "Clean tracks and slider rollers"]),
+      ],
+      /* Apr */ [
+        S("Quarterly perimeter pest-control service", "Other", 4, "Medium", "Spring termite and ant activity peaks; keep the quarterly treatment on schedule.", [
+          "Confirm the visit with your licensed pest-control company",
+          "Ask for a check of the attic, garage and lanai",
+          "Save the service report to Documents"]),
+        S("Trim trees and palms before hurricane season", "Landscaping", 10, "High", "Hurricane season begins June 1. Loose or overhanging limbs are a major cause of roof and power-line damage.", [
+          "Hire an ISA-certified arborist (avoid topping or 'hurricane cuts' on trees and palms)",
+          "Remove dead limbs and any branches overhanging the roof",
+          "Remove dead palm fronds and seed pods, but do not over-prune palms",
+          "For anything near power lines, contact your electric utility; do not trim it yourself",
+          "Have all cuttings hauled away; loose yard debris becomes storm projectiles"]),
+        S("Roof inspection before hurricane season", "Roofing", 15, "High", "Florida sun and heat age roofs quickly. Find weak spots before storm season, not during it.", [
+          "From the ground with binoculars: look for missing, cracked or curled shingles or slipped/cracked tile",
+          "Check flashing at chimneys, walls and skylights, and sealant at vent boots",
+          "Look for rubber vent-pipe boots that are cracked (common at 8-10 years)",
+          "Look for dark streaks (algae); have them soft-washed. Never pressure-wash shingles",
+          "From the attic: look for daylight, water stains or damp insulation",
+          "Roof over 15 years old: get a licensed roofer's written inspection"]),
+        S("Clear gutters, downspouts and drainage before the rainy season", "Landscaping", 24, "Medium", "Daily summer downpours overwhelm blocked drainage and pond against the foundation.", [
+          "Clean gutters and downspouts if equipped; check for sagging or loose sections",
+          "Extend downspouts at least 5-6 feet from the foundation",
+          "Confirm the ground slopes away from the house (about 6 inches over the first 10 feet)",
+          "Clear yard drains, swales and French drains of leaves and sediment"]),
+      ],
+      /* May */ [
+        S("Build or restock your hurricane supply kit", "Safety", 15, "High", "Have it in place by June 1. Plan for 7 days without power, water or store access.", [
+          "Water: 1 gallon per person per day for 7 days, plus pets",
+          "7-day supply of non-perishable food and a manual can opener",
+          "30-day supply of prescriptions and copies of the prescriptions",
+          "Flashlights or headlamps, spare batteries, and a battery or hand-crank NOAA weather radio",
+          "Charged power banks and car chargers",
+          "First-aid kit, hygiene and sanitation supplies",
+          "Small-bill cash",
+          "Waterproof bag with ID copies, insurance policies, deed and medical information",
+          "Pet food, meds and carrier"]),
+        S("Insurance review: wind, flood and hurricane deductible", "Other", 8, "High", "Standard homeowners policies exclude flood, and flood coverage has a 30-day waiting period, so do this before June.", [
+          "Find your hurricane deductible (a percent of dwelling coverage) and convert it to dollars",
+          "Get a flood insurance quote (NFIP or private); it is not covered by standard homeowners",
+          "Ask your agent about a wind-mitigation inspection (form OIR-B1-1802); it can lower premiums and is valid for 5 years",
+          "Confirm dwelling coverage matches current rebuild cost",
+          "Save the policy PDF to Documents and keep an offline copy",
+          "Add your insurer's claim phone number to your phone contacts"]),
+        S("Inspect and test your storm protection", "Structure", 20, "High", "Discover missing hardware or a dead generator in May, not the day before a storm.", [
+          "Shutters or panels: locate every panel and confirm all bolts, nuts and tracks are present; test-fit one",
+          "Impact windows and doors: check seals, weep holes and locking points",
+          "Garage door: confirm it is wind-rated and its bracing is intact; test auto-reverse",
+          "Generator (if owned): run it 30 minutes under load and check oil; run it outdoors only, never in the garage or lanai",
+          "Locate and label the main electrical breaker, water shutoff and gas valve"]),
+        S("Check or install whole-home surge protection", "Electrical", 27, "Medium", "The Tampa Bay area has among the most lightning in the US, and summer storms start now.", [
+          "Check the status light on your panel's surge protector if installed",
+          "If none, get a quote from a licensed electrician for a whole-home surge protective device",
+          "Replace plug-in surge strips older than 3-5 years",
+          "Protect the AC condenser and pool equipment circuits if not covered"]),
+      ],
+      /* Jun */ [
+        S("Humidity and mold check", "Structure", 6, "Medium", "June-September humidity drives mold. EPA advises keeping indoor humidity between 30 and 50%, never above 60%.", [
+          "Place a hygrometer in the main living area and one in a closet or bathroom",
+          "Look under sinks, behind toilets and around AC vents and registers for sweating or stains",
+          "Check closets on exterior walls and the garage for musty odors",
+          "Confirm bath fans vent outside and run them 20 minutes after showers",
+          "Clean visible mildew with detergent; call a professional for areas larger than about 10 sq ft"]),
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 14, "Medium", "The rainy season pushes the AC to its hardest work; a clogged drain line is the usual cause of leaks.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage outside",
+          "Check the drain pan and float switch"]),
+        S("Attic inspection: leaks, ventilation and insulation", "Roofing", 22, "Medium", "After the first heavy rains, the attic shows whether the roof and ventilation are working.", [
+          "Look for water stains, damp insulation and daylight around penetrations",
+          "Confirm soffit and ridge vents are not blocked by insulation",
+          "Check insulation depth (R-30 to R-38 or more is recommended for Florida)",
+          "Check ductwork for disconnected, torn or sweating sections",
+          "Look for rodent droppings, nests or chewed wiring"]),
+      ],
+      /* Jul */ [
+        S("Quarterly perimeter pest-control service", "Other", 6, "Medium", "Summer rains push ants, roaches and other pests toward the house.", [
+          "Confirm the visit with your licensed pest-control company",
+          "Ask for treatment of eaves, lanai and garage",
+          "Save the service report to Documents"]),
+        S("Rinse and inspect the outdoor AC condenser", "HVAC", 14, "Medium", "Dirty coils and salt/pollen buildup reduce cooling and shorten compressor life.", [
+          "Turn off power at the outdoor disconnect",
+          "Gently rinse the coil fins with a garden hose from the outside; do not use a pressure washer",
+          "Clear plants, vines and debris to keep 2 feet of clearance",
+          "Check that the pad is level and the refrigerant line insulation is not cracked"]),
+        S("Inspect fascia, soffits, trim and decks for water damage", "Structure", 24, "Medium", "Wood rot advances fastest in summer humidity.", [
+          "Probe fascia, soffit and trim with a screwdriver; soft wood indicates rot",
+          "Check deck boards, railings and wood posts near the ground",
+          "Replace rotted sections, prime, paint and caulk the joints",
+          "Look for termite tubes or pest entry at rotted areas"]),
+      ],
+      /* Aug */ [
+        S("Hurricane peak-season readiness check", "Safety", 14, "High", "Peak season runs roughly mid-August through mid-October. This is the one mid-season check.", [
+          "Replace any water, food, batteries and medications that have expired or been used",
+          "Test the radio, flashlights and power banks",
+          "Fill vehicle fuel tanks, check propane, and refresh cash",
+          "Confirm you know your evacuation zone and route, and pet-friendly shelter options (check your county emergency management site)",
+          "Take dated photos of the exterior and roof as pre-storm documentation",
+          "Confirm shutters and panels are still accessible and not blocked"]),
+        S("Clean refrigerator coils and replace the water filter", "Appliance", 21, "Low", "Warm humid kitchens make refrigerators work harder, and a full, efficient fridge holds temperature longer in outages.", [
+          "Unplug and vacuum the condenser coils (front grille or rear)",
+          "Replace the water filter (every 6 months)",
+          "Check door gaskets for gaps or mildew",
+          "Confirm temperatures: 37°F fridge, 0°F freezer",
+          "Empty and wash the drain pan if accessible"]),
+      ],
+      /* Sep */ [
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 8, "Medium", "The AC is running nonstop; keep the drain clear through peak humidity.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage outside",
+          "Check the drain pan and float switch"]),
+        S("Clear window and slider tracks and weep holes", "Structure", 18, "Medium", "Blocked weep holes make wind-driven rain back up into the wall or floor.", [
+          "Vacuum and wash tracks on windows, sliding doors and lanai doors",
+          "Push a thin probe through weep holes to confirm they drain",
+          "Check window and door sealant, and test that locks fully engage"]),
+      ],
+      /* Oct */ [
+        S("Quarterly perimeter pest-control service", "Other", 5, "Medium", "Fall is when roof rats and other pests look for shelter and food; keep the perimeter treated.", [
+          "Confirm the visit with your licensed pest-control company",
+          "Ask for a rodent inspection of attic, garage and soffits",
+          "Save the service report to Documents"]),
+        S("Seal rodent entry points and inspect the attic", "Structure", 10, "Medium", "Roof rats are common in Florida and nest in attics and palms. Sealing gaps stops them getting in.", [
+          "Trim tree and palm branches at least 6 feet from the roofline",
+          "Seal gaps larger than 1/2 inch at pipes, vents and eaves with steel wool or metal flashing and sealant",
+          "Install or repair the garage door bottom seal",
+          "Screen attic and soffit vents",
+          "Inspect the attic for droppings, gnawed wires and nests",
+          "Call a licensed pest professional if you find signs"]),
+        S("Clean the dryer vent and duct", "Appliance", 16, "High", "Lint buildup is a leading cause of house fires. Clean at least annually.", [
+          "Unplug or shut off gas, and pull the dryer away from the wall",
+          "Brush or vacuum the duct from both the dryer and exterior ends",
+          "Clean the exterior flap and confirm it opens freely",
+          "Replace any foil or vinyl duct with rigid or semi-rigid metal",
+          "Wash the lint trap screen with soap and water"]),
+        S("Irrigation check and fall lawn care", "Landscaping", 24, "Low", "Florida law requires a working rain sensor on automatic irrigation, and county watering rules change in the fall.", [
+          "Test the rain sensor by pressing or wetting it; the system should shut off",
+          "Run each zone and replace clogged, broken or misaligned heads",
+          "Update the timer to your current county watering days and hours (check your water management district)",
+          "Pinellas County's summer fertilizer ban (June 1 to Sept 30) has ended; if you fertilize, use slow-release and confirm your local ordinance"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November).", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label (5-7 years)",
+          "Check fire extinguisher gauges are in the green; keep one in the kitchen and garage",
+          "Review your family escape plan"]),
+        S("Test heat mode before the first cold front", "HVAC", 8, "Medium", "Many Florida homes rely on heat strips or a heat pump that are rarely used; find problems before the first cold night.", [
+          "Set the thermostat to Heat and run it for 15 minutes",
+          "Expect a brief burning-dust smell the first time; anything persistent needs service",
+          "Confirm auxiliary or emergency heat activates",
+          "Change the air filter; rinse the outdoor coil if you live near the coast"]),
+        S("Hurricane-season wrap-up: roof and yard inspection, restock kit", "Roofing", 18, "Medium", "The season ends November 30. Check for damage you missed and reset supplies.", [
+          "Walk the roof line and yard for loose flashing, cracked tile, damaged screens or fences",
+          "Photograph and repair any storm damage; file claims within your policy's deadline",
+          "Replace used or expiring kit items; store shutters and panels dry",
+          "Re-trim any limbs that grew back over the roof"]),
+      ],
+      /* Dec */ [
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 4, "Medium", "Final quarterly flush of the year.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage outside",
+          "Check the drain pan and float switch"]),
+        S("Cold-snap readiness (nights forecast below 35°F)", "Plumbing", 10, "Medium", "Tampa Bay sees a few near-freezing nights most winters. Prep once, then act only when a freeze is forecast.", [
+          "Move or cover freeze-tender plants",
+          "Cover outdoor spigots and the irrigation backflow preventer with insulated covers",
+          "Know where pool pump controls are; run the pump overnight during a freeze warning",
+          "Disconnect garden hoses",
+          "Never run generators, grills or camp stoves indoors or in the garage for heat"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
     ],
     icon: "🌴", color: "#FBF3E8", border: "#E8C89A",
   },
@@ -217,7 +464,10 @@ const CLIMATE_TASKS = {
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 // Tasks that belong to a given month (0 = Jan) for a climate profile.
 function getMonthTasks(cp, month) {
-  return (cp && cp.months && cp.months[month]) || [];
+  return ((cp && cp.months && cp.months[month]) || []).map((it, i) => {
+    const o = typeof it === "string" ? { title: it } : it;
+    return { ...o, category: o.category || null, priority: o.priority || "Medium", day: o.day || monthTaskDay(i), notes: o.notes || buildSeasonalNotes(o) };
+  });
 }
 // Spread a month's tasks across the month so they don't all land on day 1.
 const monthTaskDay = (i) => Math.min(1 + i * 6, 27);
@@ -1847,8 +2097,8 @@ function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
   const cp = getClimateProfile(zone);
   [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
     for (let mo = 0; mo < 12; mo++) {
-      getMonthTasks(cp, mo).forEach((title, i) => {
-        add(localISO(new Date(yr, mo, monthTaskDay(i))), { id:`ss-${yr}-${mo}-${i}`, type:"seasonal", title, canCreate:true, seasonal:seasonOfMonth(mo) });
+      getMonthTasks(cp, mo).forEach((it, i) => {
+        add(localISO(new Date(yr, mo, it.day)), { id:`ss-${yr}-${mo}-${i}`, type:"seasonal", title:it.title, category:it.category, notes:it.notes, priority:it.priority, canCreate:true, seasonal:seasonOfMonth(mo) });
       });
     }
   });
@@ -4461,7 +4711,25 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
           </select>
         </div>
       )}
-      <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Details, part numbers, access instructions…" /></div>
+      {(() => {
+        const cl = parseChecklist(data.notes);
+        if (!cl.items.length) return null;
+        return (
+          <div className="field s2">
+            <label>Checklist · {cl.done} of {cl.items.length} done</label>
+            {cl.intro && <div style={{fontSize:".78rem",color:"#7A7370",lineHeight:1.5,marginBottom:".5rem"}}>{cl.intro}</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:".15rem",background:"var(--cream)",border:"1px solid var(--stone)",borderRadius:12,padding:".55rem .7rem"}}>
+              {cl.items.map(it => (
+                <label key={it.line} style={{display:"flex",alignItems:"flex-start",gap:".55rem",padding:".3rem 0",cursor:"pointer",textTransform:"none",letterSpacing:0,fontWeight:500}}>
+                  <input type="checkbox" checked={it.done} onChange={()=>f("notes", toggleChecklistItem(data.notes, it.line))} style={{width:18,height:18,marginTop:1,flexShrink:0}}/>
+                  <span style={{fontSize:".84rem",lineHeight:1.4,color:it.done?"#A8A09A":"var(--dark)",textDecoration:it.done?"line-through":"none"}}>{it.text}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+      <div className="field s2"><label>Notes</label><textarea rows={parseChecklist(data.notes).items.length ? 8 : 3} value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Details, part numbers, access instructions…" /></div>
     </div>
   );
 }
@@ -8510,7 +8778,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     color:  dashClimate.color,
     border: dashClimate.border,
     title:  `${MONTH_NAMES[month]} checklist · ${dashClimate.label}`,
-    tip:    getMonthTasks(dashClimate, month).slice(0, 3).join(" · "),
+    tip:    getMonthTasks(dashClimate, month).slice(0, 3).map(x => x.title).join(" · "),
   };
 
   // Detect new user — hasn't run setup wizard yet
@@ -9057,7 +9325,10 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
   const season = month>=2&&month<=4?"spring":month>=5&&month<=7?"summer":month>=8&&month<=10?"fall":"winter";
   const seasonLabel = MONTH_NAMES[month];
   const seasonIcon = climate.icon || {spring:"🌸",summer:"☀️",fall:"🍂",winter:"❄️"}[season];
-  const seasonalSuggestions = getMonthTasks(climate, month);
+  const curYm = localISO().slice(0,7);
+  // Hide a suggestion once the user already has it open, or finished it this month
+  const seasonalSuggestions = getMonthTasks(climate, month).filter(it =>
+    !tasks.some(t => t.title === it.title && (t.status !== "Completed" || (t.due_date||"").slice(0,7) === curYm)));
 
   const [statusF, setStatusF] = useState("Active"); // default to Active — what needs doing
   const [catF, setCatF] = useState("All");
@@ -9179,8 +9450,10 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     }
   };
 
-  const addSeasonalTask = (title) => {
-    setEditData({title, status:"Scheduled", priority:"Medium", category:"Other", due_date:localISO()});
+  const addSeasonalTask = (it) => {
+    let due = localISO(new Date(new Date().getFullYear(), month, it.day || 1));
+    if (due < localISO()) due = localISO();
+    setEditData({title:it.title, status:"Scheduled", priority:it.priority||"Medium", category:it.category||"Other", due_date:due, notes:it.notes||""});
     setEditId(null);
     setModal(true);
   };
@@ -9252,7 +9525,12 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             {t.vendor && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>}
             {t.cost>0 && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>}
           </div>
-          {t.notes && !t.notes.startsWith("[") && <div className="task-card-note">{t.notes}</div>}
+          {t.notes && !t.notes.startsWith("[") && (() => {
+            const cl = parseChecklist(t.notes);
+            return cl.items.length
+              ? <div className="task-card-note"><b style={{color:cl.done===cl.items.length?"var(--ok)":"var(--pine)"}}>☑ {cl.done}/{cl.items.length} steps</b>{cl.intro ? ` · ${cl.intro.slice(0,110)}${cl.intro.length>110?"…":""}` : ""}</div>
+              : <div className="task-card-note">{t.notes}</div>;
+          })()}
         </div>
         <div className="trow-right">
           <span style={{fontSize:".8rem",fontWeight:700,color:dateColor,whiteSpace:"nowrap"}}>{dateLabel}</span>
@@ -9442,12 +9720,15 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           </button>
           {showSeasonal && (
             <div style={{marginTop:".5rem",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
-              {seasonalSuggestions.slice(0,5).map((title,i) => (
-                <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem 1rem",borderBottom:i<Math.min(seasonalSuggestions.length,5)-1?"1px solid var(--stone)":"none",cursor:"pointer",transition:"background .12s"}}
-                  onClick={()=>addSeasonalTask(title)}
+              {seasonalSuggestions.map((it,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem 1rem",borderBottom:i<seasonalSuggestions.length-1?"1px solid var(--stone)":"none",cursor:"pointer",transition:"background .12s"}}
+                  onClick={()=>addSeasonalTask(it)}
                   onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
                   onMouseLeave={e=>e.currentTarget.style.background=""}>
-                  <span style={{flex:1,fontSize:".83rem",fontWeight:500,color:"var(--dark)"}}>{title}</span>
+                  <span style={{flex:1,minWidth:0}}>
+                    <span style={{display:"block",fontSize:".83rem",fontWeight:600,color:"var(--dark)"}}>{it.title}</span>
+                    <span style={{display:"block",fontSize:".72rem",color:"#8A8178",marginTop:2}}>{it.category||"Other"}{parseChecklist(it.notes).items.length>0?` · ${parseChecklist(it.notes).items.length}-step checklist`:""} · target {fmtD(localISO(new Date(new Date().getFullYear(), month, it.day||1)))}</span>
+                  </span>
                   <span style={{fontSize:".75rem",color:"var(--pine)",fontWeight:600}}>+ Add</span>
                 </div>
               ))}
@@ -16692,7 +16973,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const createFromSuggestion = async (ev, date) => {
     if (created.has(ev.id)) return;
     setSaving(true);
-    const payload = { title:ev.title, due_date:date, status:"Scheduled", priority:"Medium", category:ev.category || guessCategory(ev.title), notes:"", user_id:userId };
+    const payload = { title:ev.title, due_date:date, status:"Scheduled", priority:ev.priority||"Medium", category:ev.category || guessCategory(ev.title), notes:ev.notes||"", user_id:userId };
     const { data, error } = await supabase.from("tasks").insert([payload]).select();
     if (!error && data) { setTasks(p=>[data[0],...p]); setCreated(s=>new Set(s).add(ev.id)); toast("Task added ✓"); }
     setSaving(false);
@@ -16720,8 +17001,8 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
       for (let mo = 0; mo < 12; mo++) {
         const monthStart = new Date(yr, mo, 1);
         if (monthStart < startMo || monthStart >= endMo) continue;
-        getMonthTasks(cp, mo).forEach((title, i) => {
-          items.push({ id:`gen-${yr}-${mo}-${i}`, title, date:localISO(new Date(yr,mo,monthTaskDay(i))), category:guessCategory(title), season:MONTH_NAMES[mo]+" "+yr });
+        getMonthTasks(cp, mo).forEach((it, i) => {
+          items.push({ id:`gen-${yr}-${mo}-${i}`, title:it.title, date:localISO(new Date(yr,mo,it.day)), category:it.category||guessCategory(it.title), priority:it.priority, notes:it.notes, season:MONTH_NAMES[mo]+" "+yr });
         });
       }
     });
@@ -16734,7 +17015,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
     const selected = genItems.filter(it => genChecked[it.id]);
     if (!selected.length) return;
     setSaving(true);
-    const rows = selected.map(it => ({ title:it.title, due_date:it.date, status:"Scheduled", priority:"Medium", category:it.category, notes:"", user_id:userId }));
+    const rows = selected.map(it => ({ title:it.title, due_date:it.date, status:"Scheduled", priority:it.priority||"Medium", category:it.category, notes:it.notes||"", user_id:userId }));
     const { data, error } = await supabase.from("tasks").insert(rows).select();
     if (!error && data) { setTasks(p=>[...data,...p]); toast(`${data.length} tasks scheduled ✓`); setShowGen(false); }
     setSaving(false);
