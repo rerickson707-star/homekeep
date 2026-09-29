@@ -1,4 +1,4 @@
-// Steadwell v255 — 2026-09-25T01:37:47.000Z
+// Steadwell v256 — 2026-09-29T17:55:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1597,6 +1597,20 @@ img,.lp-root img{max-width:100%;height:auto}
   .main{max-width:1320px;margin:0;padding:2rem 3rem}
   .toast-wrap{bottom:1.5rem}
 }
+
+/* Dashboard: on desktop, header cards on top, then feed | week+tip columns,
+   then a systems grid — instead of phone-style full-width strips. Mobile
+   is unchanged (wrappers are plain blocks in the original order). */
+.dash-systems{display:none}
+@media(min-width:1024px){
+  .dash-top{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
+  .dash-cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:1.25rem;align-items:start}
+  .dash-left,.dash-right{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden}
+  .dash-right > div:first-child{margin:0 !important}
+  .dash-systems{display:block;margin-top:1.5rem}
+  .dash-systems-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+}
+@media(min-width:1300px){.dash-systems-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* Assets: a responsive grid on desktop instead of one long stacked column */
 .assets-grid{display:flex;flex-direction:column}
@@ -8543,9 +8557,20 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     );
   };
 
-  return (
-    <div style={{paddingBottom:"1.5rem"}}>
+  // Systems-at-a-glance (desktop panel): worst-health assets first
+  const dashHomeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
+  const dashRecalled = new Set((recalls||[]).map(r => r.asset.id));
+  const HEALTH_ORDER = { bad:0, due:1, heads:2, estimated:3, ok:4 };
+  const dashSystems = warranties
+    .filter(a => !a.retired_at && !a.warranty_only)
+    .map(a => ({ a, h: getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: dashRecalled.has(a.id), fallbackAgeYears: dashHomeAge }) }))
+    .sort((x,y) => (HEALTH_ORDER[x.h.key] ?? 5) - (HEALTH_ORDER[y.h.key] ?? 5))
+    .slice(0, 6);
 
+  return (
+    <div className="dash-root" style={{paddingBottom:"1.5rem"}}>
+
+      <div className="dash-top">
       {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
       {isNewUser && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
@@ -8626,6 +8651,10 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         ))}
       </div>
 
+      </div>{/* /dash-top */}
+
+      <div className="dash-cols">
+      <div className="dash-left">
       {/* ── WHAT'S POSSIBLE — 30-day feature discovery ── */}
       {showWhatsNew && !wpDismissed && (
         <div style={{margin:".75rem 1.25rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-md)",padding:".65rem .85rem"}}>
@@ -8716,6 +8745,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         )}
       </div>
 
+      </div>{/* /dash-left */}
+      <div className="dash-right">
       {/* ── WEEK STRIP ── */}
       <div style={{background:"var(--white)",margin:".75rem 0",padding:"1rem 1.25rem"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem"}}>
@@ -8747,6 +8778,38 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1.25rem",fontSize:".82rem",color:"#7A7370"}}>
           <span style={{fontSize:"1.1rem",flexShrink:0}}>{tip.icon}</span>
           <span style={{lineHeight:1.45}}><strong>{tip.title}:</strong> {tip.tip}</span>
+        </div>
+      )}
+
+      </div>{/* /dash-right */}
+      </div>{/* /dash-cols */}
+
+      {/* ── SYSTEMS AT A GLANCE — desktop only (mobile keeps the Assets tab) ── */}
+      {!isNewUser && dashSystems.length > 0 && (
+        <div className="dash-systems">
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".75rem"}}>
+            <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:500}}>Your systems</span>
+            <button onClick={()=>onNavigate("warranties")} style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View all assets →</button>
+          </div>
+          <div className="dash-systems-grid">
+            {dashSystems.map(({a,h}) => (
+              <div key={a.id} onClick={()=>onNavigate("warranties")}
+                style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",cursor:"pointer",textAlign:"left"}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem",marginBottom:".6rem"}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
+                    <div style={{fontSize:".78rem",color:"#8A8178",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[a.brand, a.category].filter(Boolean).join(" · ") || "Asset"}</div>
+                  </div>
+                  <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:h.bg,color:h.color,whiteSpace:"nowrap",flexShrink:0}}>{h.label}</span>
+                </div>
+                {h.lifePct != null && (
+                  <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${Math.min(100,h.lifePct)}%`,background:h.color,borderRadius:4}}/>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
