@@ -1,4 +1,4 @@
-// Steadwell v256 — 2026-09-29T17:55:00.000Z
+// Steadwell v257 — 2026-09-29T18:10:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -197,6 +197,10 @@ const CSS = `
   --sidebar-w:236px;
 }
 
+/* Neutralize Vite-starter defaults on #root (centered text, 1280px cap, padding)
+   that made the whole app center-aligned and narrow */
+#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}
+.app{text-align:left}
 html{scroll-behavior:smooth}
 body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior-x:none}
 .app{min-height:100dvh;display:flex;flex-direction:column;padding-top:var(--hdr);padding-bottom:var(--bottom-nav);max-width:100vw;overflow-x:clip}
@@ -8795,12 +8799,13 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
             {dashSystems.map(({a,h}) => (
               <div key={a.id} onClick={()=>onNavigate("warranties")}
                 style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",cursor:"pointer",textAlign:"left"}}>
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem",marginBottom:".6rem"}}>
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
-                    <div style={{fontSize:".78rem",color:"#8A8178",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[a.brand, a.category].filter(Boolean).join(" · ") || "Asset"}</div>
-                  </div>
-                  <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:h.bg,color:h.color,whiteSpace:"nowrap",flexShrink:0}}>{h.label}</span>
+                <div style={{marginBottom:".65rem"}}>
+                  <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",lineHeight:1.25}}>{a.item}</div>
+                  <div style={{fontSize:".78rem",color:"#8A8178",marginTop:".15rem"}}>{[a.brand, a.category].filter(Boolean).join(" · ") || "Asset"}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",marginBottom:".55rem"}}>
+                  <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:h.bg,color:h.color,whiteSpace:"nowrap"}}>{h.label}</span>
+                  {h.lifePct != null && <span style={{fontSize:".72rem",color:"#8A8178"}}>{Math.min(100,h.lifePct)}% of lifespan</span>}
                 </div>
                 {h.lifePct != null && (
                   <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
