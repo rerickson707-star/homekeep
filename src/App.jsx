@@ -1,4 +1,4 @@
-// Steadwell v268 — 2026-09-29T23:00:00.000Z
+// Steadwell v272 — 2026-09-30T00:30:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3142,6 +3142,85 @@ img,.lp-root img{max-width:100%;height:auto}
 
 /* Prevent text overflow on narrow cards */
 .task-card-title,.exp-card-title{word-break:break-word;overflow-wrap:break-word}
+
+
+/* ── Money tab: desktop layout (Expenses / Projects / Utilities) ── */
+.money-side{display:none}
+.money-body,.money-main{display:block}
+@media(min-width:1024px){
+  .money-hdr{padding-left:0!important;padding-right:0!important}
+  .money-sub{padding:0!important;gap:.25rem}
+  .money-sub>button{flex:0 0 auto!important;padding:.75rem 1.5rem!important;font-size:.95rem!important}
+  .mflat{margin-left:0!important;margin-right:0!important}
+  .mpad{padding-left:0!important;padding-right:0!important}
+  .money-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:1.25rem;align-items:stretch;margin-bottom:1.25rem}
+  .money-top>*{margin:0!important}
+  .money-top>:only-child{grid-column:1/-1}
+  .money-cats{display:none!important}
+  .money-body{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1.25rem;align-items:start}
+  .money-body.no-side{grid-template-columns:minmax(0,1fr)}
+  .money-side{display:block;position:sticky;top:calc(var(--hdr,64px) + 1rem)}
+  .money-side-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:1rem}
+  .money-side-title{font-size:.78rem;font-weight:700;color:#A8A09A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem}
+  .money-cat{display:block;width:100%;text-align:left;background:none;border:1.5px solid transparent;border-radius:10px;padding:.55rem .6rem;margin-bottom:.15rem;cursor:pointer;font-family:inherit;color:var(--dark)}
+  .money-cat:hover{background:var(--cream)}
+  .money-cat.on{background:rgba(35,74,61,.06);border-color:var(--pine)}
+  .money-cat-row{display:flex;justify-content:space-between;gap:.5rem;font-size:.85rem;font-weight:600}
+  .money-cat-row strong{font-family:'Fraunces',serif;color:var(--pine)}
+  .money-cat-bar{display:block;height:5px;border-radius:3px;background:var(--cream2);margin:.4rem 0 .25rem;overflow:hidden}
+  .money-cat-bar>span{display:block;height:100%;border-radius:3px}
+  .money-cat-meta{display:block;font-size:.7rem;color:var(--mid)}
+  .proj-grid,.util-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.25rem;align-items:start}
+  .proj-grid>*,.util-grid>*{margin:0!important}
+  .pd-bar{border:1.5px solid var(--stone);border-radius:var(--r-sm) var(--r-sm) 0 0}
+  .pd-hero{border-radius:0 0 var(--r-sm) var(--r-sm)}
+  .pd-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;align-items:start;padding:1.25rem 0!important}
+  .pd-body>*{margin-bottom:0!important}
+  .pd-full{grid-column:1/-1}
+}
+@media(min-width:1400px){.proj-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:640px){
+  .money-add-overlay{align-items:center!important}
+  .money-add-sheet{border-radius:20px!important;padding-bottom:1.25rem!important}
+}
+
+
+/* ── Asset detail: desktop two-column ── */
+@media(min-width:1024px){
+  .ad-bar{border:1.5px solid var(--stone);border-radius:var(--r-sm) var(--r-sm) 0 0}
+  .ad-hero{border-radius:0 0 var(--r-sm) var(--r-sm)}
+  .ad-body{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:1.25rem;align-items:start;padding:1.25rem 0!important}
+  .ad-main{grid-column:1;grid-row:1;min-width:0}
+  .ad-side{grid-column:2;grid-row:1;min-width:0}
+}
+
+
+/* ── My Home: desktop layout ── */
+@media(min-width:1024px){
+  .mh-root .pw-card{margin:1rem 0 0!important}
+  .mh-flat{margin-left:0!important;margin-right:0!important}
+  .mh-stats{border:1.5px solid var(--stone);border-radius:var(--r-sm);overflow:hidden;margin:1.25rem 0!important}
+  .mh-cols>*{margin:0 0 1.25rem!important}
+}
+@media(min-width:1200px){
+  .mh-cols{column-count:2;column-gap:1.25rem}
+  .mh-cols>*{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid}
+}
+
+
+/* ── Documents + Contractors: desktop layout ── */
+@media(min-width:1024px){
+  .app.app-nosb{padding-left:0}
+  .app.app-nosb .hdr{padding-left:2.5rem}
+  .doc-scroll,.cr-scroll{padding:1.5rem 2rem!important;max-width:1240px;width:100%;box-sizing:border-box}
+  .doc-search,.cr-search{max-width:480px}
+  .doc-grid,.cr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;align-items:start}
+  .doc-grid .doc-category{margin-bottom:0}
+  .cr-grid>*{margin:0!important}
+  .cr-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:1.25rem;align-items:start}
+  .cr-detail>*{margin:0!important}
+}
+@media(min-width:1500px){.cr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
@@ -11615,9 +11694,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
     return (
       <AssetDetailErrorBoundary>
-      <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      <div className="ad-wrap" style={{display:"flex",flexDirection:"column",height:"100%"}}>
         {/* Top bar */}
-        <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+        <div className="ad-bar" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
           <button onClick={()=>setSelectedAsset(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
           <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
           <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
@@ -11645,10 +11724,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           </div>
         )}
 
-        <div style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
+        <div className="ad-scroll" style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
 
           {/* ── HERO ── */}
-          <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+          <div className="ad-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",color:"#fff",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
             {asset.asset_photo_url && (
               <img src={asset.asset_photo_url} alt={asset.item}
@@ -11705,8 +11784,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             )}
           </div>
 
-          <div style={{padding:"1.1rem 1rem"}}>
+          <div className="ad-body" style={{padding:"1.1rem 1rem"}}>
 
+            <div className="ad-side">
             {/* ── Primary actions ── */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1.2rem"}}>
               <button onClick={()=>openNewService(asset.id)}
@@ -11833,6 +11913,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               </div>
             )}
 
+            </div>{/* /ad-side */}
+            <div className="ad-main">
             {/* ── Smart Fill inline ── */}
             <AssetSmartFillPanel
               asset={asset}
@@ -12020,6 +12102,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 <div style={{fontSize:".8rem",color:"var(--dark)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{asset.notes.replace(/Support: https?:\/\/\S+/g,"").trim()}</div>
               </div>
             )}
+            </div>{/* /ad-main */}
           </div>
         </div>
 
@@ -12969,7 +13052,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   return (
     <div>
       {/* ── Page header — add button changes per view ── */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .5rem"}}>
+      <div className="money-hdr" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .5rem"}}>
         <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:500,letterSpacing:"-.5px"}}>Money</span>
         <button className="btn btn-primary" onClick={()=>setAddSheet(true)} style={{display:view==="projects"&&selectedProject?"none":""}}>
           + Add
@@ -12977,7 +13060,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       </div>
 
       {/* ── Sub-nav ── */}
-      <div style={{display:"flex",borderBottom:"2px solid var(--stone)",padding:"0 1rem",marginBottom:"1.1rem"}}>
+      <div className="money-sub" style={{display:"flex",borderBottom:"2px solid var(--stone)",padding:"0 1rem",marginBottom:"1.1rem"}}>
         {[
           {id:"expenses",  label:"Expenses"},
           {id:"projects",  label:"Projects",  count:projects.length},
@@ -13002,7 +13085,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {view==="expenses" && (
         <div>
           {/* Hero */}
-          <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+          <div className="money-top">
+          <div className="mflat" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
             <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>All-time home spend</div>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:"2.4rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(allTotal)}</div>
@@ -13036,7 +13120,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             const fmtY=v=>v===0?"$0":v>=1000?`$${(v/1000)%1===0?(v/1000):(v/1000).toFixed(1)}k`:`$${v}`;
             const font="'Hanken Grotesk',Arial,sans-serif";
             return (
-              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1.1rem",padding:"1rem 1rem .7rem"}}>
+              <div className="mflat money-chart" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1.1rem",padding:"1rem 1rem .7rem"}}>
                 <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".85rem"}}>{yr} monthly spending</div>
                 <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{width:"100%",height:"auto",display:"block"}}>
                   {[0,.25,.5,.75,1].map(pct=>{
@@ -13062,10 +13146,11 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               </div>
             );
           })()}
+          </div>
 
           {/* Category chips */}
           {catData.length > 0 && (
-            <div style={{display:"flex",gap:".55rem",overflowX:"auto",padding:"0 1rem",marginBottom:".9rem",scrollbarWidth:"none"}}>
+            <div className="money-cats" style={{display:"flex",gap:".55rem",overflowX:"auto",padding:"0 1rem",marginBottom:".9rem",scrollbarWidth:"none"}}>
               <div onClick={()=>setCatF("All")} style={{flexShrink:0,background:catF==="All"?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF==="All"?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:80}}>
                 <div style={{fontSize:"1.1rem",marginBottom:".2rem"}}>🏠</div>
                 <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)"}}>All</div>
@@ -13084,6 +13169,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           )}
 
           {/* Expense list */}
+          <div className={"money-body"+(catData.length>0?"":" no-side")}>
+          <div className="money-main">
           {sorted.length===0 ? (
             <div className="empty">
               <span className="ei">💲</span>
@@ -13093,7 +13180,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             </div>
           ) : (
             <div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1rem",marginBottom:".6rem"}}>
+              <div className="mpad" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1rem",marginBottom:".6rem"}}>
                 <span style={{fontSize:".8rem",color:"#A8A09A",fontWeight:600}}>{filtered.length} expense{filtered.length!==1?"s":""}{catF!=="All"?` · ${catF}`:""}</span>
                 <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)} style={{fontSize:".8rem",color:"var(--pine)",fontWeight:700,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="date_desc">Newest first</option>
@@ -13103,7 +13190,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   <option value="desc_az">A–Z</option>
                 </select>
               </div>
-              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",margin:"0 1rem"}}>
+              <div className="mflat" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",margin:"0 1rem"}}>
                 {sorted.map((e,idx)=>{
                   const proj=e.project_id?projects.find(p=>p.id===e.project_id):null;
                   const isImage=e.file_url&&e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
@@ -13173,6 +13260,29 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               </div>
             </div>
           )}
+          </div>
+          {catData.length>0 && (
+            <aside className="money-side">
+              <div className="money-side-card">
+                <div className="money-side-title">Spending by category</div>
+                <button className={"money-cat"+(catF==="All"?" on":"")} onClick={()=>setCatF("All")}>
+                  <span className="money-cat-row"><span>🏠 All categories</span><strong>{fmt$(allTotal)}</strong></span>
+                </button>
+                {catData.map(([cat,{total,count}],ci)=>{
+                  const share = allTotal>0 ? Math.round((total/allTotal)*100) : 0;
+                  const col = CHART_COLORS[Math.max(CATEGORIES.indexOf(cat),ci)%CHART_COLORS.length];
+                  return (
+                    <button key={cat} className={"money-cat"+(catF===cat?" on":"")} onClick={()=>setCatF(catF===cat?"All":cat)}>
+                      <span className="money-cat-row"><span>{CAT_ICONS[cat]||"🔧"} {cat}</span><strong>{fmt$(total)}</strong></span>
+                      <span className="money-cat-bar"><span style={{width:Math.max(share,2)+"%",background:col}}/></span>
+                      <span className="money-cat-meta">{share}% · {count} item{count!==1?"s":""}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+          )}
+          </div>
         </div>
       )}
 
@@ -13205,9 +13315,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             const catBreakdown = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
 
             return (
-              <div style={{display:"flex",flexDirection:"column",minHeight:"100%"}}>
+              <div className="pd-wrap" style={{display:"flex",flexDirection:"column",minHeight:"100%"}}>
                 {/* Top bar */}
-                <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+                <div className="pd-bar" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
                   <button onClick={()=>setSelectedProject(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
                   <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
                   <button onClick={()=>openEditProject(p)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
@@ -13216,7 +13326,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
                 <div style={{flex:1,overflowY:"auto",background:"var(--linen,var(--cream))"}}>
                   {/* Hero */}
-                  <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                  <div className="pd-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
                     <div style={{display:"flex",alignItems:"flex-start",gap:".9rem",marginBottom:"1rem"}}>
                       <div style={{width:56,height:56,borderRadius:15,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.7rem",flexShrink:0}}>🔨</div>
@@ -13249,10 +13359,10 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     </div>
                   </div>
 
-                  <div style={{padding:"1rem"}}>
+                  <div className="pd-body" style={{padding:"1rem"}}>
 
                     {/* Action buttons */}
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1.1rem"}}>
+                    <div className="pd-full" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1.1rem"}}>
                       <button onClick={()=>{setEditData({date:localISO(),project_id:p.id});setEditId(null);setModal(true);}} style={{background:"var(--pine)",border:"1.5px solid var(--pine)",borderRadius:"var(--r-sm)",padding:".9rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",cursor:"pointer",fontFamily:"inherit"}}>
                         <span style={{fontSize:"1.25rem"}}>💸</span>
                         <span style={{fontSize:".88rem",fontWeight:700,color:"#fff"}}>Log expense</span>
@@ -13423,7 +13533,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     )}
 
                     {/* Full expense list */}
-                    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
+                    <div className="pd-full" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
                       <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
                         <span style={{fontSize:"1rem"}}>💸</span>
                         <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Expenses</span>
@@ -13506,7 +13616,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     const totalSpent=projects.reduce((s,p)=>s+expenses.filter(e=>e.project_id===p.id).reduce((a,e)=>a+Number(e.amount||0),0),0);
                     const remaining=totalBudget-totalSpent;
                     return (
-                      <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                      <div className="mflat" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
                         <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
                         <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Total project budget</div>
                         <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(totalBudget)}</div>
@@ -13528,7 +13638,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
                   {/* ROI calculator upgrade tile — free users only */}
                   {!(planData?.plan === "plus" || planData?.plan === "pro") && (
-                    <div onClick={onUpgrade}
+                    <div className="mflat" onClick={onUpgrade}
                       style={{display:"flex",alignItems:"center",gap:".85rem",margin:"0 1rem 1.1rem",padding:"1rem 1.1rem",borderRadius:"var(--r-sm)",background:"linear-gradient(135deg,#1C3D31,#234A3D)",cursor:"pointer"}}>
                       <div style={{width:42,height:42,borderRadius:12,background:"rgba(193,97,64,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>📊</div>
                       <div style={{flex:1,minWidth:0}}>
@@ -13540,7 +13650,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   )}
 
                   {/* Status filter chips */}
-                  <div style={{display:"flex",gap:".5rem",padding:"0 1rem",marginBottom:"1rem",overflowX:"auto",scrollbarWidth:"none"}}>
+                  <div className="mpad" style={{display:"flex",gap:".5rem",padding:"0 1rem",marginBottom:"1rem",overflowX:"auto",scrollbarWidth:"none"}}>
                     {["All",...[...new Set(projects.map(p=>p.status||"Planning"))]].map(f=>(
                       <button key={f} onClick={()=>setProjFilter(f)} style={{flexShrink:0,border:`1.5px solid ${projFilter===f?"var(--dark)":"var(--stone)"}`,background:projFilter===f?"var(--dark)":"var(--white)",color:projFilter===f?"#fff":"#6E665D",borderRadius:22,padding:".45rem .9rem",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
                         {f}{f!=="All"?` ${projects.filter(p=>(p.status||"Planning")===f).length}`:" "+projects.length}
@@ -13549,6 +13659,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   </div>
 
                   {/* Project cards — tap to open detail */}
+                  <div className="proj-grid">
                   {filteredProjects.map(p=>{
                     const projExpenses=expenses.filter(e=>e.project_id===p.id);
                     const spent=projExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -13639,6 +13750,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       </div>
                     );
                   })}
+                  </div>
                 </>
               )}
             </div>
@@ -13673,7 +13785,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           ) : (
             <div>
               {/* Utilities hero */}
-              <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+              <div className="mflat" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
                 <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
                 <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Utilities this year</div>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(utilThisYr)}</div>
@@ -13692,7 +13804,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               </div>
 
               {/* Utility cards */}
-              <div>
+              <div className="util-grid">
                 {utilities.map(u=>{
                   const ut=UTIL_TYPES[u.type]||UTIL_TYPES.other;
                   const utilBills=bills.filter(b=>b.utility_id===u.id).sort((a,b)=>new Date(b.bill_date)-new Date(a.bill_date));
@@ -13805,8 +13917,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
       {/* ── Unified Add action sheet ── */}
       {addSheet && (
-        <div className="overlay" onClick={()=>setAddSheet(false)} style={{alignItems:"flex-end",zIndex:999}}>
-          <div style={{background:"var(--white)",borderRadius:"20px 20px 0 0",padding:"1.25rem 1rem 2rem",maxWidth:480,margin:"0 auto",width:"100%",transform:"translateZ(0)"}} onClick={e=>e.stopPropagation()}>
+        <div className="overlay money-add-overlay" onClick={()=>setAddSheet(false)} style={{alignItems:"flex-end",zIndex:999}}>
+          <div className="money-add-sheet" style={{background:"var(--white)",borderRadius:"20px 20px 0 0",padding:"1.25rem 1rem 2rem",maxWidth:480,margin:"0 auto",width:"100%",transform:"translateZ(0)"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:36,height:4,borderRadius:2,background:"var(--stone)",margin:"0 auto .85rem"}}/>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,marginBottom:"1.1rem",textAlign:"center"}}>What would you like to add?</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".65rem",marginBottom:".85rem"}}>
@@ -14165,10 +14277,11 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
         </div>
       )}
 
-      <div style={{flex:1,overflowY:"auto",padding:".75rem 1rem"}}>
+      <div className="doc-scroll" style={{flex:1,overflowY:"auto",padding:".75rem 1rem"}}>
         {/* Search */}
         {documents.length > 3 && (
           <input
+            className="doc-search"
             value={search}
             onChange={e=>setSearch(e.target.value)}
             placeholder="Search documents…"
@@ -14201,7 +14314,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
               <button className="btn btn-primary" onClick={()=>openNew()}>Add your first document</button>
             </div>
           ) : (
-            DOC_CATEGORIES.map(cat => {
+            <div className="doc-grid">{DOC_CATEGORIES.map(cat => {
               const catDocs = documents.filter(d=>d.category===cat.id);
               const isOpen = expanded[cat.id];
               const expiringCount = catDocs.filter(d=>["soon","expired"].includes(getExpiryStatus(d.expiry_date))).length;
@@ -14234,7 +14347,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
                   )}
                 </div>
               );
-            })
+            })}</div>
           )
         )}
       </div>
@@ -14420,7 +14533,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
           <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(c)} style={{fontSize:".78rem"}}>Edit</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(c.id)} style={{fontSize:".78rem",color:"var(--red)"}}>Delete</button>
         </div>
-        <div style={{flex:1,overflowY:"auto",padding:"1rem",WebkitOverflowScrolling:"touch"}}>
+        <div className="cr-scroll" style={{flex:1,overflowY:"auto",padding:"1rem",WebkitOverflowScrolling:"touch"}}>
+          <div className="cr-detail">
           {/* Contact card */}
           <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:".75rem",marginBottom:".85rem"}}>
@@ -14470,6 +14584,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
               </div>
             ))}
           </div>
+          </div>{/* /cr-detail */}
         </div>
         {confirm&&<Confirm message={`Remove ${c.name} from your rolodex?`} onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
         {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData}/></Modal>}
@@ -14486,10 +14601,10 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         <button className="btn btn-primary btn-sm" onClick={openNew}>+ Add</button>
       </div>
 
-      <div style={{flex:1,overflowY:"auto",padding:".75rem 1rem",WebkitOverflowScrolling:"touch"}}>
+      <div className="cr-scroll" style={{flex:1,overflowY:"auto",padding:".75rem 1rem",WebkitOverflowScrolling:"touch"}}>
         {/* Search */}
         {contractors.length>2&&(
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contractors…"
+          <input className="cr-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contractors…"
             style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"#fff",outline:"none",marginBottom:".65rem",boxSizing:"border-box"}}
             onFocus={e=>e.target.style.borderColor="var(--pine)"} onBlur={e=>e.target.style.borderColor="var(--stone)"}
           />
@@ -14517,6 +14632,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         )}
 
         {/* Contractor list */}
+        <div className="cr-grid">
         {filtered.map(c=>{
           const jobs = serviceLogs.filter(s=>s.vendor===c.name);
           return (
@@ -14543,6 +14659,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
             </div>
           );
         })}
+        </div>
 
         {filtered.length===0&&contractors.length>0&&(
           <div style={{textAlign:"center",padding:"2rem",fontSize:".84rem",color:"#A8A09A"}}>No contractors match your filter</div>
@@ -15936,7 +16053,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   }
 
   return (
-    <div style={{paddingBottom:"2rem"}}>
+    <div className="mh-root" style={{paddingBottom:"2rem"}}>
 
       {/* ── Setup wizard (when active) ── */}
       {showSetup && (
@@ -16092,7 +16209,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── SETUP BANNER (no setup yet) ── */}
       {!showSetup && !setupDone && (
-        <div style={{margin:"1rem 1rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",display:"flex",alignItems:"center",gap:".85rem"}}>
+        <div className="mh-flat" style={{margin:"1rem 1rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",display:"flex",alignItems:"center",gap:".85rem"}}>
           <span style={{fontSize:"1.4rem",flexShrink:0}}>🔧</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:700,fontSize:".92rem",marginBottom:".2rem"}}>Set up your home profile</div>
@@ -16103,7 +16220,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       )}
 
       {!zestimate&&profile?.address&&!showSetup&&(
-        <div style={{margin:"1rem 1rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",display:"flex",alignItems:"center",gap:".75rem"}}>
+        <div className="mh-flat" style={{margin:"1rem 1rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",display:"flex",alignItems:"center",gap:".75rem"}}>
           <span style={{fontSize:"1.3rem",flexShrink:0}}>🏠</span>
           <div style={{flex:1}}><div style={{fontWeight:600,fontSize:".88rem"}}>Home value not loaded</div><div style={{fontSize:".75rem",color:"#7A7370",marginTop:2}}>Tap to pull estimated value from public records</div></div>
           <button onClick={async(e)=>{
@@ -16132,7 +16249,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── QUICK STATS STRIP ── */}
       {!showSetup && (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1px",background:"var(--stone)",margin:"1rem 0"}}>
+        <div className="mh-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1px",background:"var(--stone)",margin:"1rem 0"}}>
           {[
             {val:warranties.filter(w=>!w.retired_at && !w.warranty_only).length, lbl:"Assets", color:"var(--pine)"},
             {val:activeW,           lbl:"Warranties",   color:"#B8861E"},
@@ -16147,6 +16264,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
+      {/* ── Sections: single column on phones, two balanced columns on wide desktop ── */}
+      <div className="mh-cols">
       {/* ── PROPERTY DETAILS ── */}
       {!showSetup && (
         <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
@@ -16879,6 +16998,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           </div>
         </div>
       )}
+
+      </div>{/* /mh-cols */}
 
       {/* ── Edit Modal ── */}
       {editModal && (
@@ -19391,7 +19512,7 @@ export default function App() {
   return (
     <AppErrorBoundary>
       <style>{CSS}</style>
-      <div className="app">
+      <div className={"app"+(showSetup?" app-nosb":"")}>
         {/* ── Header ── */}
         <header className="hdr" role="banner">
           <div className="hdr-logo">
@@ -19432,20 +19553,20 @@ export default function App() {
              two stay in sync; CSS shows only one of them at a time by viewport
              width. Hidden in the same cases bottom-nav is (Documents, the setup
              wizard), and stays visible over Contractors like bottom-nav does. ── */}
-        <nav className="sidebar" aria-label="Primary" style={(showDocs||showSetup) ? {display:"none"} : {}}>
+        <nav className="sidebar" aria-label="Primary" style={showSetup ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`sbar-btn ${(!showContractors&&tab===t.id)?"active":""}`} onClick={()=>{ setShowContractors(false); if(!showContractors&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&tab===t.id)?"page":undefined}>
+            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs; setShowContractors(false); setShowDocs(false); if(!wasOverlay&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&tab===t.id)?"page":undefined}>
               <span className="sbar-icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.badge>0 && <span className="sbar-badge">{t.badge}</span>}
             </button>
           ))}
           <div className="sbar-divider"/>
-          <button className={`sbar-btn ${showContractors?"active":""}`} onClick={()=>setShowContractors(true)} aria-current={showContractors?"page":undefined}>
+          <button className={`sbar-btn ${showContractors?"active":""}`} onClick={()=>{ setShowDocs(false); setShowContractors(true); }} aria-current={showContractors?"page":undefined}>
             <span className="sbar-icon" aria-hidden="true">👥</span>
             <span>Contractors</span>
           </button>
-          <button className={`sbar-btn ${showDocs?"active":""}`} onClick={()=>setShowDocs(true)} aria-current={showDocs?"page":undefined}>
+          <button className={`sbar-btn ${showDocs?"active":""}`} onClick={()=>{ setShowContractors(false); setShowDocs(true); }} aria-current={showDocs?"page":undefined}>
             <span className="sbar-icon" aria-hidden="true">📄</span>
             <span>Documents</span>
           </button>
