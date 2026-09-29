@@ -1,4 +1,4 @@
-// Steadwell v264 — 2026-09-29T20:10:00.000Z
+// Steadwell v265 — 2026-09-29T21:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -5744,6 +5744,14 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
       <div className="field"><label>Replacement Cost ($)</label><input type="number" value={data.replacement_cost||""} onChange={e=>f("replacement_cost",e.target.value)} placeholder="Est. today's cost" /></div>
       <div className="field"><label>Expected Lifespan (yrs)</label><input type="number" value={data.lifespan_years||""} onChange={e=>f("lifespan_years",e.target.value)} placeholder="e.g. 20" /></div>
       <div className="field"><label>Warranty Expiry</label><input type="date" min={data.purchase_date||undefined} value={data.expiry_date||""} onChange={e=>f("expiry_date",e.target.value)} /></div>
+      {data.expiry_date && data.expiry_date < localISO() && (
+        <div className="field s2">
+          <label style={{display:"flex",alignItems:"flex-start",gap:".6rem",cursor:"pointer",fontWeight:500,textTransform:"none",letterSpacing:0}}>
+            <input type="checkbox" checked={!!data.exclude_warranty_from_score} onChange={e=>f("exclude_warranty_from_score",e.target.checked)} style={{width:18,height:18,marginTop:2,flexShrink:0}}/>
+            <span style={{fontSize:".82rem",color:"#6E665D",lineHeight:1.45}}>Don't count this expired warranty against my Home Health score <span style={{display:"block",fontSize:".74rem",color:"#A8A09A"}}>Use this if you don't need this item covered.</span></span>
+          </label>
+        </div>
+      )}
       <div className="field"><label>Last Serviced</label><input type="date" value={data.last_serviced||""} onChange={e=>f("last_serviced",e.target.value)} /></div>
       <div className="field s2"><label>Document Location</label><input value={data.document_ref||""} onChange={e=>f("document_ref",e.target.value)} placeholder="e.g. Filing Cabinet, Google Drive" /></div>
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Coverage details, serial numbers, service contacts…" /></div>
@@ -8474,6 +8482,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
   const [showScoreInfo, setShowScoreInfo] = useState(false);
+  const [showAllFeed, setShowAllFeed] = useState(false);
 
   const handleDayClick = (date, dayTasks) => {
     setSelectedDay(date);
@@ -8573,6 +8582,23 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     });
   }
 
+  // 3b. Expired warranties (not excluded) — the asset is now uncovered, so
+  // call it out once as a single grouped item rather than one row per asset.
+  const expiredWarr = warranties.filter(w => !w.retired_at && w.expiry_date && !w.exclude_warranty_from_score && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0);
+  if (expiredWarr.length > 0) {
+    const names = expiredWarr.slice(0, 2).map(w => w.item).filter(Boolean).join(", ");
+    feedItems.push({
+      id:     "warranties-expired",
+      level:  "warn",
+      icon:   "🛡️",
+      iconBg: "#FBF3DE",
+      title:  `${expiredWarr.length} warrant${expiredWarr.length === 1 ? "y has" : "ies have"} expired`,
+      sub:    `${names}${expiredWarr.length > 2 ? ` +${expiredWarr.length - 2} more` : ""} · repairs are now out-of-pocket`,
+      badge:  "Review",
+      action: () => onNavigate("warranties"),
+    });
+  }
+
   // 4. Expiring warranties ≤ 90 days
   warranties
     .filter(w => { const d = daysTo(w.expiry_date); return d !== null && d >= 0 && d <= 90; })
@@ -8625,8 +8651,15 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const ringDash     = Math.round((ringPct / 100) * 163);
 
   // Split feed into action vs upcoming sections
-  const actionItems   = feedItems.filter(f => f.level === "urgent" || f.level === "warn");
-  const upcomingItems = feedItems.filter(f => f.level === "ok");
+  const FEED_CAP = 5;
+  const allActionItems   = feedItems.filter(f => f.level === "urgent" || f.level === "warn");
+  const allUpcomingItems = feedItems.filter(f => f.level === "ok");
+  // Show the 5 most important items (action items first) unless expanded.
+  const orderedFeed  = [...allActionItems, ...allUpcomingItems];
+  const visibleIds   = new Set((showAllFeed ? orderedFeed : orderedFeed.slice(0, FEED_CAP)).map(f => f.id));
+  const actionItems   = allActionItems.filter(f => visibleIds.has(f.id));
+  const upcomingItems = allUpcomingItems.filter(f => visibleIds.has(f.id));
+  const hiddenFeedCount = orderedFeed.length - FEED_CAP;
 
   const now = new Date();
   const evMap = buildHomeEvents(tasks, warranties, profile, serviceLogs);
@@ -8720,9 +8753,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.5px"}}>{heroStatus}</div>
               <div style={{fontSize:".85rem",color:"rgba(244,237,223,.7)",marginTop:".4rem",lineHeight:1.4,maxWidth:360}}>{heroSub}</div>
             </div>
-            <div onClick={()=>onNavigate("profile")} title="See Home Health breakdown" style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}>
-              {scoreOn ? (
-                <>
+            <div onClick={()=>onNavigate("profile")} title="Home Health" style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}>
+              <>
                   <div style={{position:"relative",width:104,height:104,margin:"0 auto"}}>
                     <svg width="104" height="104" viewBox="0 0 104 104" style={{transform:"rotate(-90deg)"}}>
                       <circle cx="52" cy="52" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="8"/>
@@ -8735,16 +8767,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
                   <div style={{fontSize:".74rem",fontWeight:700,color:scoreRing,marginTop:".5rem",letterSpacing:".04em",textTransform:"uppercase"}}>Home Health · {homeHealthGrade}</div>
                   <div style={{fontSize:".68rem",color:"rgba(244,237,223,.55)",marginTop:2}}>out of 100</div>
                 </>
-              ) : (
-                <>
-                  <div style={{width:88,height:88,borderRadius:"50%",border:"7px solid rgba(255,255,255,.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",boxSizing:"border-box"}}>
-                    {heroLevel === "ok"
-                      ? <span style={{fontSize:"1.6rem",color:"#7DCBA1"}}>✓</span>
-                      : <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:600,color:"#F4EDDF"}}>{urgentCount + warnCount}</span>}
-                  </div>
-                  <div style={{fontSize:".72rem",fontWeight:700,color:"rgba(244,237,223,.7)",marginTop:".4rem"}}>Home Health score →</div>
-                </>
-              )}
             </div>
           </div>
 
@@ -8773,6 +8795,12 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
               ))}
             </div>
           )}
+          {!scoreOn && (
+            <button onClick={onUpgrade} style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",width:"100%",marginTop:".85rem",padding:".7rem .9rem",background:"rgba(0,0,0,.18)",border:"1px dashed rgba(244,237,223,.3)",borderRadius:12,color:"rgba(244,237,223,.9)",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer",textAlign:"left"}}>
+              <span>🔒 See what makes up your score — assets, tasks, warranties &amp; profile</span>
+              <span style={{whiteSpace:"nowrap",color:"#F0CE7A"}}>Upgrade →</span>
+            </button>
+          )}
           {scoreOn && (
             <div style={{position:"relative",marginTop:".85rem"}}>
               <button onClick={()=>setShowScoreInfo(v=>!v)} style={{background:"none",border:"none",color:"rgba(244,237,223,.75)",fontSize:".76rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>
@@ -8783,8 +8811,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
                 <div style={{marginTop:".7rem",background:"rgba(0,0,0,.18)",borderRadius:12,padding:".85rem 1rem",fontSize:".78rem",lineHeight:1.55,color:"rgba(244,237,223,.85)"}}>
                   <div style={{marginBottom:".4rem"}}>Your score is a weighted average of four parts (each 0–100):</div>
                   <div><b>Assets · 35%</b> — average condition of your tracked appliances and systems. Healthy = 100, age unknown = 85, heads up = 70, service due = 40, needs attention = 10.</div>
-                  <div><b>Tasks · 30%</b> — starts at 100 and drops for overdue tasks (heavily) and for tasks still open (lightly).</div>
-                  <div><b>Warranties · 20%</b> — drops as more of your tracked warranties are expired or ending within 30 days.</div>
+                  <div><b>Tasks · 30%</b> — starts at 100 and drops only for tasks that are past due. Scheduled and upcoming tasks never hurt your score.</div>
+                  <div><b>Warranties · 20%</b> — drops for warranties that have expired (most) or end within 30 days (half). You can exclude any warranty from this in the asset's details.</div>
                   <div><b>Profile · 15%</b> — how complete your home details are (address, type, year, size, beds, baths, insurance, renewal date).</div>
                   <div style={{marginTop:".4rem",opacity:.8}}>90+ Excellent · 75+ Good · 60+ Fair · below 60 At risk. Parts with no data yet get a neutral starting value.</div>
                 </div>
@@ -8862,7 +8890,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           <>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".5rem 1.25rem .4rem"}}>
               <span style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#A8A09A"}}>Action needed</span>
-              <span style={{fontSize:".7rem",fontWeight:700,color:"var(--rust)"}}>{actionItems.length} item{actionItems.length!==1?"s":""}</span>
+              <span style={{fontSize:".7rem",fontWeight:700,color:"var(--rust)"}}>{allActionItems.length} item{allActionItems.length!==1?"s":""}</span>
             </div>
             <div style={{background:"var(--white)"}}>
               {actionItems.map(item => <FeedItem key={item.id} item={item}/>)}
@@ -8870,7 +8898,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           </>
         )}
 
-        {actionItems.length === 0 && !isNewUser && (
+        {allActionItems.length === 0 && !isNewUser && (
           <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem 1.25rem",background:"var(--white)"}}>
             <div style={{width:44,height:44,borderRadius:12,background:"var(--ok-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>✅</div>
             <div>
@@ -8893,6 +8921,12 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
               ))}
             </div>
           </>
+        )}
+
+        {hiddenFeedCount > 0 && (
+          <button onClick={()=>setShowAllFeed(v=>!v)} style={{display:"block",width:"100%",padding:".8rem 1.25rem",background:"var(--white)",border:"none",borderTop:"1px solid var(--cream2)",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",textAlign:"left"}}>
+            {showAllFeed ? "Show top 5 only ▴" : `View all ${orderedFeed.length} items →`}
+          </button>
         )}
 
         {feedItems.length === 0 && !isNewUser && (
@@ -9824,6 +9858,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       // so retiring via this form looked like it worked and then reverted
       // on reload. Persist it like every other field.
       retired_at:           editData.retired_at || null,
+      // Only sent once the value exists (it comes from the DB row or the form
+      // checkbox) so saves keep working on databases that predate the column.
+      ...(editData.exclude_warranty_from_score !== undefined ? { exclude_warranty_from_score: !!editData.exclude_warranty_from_score } : {}),
     };
 
     // Smart Fill needs at least brand OR model (model alone is often enough)
@@ -10244,16 +10281,26 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             {/* ── Warranty banner ── */}
             {asset.expiry_date && (
               <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem",borderRadius:"var(--r-sm)",marginBottom:"1rem",
-                background:warrantyExpired?"var(--cream)":warrantySoon?"#FBF3DE":"#E9F1EA",
-                border:`1.5px solid ${warrantyExpired?"var(--stone)":warrantySoon?"#EAD9A6":"#C5DCC9"}`}}>
+                background:warrantyExpired?"#FBEDE8":warrantySoon?"#FBF3DE":"#E9F1EA",
+                border:`1.5px solid ${warrantyExpired?"#EBC5B8":warrantySoon?"#EAD9A6":"#C5DCC9"}`}}>
                 <span style={{fontSize:"1.5rem",flexShrink:0}}>📄</span>
                 <div>
-                  <div style={{fontSize:".95rem",fontWeight:700,color:warrantyExpired?"#8A8178":warrantySoon?"#B8861E":"#3E7D5A"}}>
-                    {warrantyExpired?"Warranty expired":warrantySoon?`Warranty expires in ${warrantyDays} days`:"Warranty active"}
+                  <div style={{fontSize:".95rem",fontWeight:700,color:warrantyExpired?"#B0432B":warrantySoon?"#B8861E":"#3E7D5A"}}>
+                    {warrantyExpired?"Warranty expired — higher risk":warrantySoon?`Warranty expires in ${warrantyDays} days`:"Warranty active"}
                   </div>
                   <div style={{fontSize:".84rem",color:"#6E665D",marginTop:".1rem"}}>
-                    {warrantyExpired?`Ended ${fmtD(asset.expiry_date)}`:`Ends ${fmtD(asset.expiry_date)}`}
+                    {warrantyExpired?`Ended ${fmtD(asset.expiry_date)} · repairs are out-of-pocket`:`Ends ${fmtD(asset.expiry_date)}`}
                   </div>
+                  {warrantyExpired && (
+                    <button onClick={async()=>{
+                      const next = !asset.exclude_warranty_from_score;
+                      const {error} = await supabase.from("warranties").update({exclude_warranty_from_score:next}).eq("id",asset.id).eq("user_id",userId);
+                      if(!error){ setAssets(assets.map(a=>a.id===asset.id?{...a,exclude_warranty_from_score:next}:a)); toast(next?"Excluded from Home Health score":"Counting toward Home Health score"); }
+                      else toast("Couldn't update — try again","error");
+                    }} style={{marginTop:".5rem",fontSize:".76rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".3rem .7rem",cursor:"pointer",fontFamily:"inherit"}}>
+                      {asset.exclude_warranty_from_score ? "Excluded from score — include again" : "Exclude from Home Health score"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -10676,7 +10723,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700}}>Home health</div>
             {onNavigate && (
               <span onClick={()=>onNavigate("profile")} style={{fontSize:".74rem",fontWeight:700,color:"rgba(244,237,223,.85)",cursor:"pointer",whiteSpace:"nowrap"}}>
-                {planData.healthScore ? <>Home Health: {homeHealthScore} · {homeHealthGrade} →</> : "Home Health score →"}
+                <>Home Health: {homeHealthScore} · {homeHealthGrade} →</>
               </span>
             )}
           </div>
@@ -23286,12 +23333,13 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
   // consistent with what those screens show for the same assets.
   const homeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
 
-  // Factor 1: Task health (0-100) — penalise overdue/incomplete
+  // Factor 1: Task health (0-100) — penalise ONLY tasks that are past due.
+  // Scheduled / upcoming tasks are good (they mean the home is being planned
+  // for), so an open task with a future due date costs nothing.
   const totalTasks = tasks.length;
   const overdue    = tasks.filter(t => t.status !== "Completed" && t.due_date && t.due_date < today).length;
-  const completed  = tasks.filter(t => t.status === "Completed").length;
   const taskScore  = totalTasks === 0 ? 70
-    : Math.max(0, 100 - (overdue / totalTasks) * 60 - ((totalTasks - completed) / totalTasks) * 20);
+    : Math.max(0, 100 - (overdue / totalTasks) * 100);
 
   // Factor 2: Asset health (0-100) — reuses the same per-asset logic shown
   // in the Assets tab (real install_date, lifespan, condition, overdue PM,
@@ -23307,10 +23355,16 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
 
   // Factor 3: Warranty coverage (0-100) — reward tracked, non-expiring warranties.
   // Includes warranty-only records too, since this factor is about coverage, not asset condition.
-  const allWarrantyItems = (warranties || []).filter(a => !a.retired_at && a.expiry_date);
-  const expiringSoon = allWarrantyItems.filter(a => a.expiry_date < localISO(new Date(now.getTime() + 30*86400000))).length;
+  // An expired warranty is a real risk (a failure is now fully out-of-pocket),
+  // so it counts fully; one ending within 30 days counts half. Warranties the
+  // owner has chosen to exclude (exclude_warranty_from_score) are left out of
+  // both the numerator and the denominator.
+  const allWarrantyItems = (warranties || []).filter(a => !a.retired_at && a.expiry_date && !a.exclude_warranty_from_score);
+  const soonCutoff = localISO(new Date(now.getTime() + 30*86400000));
+  const expiredCount = allWarrantyItems.filter(a => a.expiry_date < today).length;
+  const soonCount    = allWarrantyItems.filter(a => a.expiry_date >= today && a.expiry_date < soonCutoff).length;
   const warrantyScore = allWarrantyItems.length === 0 ? 60
-    : Math.max(0, 100 - (expiringSoon / allWarrantyItems.length) * 40);
+    : Math.max(0, 100 - ((expiredCount + soonCount * 0.5) / allWarrantyItems.length) * 60);
 
   // Factor 4: Documentation (0-100) — reward a complete property + insurance profile
   const profileFields = ["address","type","year","sqft","bedrooms","bathrooms"].filter(f => profile?.[f]);
