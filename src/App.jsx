@@ -1,4 +1,4 @@
-// Steadwell v267 — 2026-09-29T22:00:00.000Z
+// Steadwell v268 — 2026-09-29T23:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -19,95 +19,77 @@ const PRIORITY_COLOR = { Low:"#6B8F71", Medium:"#E0A84A", High:"#D9622B", Urgent
 const CHART_COLORS = ["#C16140","#4A89B8","#6B8F71","#C9962A","#8B5CF6","#EC4899","#14B8A6","#F97316","#6366F1"];
 
 // ─── CLIMATE ZONE LOOKUP ─────────────────────────────────────────────────────
-// Maps first 3 digits of US zip code to IECC climate zone (1–8)
-// Zone 1-2: Hot/humid (FL, TX Gulf, HI), Zone 3-4: Mixed (SE, Mid-Atlantic, NW coast)
-// Zone 5: Cool (Midwest, CO, NE), Zone 6-7: Cold (MN, ME, MT), Zone 8: Subarctic (AK)
-const ZIP_CLIMATE = (() => {
-  const z = {};
-  // Zone 1 — Very Hot Humid (South FL, HI)
-  [967,968,969,      // HI
-   330,331,332,333,334,339,340, // South FL
-  ].forEach(p => { z[p]=1; });
-  // Zone 2 — Hot Humid (Most of FL, Gulf Coast TX/LA/MS/AL)
-  [335,336,337,338,  // FL
-   700,701,703,704,705,706,707,708, // LA
-   395,396,          // MS Gulf
-   365,366,367,368,369, // AL coast
-   750,751,752,753,754,755,756,757,758,759,760,761,762,763,764,765,766,767,768,769,770,771,772,773,774,775,776,777,778,779, // TX
-   850,851,852,853,855,856,857,859,860,861,863,864,865,877,878,879,880,881,882,883,884,885, // AZ south
-  ].forEach(p => { z[p]=2; });
-  // Zone 3 — Warm (GA, SC, NC piedmont, AR, OK, NM, CA inland valleys, NV south)
-  [300,301,302,303,304,305,306,307,308,309, // GA
-   290,291,292,293,294,295,296,297,298,299, // SC
-   270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289, // NC
-   716,717,718,719,720,721,722,723,724,725,726,727,728,729, // AR
-   730,731,734,735,736,737,738,739,740,741,743,744,745,746,747,748,749, // OK
-   870,871,872,873,874,875,876,          // NM
-   890,891,893,894,895,897,898,          // NV south
-   900,901,902,903,904,905,906,907,908,909,910,911,912,913,914,915,916,917,918,919,920,921,922,923,924,925,926,927,928,930,931,932,933,934,935, // CA south
-  ].forEach(p => { z[p]=3; });
-  // Zone 4 — Mixed (VA, TN, KY, KS, MO, OR coast, CA north coast, WA coast, NV north)
-  [200,201,202,203,204,205,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246, // VA/DC
-   370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,386,387,388,389,390,391,392,393,394, // TN/MS
-   400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,418,420,421,422,423,424,425,426,427, // KY
-   660,661,662,664,665,666,667,668,669,670,671,672,673,674,675,676,677,678,679, // KS
-   630,631,633,634,635,636,637,638,639,640,641,644,645,646,647,648,650,651,652,653,654,655,656,657,658, // MO
-   970,971,972,973,974,975,976,977,978,979, // OR
-   980,981,982,983,984,985,986,988,989,990,991,992,993,994, // WA
-   936,937,938,939,940,941,942,943,944,945,946,947,948,949,950,951,952,953,954,955,956,957,958,959,960,961, // CA north
-  ].forEach(p => { z[p]=4; });
-  // Zone 5 — Cool (OH, IN, IL, IA, NE, CO, UT, WV, PA, NJ, NY downstate, NM north)
-  [430,431,432,433,434,435,436,437,438,439,440,441,442,443,444,445,446,447,448,449,450,451,452,453,454,455,456,457,458, // OH
-   460,461,462,463,464,465,466,467,468,469,470,471,472,473,474,475,476,477,478,479, // IN
-   600,601,602,603,604,605,606,607,608,609,610,611,612,613,614,615,616,617,618,619,620,621,622,623,624,625,626,627,628,629, // IL
-   500,501,502,503,504,505,506,507,508,509,510,511,512,513,514,515,516,520,521,522,523,524,525,526,527,528, // IA
-   680,681,683,684,685,686,687,688,689,690,691,692,693, // NE
-   800,801,802,803,804,805,806,807,808,809,810,811,812,813,814,815,816, // CO
-   840,841,842,843,844,845,846,847, // UT
-   247,248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,265,266,267,268, // WV
-   150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196, // PA
-   70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89, // NJ
-   100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119, // NY downstate/LI
-   870,871,872,873,874,875,876,       // NM high
-  ].forEach(p => { z[p]=5; });
-  // Zone 6 — Cold (NY upstate, New England, MI, WI, MN south, ND south, SD, WY, MT south, ID)
-  [120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149, // NY upstate
-   10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27, // MA/RI
-   30,31,32,33,34,35,36,37,38, // NH
-   39,40,41,42,43,44,45,46,47,48,49, // ME south
-   60,61,62,63,64,65,66,67,68,69, // CT
-   480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495,496,497,498,499, // MI
-   530,531,532,534,535,537,538,539,540,541,542,543,544,545,546,547,548,549, // WI
-   550,551,553,554,555,556,557,558,559,560,561,562,563,564,565,566,567, // MN south
-   570,571,572,573,574,575,576,577, // SD
-   820,821,822,823,824,825,826,827,828,829,830,831, // WY
-   590,591,592,593,594,595,596,597,598,599, // MT south
-   832,833,834,835,836,837,838, // ID
-   830,831,                     // WY east
-  ].forEach(p => { z[p]=6; });
-  // Zone 7 — Very Cold (MN north, ND, northern ME, northern MT, northern ID, AK south)
-  [568,               // MN north
-   580,581,582,583,584,585,586,587,588, // ND
-   47,48,49,       // ME north
-   995,996,997,998,   // AK south
-  ].forEach(p => { z[p]=7; });
-  // Zone 8 — Subarctic (Interior/North AK)
-  [997,998,999].forEach(p => { z[p]=8; });
-  return z;
-})();
+// ZIP prefix (first 3 digits) -> state, then -> IECC climate zone (1-8).
+// Zone 1-2: hot/humid (FL, HI, Gulf Coast, S. Texas), 3-4: mixed (Southeast,
+// Mid-Atlantic, Southern Plains, West Coast), 5: cool (Midwest, Northeast,
+// Rockies), 6-7: cold (northern tier, upper New England), 8: subarctic (AK interior).
+const ZIP3_STATE_RANGES = [
+  [5,5,"NY"],[6,9,"PR"],[10,27,"MA"],[28,29,"RI"],[30,38,"NH"],[39,49,"ME"],[50,59,"VT"],[60,69,"CT"],[70,89,"NJ"],
+  [100,149,"NY"],[150,196,"PA"],[197,199,"DE"],[200,205,"DC"],[206,219,"MD"],[220,246,"VA"],[247,268,"WV"],
+  [270,289,"NC"],[290,299,"SC"],[300,319,"GA"],[320,349,"FL"],[350,369,"AL"],[370,385,"TN"],[386,397,"MS"],[398,399,"GA"],
+  [400,427,"KY"],[430,459,"OH"],[460,479,"IN"],[480,499,"MI"],[500,528,"IA"],[530,549,"WI"],[550,567,"MN"],
+  [570,577,"SD"],[580,588,"ND"],[590,599,"MT"],[600,629,"IL"],[630,658,"MO"],[660,679,"KS"],[680,693,"NE"],
+  [700,714,"LA"],[716,729,"AR"],[730,749,"OK"],[750,799,"TX"],[800,816,"CO"],[820,831,"WY"],[832,838,"ID"],
+  [840,847,"UT"],[850,865,"AZ"],[870,884,"NM"],[885,885,"TX"],[889,898,"NV"],[900,961,"CA"],[967,968,"HI"],
+  [970,979,"OR"],[980,994,"WA"],[995,999,"AK"],
+];
+// Default zone per state, then ZIP-range overrides (first match wins).
+const STATE_ZONE = {
+  PR:1, HI:1, FL:2, LA:2, MS:3, AL:3, GA:3, SC:3, NC:3, TX:3, AR:3, OK:3, TN:4, KY:4, VA:4, MD:4, DC:4, DE:4, WV:4,
+  MO:4, KS:4, CA:3, OR:4, WA:4, NV:5, AZ:2, NM:5, UT:5, CO:5, NE:5, IA:5, IL:5, IN:5, OH:5, PA:5, NJ:5, NY:5,
+  CT:5, MA:5, RI:5, MI:6, WI:6, MN:6, SD:6, ND:7, MT:6, WY:6, ID:6, NH:6, VT:6, ME:6, AK:7,
+};
+const ZIP3_ZONE_OVERRIDES = [
+  [330,334,1],[339,341,1],[349,349,1],            // South Florida
+  [365,369,2],                                     // Mobile / AL Gulf
+  [395,397,2],                                     // MS Gulf Coast
+  [710,714,3],                                     // N. Louisiana
+  [770,789,2],                                     // Houston / S. Texas
+  [790,791,4],                                     // TX Panhandle
+  [287,289,4],                                     // NC mountains
+  [380,383,3],                                     // Memphis
+  [726,729,4],                                     // N. Arkansas
+  [936,961,4],                                     // N. California
+  [978,979,5],[990,994,5],                         // E. Oregon / E. Washington
+  [853,853,2],[855,859,2],[860,865,5],             // AZ desert vs. high country
+  [870,879,5],[880,884,3],                         // NM
+  [889,891,3],                                     // Las Vegas
+  [836,837,5],                                     // Boise
+  [566,568,7],                                     // N. Minnesota
+  [480,485,5],                                     // SE Michigan
+  [530,532,5],                                     // Milwaukee
+  [80,86,4],                                       // S. New Jersey
+  [997,997,8],[995,996,7],[998,999,7],             // Alaska
+];
+function zip3ToState(zip3) {
+  if (zip3 == null) return null;
+  const r = ZIP3_STATE_RANGES.find(([lo, hi]) => zip3 >= lo && zip3 <= hi);
+  return r ? r[2] : null;
+}
+const US_STATE_CODES = new Set(ZIP3_STATE_RANGES.map(r => r[2]));
+// { state, zip3 } from the profile's address; ZIP wins, otherwise a ", ST" token.
+function getClimateRegion(profile) {
+  const addr = (profile && profile.address) || "";
+  const zips = addr.match(/\b(\d{5})(?:-\d{4})?\b/g);
+  const zip3 = zips ? parseInt(zips[zips.length - 1].slice(0, 3), 10) : null;
+  let state = zip3ToState(zip3);
+  if (!state) {
+    // No ZIP on file: fall back to the last two-letter token that is a US state code
+    const cand = (addr.toUpperCase().match(/\b[A-Z]{2}\b/g) || []).filter(c => US_STATE_CODES.has(c));
+    state = cand.length ? cand[cand.length - 1] : null;
+  }
+  return { state, zip3 };
+}
 
 function getClimateZone(profile) {
   if (!profile) return 2; // default to zone 2 (hot/humid) since app is FL-based
-  const addr = profile.address || "";
-  // Try multiple zip extraction patterns
-  // Pattern 1: 5-digit zip anywhere in address
-  const match = addr.match(/\b(\d{5})(?:-\d{4})?\b/g);
-  // Take the last match — usually the zip is at the end: "123 Main St, Tampa, FL 33601"
-  const zip = match ? match[match.length - 1].slice(0, 5) : null;
-  if (!zip) return 2; // default hot/humid if no zip found
-  const prefix = parseInt(zip.substring(0, 3), 10);
-  const zone = ZIP_CLIMATE[prefix];
-  return zone || 5; // default zone 5 only if prefix not in table
+  const { state, zip3 } = getClimateRegion(profile);
+  if (zip3 != null) {
+    const ov = ZIP3_ZONE_OVERRIDES.find(([lo, hi]) => zip3 >= lo && zip3 <= hi);
+    if (ov) return ov[2];
+  }
+  if (state && STATE_ZONE[state]) return STATE_ZONE[state];
+  return zip3 == null ? 2 : 5; // no address -> default hot/humid; unknown ZIP -> cool
 }
 
 // Climate-aware maintenance calendar.
@@ -119,6 +101,9 @@ function getClimateZone(profile) {
 // Seasonal task builder: title, category, day of month, priority, why-now line
 // and an array of checklist steps (stored in the task's notes as "☐ step").
 const S = (title, category, day, priority, why, steps) => ({ title, category, day, priority, why, steps });
+// Region tags: keep an item only in (onlyIn) or everywhere except (notIn) the listed states
+const onlyIn = (states, o) => ({ ...o, states });
+const notIn  = (states, o) => ({ ...o, notStates: states });
 const buildSeasonalNotes = (o) => (!o.steps || !o.steps.length) ? "" : `${o.why || ""}\n\n${o.steps.map(x => "☐ " + x).join("\n")}`;
 
 // Checklist helpers — notes hold a short intro followed by "☐ step" / "☑ step" lines.
@@ -145,7 +130,7 @@ const CLIMATE_TASKS = {
     label: "Hot & Humid Climate",
     months: [
       /* Jan */ [
-        S("Quarterly perimeter pest-control service", "Other", 12, "Medium", "Florida homes are typically treated every 3 months (Jan / Apr / Jul / Oct). Ants, roaches and rodents are active year-round.", [
+        S("Quarterly perimeter pest-control service", "Other", 12, "Medium", "Homes in hot, humid climates are typically treated every 3 months (Jan / Apr / Jul / Oct). Ants, roaches and rodents are active year-round.", [
           "Book a state-licensed pest-control company (or confirm your existing plan)",
           "Ask for exterior perimeter treatment plus eaves, entry points and garage",
           "Have the technician check the attic, garage and lanai for droppings and nesting",
@@ -163,24 +148,24 @@ const CLIMATE_TASKS = {
           "Add any missing appliances to Assets in Steadwell"]),
       ],
       /* Feb */ [
-        S("File or verify your Homestead exemption (deadline March 1)", "Other", 10, "High", "Florida's Homestead exemption must be on file with the county Property Appraiser by March 1 to apply for this tax year.", [
+        onlyIn(["FL"], S("File or verify your Homestead exemption (deadline March 1)", "Other", 10, "High", "Florida's Homestead exemption must be on file with the county Property Appraiser by March 1 to apply for this tax year.", [
           "Confirm on your county Property Appraiser website that the exemption is active",
           "If new to the home, file online with your Florida ID, vehicle registration and voter registration",
           "Confirm portability of Save Our Homes benefits if you moved within Florida",
-          "Save the confirmation to Documents"]),
-        S("Book a full AC tune-up before the cooling season", "HVAC", 15, "High", "Florida AC systems run 9-10 months a year. Book a licensed technician now, before the April and May rush.", [
+          "Save the confirmation to Documents"])),
+        S("Book a full AC tune-up before the cooling season", "HVAC", 15, "High", "AC systems in hot, humid climates run 9-10 months a year. Book a licensed technician now, before the April and May rush.", [
           "Schedule a licensed HVAC contractor for a full maintenance visit",
           "Ask for: refrigerant pressure check, evaporator and condenser coil cleaning, capacitor and contactor test, blower amp draw, thermostat calibration",
           "Ask the technician to flush the condensate drain and test the float switch and drain pan",
           "Ask for duct and attic air-handler inspection for leaks or sweating",
-          "Note system age; 12-15 years is typical life in Florida, less near the coast"]),
+          "Note system age; 12-15 years is typical life in this climate, less near the coast"]),
         S("Termite swarm-season inspection (February to June)", "Structure", 22, "High", "Subterranean termites swarm from late winter; drywood and Formosan swarms follow in spring and early summer.", [
           "Look for discarded wings on windowsills, near lights and in spider webs",
           "Check the slab edge, garage walls and foundation for mud tubes",
           "Tap baseboards and door frames for hollow sounds; look for small pellet piles (drywood frass)",
           "Keep mulch and soil at least 6 inches below siding or stucco",
           "Schedule a licensed wood-destroying-organism inspection and renew any termite bond"]),
-        S("Flush the water heater and inspect the anode rod", "Plumbing", 27, "Medium", "Florida water is mineral-heavy; sediment shortens tank life and wastes energy.", [
+        S("Flush the water heater and inspect the anode rod", "Plumbing", 27, "Medium", "Hard water leaves mineral sediment that shortens tank life and wastes energy.", [
           "Turn off power (electric) or set gas to pilot",
           "Drain 2-3 gallons from the drain valve until water runs clear",
           "Lift the T&P relief valve lever briefly to confirm it flows and reseats",
@@ -193,7 +178,7 @@ const CLIMATE_TASKS = {
           "Press the test button on each AFCI breaker at the panel",
           "Confirm exterior outlet covers close over plugs and are weatherproof",
           "Replace any outlet that fails to trip or reset"]),
-        S("Flush the AC condensate drain line (quarterly)", "HVAC", 12, "Medium", "Algae in the drain line is the top cause of AC water leaks in Florida. Repeat in June, September and December.", [
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 12, "Medium", "Algae in the drain line is the top cause of AC water leaks in humid climates. Repeat in June, September and December.", [
           "Locate the PVC access tee on the drain line near the air handler",
           "Pour about a cup of white vinegar (or per manufacturer) into the access tee and wait 30 minutes",
           "Flush with clean water and confirm it drains freely at the outside outlet",
@@ -219,7 +204,7 @@ const CLIMATE_TASKS = {
           "Remove dead palm fronds and seed pods, but do not over-prune palms",
           "For anything near power lines, contact your electric utility; do not trim it yourself",
           "Have all cuttings hauled away; loose yard debris becomes storm projectiles"]),
-        S("Roof inspection before hurricane season", "Roofing", 15, "High", "Florida sun and heat age roofs quickly. Find weak spots before storm season, not during it.", [
+        S("Roof inspection before hurricane season", "Roofing", 15, "High", "Intense sun and heat age roofs quickly. Find weak spots before storm season, not during it.", [
           "From the ground with binoculars: look for missing, cracked or curled shingles or slipped/cracked tile",
           "Check flashing at chimneys, walls and skylights, and sealant at vent boots",
           "Look for rubber vent-pipe boots that are cracked (common at 8-10 years)",
@@ -243,20 +228,27 @@ const CLIMATE_TASKS = {
           "Small-bill cash",
           "Waterproof bag with ID copies, insurance policies, deed and medical information",
           "Pet food, meds and carrier"]),
-        S("Insurance review: wind, flood and hurricane deductible", "Other", 8, "High", "Standard homeowners policies exclude flood, and flood coverage has a 30-day waiting period, so do this before June.", [
+        onlyIn(["FL"], S("Insurance review: wind, flood and hurricane deductible", "Other", 8, "High", "Standard homeowners policies exclude flood, and flood coverage has a 30-day waiting period, so do this before June.", [
           "Find your hurricane deductible (a percent of dwelling coverage) and convert it to dollars",
           "Get a flood insurance quote (NFIP or private); it is not covered by standard homeowners",
           "Ask your agent about a wind-mitigation inspection (form OIR-B1-1802); it can lower premiums and is valid for 5 years",
           "Confirm dwelling coverage matches current rebuild cost",
           "Save the policy PDF to Documents and keep an offline copy",
-          "Add your insurer's claim phone number to your phone contacts"]),
+          "Add your insurer's claim phone number to your phone contacts"])),
+        notIn(["FL"], S("Insurance review: wind, hail and named-storm deductibles and flood coverage", "Other", 8, "High", "Standard homeowners policies exclude flood, and flood coverage has a 30-day waiting period, so do this before hurricane season.", [
+          "Find your hurricane or named-storm deductible (often a percentage of dwelling coverage) and convert it to dollars",
+          "Get a flood insurance quote (NFIP or private); it is not covered by standard homeowners",
+          "Ask your agent about wind-mitigation or roof-age discounts and surcharges",
+          "Confirm dwelling coverage matches current rebuild cost",
+          "Save the policy PDF to Documents and keep an offline copy",
+          "Add your insurer's claim phone number to your phone contacts"])),
         S("Inspect and test your storm protection", "Structure", 20, "High", "Discover missing hardware or a dead generator in May, not the day before a storm.", [
           "Shutters or panels: locate every panel and confirm all bolts, nuts and tracks are present; test-fit one",
           "Impact windows and doors: check seals, weep holes and locking points",
           "Garage door: confirm it is wind-rated and its bracing is intact; test auto-reverse",
           "Generator (if owned): run it 30 minutes under load and check oil; run it outdoors only, never in the garage or lanai",
           "Locate and label the main electrical breaker, water shutoff and gas valve"]),
-        S("Check or install whole-home surge protection", "Electrical", 27, "Medium", "The Tampa Bay area has among the most lightning in the US, and summer storms start now.", [
+        S("Check or install whole-home surge protection", "Electrical", 27, "Medium", "The Gulf Coast has some of the most lightning in the US, and summer storms start now.", [
           "Check the status light on your panel's surge protector if installed",
           "If none, get a quote from a licensed electrician for a whole-home surge protective device",
           "Replace plug-in surge strips older than 3-5 years",
@@ -276,7 +268,7 @@ const CLIMATE_TASKS = {
         S("Attic inspection: leaks, ventilation and insulation", "Roofing", 22, "Medium", "After the first heavy rains, the attic shows whether the roof and ventilation are working.", [
           "Look for water stains, damp insulation and daylight around penetrations",
           "Confirm soffit and ridge vents are not blocked by insulation",
-          "Check insulation depth (R-30 to R-38 or more is recommended for Florida)",
+          "Check insulation depth (R-38 or more is recommended in hot, humid climates)",
           "Check ductwork for disconnected, torn or sweating sections",
           "Look for rodent droppings, nests or chewed wiring"]),
       ],
@@ -326,7 +318,7 @@ const CLIMATE_TASKS = {
           "Confirm the visit with your licensed pest-control company",
           "Ask for a rodent inspection of attic, garage and soffits",
           "Save the service report to Documents"]),
-        S("Seal rodent entry points and inspect the attic", "Structure", 10, "Medium", "Roof rats are common in Florida and nest in attics and palms. Sealing gaps stops them getting in.", [
+        S("Seal rodent entry points and inspect the attic", "Structure", 10, "Medium", "Roof rats are common along the Gulf Coast, Florida and Hawaii and nest in attics and palms. Sealing gaps stops them getting in.", [
           "Trim tree and palm branches at least 6 feet from the roofline",
           "Seal gaps larger than 1/2 inch at pipes, vents and eaves with steel wool or metal flashing and sealant",
           "Install or repair the garage door bottom seal",
@@ -339,11 +331,16 @@ const CLIMATE_TASKS = {
           "Clean the exterior flap and confirm it opens freely",
           "Replace any foil or vinyl duct with rigid or semi-rigid metal",
           "Wash the lint trap screen with soap and water"]),
-        S("Irrigation check and fall lawn care", "Landscaping", 24, "Low", "Florida law requires a working rain sensor on automatic irrigation, and county watering rules change in the fall.", [
+        onlyIn(["FL"], S("Irrigation check and fall lawn care", "Landscaping", 24, "Low", "Florida law requires a working rain sensor on automatic irrigation, and county watering rules change in the fall.", [
           "Test the rain sensor by pressing or wetting it; the system should shut off",
           "Run each zone and replace clogged, broken or misaligned heads",
           "Update the timer to your current county watering days and hours (check your water management district)",
-          "Pinellas County's summer fertilizer ban (June 1 to Sept 30) has ended; if you fertilize, use slow-release and confirm your local ordinance"]),
+          "Pinellas County's summer fertilizer ban (June 1 to Sept 30) has ended; if you fertilize, use slow-release and confirm your local ordinance"])),
+        notIn(["FL"], S("Irrigation check and fall adjustment", "Landscaping", 24, "Low", "Cooler weather and seasonal rain mean the irrigation schedule should change.", [
+          "Test the rain sensor by pressing or wetting it; the system should shut off",
+          "Run each zone and replace clogged, broken or misaligned heads",
+          "Update the timer to your local watering days and hours (check your water provider)",
+          "Reduce run times for cooler weather"])),
       ],
       /* Nov */ [
         S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November).", [
@@ -352,11 +349,11 @@ const CLIMATE_TASKS = {
           "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label (5-7 years)",
           "Check fire extinguisher gauges are in the green; keep one in the kitchen and garage",
           "Review your family escape plan"]),
-        S("Test heat mode before the first cold front", "HVAC", 8, "Medium", "Many Florida homes rely on heat strips or a heat pump that are rarely used; find problems before the first cold night.", [
+        notIn(["HI","PR"], S("Test heat mode before the first cold front", "HVAC", 8, "Medium", "Many homes in this climate rely on heat strips or a heat pump that are rarely used; find problems before the first cold night.", [
           "Set the thermostat to Heat and run it for 15 minutes",
           "Expect a brief burning-dust smell the first time; anything persistent needs service",
           "Confirm auxiliary or emergency heat activates",
-          "Change the air filter; rinse the outdoor coil if you live near the coast"]),
+          "Change the air filter; rinse the outdoor coil if you live near the coast"])),
         S("Hurricane-season wrap-up: roof and yard inspection, restock kit", "Roofing", 18, "Medium", "The season ends November 30. Check for damage you missed and reset supplies.", [
           "Walk the roof line and yard for loose flashing, cracked tile, damaged screens or fences",
           "Photograph and repair any storm damage; file claims within your policy's deadline",
@@ -368,12 +365,12 @@ const CLIMATE_TASKS = {
           "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
           "Flush with clean water and confirm free drainage outside",
           "Check the drain pan and float switch"]),
-        S("Cold-snap readiness (nights forecast below 35°F)", "Plumbing", 10, "Medium", "Tampa Bay sees a few near-freezing nights most winters. Prep once, then act only when a freeze is forecast.", [
+        notIn(["HI","PR"], S("Cold-snap readiness (nights forecast below 35°F)", "Plumbing", 10, "Medium", "Gulf Coast homes see a few near-freezing nights most winters. Prep once, then act only when a freeze is forecast.", [
           "Move or cover freeze-tender plants",
           "Cover outdoor spigots and the irrigation backflow preventer with insulated covers",
           "Know where pool pump controls are; run the pump overnight during a freeze warning",
           "Disconnect garden hoses",
-          "Never run generators, grills or camp stoves indoors or in the garage for heat"]),
+          "Never run generators, grills or camp stoves indoors or in the garage for heat"])),
         S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
           "Upload invoices and receipts to Documents",
           "Log completed service on each asset in Steadwell",
@@ -383,102 +380,1259 @@ const CLIMATE_TASKS = {
     ],
     icon: "🌴", color: "#FBF3E8", border: "#E8C89A",
   },
-  // Zone 3-4: Warm/Mixed (GA, Carolinas, VA, TN, Pacific NW, CA)
+  // Zone 3-4: Warm/Mixed (Southeast & Mid-Atlantic interior, Mid-South, Southern Plains)
+  // Hot humid summers, mild winters with occasional hard freezes and ice, spring severe weather,
+  // deciduous leaf fall, heavy termite pressure.
   mixed: {
     label: "Warm/Mixed Climate",
     months: [
-      /* Jan */ ["Check pipes in unheated spaces during cold snaps","Replace HVAC filter","Test heating system backup and thermostat","Inspect water heater and check for leaks"],
-      /* Feb */ ["Inspect roof after winter storms","Check attic insulation and for moisture","Book AC tune-up before summer","Replace HVAC filter"],
-      /* Mar */ ["Service AC before summer heat","Clean gutters after pollen and winter debris","Inspect deck, fences and outdoor structures","Test smoke & CO detectors"],
-      /* Apr */ ["Inspect roof and attic ventilation","Start irrigation and check for broken heads","Schedule termite / pest inspection","Seal cracks in driveway and walkways"],
-      /* May */ ["Caulk exterior gaps before humid weather","Clean dryer vent","Check window screens and seals","Replace HVAC filter"],
-      /* Jun */ ["Replace HVAC filter every 1-2 months","Inspect irrigation and adjust for summer","Check crawl space or basement for moisture","Clean AC condensate line"],
-      /* Jul */ ["Check attic ventilation for heat buildup","Inspect deck for sun and moisture damage","Look for mold in humid areas","Test smoke & CO detectors"],
-      /* Aug */ ["Check roof and gutters ahead of storm season","Clean outdoor AC condenser","Replace HVAC filter","Inspect exterior paint and caulk"],
-      /* Sep */ ["Service furnace or heat pump before heating season","Clean gutters after early leaf fall","Drain and store garden hoses when nights near freezing","Inspect fireplace and chimney"],
-      /* Oct */ ["Check weatherstripping on doors and windows","Winterize irrigation and outdoor faucets","Clean gutters after leaf fall","Test smoke & CO detectors"],
-      /* Nov */ ["Insulate exposed pipes in unheated spaces","Replace HVAC filter","Reverse ceiling fans to winter direction","Stock emergency supplies for winter storms"],
-      /* Dec */ ["Flush water heater","Check attic insulation levels","Inspect roof after heavy rain or frost","Test heating system backup"],
+      /* Jan */ [
+        S("Freeze-protection check for pipes and outdoor plumbing", "Plumbing", 6, "High", "Hard freezes (20°F or lower) are the main winter plumbing risk here. Pipes in garages, crawl spaces and exterior walls fail first.", [
+          "Locate the main water shutoff and confirm it turns fully",
+          "Insulate exposed pipes in the garage, crawl space and attic with foam sleeves",
+          "Disconnect garden hoses and cover outdoor spigots with insulated caps",
+          "Before a hard freeze: open cabinet doors on exterior walls and let a faucet drip overnight",
+          "Keep a plumber's emergency number where you can find it"]),
+        S("Test your home for radon", "Safety", 14, "Medium", "Winter is the best season for a closed-house test. Radon is elevated in parts of the Appalachians and Mid-South. The EPA action level is 4 pCi/L.", [
+          "Buy a short-term (2-7 day) test kit or hire a certified tester",
+          "Place it on the lowest lived-in level, away from drafts, with windows and exterior doors kept closed starting 12 hours before and during the test",
+          "Mail it to the lab and save the result in Documents",
+          "If the result is 4 pCi/L or higher, get quotes from a state-certified mitigation contractor (roughly $800-$2,500)"]),
+        S("Check attic insulation and air sealing", "Structure", 24, "Low", "DOE recommends roughly R-38 to R-60 in attics for Climate Zones 3-4. Poor insulation raises both heating and cooling bills.", [
+          "Measure depth: about 15 inches of loose fiberglass or 10-11 inches of cellulose is roughly R-38",
+          "Look for compressed, wet or missing insulation, and gaps around light fixtures and the attic hatch",
+          "Weatherstrip and insulate the attic hatch",
+          "Seal duct joints with mastic (not cloth duct tape)",
+          "Ask your utility about a free or discounted energy audit"]),
+      ],
+      /* Feb */ [
+        S("Flush the water heater and test the relief valve", "Plumbing", 8, "Medium", "Sediment builds up in tanks and shortens their life. Annual flushing is the cheapest way to extend it.", [
+          "Turn off power (electric) or set gas to pilot, and close the cold-water inlet",
+          "Attach a hose to the drain valve and drain 2-3 gallons until it runs clear",
+          "Lift the temperature-and-pressure relief valve lever briefly to confirm it flows and reseats",
+          "Inspect the anode rod every 3 years and replace if heavily corroded",
+          "Check the drip pan and drain line, and note the manufacture date (tanks typically last 8-12 years)"]),
+        S("Inspect the roof after winter storms", "Roofing", 16, "High", "Ice, wind and falling limbs cause damage that stays hidden until spring rain.", [
+          "From the ground with binoculars: look for missing, lifted or cracked shingles",
+          "Check flashing at chimneys, vents and walls, and rubber vent-pipe boots for cracks",
+          "Look for sagging gutters and ice damage at the eaves",
+          "From the attic: look for stains, damp insulation or daylight",
+          "Photograph any damage and check your policy's wind/hail deductible and claim deadline before repairs"]),
+        S("Inspect the crawl space or basement for moisture and pests", "Structure", 24, "Medium", "Moisture under the house drives mold, wood rot and termites in humid climates.", [
+          "Look for standing water, damp soil, and a vapor barrier that is torn or missing",
+          "Check that foundation vents or the encapsulation system are working, and use a hygrometer to confirm humidity stays under 60%",
+          "Look for mud tubes, sagging or wet insulation, and rotted sill plates or floor joists",
+          "Confirm downspouts discharge at least 5-6 feet from the foundation",
+          "Test any sump pump by pouring water into the pit until the float lifts it"]),
+      ],
+      /* Mar */ [
+        S("AC tune-up before the cooling season", "HVAC", 8, "High", "Book and complete this in March, before summer demand makes appointments hard to get.", [
+          "Have a licensed HVAC contractor clean the evaporator and condenser coils",
+          "Ask for a refrigerant pressure check, capacitor and contactor test, and blower amp draw",
+          "Have the condensate drain flushed and the float switch tested",
+          "Inspect ductwork in the attic or crawl space for leaks or disconnects",
+          "Replace the filter and calibrate the thermostat"]),
+        S("Clean gutters and check drainage after winter", "Landscaping", 15, "Medium", "Winter debris and early spring pollen clog gutters right before the wet season.", [
+          "Clear gutters and downspouts by hand or with a wet vacuum, and flush with a hose",
+          "Check for sagging sections, loose spikes and leaking seams",
+          "Extend downspouts at least 5-6 feet from the foundation",
+          "Confirm the ground slopes away from the house (about 6 inches over the first 10 feet)"]),
+        S("Termite swarm-season inspection (March to May)", "Structure", 22, "High", "Subterranean termites swarm in spring. The Southeast has some of the highest termite pressure in the US, and Formosan termites occur along the coasts.", [
+          "Look for discarded wings on windowsills, near lights and in spider webs",
+          "Check the foundation, sill plate and garage walls for mud tubes",
+          "Tap baseboards, door frames and window sills for hollow sounds",
+          "Keep mulch 6 inches below siding and firewood off the ground and away from the house",
+          "Schedule a licensed wood-destroying-organism inspection and renew any termite bond"]),
+      ],
+      /* Apr */ [
+        S("Start up and test the irrigation system", "Landscaping", 5, "Medium", "Start after the last hard frost (typically late March to mid April here).", [
+          "Open the main valve slowly to avoid pressure surges",
+          "Run every zone and replace clogged, broken or misaligned heads",
+          "Check the backflow preventer for leaks and the rain sensor for operation",
+          "Set the controller: about 1 inch of water per week including rain, early morning only"]),
+        S("Spring perimeter pest-control service", "Other", 12, "Medium", "Ants, wasps, ticks and roaches become active in spring. A perimeter treatment now prevents summer infestations.", [
+          "Book a state-licensed pest-control company or confirm your existing plan",
+          "Ask for exterior perimeter treatment plus eaves, entry points and garage",
+          "Remove wasp nests and seal gaps around pipes and utility lines",
+          "Save the service report to Documents"]),
+        S("Test GFCI outlets and check surge protection", "Electrical", 22, "Medium", "Spring thunderstorms bring lightning and power surges.", [
+          "Press TEST then RESET on every GFCI (kitchen, baths, garage, exterior, laundry)",
+          "Replace any outlet that fails to trip or reset",
+          "Check the status light on any whole-home surge protector",
+          "Replace plug-in surge strips older than 3-5 years"]),
+      ],
+      /* May */ [
+        S("Inspect, clean and seal the deck and exterior wood", "Structure", 10, "Medium", "May offers the best window: temperatures between 50 and 90°F and a dry forecast for 48 hours.", [
+          "Sprinkle water on the deck: if it soaks in rather than beading, it needs sealing",
+          "Sand splinters, replace rotted boards, and re-set popped nails or screws",
+          "Check the ledger board flashing where the deck attaches to the house, and railings for wobble",
+          "Clean with a deck cleaner, let it dry fully, then apply stain or sealer"]),
+        S("Wash siding, driveway and walkways", "Structure", 17, "Low", "Removes mildew and algae before summer humidity sets in.", [
+          "Use a low-pressure setting on siding and windows; never pressure-wash at close range",
+          "Treat mildew with a siding-safe cleaner",
+          "Wash the driveway and walks; reseal concrete if water no longer beads on it",
+          "Check caulk and paint for peeling while the surface is clean"]),
+        S("Trim trees and shrubs away from the house", "Landscaping", 24, "Medium", "Summer thunderstorms and straight-line winds turn overhanging limbs into roof damage.", [
+          "Remove dead or cracked limbs and any branches overhanging the roof",
+          "Keep shrubs at least a foot from siding and 2 feet from the outdoor AC unit",
+          "Hire an ISA-certified arborist for large trees or anything near power lines",
+          "Haul away debris; loose limbs become storm projectiles"]),
+      ],
+      /* Jun */ [
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 8, "Medium", "Algae in the drain line is a top cause of AC water leaks in humid summers. Repeat in September and December.", [
+          "Locate the PVC access tee near the air handler",
+          "Pour about a cup of white vinegar (or per manufacturer) into the tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage at the outside outlet",
+          "Check the drain pan and float switch"]),
+        S("Clean the dryer vent and duct", "Appliance", 14, "High", "Lint buildup in the vent is a leading cause of house fires. Clean at least once a year.", [
+          "Unplug the dryer (or shut off gas) and pull it away from the wall",
+          "Brush or vacuum the duct from both the dryer end and the exterior end",
+          "Clean the exterior flap and confirm it opens freely",
+          "Replace foil or vinyl duct with rigid or semi-rigid metal",
+          "Wash the lint trap screen with soap and water"]),
+        S("Check caulk and seals on windows, doors and siding", "Structure", 22, "Medium", "Summer humidity and storms drive water into gaps that winter cracked open.", [
+          "Inspect caulk lines around windows, doors, siding joints and wall penetrations",
+          "Cut out failed caulk and re-apply exterior-grade sealant",
+          "Check weatherstripping and door sweeps for daylight gaps",
+          "Touch up peeling paint on trim to keep water out"]),
+      ],
+      /* Jul */ [
+        S("Rinse and inspect the outdoor AC condenser", "HVAC", 10, "Medium", "Dirty coils cut cooling capacity and shorten compressor life during peak load.", [
+          "Turn off power at the outdoor disconnect",
+          "Gently rinse the fins from the outside with a garden hose; do not use a pressure washer",
+          "Clear plants and debris to keep 2 feet of clearance",
+          "Check the pad is level and the refrigerant line insulation is not cracked"]),
+        S("Check attic ventilation and temperature", "Roofing", 20, "Medium", "Attics can reach 130-150°F in summer. Poor ventilation ages shingles from underneath and overloads the AC.", [
+          "Confirm soffit vents are open and not blocked by insulation",
+          "Confirm ridge or gable vents are clear of debris and nests",
+          "Check for roughly 1 square foot of vent area per 150 square feet of attic floor",
+          "Look for wet insulation, mold or stained decking that signals moisture problems"]),
+      ],
+      /* Aug */ [
+        S("Repair driveway and walkway cracks", "Structure", 6, "Low", "Late summer is dry, and sealing before fall rain and winter freezes keeps small cracks from widening.", [
+          "Clean cracks with a wire brush and blow out debris",
+          "Fill asphalt cracks with rubberized crack filler or concrete cracks with flexible sealant",
+          "Seal asphalt driveways every 2-3 years once cracks are filled",
+          "Re-level or replace trip hazards over 1/2 inch"]),
+        S("Chimney and fireplace inspection", "Structure", 18, "High", "Have this done before burn season. The CSIA recommends an annual inspection for any fireplace, wood stove or gas log set.", [
+          "Book a CSIA-certified chimney sweep for a Level 1 inspection",
+          "Have creosote removed if buildup is 1/8 inch or more",
+          "Check the cap, crown and flashing for water damage",
+          "Confirm the damper opens and closes fully",
+          "Store firewood off the ground, covered and away from the house"]),
+      ],
+      /* Sep */ [
+        S("Furnace or heat pump tune-up", "HVAC", 8, "High", "Service the heating system before the first cold snap when contractors get booked.", [
+          "Have a technician inspect the heat exchanger for cracks and test burners and ignition",
+          "Test the carbon monoxide level at the flue and supply registers",
+          "Heat pumps: check the reversing valve, defrost cycle and auxiliary heat strips",
+          "Check the flue, blower and thermostat",
+          "Replace the filter"]),
+        S("Flush the AC condensate drain line (quarterly)", "HVAC", 15, "Medium", "The AC is still working hard; keep the drain clear.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage outside",
+          "Check the drain pan and float switch"]),
+        S("Aerate and overseed cool-season lawns", "Landscaping", 20, "Low", "Mid-September to mid-October is the best window for tall fescue and other cool-season grasses in the Southeast transition zone.", [
+          "Core-aerate compacted areas",
+          "Overseed with the variety suited to your area (tall fescue is common)",
+          "Keep the seedbed moist until germination",
+          "Warm-season grasses (Bermuda, zoysia): do not overseed; they go dormant this fall"]),
+      ],
+      /* Oct */ [
+        S("Winterize irrigation and outdoor faucets", "Plumbing", 10, "High", "The first hard freeze usually arrives between mid-October and mid-November. Do this before it does.", [
+          "Shut off the irrigation supply and drain the lines or have them blown out",
+          "Insulate the backflow preventer and exposed irrigation piping",
+          "Disconnect and drain garden hoses",
+          "Shut off and drain non-frost-free spigots from the interior valve, and cover exterior ones"]),
+        S("Weatherstrip doors and windows and seal air leaks", "Structure", 17, "Medium", "Air leaks can account for 15-25% of heating costs.", [
+          "Check door sweeps and weatherstripping for daylight gaps",
+          "Re-caulk windows and seal gaps around pipes and wiring",
+          "Install foam gaskets behind outlets on exterior walls",
+          "Consider plastic window film on old single-pane windows"]),
+        S("Rodent exclusion and fall pest inspection", "Other", 24, "Medium", "Mice and rats look for shelter and food as temperatures drop. Block entry before they move in.", [
+          "Seal gaps larger than 1/4 inch around pipes, vents and the garage door with steel wool and sealant",
+          "Install or repair the garage door bottom seal",
+          "Screen attic and soffit vents",
+          "Check the attic, garage and pantry for droppings",
+          "Call a licensed pest professional if you find signs"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November).", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label (5-10 years)",
+          "Confirm a CO alarm on each level and outside sleeping areas",
+          "Check fire extinguisher gauges are in the green"]),
+        S("Clean gutters after leaves have fallen", "Landscaping", 15, "Medium", "Wait until most leaves are down so one cleaning covers the season.", [
+          "Clear gutters and downspouts and flush with a hose",
+          "Check for standing water and adjust pitch if needed",
+          "Inspect the roof surface for debris and moss",
+          "Confirm downspouts discharge well away from the foundation"]),
+        S("Winterize lawn and yard equipment", "Other", 22, "Low", "Fuel left in small engines over winter causes hard starting and carburetor damage.", [
+          "Add fuel stabilizer and run the mower and trimmer for 5 minutes, or drain the tank",
+          "Change the oil, replace the spark plug and sharpen the mower blade",
+          "Drain and store hoses",
+          "Store chemicals away from freezing temperatures"]),
+      ],
+      /* Dec */ [
+        S("Winter-storm and power-outage readiness", "Safety", 5, "High", "Ice storms cause long outages in the Southeast and Mid-South. Prepare before the forecast.", [
+          "Keep 3 days of water (1 gallon per person per day) and non-perishable food",
+          "Charge power banks and store flashlights and batteries where you can find them in the dark",
+          "Generator: test it and store fuel; run it outdoors at least 20 feet from the house and away from windows, never in a garage",
+          "Confirm CO alarms are working before you need alternative heating",
+          "Know where the main water shutoff is in case pipes freeze"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
     ],
     icon: "🌤️", color: "#FBF0F5", border: "#EEC8D8",
   },
-  // Zone 5: Cool (Midwest, CO, NE, PA, NJ, NY)
+  // West Coast (CA, OR, WA): wet winters (Oct-Apr), dry summers, atmospheric rivers, moss in the Pacific
+  // Northwest, drought rules in California. Wildfire and earthquake tasks are added by region overlays.
+  west_coast: {
+    label: "West Coast Climate",
+    months: [
+      /* Jan */ [
+        S("Storm and atmospheric-river readiness: drainage check", "Structure", 5, "High", "January is peak rainfall. Water that cannot leave the property ends up under the house.", [
+          "Clear leaves from gutters, downspouts, yard drains and catch basins before each storm",
+          "Confirm downspouts discharge at least 5-6 feet from the foundation, and that swales and French drains flow",
+          "Check the crawl space or garage for standing water; test any sump pump by pouring water into the pit",
+          "Keep sandbags or flood barriers where you can reach them if you are near a creek or in a slide-prone area",
+          "Know your evacuation route and sign up for your county emergency alerts"]),
+        S("Inspect the roof and attic for leaks", "Roofing", 15, "High", "Winter rain shows exactly where the roof leaks.", [
+          "From the attic during or right after rain: look for drips, stains and damp insulation",
+          "Check flashing at chimneys, skylights and walls, and rubber vent-pipe boots for cracks",
+          "Look for lifted or missing shingles or tiles",
+          "Photograph any damage and call a licensed roofer for repairs"]),
+        S("Check the crawl space vapor barrier and moisture", "Structure", 24, "Medium", "Moisture under the house causes rot, mold and drywood or dampwood termite problems.", [
+          "Look for standing water or damp soil and a torn or missing vapor barrier",
+          "Confirm foundation vents are clear and the crawl space is not visibly wet",
+          "Check for sagging insulation and mildew on floor joists",
+          "Monitor humidity with a hygrometer; aim for under 60%"]),
+      ],
+      /* Feb */ [
+        S("Treat roof moss and algae", "Roofing", 8, "Medium", "Moss holds moisture against shingles and lifts them. This is a major issue in the Pacific Northwest and coastal north.", [
+          "Brush loose moss off gently with a soft brush from a ladder or roof edge; never pressure-wash shingles",
+          "Apply a moss killer suited to your roof material or hire a soft-wash roof cleaning service",
+          "Install zinc or copper strips near the ridge to prevent regrowth",
+          "Trim overhanging branches to increase sun and airflow"]),
+        S("Test the sump pump and battery backup", "Plumbing", 15, "Medium", "Sump systems fail at the worst time. Test before the rest of the wet season.", [
+          "Pour 5 gallons of water into the pit and confirm the float raises and the pump discharges",
+          "Test the battery backup and replace the battery every 3-5 years",
+          "Check the discharge line is clear and drains away from the foundation",
+          "Clean debris from the pit and the pump intake"]),
+        S("Flush the water heater and check the earthquake straps", "Plumbing", 22, "Medium", "Annual flushing extends tank life, and unsecured tanks are a major hazard in an earthquake.", [
+          "Turn off power (electric) or set gas to pilot, then drain 2-3 gallons until it runs clear",
+          "Lift the temperature-and-pressure relief valve lever briefly to confirm it flows and reseats",
+          "Confirm two steel straps (upper and lower third) are tight and anchored to wall studs",
+          "Check the flexible gas and water connectors for cracks or corrosion"]),
+      ],
+      /* Mar */ [
+        S("Clean gutters and downspouts after the wet season", "Landscaping", 10, "Medium", "Late winter storms leave gutters full of debris and roof granules.", [
+          "Clear gutters and downspouts and flush with a hose",
+          "Check for sagging sections, leaking seams and loose fasteners",
+          "Check gutter guards for buildup",
+          "Ensure the ground slopes away from the foundation"]),
+        S("Termite and wood-destroying-organism inspection", "Structure", 18, "High", "California and Oregon have drywood termites, and the Pacific Northwest has dampwood termites and carpenter ants where moisture is present.", [
+          "Look for pellet-like frass beneath wood, discarded wings near windows, and blistered or hollow-sounding wood",
+          "Check the crawl space for mud tubes and damp wood",
+          "Look at fascia, eaves, decks and window sills for soft wood",
+          "Schedule a licensed inspection, especially before a sale or after leaks"]),
+        S("Book and complete the AC or heat-pump tune-up", "HVAC", 25, "Medium", "Inland areas get hot early. Service cooling equipment before the first heat wave.", [
+          "Have a licensed technician clean coils and check refrigerant, capacitor and contactor",
+          "Have the condensate drain flushed",
+          "Inspect ducts in the attic or crawl space for leaks or disconnects",
+          "Replace the filter and check the thermostat"]),
+      ],
+      /* Apr */ [
+        S("Start up irrigation and set a drought-smart schedule", "Landscaping", 6, "Medium", "Check your local water district for watering days and any drought restrictions before turning the system on.", [
+          "Turn on the water slowly and run each zone",
+          "Replace clogged or misaligned heads and repair leaking valves",
+          "Switch to drip or low-flow nozzles where possible",
+          "Set the controller for early morning watering and follow local watering-day rules"]),
+        S("Clean, inspect and seal the deck and exterior wood", "Structure", 15, "Medium", "Use the dry spring window to protect wood before summer sun and next winter's rain.", [
+          "Sprinkle water on the deck: if it soaks in, it needs sealing",
+          "Replace rotted boards and check the ledger board flashing and railings",
+          "Clean with a deck cleaner, let it dry fully, then stain or seal",
+          "Probe fascia, trim and window sills with a screwdriver for soft wood"]),
+      ],
+      /* May */ [
+        S("Inspect windows, doors and exterior caulk", "Structure", 8, "Medium", "Seal against next season's rain while the weather is dry.", [
+          "Inspect caulk around windows, doors, siding joints and wall penetrations",
+          "Cut out failed caulk and re-apply exterior-grade sealant",
+          "Check weatherstripping and door sweeps",
+          "Touch up exposed wood and peeling paint"]),
+        S("Clean the dryer vent and duct", "Appliance", 17, "High", "Lint buildup in the vent is a leading cause of house fires. Clean at least once a year.", [
+          "Unplug the dryer (or shut off gas) and pull it away from the wall",
+          "Brush or vacuum the duct from both ends",
+          "Clean the exterior flap and confirm it opens freely",
+          "Replace foil or vinyl duct with rigid or semi-rigid metal",
+          "Wash the lint trap screen"]),
+      ],
+      /* Jun */ [
+        S("Plan roof repairs and re-roofing now", "Roofing", 8, "Medium", "Dry summer months are the best time to re-roof or make repairs, and contractors book quickly.", [
+          "Get at least two written quotes from licensed, insured roofers",
+          "Ask about materials suited to fire-prone or wet areas (Class A fire-rated roofing in wildfire zones)",
+          "Confirm the contractor's license with your state contractor board",
+          "Schedule work before September"]),
+        S("Service crawl space vents and vapor barrier", "Structure", 18, "Low", "Dry season is the time to repair moisture protection under the house.", [
+          "Repair or replace torn vapor barrier and secure edges",
+          "Clean foundation vents and make sure screens are intact (keeps rodents and embers out)",
+          "Replace damaged insulation between joists",
+          "Consider encapsulation if the space stays damp"]),
+      ],
+      /* Jul */ [
+        S("Rinse the AC condenser and prepare for heat waves", "HVAC", 8, "Medium", "Inland areas see 100°F+ days. Cooling equipment needs clear coils and airflow.", [
+          "Turn off power at the outdoor disconnect and rinse the fins gently with a garden hose",
+          "Clear plants and debris to keep 2 feet of clearance",
+          "Replace the filter",
+          "Plan for power shutoffs and heat: have water, fans and a cooler place to go if the AC fails"]),
+        S("Check attic ventilation and seals", "Roofing", 20, "Low", "Hot attics age roofs and raise cooling bills.", [
+          "Confirm soffit and ridge vents are open and screened",
+          "Check that insulation is not blocking soffit vents",
+          "Look for daylight, pests or sagging insulation"]),
+      ],
+      /* Aug */ [
+        S("Furnace or heat pump tune-up", "HVAC", 5, "High", "Get it serviced before the first cold rain when contractors book up.", [
+          "Have a technician inspect the heat exchanger for cracks and test burners and ignition",
+          "Test carbon monoxide at the flue and registers",
+          "Heat pumps: check reversing valve, defrost cycle and auxiliary heat",
+          "Replace the filter"]),
+        S("Pre-rain roof and gutter prep", "Roofing", 20, "High", "Fix problems in dry weather before the first storms of the wet season.", [
+          "Clear dry leaves, pine needles and debris from the roof, valleys and gutters",
+          "Repair loose or missing shingles and failed flashing or sealant",
+          "Trim branches over the roof",
+          "Confirm gutter downspouts and drains are open and flowing"]),
+      ],
+      /* Sep */ [
+        S("Chimney and fireplace inspection", "Structure", 8, "High", "Have this done before burn season. The CSIA recommends an annual inspection for any fireplace, wood stove or gas log set.", [
+          "Book a CSIA-certified chimney sweep for a Level 1 inspection",
+          "Have creosote removed if buildup is 1/8 inch or more",
+          "Check the cap, crown, spark arrestor and flashing",
+          "Confirm the damper opens fully",
+          "Store firewood off the ground, covered and away from the house"]),
+        S("Flush the AC condensate drain line", "HVAC", 16, "Low", "Clear the line before the cooling season winds down.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage outside",
+          "Check the drain pan and float switch"]),
+      ],
+      /* Oct */ [
+        S("First-rain check: drainage, grading and gutters", "Structure", 5, "High", "The first big storm of the season reveals every drainage weakness.", [
+          "Clear gutters, downspouts and yard drains again after leaf drop begins",
+          "Check that downspout extensions and splash blocks route water away from the foundation",
+          "Look for erosion near the foundation, slopes and retaining walls",
+          "Check the sump pump and crawl space for water after the first heavy rain"]),
+        S("Weatherstrip and seal against winter drafts", "Structure", 14, "Medium", "Air leaks raise heating costs and let in moisture.", [
+          "Check door sweeps and weatherstripping for daylight gaps",
+          "Re-caulk windows and seal gaps around pipes and wiring",
+          "Install foam gaskets behind outlets on exterior walls"]),
+        S("Rodent exclusion and fall pest inspection", "Other", 22, "Medium", "Rats and mice seek dry shelter as the rainy season starts.", [
+          "Seal gaps larger than 1/4 inch around pipes, vents and the garage door with steel wool and sealant",
+          "Check the attic, garage and crawl space for droppings and nests",
+          "Trim vegetation touching the roofline",
+          "Call a licensed pest professional if you find signs"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November).", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label",
+          "Confirm a CO alarm on each level and outside sleeping areas",
+          "Check fire extinguisher gauges are in the green"]),
+        S("Prepare for storm outages and public-safety power shutoffs", "Safety", 12, "Medium", "Winter storms and, in California, utility power shutoffs can leave you without power for days.", [
+          "Charge power banks and store flashlights and batteries where you can find them in the dark",
+          "Keep 3 days of water (1 gallon per person per day) and food",
+          "Generator or battery backup: test it and run it outdoors, 20 feet from the house",
+          "Confirm your garage door manual release works",
+          "Sign up for your utility and county outage and emergency alerts"]),
+      ],
+      /* Dec */ [
+        S("Check for roof leaks and drainage after the first storms", "Roofing", 8, "Medium", "Catch leaks early before they saturate insulation and drywall.", [
+          "Look at ceilings and walls for new stains after heavy rain",
+          "Check the attic for drips and damp insulation",
+          "Inspect gutters for overflow marks and downspouts for clogs"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
+    ],
+    icon: "🌉", color: "#EEF4FA", border: "#B8D0E6",
+  },
+  // Hot-dry desert (Phoenix / Tucson / Las Vegas / Las Cruces): extreme summer heat, monsoon storms
+  // (June 15 - Sept 30), very hard water, intense UV, scorpions, evaporative coolers, mild winters.
+  hot_dry: {
+    label: "Hot & Dry Desert Climate",
+    months: [
+      /* Jan */ [
+        S("Protect against freezes and check the water heater", "Plumbing", 5, "Medium", "Desert nights can drop below freezing a handful of times a year, and hard water ruins water heaters.", [
+          "Cover frost-tender plants and insulate the irrigation backflow preventer and exposed pipes before a forecast freeze",
+          "Disconnect hoses and cover outdoor spigots",
+          "Flush the water heater (very hard water builds sediment fast): drain 2-3 gallons until clear",
+          "Test the temperature-and-pressure relief valve and inspect the anode rod"]),
+        S("Inspect drip irrigation lines and emitters", "Landscaping", 15, "Low", "UV-brittle poly tubing cracks, and emitters clog with mineral buildup.", [
+          "Run every zone and walk the lines looking for geysers, dry spots and cracked tubing",
+          "Flush the ends of drip lines and clean or replace clogged emitters",
+          "Replace filters and check the pressure regulator",
+          "Adjust the controller for winter (many landscapes need far less water in winter)"]),
+      ],
+      /* Feb */ [
+        S("Book and complete the AC tune-up before April", "HVAC", 5, "High", "Desert AC runs 8-9 months a year and often at extreme load. Service before contractors fill up.", [
+          "Have a licensed HVAC contractor clean the evaporator and condenser coils",
+          "Ask for a refrigerant pressure check, capacitor and contactor test, and blower amp draw",
+          "Have the condensate line flushed and the float switch tested",
+          "Inspect attic ductwork for leaks and insulation gaps",
+          "Note system age; 10-15 years is typical life in desert heat"]),
+        S("Inspect the roof: tile, foam or shingle", "Roofing", 15, "Medium", "UV, extreme temperature swings and monsoon storms age desert roofs fast.", [
+          "Look for cracked or slipped tiles and loose underlayment",
+          "Foam roofs: check for blisters, cracks and worn coating (recoat every 5-10 years)",
+          "Check flashing, vent boots and sealant",
+          "From the attic: look for daylight and water stains from last monsoon"]),
+        S("Spring pest and scorpion prevention", "Other", 24, "Medium", "Bark scorpions, ants and roaches become active as it warms.", [
+          "Book a licensed pest-control service for a perimeter and eave treatment",
+          "Seal gaps at door bottoms, weatherstripping, wall penetrations and utility lines",
+          "Remove wood piles, rock piles and dense ground cover next to the house",
+          "Keep the yard lighting warm-toned to draw fewer insects"]),
+      ],
+      /* Mar */ [
+        S("Check block walls, stucco and slab for cracks", "Structure", 8, "Medium", "Desert soils expand and shrink. Cracks let water in during monsoon and pests in year-round.", [
+          "Mark stucco, block wall and slab cracks wider than a hairline and photograph them",
+          "Seal stucco cracks with elastomeric patch and repaint",
+          "Re-caulk window and door frames and wall penetrations",
+          "Keep irrigation off the foundation; consistent moisture near the slab increases soil movement"]),
+        S("Replace AC filters and check the thermostat programming", "HVAC", 20, "Low", "Filters clog quickly with desert dust, and a programmed thermostat reduces summer bills.", [
+          "Replace the filter (check monthly in dusty seasons)",
+          "Set the thermostat to a schedule for summer; a setpoint of 78°F when home reduces load",
+          "Check the return grille and vents are not blocked by furniture"]),
+      ],
+      /* Apr */ [
+        S("Start up the evaporative (swamp) cooler", "HVAC", 5, "Medium", "If your home uses an evaporative cooler, service it before the first hot days. Skip if you have refrigerated AC only.", [
+          "Turn off power and water, then replace the cooling pads (typically every 1-2 seasons in hard water)",
+          "Clean the sump, check the float and pump, and inspect belt tension and blower motor lubrication",
+          "Check the water line and bleed-off line for mineral buildup",
+          "Remove the winter cover, open a window to vent, then run the cooler"]),
+        S("Trim trees and palms before monsoon", "Landscaping", 14, "High", "Monsoon gusts often exceed 60 mph. Dead limbs and fronds are the usual damage.", [
+          "Remove dead limbs, weak forks and branches over the roof",
+          "Remove dead palm fronds and seed pods; avoid over-pruning",
+          "For anything near power lines, call your electric utility; do not trim it yourself",
+          "Haul away debris; loose material becomes wind-driven projectiles"]),
+        S("Recoat UV-damaged exterior paint, trim and sealants", "Structure", 24, "Low", "Sun degrades sealants and paint faster here than almost anywhere in the US.", [
+          "Check exterior paint, caulk, wood trim and garage door for fading or cracks",
+          "Re-caulk and touch up exposed areas",
+          "Check the weatherstripping on entry and garage doors for gaps"]),
+      ],
+      /* May */ [
+        S("Prepare drainage and property for monsoon", "Structure", 8, "High", "Monsoon season officially runs June 15 - September 30, and flash flooding can hit quickly.", [
+          "Clear roof drains, scuppers, gutters and downspouts",
+          "Confirm the yard grades away from the house and washes and drainage swales are clear",
+          "Check retention basins and berms and clear them of sediment",
+          "Secure or store patio furniture, shade sails and trampolines",
+          "Review your homeowners policy: flood is not covered and has a 30-day waiting period"]),
+        S("Check surge protection before monsoon lightning", "Electrical", 20, "Medium", "Lightning and outages during monsoon can damage electronics and AC compressors.", [
+          "Check the status light on the whole-home surge protector; if none, get a quote from a licensed electrician",
+          "Consider a compressor surge protector for the AC condenser",
+          "Replace plug-in surge strips older than 3-5 years"]),
+      ],
+      /* Jun */ [
+        S("Extreme-heat and power-outage plan", "Safety", 5, "High", "Temperatures of 110-118°F make a failed AC dangerous, especially for children, older adults and pets.", [
+          "Identify a cooling center or a friend's home you can reach if the AC fails",
+          "Keep a stock of water (1 gallon per person per day) and battery-powered fans",
+          "Know signs of heat exhaustion and heat stroke, and when to call 911",
+          "Check AC filter and outdoor condenser airflow before the hottest weeks",
+          "Never leave children or pets in a parked car"]),
+        S("Flush the AC condensate drain line", "HVAC", 12, "Medium", "A clogged drain can shut the system down during peak heat.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage",
+          "Check the drain pan and float switch"]),
+        S("Monsoon dust-storm and flood safety", "Safety", 18, "Medium", "Haboobs (dust storms) and flash floods arrive with little warning.", [
+          "Sign up for county weather alerts and know your flood-prone washes and low-water crossings",
+          "During a dust storm: close windows and doors, turn off evaporative cooling, and stay indoors",
+          "Never drive into flooded roadways; a few inches of moving water can float a car",
+          "Change HVAC filters after major dust events"]),
+      ],
+      /* Jul */ [
+        S("Inspect the roof and property after monsoon storms", "Roofing", 10, "Medium", "Storm damage is easy to spot right after the event and insurers require timely reports.", [
+          "Check for lifted tiles, torn foam or shingles, and displaced vent caps",
+          "Look at ceilings and walls for new stains",
+          "Clear debris from drains, scuppers and washes",
+          "Photograph any damage and file a claim promptly if needed"]),
+        S("Evaporative cooler mid-season check", "HVAC", 18, "Low", "Mineral scale builds fast in hard water and reduces cooling output.", [
+          "Inspect the pads for mineral buildup and replace if crusty",
+          "Clean the sump and check the pump and bleed-off line",
+          "Check the belt and motor",
+          "Note: evaporative coolers work less well during humid monsoon days; use refrigerated AC then if you have it"]),
+      ],
+      /* Aug */ [
+        S("Rinse dust from the AC condenser and check clearances", "HVAC", 8, "Medium", "Dust and pollen coat the coils, forcing the compressor to work harder.", [
+          "Turn off power at the outdoor disconnect and gently rinse the fins with a garden hose",
+          "Clear plants, tumbleweeds and debris to keep 2 feet of clearance",
+          "Check that the pad is level and refrigerant line insulation is intact"]),
+        S("Attic and duct efficiency check", "HVAC", 20, "Low", "Attic temperatures can exceed 150°F and leaky ducts waste a large share of cooling.", [
+          "Look for disconnected, torn or uninsulated ducts",
+          "Check insulation depth (R-30 to R-38 or more is recommended)",
+          "Confirm attic vents are clear and screened",
+          "Consider a radiant barrier if the attic has none"]),
+      ],
+      /* Sep */ [
+        S("Monsoon wrap-up: leaks, drainage and erosion", "Structure", 25, "Medium", "The season ends September 30. Fix problems before winter storms.", [
+          "Inspect ceilings and attic for leaks and water stains",
+          "Check grading and drainage for erosion and re-fill low spots",
+          "Repair damaged block walls and retaining walls",
+          "Clear washes, retention basins and drains of sediment"]),
+        S("Flush the AC condensate drain line", "HVAC", 12, "Low", "The AC is still running near-continuously.", [
+          "Pour about a cup of white vinegar (or per manufacturer) into the drain access tee and wait 30 minutes",
+          "Flush with clean water and confirm free drainage",
+          "Check the drain pan and float switch"]),
+      ],
+      /* Oct */ [
+        S("Overseed winter lawn and adjust irrigation", "Landscaping", 10, "Low", "If you have a Bermuda lawn, overseeding with perennial ryegrass in cooler weather keeps it green. Skip this if your yard is desert landscaping.", [
+          "Overseed when overnight lows are consistently below about 65-70°F",
+          "Scalp the lawn low and rake before seeding, then keep the seedbed moist",
+          "Reduce irrigation run times and days for cooler weather",
+          "Check your local water provider for seasonal watering rules"]),
+        S("Winterize the evaporative cooler", "HVAC", 18, "Medium", "Prevent freeze damage and heat loss through the cooler in winter.", [
+          "Turn off water and power, drain the sump and water lines",
+          "Clean the pads or remove them, and scrub away mineral scale",
+          "Cover the cooler with a fitted cover and seal the ceiling vent inside",
+          "Note: skip this if your home uses only refrigerated AC"]),
+        S("Heating system tune-up", "HVAC", 25, "Medium", "Test heating before the first cold night.", [
+          "Have a technician inspect the furnace or heat pump: burners, ignition, heat exchanger, flue and CO levels",
+          "Heat pumps: check the reversing valve, defrost cycle and auxiliary heat",
+          "Replace the filter",
+          "Run the heating system for 15 minutes; a brief burning-dust smell is normal, a persistent one is not"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this the first weekend of November, when most of the US changes clocks. Arizona does not, but it is a good yearly reminder.", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label",
+          "Confirm CO alarms on each level and outside sleeping areas",
+          "Check fire extinguisher gauges are in the green"]),
+        S("Check pool, plumbing and irrigation for cold nights", "Plumbing", 15, "Low", "Occasional freezes can crack pipes and equipment.", [
+          "Insulate exposed pipes, pool plumbing and backflow preventers",
+          "Cover frost-tender plants before forecasted freezes",
+          "Note the location of the main water shutoff"]),
+      ],
+      /* Dec */ [
+        S("Cold-night and holiday electrical safety", "Safety", 5, "Medium", "Space heaters and holiday lights cause many winter fires.", [
+          "Plug space heaters directly into wall outlets, never extension cords",
+          "Inspect holiday light cords for damage and use outdoor-rated cords outside",
+          "Keep at least 3 feet clearance around heaters",
+          "Never use a barbecue, generator or stove for heat indoors"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
+    ],
+    icon: "🌵", color: "#FBF3E8", border: "#E8C89A",
+  },
+  // Zone 5: Cool (Midwest, Ohio Valley, Front Range, Pennsylvania, NJ, NY downstate, southern New England)
+  // Four true seasons: cold snowy winters, hot humid summers, freeze-thaw, sump pumps, spring storms.
   cool: {
     label: "Cool Climate",
     months: [
-      /* Jan */ ["Keep heating vents clear of furniture","Check for ice dams on roof edges","Monitor pipes during cold snaps","Replace furnace filter"],
-      /* Feb */ ["Watch for ice dams and clear roof edges safely","Check attic for condensation","Test sump pump before spring thaw","Replace furnace filter"],
-      /* Mar */ ["Inspect roof for ice dam and winter damage","Test sump pump before spring rain","Clean gutters after winter debris","Turn on outdoor faucets and check for freeze damage"],
-      /* Apr */ ["Service AC unit before summer","Repair driveway cracks from freeze/thaw","Inspect foundation and grading","Start irrigation system and check for leaks"],
-      /* May */ ["Inspect deck for winter damage","Check window screens and seals","Test smoke & CO detectors","Clean dryer vent"],
-      /* Jun */ ["Replace HVAC filter every 2 months","Inspect window AC units","Check attic insulation and ventilation","Inspect exterior paint and caulk"],
-      /* Jul */ ["Look for moisture in basement or crawl space","Clean AC condensate line","Inspect roof after storms","Replace HVAC filter"],
-      /* Aug */ ["Seal driveway and exterior cracks","Plan fall projects and schedule contractors","Clean outdoor AC condenser","Check fireplace and chimney condition"],
-      /* Sep */ ["Service furnace — heating season coming","Check weatherstripping and door seals","Inspect fireplace and chimney","Stock emergency supplies"],
-      /* Oct */ ["Clean gutters after leaves fall","Drain outdoor faucets and hoses","Winterize irrigation (blow out lines)","Insulate exposed pipes in unheated spaces"],
-      /* Nov */ ["Test smoke & CO detectors (change batteries)","Replace furnace filter","Reverse ceiling fans","Shut off exterior water lines"],
-      /* Dec */ ["Inspect water heater pressure relief valve","Keep heating vents clear","Monitor pipes in cold snaps","Check attic for ice dam risk"],
+      /* Jan */ [
+        S("Monitor for ice dams and snow load on the roof", "Roofing", 6, "High", "Ice dams form when heat escaping through the attic melts snow that refreezes at the eaves, forcing water under shingles.", [
+          "After each heavy snow, use a roof rake from the ground to clear the first 3-4 feet above the eaves (never climb on an icy roof)",
+          "Look for icicles, wet stains on ceilings near exterior walls and water dripping inside soffits",
+          "Check the attic for frost, damp insulation and warm spots that show air leaks",
+          "Long term: air-seal and add insulation to reduce heat loss; call a licensed roofer for active leaks"]),
+        S("Frozen-pipe prevention and response plan", "Plumbing", 12, "High", "Pipes on exterior walls, in garages and in crawl spaces freeze first when temperatures fall below about 20°F.", [
+          "Locate and test the main water shutoff",
+          "Open cabinet doors on exterior walls and let a faucet drip during extreme cold",
+          "Keep the thermostat at 55°F or higher, even when away",
+          "If a pipe freezes, shut off the water and thaw slowly with a hair dryer; never use an open flame",
+          "Keep a plumber's emergency number handy"]),
+        S("Test your home for radon", "Safety", 20, "Medium", "Winter is the best season for a closed-house test, and radon is elevated across much of the Midwest, Pennsylvania and Colorado. The EPA action level is 4 pCi/L.", [
+          "Buy a short-term (2-7 day) test kit or hire a certified tester",
+          "Place it in the lowest lived-in level, away from drafts, with windows and exterior doors closed for 12 hours before and during the test",
+          "Mail it to the lab and save the result in Documents",
+          "If the result is 4 pCi/L or higher, get quotes from a state-certified mitigation contractor (roughly $800-$2,500)"]),
+      ],
+      /* Feb */ [
+        S("Check the attic for frost and condensation", "Structure", 6, "Medium", "Frost on the underside of the roof deck means warm moist air is leaking into the attic, which leads to mold and rot.", [
+          "Look at the roof deck and nail tips for frost or dark staining",
+          "Confirm bathroom fans and the dryer vent exhaust outside, not into the attic",
+          "Check that soffit vents are not blocked by insulation",
+          "Air-seal gaps around recessed lights, the attic hatch and plumbing penetrations"]),
+        S("Test the sump pump and battery backup before the thaw", "Plumbing", 15, "High", "Snowmelt and spring rain overload sump pumps. Test before you need it.", [
+          "Pour 5 gallons of water into the pit and confirm the float raises and the pump discharges",
+          "Test the battery backup and replace the battery every 3-5 years",
+          "Check the discharge line is clear and not frozen, and drains well away from the foundation",
+          "Consider a water alarm in the basement"]),
+      ],
+      /* Mar */ [
+        S("Inspect the roof, gutters and drainage after winter", "Roofing", 10, "High", "Ice, snow and freeze-thaw cycles cause hidden damage.", [
+          "Look for missing or lifted shingles, damaged flashing and sagging gutters",
+          "Clear gutters and downspouts of ice and debris",
+          "Extend downspouts at least 5-6 feet from the foundation",
+          "Check the ground slopes away from the house and window wells are clear"]),
+        S("Check outdoor faucets and pipes for freeze damage", "Plumbing", 18, "Medium", "Frozen hose bibs can crack and leak inside the wall once thawed.", [
+          "Reconnect a hose and turn the spigot on fully, then check the interior side for drips",
+          "Check under sinks and in the basement or crawl space for new leaks",
+          "Replace cracked hose bibs; consider frost-free models"]),
+        S("Repair freeze-thaw damage", "Structure", 25, "Low", "Small cracks widen through repeated freezing and thawing.", [
+          "Fill driveway and concrete cracks with a flexible sealant",
+          "Check steps, walkways and foundation for cracks or heaving; photograph and monitor wider than 1/4 inch",
+          "Check retaining walls and fences for leaning or frost heave"]),
+      ],
+      /* Apr */ [
+        S("Book and complete the AC tune-up", "HVAC", 5, "High", "Cooling season starts in May. Service before contractors are busy.", [
+          "Have a licensed HVAC contractor clean the coils and check refrigerant, capacitor and contactor",
+          "Have the condensate line flushed and the float switch tested",
+          "Inspect ducts for leaks and replace the filter",
+          "Remove winter covers and clear debris from the outdoor unit"]),
+        S("Start up the irrigation system", "Landscaping", 20, "Medium", "Start after the last hard freeze (typically late April to mid May here).", [
+          "Open the main valve slowly to avoid pressure surges",
+          "Run every zone and replace clogged, broken or misaligned heads",
+          "Inspect the backflow preventer and rain sensor",
+          "Set the controller: about 1 inch of water per week including rain"]),
+        S("Apply pre-emergent crabgrass control", "Landscaping", 25, "Low", "Apply when soil temperature reaches about 50-55°F for several days (around when forsythia finishes blooming).", [
+          "Check soil temperature with a probe thermometer",
+          "Apply pre-emergent evenly and water it in",
+          "Do not apply if you plan to overseed this spring",
+          "Follow local rules on lawn chemicals and nutrient use"]),
+      ],
+      /* May */ [
+        S("Inspect and reseal the deck and exterior wood", "Structure", 10, "Medium", "May offers the best window: temperatures between 50 and 90°F and a dry forecast for 48 hours.", [
+          "Sprinkle water on the deck: if it soaks in rather than beading, it needs sealing",
+          "Sand splinters, replace rotted boards, and re-set popped nails or screws",
+          "Check the ledger board flashing where the deck attaches to the house, and railings for wobble",
+          "Clean with a deck cleaner, let it dry fully, then apply stain or sealer"]),
+        S("Spring pest and carpenter-ant check", "Other", 17, "Medium", "Carpenter ants, termites and stinging insects become active as it warms.", [
+          "Look for sawdust-like frass, winged ants indoors, and mud tubes at the foundation",
+          "Check for damp or rotted wood near gutters, decks and windows",
+          "Remove wasp nests early in the season and seal gaps around utility lines",
+          "Schedule a licensed inspection if you see signs"]),
+        S("Seal and repair the driveway", "Structure", 24, "Low", "Late spring is warm enough for sealants to cure properly.", [
+          "Clean cracks and fill with rubberized crack filler or flexible concrete sealant",
+          "Seal asphalt driveways every 2-3 years once cracks are filled",
+          "Repair trip hazards over 1/2 inch"]),
+      ],
+      /* Jun */ [
+        S("Clean the dryer vent and duct", "Appliance", 8, "High", "Lint buildup in the vent is a leading cause of house fires. Clean at least once a year.", [
+          "Unplug the dryer (or shut off gas) and pull it away from the wall",
+          "Brush or vacuum the duct from both ends",
+          "Clean the exterior flap and confirm it opens freely",
+          "Replace foil or vinyl duct with rigid or semi-rigid metal",
+          "Wash the lint trap screen"]),
+        S("Check basement and crawl space humidity", "Structure", 15, "Medium", "Warm humid air meeting cool basement walls causes condensation and mold in summer.", [
+          "Place a hygrometer in the basement; aim for 30-50% and never above 60%",
+          "Run a dehumidifier and confirm it drains to a floor drain or pump",
+          "Look for efflorescence (white mineral deposits), damp spots and musty smells",
+          "Keep gutters and grading working to move water away"]),
+        S("Inspect windows, doors and caulk", "Structure", 24, "Low", "Repair exterior seals before the summer storms.", [
+          "Inspect caulk around windows, doors, siding joints and penetrations",
+          "Cut out failed caulk and re-apply exterior-grade sealant",
+          "Check screens and weatherstripping"]),
+      ],
+      /* Jul */ [
+        S("Rinse the outdoor AC condenser", "HVAC", 8, "Medium", "Cottonwood fluff and grass clippings clog coils in summer.", [
+          "Turn off power at the outdoor disconnect and gently rinse the fins with a garden hose",
+          "Clear plants and debris to keep 2 feet of clearance",
+          "Replace the filter",
+          "Flush the condensate drain line with a cup of white vinegar"]),
+        S("Inspect the roof after hail and wind storms", "Roofing", 18, "Medium", "Summer thunderstorms often bring hail. Most policies limit how long you have to file.", [
+          "Check the ground for hail damage: dented gutters, downspouts, AC fins and vents",
+          "Look for bruised shingles, granule loss and torn edges",
+          "Photograph damage and check your policy's wind/hail deductible and claim deadline",
+          "Get a written inspection from a licensed roofer before signing anything with storm-chasers"]),
+      ],
+      /* Aug */ [
+        S("Overseed and renovate the cool-season lawn", "Landscaping", 20, "Low", "Late August to late September is the best window for cool-season grasses (fescue, bluegrass, ryegrass).", [
+          "Core-aerate compacted areas",
+          "Dethatch if thatch exceeds 1/2 inch",
+          "Overseed and apply a starter fertilizer",
+          "Keep the seedbed moist until germination"]),
+        S("Chimney and fireplace inspection", "Structure", 6, "High", "Have this done before burn season. The CSIA recommends an annual inspection for any fireplace, wood stove or gas log set.", [
+          "Book a CSIA-certified chimney sweep for a Level 1 inspection",
+          "Have creosote removed if buildup is 1/8 inch or more",
+          "Check the cap, crown, spark arrestor and flashing",
+          "Store firewood off the ground, covered and away from the house"]),
+      ],
+      /* Sep */ [
+        S("Furnace or boiler tune-up", "HVAC", 6, "High", "Service the heating system before the first cold snap when contractors get booked.", [
+          "Have a technician inspect the heat exchanger for cracks and test burners and ignition",
+          "Test carbon monoxide at the flue and registers",
+          "Boilers: check pressure, expansion tank, and bleed radiators",
+          "Replace the filter and humidifier pad"]),
+        S("Seal gaps and add weatherstripping", "Structure", 15, "Medium", "Air leaks can account for 15-25% of heating costs.", [
+          "Check door sweeps and weatherstripping for daylight gaps",
+          "Re-caulk windows and seal gaps around pipes and wiring",
+          "Install foam gaskets behind outlets on exterior walls",
+          "Install storm windows or apply window film on old single-pane windows"]),
+        S("Flush the water heater and test the relief valve", "Plumbing", 24, "Medium", "Sediment builds up in tanks and shortens their life.", [
+          "Turn off power (electric) or set gas to pilot, and close the cold-water inlet",
+          "Drain 2-3 gallons via the drain valve until it runs clear",
+          "Lift the relief valve lever briefly to confirm it flows and reseats",
+          "Inspect the anode rod every 3 years"]),
+      ],
+      /* Oct */ [
+        S("Winterize the irrigation system and outdoor plumbing", "Plumbing", 8, "High", "Do this before the first hard freeze, typically mid-October to early November.", [
+          "Shut off the irrigation supply and have the lines blown out with compressed air (a professional is recommended)",
+          "Insulate the backflow preventer and exposed piping",
+          "Disconnect and drain hoses; shut off and drain non-frost-free spigots from the interior valve",
+          "Cover outdoor faucets with insulated caps"]),
+        S("Clean gutters after leaf drop", "Landscaping", 24, "High", "Clogged gutters lead to ice dams and water in the basement.", [
+          "Clear gutters and downspouts and flush with a hose",
+          "Check for sagging sections and leaking seams",
+          "Clear leaves from window wells and yard drains",
+          "Consider a second cleaning in mid-November if trees are still dropping leaves"]),
+        S("Winterize lawn and yard equipment", "Other", 18, "Low", "Fuel left in small engines over winter causes hard starting and carburetor damage.", [
+          "Add fuel stabilizer and run the mower and trimmer for 5 minutes, or drain the tank",
+          "Change the oil, replace the spark plug and sharpen the mower blade",
+          "Service the snowblower: fresh fuel, new spark plug, shear pins and belt check"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November). Heating season raises CO risk.", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label",
+          "Confirm a CO alarm on each level and outside sleeping areas",
+          "Check fire extinguisher gauges are in the green"]),
+        S("Insulate exposed pipes and reverse ceiling fans", "Plumbing", 10, "Medium", "Pipes in unheated areas are the first to freeze.", [
+          "Wrap exposed pipes in the garage, crawl space and attic with foam sleeves or heat tape",
+          "Seal gaps where pipes pass through exterior walls",
+          "Reverse ceiling fans to clockwise at low speed to push warm air down"]),
+        S("Stock winter emergency supplies", "Safety", 20, "Medium", "Winter storms can cause multi-day outages.", [
+          "Stock 3 days of water (1 gallon per person per day) and non-perishable food",
+          "Keep flashlights, batteries, blankets and a battery-powered radio where you can find them in the dark",
+          "Buy ice melt safe for concrete (avoid rock salt on concrete less than a year old)",
+          "Test a generator outdoors and never run it in a garage"]),
+      ],
+      /* Dec */ [
+        S("Check attic insulation and air sealing before deep winter", "Structure", 5, "Medium", "Good insulation is the best long-term protection against ice dams and high heating bills.", [
+          "Measure depth: R-49 to R-60 is recommended for Climate Zone 5 (about 16-20 inches of cellulose)",
+          "Look for compressed or missing insulation and gaps at light fixtures and the attic hatch",
+          "Weatherstrip and insulate the attic hatch",
+          "Ask your utility about a free or discounted energy audit"]),
+        S("Check flues and vents for snow blockage and CO safety", "Safety", 12, "High", "Fuel-burning appliances are the main indoor CO source in winter.", [
+          "Confirm furnace, water heater and boiler flues are intact and vents are clear of snow",
+          "Keep the snow away from exterior vents and the fresh-air intake",
+          "Never run a generator, grill or stove indoors for heat",
+          "Test all CO alarms"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
     ],
     icon: "🍂", color: "#FBF3E8", border: "#E8C89A",
   },
-  // Zone 6-7: Cold (MN, ME, MI, WI, MT, WY)
+  // Zone 6-7: Cold (northern tier, upper New England, upper Midwest, northern Rockies)
+  // Long winters, deep frost, heavy snow load, ice dams, short building season, frequent wood heat and wells.
   cold: {
     label: "Cold Climate",
     months: [
-      /* Jan */ ["Monitor for ice dams after every heavy snow","Keep cabinet doors open in cold snaps","Know your water shutoff location","Replace furnace filter"],
-      /* Feb */ ["Clear roof edges of snow load safely","Check attic for condensation","Inspect roof snow load after major storms","Replace furnace filter"],
-      /* Mar */ ["Inspect roof for ice dam and frost damage","Check foundation for freeze damage","Test sump pump before snowmelt","Clean debris from gutters as ice thaws"],
-      /* Apr */ ["Repair driveway heave from freeze/thaw","Clean gutters after winter","Service AC unit if applicable","Check exterior drainage and grading"],
-      /* May */ ["Start irrigation system and check for freeze damage","Inspect deck and outdoor structures","Check window screens and seals","Test smoke & CO detectors"],
-      /* Jun */ ["Service AC for the brief cooling season","Clean dryer vents","Inspect roof and exterior paint","Replace HVAC filter"],
-      /* Jul */ ["Inspect exterior wood, caulk and paint (short season)","Check foundation and basement for moisture","Clean AC condensate line","Replace HVAC filter"],
-      /* Aug */ ["Schedule furnace service before contractors book up","Order firewood / fuel for winter","Seal exterior gaps and driveway","Inspect chimney"],
-      /* Sep */ ["Service furnace — critical before winter","Heavily insulate exposed pipes","Install pipe heat tape on vulnerable lines","Winterize irrigation system"],
-      /* Oct */ ["Clean gutters after leaves fall","Drain and store hoses; shut off outdoor spigots","Stock emergency heating supplies","Check weatherstripping and storm windows"],
-      /* Nov */ ["Test smoke & CO detectors","Replace furnace filter","Check roof and attic before first snow","Have snow removal gear ready"],
-      /* Dec */ ["Monitor pipes in cold snaps","Check that heating vents stay clear of snow","Inspect water heater","Know your water shutoff location"],
+      /* Jan */ [
+        S("Monitor ice dams and roof snow load", "Roofing", 5, "High", "Heavy snow plus heat loss through the attic causes ice dams, leaks and, with very deep snow, structural stress.", [
+          "After each heavy snowfall, use a roof rake from the ground to clear the first 3-4 feet above the eaves; never climb an icy roof",
+          "Watch for icicles, ceiling stains near exterior walls and water dripping from soffits",
+          "Check the attic for frost, damp insulation and warm spots that show air leaks",
+          "Doors sticking or ceilings cracking after heavy snow can signal roof overload; have the roof cleared by a professional",
+          "Long term: air-seal and add attic insulation"]),
+        S("Frozen-pipe prevention and response plan", "Plumbing", 12, "High", "Pipes on exterior walls, in garages and crawl spaces freeze first when temperatures fall below about 20°F, and deep cold freezes buried lines.", [
+          "Locate and test the main water shutoff",
+          "Open cabinet doors on exterior walls and let a faucet drip during extreme cold",
+          "Keep the thermostat at 55°F or higher, even when away",
+          "Test heat tape on vulnerable lines and never cover it with insulation unless rated for that",
+          "If a pipe freezes, shut off the water and thaw slowly with a hair dryer; never use an open flame"]),
+        S("Test for radon", "Safety", 20, "Medium", "Winter is the best season for a closed-house test, and radon is elevated across much of the northern tier. The EPA action level is 4 pCi/L.", [
+          "Buy a short-term (2-7 day) test kit or hire a certified tester",
+          "Place it in the lowest lived-in level with windows and exterior doors closed for 12 hours before and during the test",
+          "Mail it to the lab and save the result in Documents",
+          "If 4 pCi/L or higher, get quotes from a state-certified mitigation contractor"]),
+      ],
+      /* Feb */ [
+        S("Check the attic for frost and condensation", "Structure", 6, "Medium", "Frost on the roof deck means warm moist air is leaking into the attic, causing mold and rot.", [
+          "Look at the roof deck and nail tips for frost or dark staining",
+          "Confirm bathroom fans and the dryer vent exhaust outside, not into the attic",
+          "Confirm soffit vents are not blocked by insulation",
+          "Air-seal gaps around recessed lights, the attic hatch and plumbing penetrations"]),
+        S("Clear vents, chimneys and meters of snow", "Safety", 14, "High", "Blocked exhaust vents cause carbon monoxide to back up.", [
+          "Dig out furnace, water heater and dryer exhaust and combustion air vents after every storm",
+          "Clear snow from gas and electric meters and the propane tank regulator",
+          "Test CO alarms and smoke alarms",
+          "Keep a path to the main shutoffs"]),
+        S("Test the sump pump before snowmelt", "Plumbing", 24, "High", "Snowmelt can overload sump pumps and flood basements.", [
+          "Pour 5 gallons of water into the pit and confirm the float raises and the pump discharges",
+          "Test the battery backup and replace the battery every 3-5 years",
+          "Keep the discharge line clear of ice, and confirm it drains away from the foundation",
+          "Consider a water alarm in the basement"]),
+      ],
+      /* Mar */ [
+        S("Prepare for snowmelt and prevent basement flooding", "Structure", 8, "High", "Rapid melt combined with frozen ground sends water toward the foundation.", [
+          "Shovel snow away from the foundation and clear window wells",
+          "Clear storm drains and gutters of ice and debris",
+          "Extend downspouts at least 5-6 feet from the foundation",
+          "Check that the sump pump is working and the discharge is not frozen"]),
+        S("Inspect the roof for ice and snow damage", "Roofing", 18, "High", "Early spring is the best time to see damage before it rains.", [
+          "From the ground, look for lifted or missing shingles, damaged flashing and sagging gutters",
+          "Check the attic for stains, damp insulation and daylight",
+          "Photograph damage and call a licensed roofer if needed"]),
+      ],
+      /* Apr */ [
+        S("Repair frost heave and freeze-thaw damage", "Structure", 10, "Medium", "Frost heave lifts slabs, steps and posts; repair before summer.", [
+          "Check the driveway, walks, steps and stoops for heave and cracks; fill with flexible sealant",
+          "Check retaining walls, fences and deck posts for leaning or heaving",
+          "Check the foundation for new cracks wider than 1/4 inch and photograph them",
+          "Re-grade low spots and refill areas where soil settled"]),
+        S("Clean gutters and check drainage after winter", "Landscaping", 18, "Medium", "Ice and debris clog gutters right before spring rain.", [
+          "Clear gutters and downspouts by hand or with a wet vacuum, then flush",
+          "Check for sagging sections and loose fasteners",
+          "Confirm the ground slopes away from the house"]),
+        S("Check outdoor faucets and pipes for freeze damage", "Plumbing", 25, "Medium", "Frozen hose bibs can crack and leak inside the wall once thawed.", [
+          "Reconnect a hose and turn the spigot on fully, then check the interior side for drips",
+          "Check under sinks and in the basement for new leaks",
+          "Replace cracked hose bibs; consider frost-free models"]),
+      ],
+      /* May */ [
+        S("Start up the irrigation system", "Landscaping", 15, "Medium", "Start after the last hard frost (typically mid to late May here).", [
+          "Open the main valve slowly to avoid pressure surges",
+          "Run every zone and replace clogged, broken or misaligned heads",
+          "Inspect the backflow preventer and rain sensor",
+          "Set the controller: about 1 inch of water per week including rain"]),
+        S("Service the AC unit", "HVAC", 22, "Medium", "The cooling season is short but hot. Service before the first heat wave.", [
+          "Have a licensed technician clean coils and check refrigerant, capacitor and contactor",
+          "Have the condensate line flushed",
+          "Remove winter covers and clear debris from the outdoor unit",
+          "Replace the filter"]),
+      ],
+      /* Jun */ [
+        S("Inspect and reseal the deck and exterior wood", "Structure", 8, "Medium", "The building season is short. Use dry June weather while temperatures allow stain and sealer to cure.", [
+          "Sprinkle water on the deck: if it soaks in rather than beading, it needs sealing",
+          "Sand splinters, replace rotted boards, and re-set popped nails or screws",
+          "Check the ledger board flashing and railings",
+          "Clean with a deck cleaner, let it dry fully, then apply stain or sealer"]),
+        S("Spring pest and carpenter-ant check", "Other", 18, "Medium", "Carpenter ants and termites become active as it warms.", [
+          "Look for sawdust-like frass, winged ants indoors and mud tubes at the foundation",
+          "Check for damp or rotted wood near gutters, decks and windows",
+          "Remove wasp nests early and seal gaps around utility lines"]),
+      ],
+      /* Jul */ [
+        S("Paint, stain and caulk the exterior", "Structure", 6, "Medium", "The short summer is the only good window for exterior finishes.", [
+          "Scrape and prime bare wood, then paint or stain",
+          "Re-caulk windows, doors and siding joints",
+          "Check trim, fascia and corner boards for rot",
+          "Follow the product's temperature requirements (most need 50°F or higher)"]),
+        S("Seal cracks in the foundation and driveway", "Structure", 18, "Low", "Sealing before fall rain and winter freezes keeps small cracks from widening.", [
+          "Clean cracks with a wire brush",
+          "Fill foundation cracks with hydraulic cement or an epoxy injection kit as appropriate; call a pro for cracks wider than 1/4 inch",
+          "Seal asphalt or concrete driveway cracks",
+          "Regrade soil to slope away from the foundation"]),
+      ],
+      /* Aug */ [
+        S("Furnace or boiler tune-up (book now)", "HVAC", 5, "High", "Heating contractors book out by September. Service before the season.", [
+          "Have a technician inspect the heat exchanger for cracks and test burners and ignition",
+          "Test carbon monoxide at the flue and registers",
+          "Boilers: check pressure, expansion tank and bleed radiators",
+          "Replace the filter and humidifier pad"]),
+        S("Chimney and wood-stove inspection", "Structure", 12, "High", "The CSIA recommends an annual inspection of any fireplace, wood stove or pellet stove before burn season.", [
+          "Book a CSIA-certified chimney sweep for a Level 1 inspection",
+          "Have creosote removed if buildup is 1/8 inch or more",
+          "Check the cap, crown, spark arrestor, stove pipe and flashing",
+          "Inspect stove gaskets and firebricks"]),
+        S("Stock and season firewood", "Other", 22, "Medium", "Wood needs to dry to under 20% moisture to burn cleanly and avoid creosote.", [
+          "Order firewood now if you have not; split wood dries faster than round logs",
+          "Stack it off the ground, top-covered and away from the house",
+          "Check moisture with a meter; under 20% is ideal",
+          "Never store firewood against the house (pest and fire risk)"]),
+      ],
+      /* Sep */ [
+        S("Install storm windows and seal air leaks", "Structure", 8, "Medium", "Air leaks can account for 15-25% of heating costs.", [
+          "Install storm windows or apply window film on old single-pane windows",
+          "Check door sweeps and weatherstripping for daylight gaps",
+          "Re-caulk windows and seal gaps around pipes and wiring",
+          "Install foam gaskets behind outlets on exterior walls"]),
+        S("Insulate exposed pipes and test heat tape", "Plumbing", 15, "High", "Test before you need it, not on the first hard freeze.", [
+          "Plug in and check heat tape on vulnerable pipes; replace any that is damaged",
+          "Wrap exposed pipes in the garage, crawl space and attic with foam sleeves",
+          "Seal gaps where pipes pass through exterior walls",
+          "Insulate the water meter pit or well pump house"]),
+        S("Winterize the irrigation system", "Plumbing", 24, "High", "In cold zones the first freeze can arrive in late September or early October.", [
+          "Shut off the irrigation supply and have the lines blown out with compressed air (a professional is recommended)",
+          "Insulate the backflow preventer and exposed piping",
+          "Drain and store garden hoses"]),
+      ],
+      /* Oct */ [
+        S("Clean gutters after leaf drop", "Landscaping", 12, "High", "Clogged gutters cause ice dams and basement leaks.", [
+          "Clear gutters and downspouts and flush with a hose",
+          "Check for sagging sections and leaking seams",
+          "Clear leaves from window wells and yard drains",
+          "Consider a second cleaning in early November"]),
+        S("Shut off and drain outdoor plumbing", "Plumbing", 18, "High", "Frozen hose bibs are the most common cold-climate plumbing failure.", [
+          "Disconnect and drain hoses",
+          "Shut off and drain non-frost-free spigots from the interior valve",
+          "Cover exterior faucets with insulated caps",
+          "Drain outdoor water features and store pumps"]),
+        S("Service the snowblower and small engines", "Other", 24, "Medium", "You want it running before the first storm, not during.", [
+          "Add fresh fuel and stabilizer",
+          "Replace the spark plug, shear pins and belts; check the auger and skid shoes",
+          "Change the oil and inspect tires",
+          "Sharpen the mower blade and store it"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November). Wood stoves and furnaces raise CO risk.", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label",
+          "Confirm a CO alarm on each level and outside sleeping areas",
+          "Check fire extinguisher gauges are in the green"]),
+        S("Winter-storm and power-outage readiness", "Safety", 10, "High", "Blizzards and ice storms can cause outages lasting several days.", [
+          "Stock 3-7 days of water (1 gallon per person per day) and non-perishable food",
+          "Keep flashlights, batteries, blankets and a battery-powered radio where you can find them in the dark",
+          "Generator: test it and store fuel; run it outdoors at least 20 feet from the house and away from windows",
+          "Have a backup heat source (wood stove or vented heater) and know its clearances",
+          "Stock ice melt safe for concrete and sand for traction"]),
+        S("Check attic insulation before deep winter", "Structure", 22, "Medium", "DOE recommends roughly R-49 to R-60 for Climate Zones 6-7.", [
+          "Measure depth: about 16-20 inches of cellulose is roughly R-60",
+          "Look for compressed or missing insulation and gaps at light fixtures and the attic hatch",
+          "Weatherstrip and insulate the attic hatch",
+          "Seal duct joints with mastic"]),
+      ],
+      /* Dec */ [
+        S("Ice dam and roof-snow prevention", "Roofing", 5, "High", "Prevent leaks before the deep freeze.", [
+          "Buy or check a roof rake and keep it accessible",
+          "Clear gutters of ice and leaves",
+          "Confirm attic ventilation (soffit and ridge vents) is open",
+          "Address air leaks into the attic before snow accumulates"]),
+        S("Frozen-pipe and emergency-shutoff drill", "Plumbing", 12, "High", "Everyone in the house should know where the water shutoff is.", [
+          "Locate and label the main water shutoff and each isolation valve",
+          "Test the main shutoff turns fully",
+          "Keep the thermostat at 55°F or higher, even when away",
+          "Know how to drain the system and where the nearest plumber's emergency number is"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
     ],
     icon: "❄️", color: "#EBF3FA", border: "#A8C8E8",
   },
-  // Zone 8: Subarctic (AK)
+  // Zone 8: Subarctic (interior Alaska: Fairbanks and similar)
+  // Extreme cold (-40°F), permafrost, spring breakup, wildfire in summer, short building season.
   subarctic: {
     label: "Subarctic Climate",
     months: [
-      /* Jan */ ["Keep emergency supplies stocked","Monitor pipes in extreme cold","Inspect generator monthly","Keep exterior entries clear of ice"],
-      /* Feb */ ["Check heating vents stay clear of snow","Inspect generator","Monitor roof snow load","Replace furnace filter"],
-      /* Mar */ ["Check roof for snow/ice damage","Clear drainage around foundation","Service heating system after long winter","Inspect and test generator"],
-      /* Apr */ ["Inspect foundation for permafrost shifting","Clear drainage and culverts for breakup","Check roof and gutters","Test smoke & CO detectors"],
-      /* May */ ["Inspect all exterior wood — short season","Check window and door seals","Inspect deck and structure","Check for rodent entry points"],
-      /* Jun */ ["Repair and repaint exterior while weather allows","Inspect foundation and skirting","Service any cooling equipment","Clean dryer vent"],
-      /* Jul */ ["Finish exterior projects before fall","Inspect roof and flashing","Check for rodent entry points","Order winter fuel"],
-      /* Aug */ ["Service furnace and backup heat before freeze","Insulate water meter and main line","Seal exterior gaps","Stock winter supplies"],
-      /* Sep */ ["Critical pipe insulation before freeze","Full furnace and backup heat service","Winterize all water lines","Stock emergency heat and supplies"],
-      /* Oct */ ["Insulate water meter and main line","Drain and store hoses","Test backup generator","Check weatherstripping"],
-      /* Nov */ ["Test smoke & CO detectors","Replace furnace filter","Keep exterior entries clear of ice","Check fuel level"],
-      /* Dec */ ["Monitor pipes in extreme cold","Keep emergency supplies stocked","Inspect generator","Check heating vents"],
+      /* Jan */ [
+        S("Extreme-cold check: pipes, heat tape and backup heat", "Plumbing", 5, "High", "At -20°F and below, a failed heater or frozen line becomes an emergency within hours.", [
+          "Verify heat tape and pipe insulation are operating on water and drain lines",
+          "Check that the heating system has a backup (wood stove, vented heater or generator-powered)",
+          "Keep the thermostat at 55°F or higher, even when away",
+          "Know where the main shutoff is and how to drain the system",
+          "Keep emergency contacts and a plumber's or heating contractor's number handy"]),
+        S("Heating fuel and firewood inventory", "Other", 12, "High", "Running out of fuel mid-winter is a serious risk with limited delivery access.", [
+          "Check tank levels for oil or propane, and schedule a top-off delivery",
+          "Firewood: confirm you have enough seasoned wood for the remainder of the winter",
+          "Verify fuel-tank vent and regulator are free of snow and ice"]),
+        S("Check CO alarms and clear exhaust vents", "Safety", 20, "High", "Tightly sealed cold-climate homes are at high risk of carbon monoxide poisoning.", [
+          "Test CO and smoke alarms",
+          "Clear snow and ice from all exhaust and intake vents",
+          "Never run generators or grills indoors or in attached garages",
+          "Have combustion appliances inspected if the flame is yellow or you notice soot"]),
+      ],
+      /* Feb */ [
+        S("Monitor roof snow load and ice buildup", "Roofing", 5, "Medium", "Snow loads can be substantial through February.", [
+          "Watch for sagging, sticking doors or cracking ceilings, which can signal overload",
+          "Use a roof rake from the ground; hire a professional for heavy loads",
+          "Check the attic for frost or ice on the underside of the roof deck",
+          "Watch for ice dams at the eaves"]),
+        S("Check crawl space, skirting and utilities", "Structure", 15, "Medium", "Skirting and insulation protect pipes and floors in extreme cold.", [
+          "Inspect skirting and crawl space vents for gaps or damage",
+          "Check heat tape on any crawl space or drain line",
+          "Look for frost or ice buildup on crawl space walls",
+          "Check the water meter pit or well pit heater"]),
+      ],
+      /* Mar */ [
+        S("Prepare for spring breakup: drainage and access", "Structure", 12, "High", "Rapid melt on frozen ground causes flooding, driveway washouts and roof leaks.", [
+          "Shovel snow away from the foundation and clear culverts, drains and window wells",
+          "Clear snow and ice from roof valleys and eaves that face the sun",
+          "Check the sump pump (if present) and confirm the discharge line is not frozen",
+          "Mark or prepare a path for water away from the house"]),
+        S("Service the heating system after the long season", "HVAC", 24, "Medium", "Late winter is a good time to catch worn parts before summer.", [
+          "Have a technician inspect the boiler or furnace, burners and flue",
+          "Clean and inspect chimney and wood stove; remove ash",
+          "Check the exhaust and combustion air vents for damage",
+          "Note the age of major components"]),
+      ],
+      /* Apr */ [
+        S("Inspect for breakup damage: foundation, drainage and permafrost settlement", "Structure", 10, "High", "Thawing ground can shift foundations, piers and posts, especially where permafrost is present.", [
+          "Check the foundation and piers for settlement, new cracks or shifting",
+          "Check that doors and windows open and close normally; sticking can indicate movement",
+          "Look for water pooling near the foundation",
+          "Keep gutters and drain lines directing water away; water near the foundation thaws permafrost",
+          "Consult a structural professional for movement or cracks wider than 1/4 inch"]),
+        S("Clear culverts, ditches and the driveway", "Landscaping", 20, "Medium", "Clogged culverts cause washouts.", [
+          "Clear ice and debris from culverts and ditches",
+          "Fill ruts and regrade the driveway",
+          "Clear gutters and downspouts"]),
+      ],
+      /* May */ [
+        S("Bring plumbing out of winter mode", "Plumbing", 10, "High", "Water lines, wells and outdoor plumbing must be checked and flushed after the thaw.", [
+          "Inspect exposed pipes, valves and fittings for cracks or leaks",
+          "Turn on outdoor water gradually and check for leaks",
+          "Flush lines to clear stagnant water; run cold water at each fixture",
+          "Well owners: inspect the wellhead and consider a water test each spring",
+          "Test the water heater relief valve and flush the tank"]),
+        S("Check roof, flashing and chimney after winter", "Roofing", 20, "Medium", "Snow and ice cause hidden damage that only shows once the snow is gone.", [
+          "From the ground, look for damaged, lifted or missing roofing",
+          "Check flashing and vent boots, and chimney cap and crown",
+          "Check the attic for stains, damp insulation and daylight"]),
+      ],
+      /* Jun */ [
+        S("Create wildfire defensible space", "Landscaping", 5, "High", "Interior Alaska has a significant wildfire season from June through August, and the risk is highest in dry, warm spells.", [
+          "Clear dead grass, brush and spruce needles within 30 feet of the house",
+          "Remove flammable material from under decks and around propane tanks and wood piles",
+          "Keep gutters and roofs free of needles and debris",
+          "Keep firewood stacks at least 30 feet from structures",
+          "Sign up for your borough emergency alerts and know your evacuation route"]),
+        S("Paint, stain and repair exterior wood", "Structure", 15, "Medium", "Summer is the only reliable window for exterior finishes.", [
+          "Scrape and prime bare wood, then paint or stain",
+          "Re-caulk windows, doors and siding joints",
+          "Check trim, fascia and corner boards for rot",
+          "Follow the product's temperature requirements"]),
+      ],
+      /* Jul */ [
+        S("Repair the roof and flashing", "Roofing", 8, "Medium", "The short warm season is the time for roof repairs and re-roofing.", [
+          "Get written quotes from licensed roofers",
+          "Repair damaged flashing and sealant",
+          "Replace missing or damaged shingles or panels",
+          "Check the attic ventilation"]),
+        S("Fill fuel tanks and buy firewood at summer pricing", "Other", 20, "Medium", "Prices and delivery windows are best before fall.", [
+          "Order heating oil or propane to fill tanks",
+          "Order firewood now to allow it to season",
+          "Inspect tanks, lines and regulators for leaks or corrosion"]),
+      ],
+      /* Aug */ [
+        S("Furnace or boiler service and chimney cleaning", "HVAC", 5, "High", "Heating contractors book out quickly before freeze-up.", [
+          "Have a technician inspect the boiler or furnace and test burners, ignition, flue and CO",
+          "Have the chimney and stove pipe cleaned; remove creosote of 1/8 inch or more",
+          "Check the chimney cap and flashing",
+          "Replace filters"]),
+        S("Seal exterior gaps and insulate", "Structure", 15, "Medium", "Heat loss through gaps is costly when temperatures reach -40°F.", [
+          "Caulk and weatherstrip windows and doors",
+          "Seal gaps around pipes, wiring and vents",
+          "Insulate rim joists and crawl space walls",
+          "Repair skirting"]),
+      ],
+      /* Sep */ [
+        S("Winterize water lines and exterior plumbing", "Plumbing", 5, "High", "Freeze-up arrives in September or October. Prepare before the first hard freeze.", [
+          "Drain and shut off outdoor spigots and hose lines",
+          "Test and repair heat tape on water and drain lines",
+          "Insulate the water meter and main line",
+          "Winterize any seasonal water systems (cabins, outbuildings)"]),
+        S("Generator and backup-heat service", "Safety", 15, "High", "Power outages in extreme cold are dangerous.", [
+          "Service the generator: oil, filter, spark plug, fuel stabilizer",
+          "Test it under load for 30 minutes outdoors, 20 feet from the house",
+          "Test backup heat: wood stove or vented heater",
+          "Stock fuel safely in approved containers away from the house"]),
+        S("Install storm windows and weatherstrip", "Structure", 24, "Medium", "Reduces heat loss and drafts.", [
+          "Install storm windows or apply window film",
+          "Check door sweeps and weatherstripping",
+          "Seal gaps around pipes and wiring"]),
+      ],
+      /* Oct */ [
+        S("Confirm fuel deliveries and winter supplies", "Other", 5, "High", "Winter access can be limited by weather.", [
+          "Confirm oil or propane tanks are full and that a delivery schedule is in place",
+          "Confirm firewood is stacked, covered and seasoned",
+          "Stock 7-14 days of food and water"]),
+        S("Insulate the water meter, well pit and exposed lines", "Plumbing", 12, "High", "Buried and exposed lines freeze first in the extreme cold.", [
+          "Insulate the meter or well pit and check heaters",
+          "Wrap exposed pipes and confirm crawl space heat tape",
+          "Know where the shutoffs are and test them"]),
+        S("Clean gutters and clear drainage before freeze-up", "Landscaping", 20, "Medium", "Ice-blocked gutters cause leaks and damage.", [
+          "Clear gutters and downspouts of needles and leaves",
+          "Direct downspouts away from the foundation",
+          "Check ground drainage around the house"]),
+      ],
+      /* Nov */ [
+        S("Replace smoke and CO alarm batteries and test all alarms", "Safety", 1, "High", "Do this when clocks change (first Sunday in November).", [
+          "Press the test button on every smoke and CO alarm",
+          "Replace batteries in alarms that use them",
+          "Check manufacture dates; replace smoke alarms every 10 years and CO alarms per the label",
+          "Confirm a CO alarm on each level and outside sleeping areas",
+          "Check fire extinguisher gauges are in the green"]),
+        S("Winter-emergency supplies check", "Safety", 12, "High", "Prepare for multi-day outages in deep cold.", [
+          "Stock 7-14 days of food, water and medications",
+          "Stock blankets, sleeping bags rated for extreme cold and extra layers",
+          "Confirm you have a working non-electric heat source and fuel",
+          "Charge power banks and keep flashlights and a radio handy"]),
+      ],
+      /* Dec */ [
+        S("Extreme-cold operations plan", "Safety", 5, "High", "In deep cold, small failures become emergencies.", [
+          "Verify heat tape, pipe insulation and backup heat are operating",
+          "Keep the thermostat at 55°F or higher, even when away",
+          "Know where the main water shutoff is and how to drain the system",
+          "Post emergency contacts and share them with household members"]),
+        S("File the year's home records", "Other", 20, "Low", "A clean record makes warranty claims, resale and insurance easier.", [
+          "Upload invoices and receipts to Documents",
+          "Log completed service on each asset in Steadwell",
+          "Review warranty expiry dates coming up in the new year",
+          "Confirm your insurance renewal date and premium"]),
+      ],
     ],
     icon: "🧊", color: "#EBF3FA", border: "#A8C8E8",
   },
 };
 
+const PRI_RANK = { Urgent:0, High:1, Medium:2, Low:3 };
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 // Tasks that belong to a given month (0 = Jan) for a climate profile.
 function getMonthTasks(cp, month) {
   return ((cp && cp.months && cp.months[month]) || []).map((it, i) => {
     const o = typeof it === "string" ? { title: it } : it;
     return { ...o, category: o.category || null, priority: o.priority || "Medium", day: o.day || monthTaskDay(i), notes: o.notes || buildSeasonalNotes(o) };
-  });
+  }).sort((a, b) => a.day - b.day);
 }
 // Spread a month's tasks across the month so they don't all land on day 1.
 const monthTaskDay = (i) => Math.min(1 + i * 6, 27);
 const seasonOfMonth = (m) => (m>=2&&m<=4) ? "spring" : (m>=5&&m<=7) ? "summer" : (m>=8&&m<=10) ? "fall" : "winter";
 
-function getClimateProfile(zone) {
-  if (zone <= 2) return CLIMATE_TASKS.hot_humid;
-  if (zone <= 4) return CLIMATE_TASKS.mixed;
-  if (zone <= 5) return CLIMATE_TASKS.cool;
-  if (zone <= 7) return CLIMATE_TASKS.cold;
-  return CLIMATE_TASKS.subarctic;
+// ─── REGION OVERLAYS ─────────────────────────────────────────────────────────
+// Hazard-specific tasks layered on top of a climate profile by state/ZIP: hurricanes outside the
+// Gulf/Florida zone, tornado and hail country, wildfire country, and earthquake country.
+const TORNADO_STATES  = ["OK","KS","NE","SD","IA","MO","AR","LA","MS","AL","TN","KY","IL","IN","OH","MN","WI","TX"];
+const WILDFIRE_STATES = ["CA","OR","WA","ID","MT","NV","UT","CO","NM","AZ","WY"];
+const QUAKE_STATES    = ["CA","OR","WA","AK"];
+
+const REGION_OVERLAYS = [
+  { id: "hurricane",
+    // Atlantic-coast states that get hurricanes but are not in the hot-humid profile
+    when: c => c.key !== "hot_humid" && (c.state === "SC" || c.state === "NC" || (c.state === "GA" && c.zip3 >= 313) || (c.state === "VA" && c.zip3 >= 233 && c.zip3 <= 237)),
+    months: {
+      3: [ S("Trim trees before hurricane season", "Landscaping", 10, "High", "Hurricane season begins June 1 and coastal storms can reach far inland. Loose or overhanging limbs are a major cause of roof and power-line damage.", [
+            "Hire an ISA-certified arborist",
+            "Remove dead limbs and any branches overhanging the roof",
+            "For anything near power lines, contact your electric utility; do not trim it yourself",
+            "Have all cuttings hauled away; loose yard debris becomes storm projectiles"]) ],
+      4: [ S("Build or restock your hurricane supply kit", "Safety", 15, "High", "Have it in place by June 1. Plan for at least 7 days without power, water or store access.", [
+            "Water: 1 gallon per person per day for 7 days, plus pets",
+            "7-day supply of non-perishable food and a manual can opener",
+            "30-day supply of prescriptions and copies of the prescriptions",
+            "Flashlights, batteries, and a battery or hand-crank NOAA weather radio",
+            "Charged power banks and car chargers",
+            "First-aid kit, hygiene and sanitation supplies",
+            "Small-bill cash",
+            "Waterproof bag with ID copies, insurance policies, deed and medical information",
+            "Pet food, meds and carrier"]),
+           S("Insurance review: named-storm deductible and flood coverage", "Other", 8, "High", "Standard homeowners policies exclude flood, and most flood policies have a 30-day waiting period, so act before hurricane season.", [
+            "Find your hurricane or named-storm deductible (often a percentage of dwelling coverage) and convert it to dollars",
+            "Get a flood insurance quote (NFIP or private); flood is not covered by a standard homeowners policy",
+            "Ask your agent about wind-mitigation discounts and any roof-age surcharges",
+            "Confirm dwelling coverage matches current rebuild cost",
+            "Save the policy PDF to Documents and keep an offline copy",
+            "Add your insurer's claim phone number to your phone contacts"]),
+           S("Inspect and test your storm protection", "Structure", 20, "High", "Discover missing hardware or a dead generator in May, not the day before a storm.", [
+            "Shutters or panels: locate every panel and confirm all hardware is present; test-fit one",
+            "Windows and doors: check seals and locking points",
+            "Garage door: confirm it is wind-rated and its bracing is intact; test auto-reverse",
+            "Generator (if owned): run it 30 minutes under load; run it outdoors only, 20 feet from the house",
+            "Locate and label the main electrical breaker, water shutoff and gas valve"]) ],
+      7: [ S("Hurricane peak-season readiness check", "Safety", 14, "High", "Peak season runs roughly mid-August through mid-October. This is the one mid-season check.", [
+            "Replace any water, food, batteries and medications that have expired or been used",
+            "Test the radio, flashlights and power banks",
+            "Fill vehicle fuel tanks, check propane, and refresh cash",
+            "Confirm your evacuation zone and route, and pet-friendly shelter options (check your county emergency management site)",
+            "Take dated photos of the exterior and roof as pre-storm documentation"]) ],
+      10: [ S("Hurricane-season wrap-up: roof and yard inspection, restock kit", "Roofing", 18, "Medium", "The season ends November 30. Check for damage you missed and reset supplies.", [
+            "Walk the roof line and yard for loose flashing, cracked shingles, damaged screens or fences",
+            "Photograph and repair any storm damage; file claims within your policy's deadline",
+            "Replace used or expiring kit items; store shutters and panels dry",
+            "Re-trim any limbs that grew back over the roof"]) ],
+    } },
+  { id: "tornado",
+    when: c => TORNADO_STATES.includes(c.state) && !(c.state === "TX" && c.zip3 >= 770),
+    months: {
+      2: [ S("Severe-weather plan and safe-room check", "Safety", 8, "High", "Peak tornado season in the central and southern US runs roughly March through June, with a second peak in the Southeast in fall and winter.", [
+            "Identify your shelter: storm cellar, safe room, or the lowest interior room away from windows (a basement is best)",
+            "Stock the shelter: flashlight, weather radio, sturdy shoes, helmets, whistle, phone chargers, first-aid kit",
+            "Test your NOAA weather radio and program your county SAME code",
+            "Enable Wireless Emergency Alerts on every phone",
+            "Practice a family drill including pets",
+            "Photograph or video the home and contents for insurance"]) ],
+      5: [ S("Inspect the roof and exterior for hail and wind damage", "Roofing", 12, "Medium", "Spring storms cause hidden damage. Most policies limit how long you have to file a claim.", [
+            "Check for hail damage: dented gutters, downspouts, AC fins and vents",
+            "Look for bruised shingles, granule loss and torn edges",
+            "Photograph damage and check your policy's wind/hail deductible and claim deadline",
+            "Get a written inspection from a licensed roofer before signing anything with a door-to-door contractor"]) ],
+    } },
+  { id: "wildfire",
+    when: c => WILDFIRE_STATES.includes(c.state),
+    months: {
+      3: [ S("Create and maintain defensible space", "Landscaping", 12, "High", "Defensible space is the most effective step to reduce wildfire loss. Requirements vary by state and local fire agency, so check yours.", [
+            "Zone 0 (0-5 ft around the house): remove mulch, dead plants and anything flammable; use gravel or pavers",
+            "Zone 1 (5-30 ft): keep plants low and spaced apart, prune tree limbs 6-10 feet above the ground, and keep grass short",
+            "Zone 2 (30-100 ft): thin dense brush and remove dead vegetation",
+            "Keep firewood and propane tanks at least 30 feet from structures where possible",
+            "Remove leaves and needles from the roof, gutters and under decks"]) ],
+      4: [ S("Harden the home against embers", "Structure", 15, "High", "Most homes ignite from embers, not flame fronts.", [
+            "Replace or cover attic, crawl space and soffit vents with 1/8-inch (or finer, per local code) noncombustible metal mesh",
+            "Clean gutters and consider metal gutter guards",
+            "Seal gaps in siding, eaves and at the garage door; consider a noncombustible bottom seal",
+            "If reroofing, choose a Class A fire-rated roof",
+            "Check that deck boards, fences attached to the house, and mulch near the house are not creating a fuse to your walls"]) ],
+      5: [ S("Wildfire go-bag and evacuation plan", "Safety", 10, "High", "Evacuations can come with minutes of notice.", [
+            "Pack a go-bag: 3 days of water and food, medications, ID copies, chargers, N95 masks, flashlight, pet supplies",
+            "Choose two evacuation routes and a meeting place",
+            "Sign up for your county emergency alerts",
+            "Store important documents in a fire-resistant bag or digitally in cloud storage",
+            "Keep the car at least half full during fire season"]) ],
+      8: [ S("Peak-season wildfire and smoke readiness", "Safety", 12, "Medium", "Late summer and fall bring the driest fuels and the strongest winds in many western areas.", [
+            "Re-clear leaves, needles and dead vegetation from the roof, gutters and defensible space",
+            "Stock high-efficiency (MERV 13) HVAC filters and consider a portable air cleaner for smoke",
+            "Check that hoses reach all sides of the house and are not damaged",
+            "Review your go-bag and update medications",
+            "Confirm your homeowners policy covers wildfire and check dwelling limits"]) ],
+    } },
+  { id: "earthquake",
+    when: c => QUAKE_STATES.includes(c.state),
+    months: {
+      9: [ S("Earthquake readiness: secure the home", "Safety", 15, "High", "The Great ShakeOut earthquake drill is held on the third Thursday of October each year. Earthquake damage is not covered by standard homeowners policies.", [
+            "Confirm your water heater is strapped with two steel straps into wall studs, and gas appliances have flexible connectors",
+            "Anchor tall bookcases, cabinets and TVs to wall studs; move heavy items to lower shelves",
+            "Locate the gas shutoff and keep a wrench nearby; shut off gas only if you smell or hear a leak",
+            "Older homes: ask a contractor about foundation bolting and cripple-wall bracing",
+            "Practice Drop, Cover and Hold On, and keep a 2-week emergency kit",
+            "Ask your insurer about earthquake coverage"]) ],
+    } },
+];
+
+const CLIMATE_CACHE = {};
+function resolveClimateKey(zone, state, zip3) {
+  if ((state === "AZ" && (zip3 == null || (zip3 >= 850 && zip3 <= 859))) ||
+      (state === "NV" && zip3 != null && zip3 >= 889 && zip3 <= 891) ||
+      (state === "NM" && zip3 != null && zip3 >= 880 && zip3 <= 884)) return "hot_dry";
+  if (["CA","OR","WA"].includes(state) && zone <= 4) return "west_coast";
+  if (zone <= 2) return "hot_humid";
+  if (zone <= 4) return "mixed";
+  if (zone <= 5) return "cool";
+  if (zone <= 7) return "cold";
+  return "subarctic";
+}
+// Returns the climate profile for this home, merged with any region overlays and with
+// state-specific items kept or dropped (items may carry `states` / `notStates`).
+function getClimateProfile(zone, profile) {
+  const { state, zip3 } = getClimateRegion(profile);
+  const key = resolveClimateKey(zone, state, zip3);
+  const ck = `${key}|${state}|${zip3}`;
+  if (CLIMATE_CACHE[ck]) return CLIMATE_CACHE[ck];
+  const base = CLIMATE_TASKS[key];
+  const keep = it => typeof it === "string" || ((!it.states || it.states.includes(state)) && (!it.notStates || !it.notStates.includes(state)));
+  const months = base.months.map(m => m.filter(keep));
+  const ctx = { state, zip3, zone, key };
+  REGION_OVERLAYS.forEach(ov => {
+    if (!ov.when(ctx)) return;
+    Object.entries(ov.months).forEach(([mo, items]) => { months[Number(mo)] = [...months[Number(mo)], ...items.filter(keep)]; });
+  });
+  return (CLIMATE_CACHE[ck] = { ...base, months, key });
 }
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
@@ -2093,8 +3247,8 @@ function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
   });
 
   // 5. Seasonal suggestions (current + next year)
-  const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
-  const cp = getClimateProfile(zone);
+  const zone = getClimateZone(profile);
+  const cp = getClimateProfile(zone, profile);
   [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
     for (let mo = 0; mo < 12; mo++) {
       getMonthTasks(cp, mo).forEach((it, i) => {
@@ -8771,14 +9925,14 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const month = new Date().getMonth();
   const season = month >= 2 && month <= 4 ? "spring" : month >= 5 && month <= 7 ? "summer" : month >= 8 && month <= 10 ? "fall" : "winter";
   const dashClimateZone = getClimateZone(profile);
-  const dashClimate = getClimateProfile(dashClimateZone);
+  const dashClimate = getClimateProfile(dashClimateZone, profile);
   const seasonIcons = {spring:"🌸", summer:"☀️", fall:"🍂", winter:"❄️"};
   const tip = {
     icon:   dashClimate.icon || seasonIcons[season],
     color:  dashClimate.color,
     border: dashClimate.border,
     title:  `${MONTH_NAMES[month]} checklist · ${dashClimate.label}`,
-    tip:    getMonthTasks(dashClimate, month).slice(0, 3).map(x => x.title).join(" · "),
+    tip:    [...getMonthTasks(dashClimate, month)].sort((a, b) => (PRI_RANK[a.priority] ?? 2) - (PRI_RANK[b.priority] ?? 2)).slice(0, 3).map(x => x.title).join(" · "),
   };
 
   // Detect new user — hasn't run setup wizard yet
@@ -9320,7 +10474,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 // ─── TASKS ────────────────────────────────────────────────────────────────────
 function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[] }) {
   const zone = getClimateZone(profile);
-  const climate = getClimateProfile(zone);
+  const climate = getClimateProfile(zone, profile);
   const month = new Date().getMonth();
   const season = month>=2&&month<=4?"spring":month>=5&&month<=7?"summer":month>=8&&month<=10?"fall":"winter";
   const seasonLabel = MONTH_NAMES[month];
@@ -16992,8 +18146,8 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
 
   // ── generate schedule ────────────────────────────────────────────────────
   const openGenerate = () => {
-    const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
-    const cp = getClimateProfile(zone);
+    const zone = getClimateZone(profile);
+    const cp = getClimateProfile(zone, profile);
     const items = [];
     const startMo = new Date(today.getFullYear(), today.getMonth(), 1);
     const endMo = new Date(today.getFullYear(), today.getMonth() + 12, 1); // next 12 months
