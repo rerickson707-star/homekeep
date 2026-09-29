@@ -1,4 +1,4 @@
-// Steadwell v272 — 2026-09-30T00:30:00.000Z
+// Steadwell v273 — 2026-09-30T00:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3116,8 +3116,9 @@ img,.lp-root img{max-width:100%;height:auto}
 
 /* Assets: a responsive grid on desktop instead of one long stacked column */
 .assets-grid{display:flex;flex-direction:column}
-@media(min-width:900px){.assets-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 1rem}}
-@media(min-width:1300px){.assets-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.assets-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 1rem}}
+@media(min-width:1300px){.assets-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.assets-grid>*{min-width:0;box-sizing:border-box;max-width:100%;overflow:hidden;overflow-wrap:anywhere}
 
 /* Tasks: calendar sits beside the list on desktop instead of stacked above it */
 .tasks-layout{display:flex;flex-direction:column;gap:1rem}
