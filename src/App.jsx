@@ -1,4 +1,4 @@
-// Steadwell v262 — 2026-09-29T19:10:00.000Z
+// Steadwell v263 — 2026-09-29T19:25:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1654,11 +1654,18 @@ img,.lp-root img{max-width:100%;height:auto}
 
 /* Tasks: calendar sits beside the list on desktop instead of stacked above it */
 .tasks-layout{display:flex;flex-direction:column;gap:1rem}
-@media(min-width:1024px){
+/* Side by side only when there's room (≥1200px). The calendar is a two-pane
+   component (month grid + day panel) that sizes off the SCREEN width, so when
+   it sits in a column we force it to a single stacked pane. Below 1200px the
+   calendar stacks above the list at full width, where its two panes fit. */
+@media(min-width:1200px){
   .tasks-layout{flex-direction:row-reverse;align-items:flex-start;gap:1.5rem}
   .tasks-main{flex:1;min-width:0}
-  .tasks-cal{flex:0 0 380px}
+  .tasks-cal{flex:0 0 440px;min-width:0}
+  .tasks-cal .ct-body{grid-template-columns:1fr}
+  .tasks-cal .ct-panel{max-height:none}
 }
+.sort-select{width:auto}
 
 /* Desktop header: more breathing room */
 @media(min-width:769px){
