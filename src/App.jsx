@@ -1,4 +1,4 @@
-// Steadwell v273 — 2026-09-30T00:00:00.000Z
+// Steadwell v274 — 2026-09-30T00:20:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3222,6 +3222,20 @@ img,.lp-root img{max-width:100%;height:auto}
   .cr-detail>*{margin:0!important}
 }
 @media(min-width:1500px){.cr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+
+/* ── Assets: collapsible category groups ── */
+.ag-controls{display:flex;justify-content:flex-end;margin:-.2rem 0 .5rem}
+.ag-toggle-all{background:none;border:none;color:var(--pine);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;padding:.25rem .1rem}
+.ag-toggle-all:hover{text-decoration:underline}
+.ag-head{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--stone);padding:.35rem .15rem .6rem;cursor:pointer;font-family:inherit;flex-wrap:wrap}
+.ag-head:disabled{cursor:default;opacity:1}
+.ag-head:not(:disabled):hover .ag-chev{color:var(--pine)}
+.ag-chev{display:inline-block;width:1rem;font-size:1.15rem;line-height:1;color:#A8A09A;transition:transform .15s;flex-shrink:0}
+.ag-chev.open{transform:rotate(90deg)}
+.ag-badges{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:.25rem}
+.ag-badge{font-size:.72rem;font-weight:700;padding:.15rem .55rem;border-radius:20px;white-space:nowrap}
+.ag-eyebrow{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#A8A09A;margin-bottom:.15rem}
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
@@ -11089,6 +11103,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [retireConfirm, setRetireConfirm] = useState(null); // second stage: confirm hard delete
   const [showRetired, setShowRetired]     = useState(false);
   const [filter, setFilter] = useState("All");
+  // Category open/closed choices the user made (per device). Anything not in
+  // here falls back to a smart default computed at render time.
+  const [catPref, setCatPref] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("sw_asset_cats_v1") || "{}") || {}; } catch { return {}; }
+  });
+  const saveCatPref = (next) => {
+    setCatPref(next);
+    try { localStorage.setItem("sw_asset_cats_v1", JSON.stringify(next)); } catch {}
+  };
   const [lightbox, setLightbox] = useState(null);
   const [serviceModal, setServiceModal] = useState(false);
   const [serviceEditData, setServiceEditData] = useState({});
@@ -11409,6 +11432,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     // Smart Fill needs at least brand OR model (model alone is often enough)
     const hasBrandModel = !!(payload.brand || payload.model); // either is sufficient
     const hasMissing    = !payload.brand && !payload.model;   // truly empty
+    const hasBrandOnly  = !!payload.brand && !payload.model;
+    const hasModelOnly  = !payload.brand && !!payload.model;
     const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
 
     if(editId) {
@@ -12247,6 +12272,63 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     Object.keys(grouped).filter(c => !CATEGORY_ORDER.includes(c))
   );
 
+  const CAT_LABELS = {
+    HVAC:"Heating & cooling", Appliance:"Appliances",
+    Electronics:"Electronics", Vehicle:"Vehicles",
+    Tools:"Tools & equipment", Plumbing:"Plumbing",
+    Electrical:"Electrical", Roofing:"Roofing",
+    Structure:"Structure", Safety:"Safety & security",
+    Landscaping:"Outdoor & landscaping",
+    "Jewelry & Valuables":"Jewelry & valuables",
+    Outdoor:"Outdoor structures", Other:"Other"
+  };
+  const catLabelOf = (c) => CAT_LABELS[c] || c;
+
+  // Categories that hold a single asset would each get their own header and a
+  // mostly-empty row. When there are two or more of them, fold them into one
+  // shared "Other systems" group (each card gets a small category label so
+  // nothing loses its context).
+  const singleKeys = groupKeys.filter(c => grouped[c].length === 1);
+  const mergeSingles = singleKeys.length >= 2;
+  const displayGroups = [
+    ...groupKeys.filter(c => !(mergeSingles && singleKeys.includes(c))).map(c => ({ key:c, label:catLabelOf(c), items:grouped[c], merged:false })),
+    ...(mergeSingles ? [{ key:"__singles", label:"Other systems", items:singleKeys.map(c => grouped[c][0]), merged:true }] : []),
+  ];
+
+  // Per-group health summary (drives the collapsed header badges + defaults)
+  const groupSummary = (items) => items.reduce((acc, a) => {
+    if (a.warranty_only) return acc;
+    const k = health(a).key;
+    if (k === "bad" || k === "due") acc.attn++;
+    else if (k === "heads") acc.heads++;
+    else if (k === "estimated") acc.unknown++;
+    return acc;
+  }, { attn:0, heads:0, unknown:0 });
+
+  // Smart defaults: small homes see everything; bigger homes start with only
+  // the groups that need a look open. Filters and the retired view always
+  // show everything they matched so results are never hidden in a closed group.
+  const SMALL_HOME_MAX = 12;
+  const forceOpen = filter !== "All" || showRetired;
+  const isGroupOpen = (g) => {
+    if (forceOpen) return true;
+    if (catPref[g.key] === "open") return true;
+    if (catPref[g.key] === "closed") return false;
+    if (list.length <= SMALL_HOME_MAX) return true;
+    const sm = groupSummary(g.items);
+    return sm.attn > 0 || sm.heads > 0;
+  };
+  const openStates = displayGroups.map(isGroupOpen);
+  const allOpen = openStates.every(Boolean);
+  const setAllGroups = (open) => {
+    const next = { ...catPref };
+    displayGroups.forEach(g => { next[g.key] = open ? "open" : "closed"; });
+    saveCatPref(next);
+  };
+  const toggleGroup = (g) => {
+    saveCatPref({ ...catPref, [g.key]: isGroupOpen(g) ? "closed" : "open" });
+  };
+
   return (
     <div>
       <div className="sh">
@@ -12368,33 +12450,40 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
       )}
 
-      {/* Grouped asset list — rich cards */}
-      {groupKeys.map(cat => {
-        const catAssets = grouped[cat];
-        const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other;
-        const catLabel = ({
-          HVAC:"Heating & cooling", Appliance:"Appliances",
-          Electronics:"Electronics", Vehicle:"Vehicles",
-          Tools:"Tools & equipment", Plumbing:"Plumbing",
-          Electrical:"Electrical", Roofing:"Roofing",
-          Structure:"Structure", Safety:"Safety & security",
-          Landscaping:"Outdoor & landscaping",
-          "Jewelry & Valuables":"Jewelry & valuables",
-          Outdoor:"Outdoor structures", Other:"Other"
-        })[cat] || cat;
+      {/* Grouped asset list — rich cards, collapsible */}
+      {displayGroups.length > 1 && !forceOpen && (
+        <div className="ag-controls">
+          <button onClick={()=>setAllGroups(!allOpen)} className="ag-toggle-all">{allOpen ? "Collapse all" : "Expand all"}</button>
+        </div>
+      )}
+      {displayGroups.map((g, gi) => {
+        const cat = g.key;
+        const catAssets = g.items;
+        const catLabel = g.label;
+        const open = openStates[gi];
+        const sm = groupSummary(catAssets);
         return (
           <div key={cat} style={{marginBottom:"1.4rem"}}>
-            {/* Category header */}
-            <div style={{display:"flex",alignItems:"center",gap:".6rem",marginBottom:".7rem",paddingLeft:".15rem"}}>
+            {/* Category header — whole row toggles */}
+            <button type="button" className="ag-head" onClick={()=>{ if(!forceOpen) toggleGroup(g); }} aria-expanded={open} disabled={forceOpen} style={{marginBottom:open?".7rem":0}}>
+              <span className={"ag-chev"+(open?" open":"")} aria-hidden="true">{forceOpen ? "" : "›"}</span>
               <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{catLabel}</span>
               <span style={{fontSize:".8rem",fontWeight:700,color:"var(--mid)",background:"var(--cream2)",borderRadius:20,padding:".1rem .6rem"}}>{catAssets.length}</span>
-            </div>
+              {!open && (
+                <span className="ag-badges">
+                  {sm.attn>0 && <span className="ag-badge" style={{background:"#F7E0DA",color:"#B0432B"}}>{sm.attn} need{sm.attn===1?"s":""} attention</span>}
+                  {sm.heads>0 && <span className="ag-badge" style={{background:"#FBF3DE",color:"#B8861E"}}>{sm.heads} heads up</span>}
+                  {sm.unknown>0 && <span className="ag-badge" style={{background:"var(--cream2)",color:"#6E665D"}}>{sm.unknown} age unknown</span>}
+                  {sm.attn===0 && sm.heads===0 && sm.unknown===0 && <span className="ag-badge" style={{background:"#E9F1EA",color:"#3E7D5A"}}>All healthy</span>}
+                </span>
+              )}
+            </button>
 
-            {/* Cards in this category — a single column on mobile, a
-                responsive grid on desktop (see .assets-grid) so Assets makes
-                use of the extra width instead of one long narrow column. */}
+            {open && (
             <div className="assets-grid">
             {catAssets.map(a => {
+              const catColor = CATEGORY_COLORS[CAT_NORMALIZE[a.category||"Other"]||a.category||"Other"] || CATEGORY_COLORS.Other;
+              const eyebrow = g.merged ? catLabelOf(CAT_NORMALIZE[a.category||"Other"]||a.category||"Other") : null;
               // ── Warranty-only simplified card ──────────────────────────────
               if (a.warranty_only) {
                 const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
@@ -12413,6 +12502,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                       <AssetIcon asset={a} size={22}/>
                     </div>
                     <div style={{flex:1,minWidth:0}}>
+                      {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
                       <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",marginBottom:".15rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
                       <div style={{fontSize:".78rem",color:"#8A8178"}}>
                         {[a.brand,a.model,a.serial_number?"S/N "+a.serial_number:null].filter(Boolean).join(" · ")||"Warranty only"}
@@ -12502,6 +12592,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                       <AssetIcon asset={a} size={25}/>
                     </div>
                     <div style={{flex:1,minWidth:0}}>
+                      {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
                       <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
                       <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                         {[a.brand, a.model, ageYears!==null?`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old${ageIsEstimate?" (est.)":""}`:null].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
@@ -12541,6 +12632,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               );
             })}
             </div>
+            )}
           </div>
         );
       })}
@@ -19329,7 +19421,10 @@ export default function App() {
       // Reload profile to pick up the plan change written by the webhook
       setTimeout(async () => {
         const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
-        if (data) { setPrimaryProfile(data); }
+        if (data) {
+          setAllProfiles(list => list.map(pr => pr.id === data.id ? { ...pr, ...data } : pr));
+          setProfile(pr => (pr && pr.id === data.id) ? { ...pr, ...data } : pr);
+        }
         toast("🎉 Welcome to " + (data?.plan === "pro" ? "Pro" : "Plus") + "! Your plan is now active.");
       }, 1500); // small delay to allow webhook to process
       window.history.replaceState({}, "", "/");
