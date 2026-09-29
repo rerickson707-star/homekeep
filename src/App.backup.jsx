@@ -1,4 +1,4 @@
-// Steadwell v264 — 2026-09-29T20:10:00.000Z
+// Steadwell v255 — 2026-09-25T01:37:47.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -110,118 +110,55 @@ function getClimateZone(profile) {
   return zone || 5; // default zone 5 only if prefix not in table
 }
 
-// Climate-aware maintenance calendar.
-// Each climate profile has a 12-entry `months` array (index 0 = January).
-// Tasks are timed to the month they actually matter for that region — e.g. in
-// hot/humid Florida & the Gulf Coast the Atlantic hurricane season runs
-// June 1 – Nov 30 (peaking mid-Aug to mid-Oct), so storm PREP happens in
-// April–May and September is about staying ready, not starting to prepare.
+// Climate-aware seasonal maintenance tasks
+// Each zone has spring/summer/fall/winter task lists
 const CLIMATE_TASKS = {
   // Zone 1-2: Hot/Humid (FL, Gulf Coast, HI)
   hot_humid: {
     label: "Hot & Humid Climate",
-    months: [
-      /* Jan */ ["Replace HVAC filter","Protect plants, irrigation backflow & pool equipment during cold snaps","Review homeowners policy & wind-mitigation credits before renewal","Deep-clean dryer vent and lint trap"],
-      /* Feb */ ["Book AC tune-up before the spring rush","Inspect for termite swarmers, mud tubes & wood damage","Check irrigation zones & set timer to local watering restrictions","Replace HVAC filter"],
-      /* Mar */ ["Schedule annual termite / pest inspection","Pressure-wash exterior, driveway & lanai; treat mildew","Repair or replace torn lanai / window screens","Flush AC condensate drain line with vinegar"],
-      /* Apr */ ["Trim trees & palms away from roof, wires and fences","Inspect roof: shingles/tile, flashing, vents & sealant","Service or rinse outdoor AC condenser coil","Test GFCI outlets and smoke & CO detectors"],
-      /* May */ ["Hurricane prep: build or restock kit (water, batteries, meds, radio, cash)","Test shutters / storm panels and confirm hardware is complete","Test generator and stock fuel safely (if you have one)","Review windstorm & flood insurance; photo-inventory your home","Know your evacuation zone and route"],
-      /* Jun */ ["Hurricane season started (Jun 1): verify kit, documents & evacuation plan","Clear gutters, downspouts & yard drains before daily storms","Flush AC condensate drain line (clogs cause leaks in rainy season)","Replace HVAC filter"],
-      /* Jul */ ["Check whole-home surge protection ahead of lightning season","Look for mold / mildew in bathrooms, closets & attic; run dehumidifier","Inspect caulk & seals around windows and doors for water intrusion","Check attic for leaks, moisture and adequate ventilation"],
-      /* Aug */ ["Peak hurricane season begins: refresh water, batteries & medications","Secure or store loose outdoor items and know your storm-day plan","Inspect fascia, soffits & trim for rot and pest entry","Replace HVAC filter"],
-      /* Sep */ ["Peak hurricane season: keep kit stocked and fuel tanks/phones charged when storms form","Clear yard debris, gutters and drains before each storm","Photograph your home & valuables and store documents in a waterproof bag","Check AC drain line and filter (system runs nonstop)"],
-      /* Oct */ ["Hurricane season ends Nov 30: keep supplies ready until then","Inspect roof and screens for storm-season damage","Clean gutters and dryer vent","Pest control: rodents & roaches move indoors as nights cool"],
-      /* Nov */ ["Season ends Nov 30: rotate expired kit items & restock","Test heat mode on heat pump / furnace before first cold front","Replace smoke & CO detector batteries","Replace HVAC filter"],
-      /* Dec */ ["Flush water heater and check anode rod","Check exterior lighting and holiday electrical loads (no overloaded outlets)","Prepare for freeze nights: cover plants, insulate outdoor spigots","Review insurance renewal and update your home inventory"],
-    ],
+    spring: ["Inspect AC system before peak heat","Check for mold or mildew in humid areas","Clean gutters before rainy season","Inspect roof for wind damage","Test sump pump and drainage"],
+    summer: ["Replace AC filter monthly","Check attic ventilation for heat buildup","Inspect weatherstripping on all doors","Test smoke & CO detectors","Check for pest entry points"],
+    fall:   ["Hurricane/storm season prep","Inspect impact windows and shutters","Service AC before shoulder season","Clean dryer vents","Check outdoor lighting"],
+    winter: ["Inspect and clean AC coils","Check for roof leaks after heavy rain","Caulk gaps around windows and doors","Service any gas appliances","Inspect irrigation system"],
     icon: "🌴", color: "#FBF3E8", border: "#E8C89A",
   },
   // Zone 3-4: Warm/Mixed (GA, Carolinas, VA, TN, Pacific NW, CA)
   mixed: {
     label: "Warm/Mixed Climate",
-    months: [
-      /* Jan */ ["Check pipes in unheated spaces during cold snaps","Replace HVAC filter","Test heating system backup and thermostat","Inspect water heater and check for leaks"],
-      /* Feb */ ["Inspect roof after winter storms","Check attic insulation and for moisture","Book AC tune-up before summer","Replace HVAC filter"],
-      /* Mar */ ["Service AC before summer heat","Clean gutters after pollen and winter debris","Inspect deck, fences and outdoor structures","Test smoke & CO detectors"],
-      /* Apr */ ["Inspect roof and attic ventilation","Start irrigation and check for broken heads","Schedule termite / pest inspection","Seal cracks in driveway and walkways"],
-      /* May */ ["Caulk exterior gaps before humid weather","Clean dryer vent","Check window screens and seals","Replace HVAC filter"],
-      /* Jun */ ["Replace HVAC filter every 1-2 months","Inspect irrigation and adjust for summer","Check crawl space or basement for moisture","Clean AC condensate line"],
-      /* Jul */ ["Check attic ventilation for heat buildup","Inspect deck for sun and moisture damage","Look for mold in humid areas","Test smoke & CO detectors"],
-      /* Aug */ ["Check roof and gutters ahead of storm season","Clean outdoor AC condenser","Replace HVAC filter","Inspect exterior paint and caulk"],
-      /* Sep */ ["Service furnace or heat pump before heating season","Clean gutters after early leaf fall","Drain and store garden hoses when nights near freezing","Inspect fireplace and chimney"],
-      /* Oct */ ["Check weatherstripping on doors and windows","Winterize irrigation and outdoor faucets","Clean gutters after leaf fall","Test smoke & CO detectors"],
-      /* Nov */ ["Insulate exposed pipes in unheated spaces","Replace HVAC filter","Reverse ceiling fans to winter direction","Stock emergency supplies for winter storms"],
-      /* Dec */ ["Flush water heater","Check attic insulation levels","Inspect roof after heavy rain or frost","Test heating system backup"],
-    ],
+    spring: ["Service AC before summer heat","Clean gutters after pollen season","Check roof and attic ventilation","Inspect deck and outdoor structures","Test smoke & CO detectors"],
+    summer: ["Replace HVAC filter every 2 months","Check window seals and weatherstripping","Clean dryer vents","Inspect irrigation system","Caulk exterior gaps before humidity"],
+    fall:   ["Service furnace or heat pump","Clean gutters after leaf fall","Drain and store garden hoses","Check weatherstripping on doors","Inspect fireplace and chimney"],
+    winter: ["Check pipes in unheated spaces","Inspect roof after heavy rain or frost","Test heating system backup","Check attic insulation levels","Inspect water heater"],
     icon: "🌤️", color: "#FBF0F5", border: "#EEC8D8",
   },
   // Zone 5: Cool (Midwest, CO, NE, PA, NJ, NY)
   cool: {
     label: "Cool Climate",
-    months: [
-      /* Jan */ ["Keep heating vents clear of furniture","Check for ice dams on roof edges","Monitor pipes during cold snaps","Replace furnace filter"],
-      /* Feb */ ["Watch for ice dams and clear roof edges safely","Check attic for condensation","Test sump pump before spring thaw","Replace furnace filter"],
-      /* Mar */ ["Inspect roof for ice dam and winter damage","Test sump pump before spring rain","Clean gutters after winter debris","Turn on outdoor faucets and check for freeze damage"],
-      /* Apr */ ["Service AC unit before summer","Repair driveway cracks from freeze/thaw","Inspect foundation and grading","Start irrigation system and check for leaks"],
-      /* May */ ["Inspect deck for winter damage","Check window screens and seals","Test smoke & CO detectors","Clean dryer vent"],
-      /* Jun */ ["Replace HVAC filter every 2 months","Inspect window AC units","Check attic insulation and ventilation","Inspect exterior paint and caulk"],
-      /* Jul */ ["Look for moisture in basement or crawl space","Clean AC condensate line","Inspect roof after storms","Replace HVAC filter"],
-      /* Aug */ ["Seal driveway and exterior cracks","Plan fall projects and schedule contractors","Clean outdoor AC condenser","Check fireplace and chimney condition"],
-      /* Sep */ ["Service furnace — heating season coming","Check weatherstripping and door seals","Inspect fireplace and chimney","Stock emergency supplies"],
-      /* Oct */ ["Clean gutters after leaves fall","Drain outdoor faucets and hoses","Winterize irrigation (blow out lines)","Insulate exposed pipes in unheated spaces"],
-      /* Nov */ ["Test smoke & CO detectors (change batteries)","Replace furnace filter","Reverse ceiling fans","Shut off exterior water lines"],
-      /* Dec */ ["Inspect water heater pressure relief valve","Keep heating vents clear","Monitor pipes in cold snaps","Check attic for ice dam risk"],
-    ],
+    spring: ["Service AC unit before summer","Clean gutters after winter debris","Check roof for ice dam damage","Inspect and repair driveway cracks","Test sump pump before spring rain"],
+    summer: ["Replace HVAC filter every 2 months","Inspect window AC units","Check attic insulation and ventilation","Clean dryer vents","Inspect deck for winter damage"],
+    fall:   ["Service furnace — heating season coming","Insulate exposed pipes in unheated spaces","Clean gutters after leaves fall","Drain outdoor faucets and hoses","Check weatherstripping and door seals"],
+    winter: ["Keep heating vents clear of furniture","Check for ice dams on roof edges","Monitor pipes in cold snaps","Test smoke & CO detectors","Inspect water heater pressure relief valve"],
     icon: "🍂", color: "#FBF3E8", border: "#E8C89A",
   },
   // Zone 6-7: Cold (MN, ME, MI, WI, MT, WY)
   cold: {
     label: "Cold Climate",
-    months: [
-      /* Jan */ ["Monitor for ice dams after every heavy snow","Keep cabinet doors open in cold snaps","Know your water shutoff location","Replace furnace filter"],
-      /* Feb */ ["Clear roof edges of snow load safely","Check attic for condensation","Inspect roof snow load after major storms","Replace furnace filter"],
-      /* Mar */ ["Inspect roof for ice dam and frost damage","Check foundation for freeze damage","Test sump pump before snowmelt","Clean debris from gutters as ice thaws"],
-      /* Apr */ ["Repair driveway heave from freeze/thaw","Clean gutters after winter","Service AC unit if applicable","Check exterior drainage and grading"],
-      /* May */ ["Start irrigation system and check for freeze damage","Inspect deck and outdoor structures","Check window screens and seals","Test smoke & CO detectors"],
-      /* Jun */ ["Service AC for the brief cooling season","Clean dryer vents","Inspect roof and exterior paint","Replace HVAC filter"],
-      /* Jul */ ["Inspect exterior wood, caulk and paint (short season)","Check foundation and basement for moisture","Clean AC condensate line","Replace HVAC filter"],
-      /* Aug */ ["Schedule furnace service before contractors book up","Order firewood / fuel for winter","Seal exterior gaps and driveway","Inspect chimney"],
-      /* Sep */ ["Service furnace — critical before winter","Heavily insulate exposed pipes","Install pipe heat tape on vulnerable lines","Winterize irrigation system"],
-      /* Oct */ ["Clean gutters after leaves fall","Drain and store hoses; shut off outdoor spigots","Stock emergency heating supplies","Check weatherstripping and storm windows"],
-      /* Nov */ ["Test smoke & CO detectors","Replace furnace filter","Check roof and attic before first snow","Have snow removal gear ready"],
-      /* Dec */ ["Monitor pipes in cold snaps","Check that heating vents stay clear of snow","Inspect water heater","Know your water shutoff location"],
-    ],
+    spring: ["Inspect roof for ice dam and frost damage","Service AC unit if applicable","Repair driveway heave from freeze/thaw","Clean gutters after winter","Check foundation for freeze damage"],
+    summer: ["Brief cooling season — service AC","Check window screens and seals","Inspect deck and outdoor structures","Clean dryer vents","Service irrigation system"],
+    fall:   ["Service furnace — critical before winter","Heavily insulate all exposed pipes","Install pipe heat tape on vulnerable lines","Drain and winterize irrigation system","Stock emergency heating supplies"],
+    winter: ["Monitor for ice dams daily in heavy snow","Keep cabinet doors open in cold snaps","Know your water shutoff location","Check attic for condensation","Inspect roof snow load after major storms"],
     icon: "❄️", color: "#EBF3FA", border: "#A8C8E8",
   },
   // Zone 8: Subarctic (AK)
   subarctic: {
     label: "Subarctic Climate",
-    months: [
-      /* Jan */ ["Keep emergency supplies stocked","Monitor pipes in extreme cold","Inspect generator monthly","Keep exterior entries clear of ice"],
-      /* Feb */ ["Check heating vents stay clear of snow","Inspect generator","Monitor roof snow load","Replace furnace filter"],
-      /* Mar */ ["Check roof for snow/ice damage","Clear drainage around foundation","Service heating system after long winter","Inspect and test generator"],
-      /* Apr */ ["Inspect foundation for permafrost shifting","Clear drainage and culverts for breakup","Check roof and gutters","Test smoke & CO detectors"],
-      /* May */ ["Inspect all exterior wood — short season","Check window and door seals","Inspect deck and structure","Check for rodent entry points"],
-      /* Jun */ ["Repair and repaint exterior while weather allows","Inspect foundation and skirting","Service any cooling equipment","Clean dryer vent"],
-      /* Jul */ ["Finish exterior projects before fall","Inspect roof and flashing","Check for rodent entry points","Order winter fuel"],
-      /* Aug */ ["Service furnace and backup heat before freeze","Insulate water meter and main line","Seal exterior gaps","Stock winter supplies"],
-      /* Sep */ ["Critical pipe insulation before freeze","Full furnace and backup heat service","Winterize all water lines","Stock emergency heat and supplies"],
-      /* Oct */ ["Insulate water meter and main line","Drain and store hoses","Test backup generator","Check weatherstripping"],
-      /* Nov */ ["Test smoke & CO detectors","Replace furnace filter","Keep exterior entries clear of ice","Check fuel level"],
-      /* Dec */ ["Monitor pipes in extreme cold","Keep emergency supplies stocked","Inspect generator","Check heating vents"],
-    ],
+    spring: ["Inspect foundation for permafrost shifting","Check roof for snow/ice damage","Service heating system after long winter","Inspect and test generator","Clear drainage around foundation"],
+    summer: ["Short season — inspect all exterior wood","Check window and door seals","Inspect deck and structure","Service any cooling equipment","Check for rodent entry points"],
+    fall:   ["Critical pipe insulation before freeze","Full furnace and backup heat service","Winterize all water lines","Stock emergency heat and supplies","Insulate water meter and main line"],
+    winter: ["Keep emergency supplies stocked","Monitor pipes in extreme cold","Check that heating vents stay clear of snow","Inspect generator monthly","Keep exterior entry areas clear of ice"],
     icon: "🧊", color: "#EBF3FA", border: "#A8C8E8",
   },
 };
-
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-// Tasks that belong to a given month (0 = Jan) for a climate profile.
-function getMonthTasks(cp, month) {
-  return (cp && cp.months && cp.months[month]) || [];
-}
-// Spread a month's tasks across the month so they don't all land on day 1.
-const monthTaskDay = (i) => Math.min(1 + i * 6, 27);
-const seasonOfMonth = (m) => (m>=2&&m<=4) ? "spring" : (m>=5&&m<=7) ? "summer" : (m>=8&&m<=10) ? "fall" : "winter";
 
 function getClimateProfile(zone) {
   if (zone <= 2) return CLIMATE_TASKS.hot_humid;
@@ -260,10 +197,6 @@ const CSS = `
   --sidebar-w:236px;
 }
 
-/* Neutralize Vite-starter defaults on #root (centered text, 1280px cap, padding)
-   that made the whole app center-aligned and narrow */
-#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}
-.app{text-align:left}
 html{scroll-behavior:smooth}
 body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(--dark);-webkit-font-smoothing:antialiased;overscroll-behavior-x:none}
 .app{min-height:100dvh;display:flex;flex-direction:column;padding-top:var(--hdr);padding-bottom:var(--bottom-nav);max-width:100vw;overflow-x:clip}
@@ -1665,51 +1598,6 @@ img,.lp-root img{max-width:100%;height:auto}
   .toast-wrap{bottom:1.5rem}
 }
 
-/* Dashboard: on desktop, header cards on top, then feed | week+tip columns,
-   then a systems grid — instead of phone-style full-width strips. Mobile
-   is unchanged (wrappers are plain blocks in the original order). */
-.dash-systems{display:none}
-@media(min-width:1024px){
-  .dash-top{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
-  .dash-cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:1.25rem;align-items:stretch}
-  .dash-left,.dash-right{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden}
-  .dash-right > div:first-child{margin:0 !important}
-  .dash-systems{display:block;margin-top:1.5rem}
-  .dash-systems-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
-}
-@media(min-width:1300px){.dash-systems-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-
-/* Tasks tab: summary tiles + grouped rows */
-.tasks-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}
-.tasks-tile{display:flex;flex-direction:column;align-items:flex-start;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:.75rem .9rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;text-align:left;transition:border-color .15s,box-shadow .15s}
-.tasks-tile:hover{border-color:var(--mid)}
-.tasks-tile.on{border-color:var(--pine);box-shadow:0 0 0 3px rgba(35,74,61,.1)}
-.trow-group{font-size:.72rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin:0 0 .5rem .15rem}
-.trow-list{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow)}
-.trow{display:flex;align-items:flex-start;gap:.8rem;padding:.85rem 1rem;border-bottom:1px solid var(--cream2);position:relative;text-align:left}
-.trow:first-child{border-radius:var(--r) var(--r) 0 0}
-.trow:last-child{border-bottom:none;border-radius:0 0 var(--r) var(--r)}
-.trow:hover{background:var(--cream)}
-.trow.is-overdue{box-shadow:inset 3px 0 0 var(--red)}
-.trow.is-today{box-shadow:inset 3px 0 0 var(--rust)}
-.trow.is-done{opacity:.6}
-.trow-body{flex:1;min-width:0;cursor:pointer}
-.trow-right{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0;padding-top:1px;text-align:right}
-.trow-menu{position:relative;flex-shrink:0}
-.trow-menu-btn{width:30px;height:30px;border-radius:8px;border:none;background:none;cursor:pointer;font-size:1.15rem;line-height:1;color:#8A8178;font-family:inherit}
-.trow-menu-btn:hover{background:var(--cream2)}
-.trow-menu-pop{position:absolute;right:0;top:100%;z-index:60;min-width:160px;background:var(--white);border:1px solid var(--stone);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:.3rem}
-.trow-menu-pop button{display:block;width:100%;text-align:left;padding:.5rem .75rem;border:none;background:none;border-radius:6px;font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;font-weight:600;color:var(--dark);cursor:pointer}
-.trow-menu-pop button:hover{background:var(--cream)}
-@media(max-width:600px){.tasks-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
-/* Dashboard hero: live counts + score factors */
-.dash-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem;margin-top:1.25rem;position:relative}
-.dash-stat{display:flex;flex-direction:column;align-items:flex-start;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.75rem .85rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:background .15s}
-.dash-stat:hover{background:rgba(255,255,255,.14)}
-.dash-factors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);position:relative}
-@media(max-width:600px){.dash-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-factors{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
 /* Assets: a responsive grid on desktop instead of one long stacked column */
 .assets-grid{display:flex;flex-direction:column}
 @media(min-width:900px){.assets-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 1rem}}
@@ -1717,18 +1605,11 @@ img,.lp-root img{max-width:100%;height:auto}
 
 /* Tasks: calendar sits beside the list on desktop instead of stacked above it */
 .tasks-layout{display:flex;flex-direction:column;gap:1rem}
-/* Side by side only when there's room (≥1200px). The calendar is a two-pane
-   component (month grid + day panel) that sizes off the SCREEN width, so when
-   it sits in a column we force it to a single stacked pane. Below 1200px the
-   calendar stacks above the list at full width, where its two panes fit. */
-@media(min-width:1200px){
+@media(min-width:1024px){
   .tasks-layout{flex-direction:row-reverse;align-items:flex-start;gap:1.5rem}
   .tasks-main{flex:1;min-width:0}
-  .tasks-cal{flex:0 0 440px;min-width:0}
-  .tasks-cal .ct-body{grid-template-columns:1fr}
-  .tasks-cal .ct-panel{max-height:none}
+  .tasks-cal{flex:0 0 380px}
 }
-.sort-select{width:auto}
 
 /* Desktop header: more breathing room */
 @media(min-width:769px){
@@ -1845,12 +1726,13 @@ function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
   // 5. Seasonal suggestions (current + next year)
   const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
   const cp = getClimateProfile(zone);
+  const SEASON_MO = { spring:2, summer:5, fall:8, winter:11 };
   [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
-    for (let mo = 0; mo < 12; mo++) {
-      getMonthTasks(cp, mo).forEach((title, i) => {
-        add(localISO(new Date(yr, mo, monthTaskDay(i))), { id:`ss-${yr}-${mo}-${i}`, type:"seasonal", title, canCreate:true, seasonal:seasonOfMonth(mo) });
+    Object.entries(SEASON_MO).forEach(([season, mo]) => {
+      (cp[season]||[]).forEach((title, i) => {
+        add(localISO(new Date(yr, mo, 1+i*2)), { id:`ss-${yr}-${season}-${i}`, type:"seasonal", title, canCreate:true, seasonal:season });
       });
-    }
+    });
   });
 
   return map;
@@ -8459,7 +8341,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   // HealthScoreWidget shows, so this never disagrees with it. This hero stays
   // focused on "what needs doing today" (urgency, below); this is only a
   // pointer to the single canonical score and its factor breakdown.
-  const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor, factors: homeHealthFactors } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
+  const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
   const overdue  = tasks.filter(t => t.status==="Overdue").length;
   const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
@@ -8473,7 +8355,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const completed = tasks.filter(t=>t.status==="Completed").length;
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
-  const [showScoreInfo, setShowScoreInfo] = useState(false);
 
   const handleDayClick = (date, dayTasks) => {
     setSelectedDay(date);
@@ -8490,8 +8371,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     icon:   dashClimate.icon || seasonIcons[season],
     color:  dashClimate.color,
     border: dashClimate.border,
-    title:  `${MONTH_NAMES[month]} checklist · ${dashClimate.label}`,
-    tip:    getMonthTasks(dashClimate, month).slice(0, 3).join(" · "),
+    title:  `${season.charAt(0).toUpperCase()+season.slice(1)} checklist · ${dashClimate.label}`,
+    tip:    (dashClimate[season] || []).slice(0, 3).join(" · "),
   };
 
   // Detect new user — hasn't run setup wizard yet
@@ -8613,9 +8494,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const heroGrad     = heroLevel === "bad"  ? "linear-gradient(150deg,#2A0C06,#6B2012)"
                      : heroLevel === "warn" ? "linear-gradient(150deg,#2A1F06,#5A3B00)"
                      : "linear-gradient(150deg,var(--pine-deep),var(--pine-soft))";
-  const heroStatus   = heroLevel === "bad"  ? "Action required"
-                     : heroLevel === "warn" ? "Attention needed"
-                     : "On track";
+  const heroStatus   = heroLevel === "bad"  ? "Needs action"
+                     : heroLevel === "warn" ? "Needs attention"
+                     : "All good";
   const heroSub      = heroLevel === "bad"  ? `${urgentCount} urgent item${urgentCount !== 1 ? "s" : ""} — take care of these today`
                      : heroLevel === "warn" ? `${warnCount} thing${warnCount !== 1 ? "s" : ""} to take care of soon`
                      : upcoming.length > 0  ? `Next task due ${fmtD(upcoming[0]?.due_date)}`
@@ -8662,20 +8543,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     );
   };
 
-  // Systems-at-a-glance (desktop panel): worst-health assets first
-  const dashHomeAge = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
-  const dashRecalled = new Set((recalls||[]).map(r => r.asset.id));
-  const HEALTH_ORDER = { bad:0, due:1, heads:2, estimated:3, ok:4 };
-  const dashSystems = warranties
-    .filter(a => !a.retired_at && !a.warranty_only)
-    .map(a => ({ a, h: getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: dashRecalled.has(a.id), fallbackAgeYears: dashHomeAge }) }))
-    .sort((x,y) => (HEALTH_ORDER[x.h.key] ?? 5) - (HEALTH_ORDER[y.h.key] ?? 5))
-    .slice(0, 6);
-
   return (
-    <div className="dash-root" style={{paddingBottom:"1.5rem"}}>
+    <div style={{paddingBottom:"1.5rem"}}>
 
-      <div className="dash-top">
       {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
       {isNewUser && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
@@ -8688,112 +8558,56 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         </div>
       )}
 
-      {/* ── STATUS HERO — status, the one Home Health score, live counts and
-           the score's factors in a single card (score comes from
-           computeHealthScore, same as My Home, so they never disagree) ── */}
-      {!isNewUser && (() => {
-        const scoreOn = !!planData.healthScore;
-        const overdueN = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
-        const scoreRing = homeHealthScore >= 90 ? "#7DCBA1" : homeHealthScore >= 75 ? "#A9D8B5" : homeHealthScore >= 60 ? "#F0CE7A" : "#F0A57F";
-        const R = 40, C = 2 * Math.PI * R;
-        const stats = [
-          { label:"Overdue tasks",       value:overdueN,          hot:overdueN>0,          go:"tasks" },
-          { label:"Due in 30 days",      value:upcoming.length,   hot:false,               go:"tasks" },
-          { label:"Warranties ending",   value:expiringW.length,  hot:expiringW.length>0,  go:"warranties", sub:"within 90 days" },
-          { label:"Open recalls",        value:(recalls||[]).length, hot:(recalls||[]).length>0, go:"warranties" },
-        ];
-        return (
-        <div style={{background:heroGrad,padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
+      {/* ── STATUS HERO ── */}
+      {!isNewUser && (
+        <div style={{background:heroGrad,padding:"1.5rem 1.25rem 1.6rem",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
           <div style={{position:"absolute",left:-30,bottom:-60,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.03)",pointerEvents:"none"}}/>
 
           {/* Top row */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.1rem",position:"relative"}}>
-            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"rgba(244,237,223,.55)",minWidth:0,lineHeight:1.35}}>{profile?.address || profile?.name || "My Home"}</span>
-            <span style={{fontSize:".75rem",fontWeight:600,color:"rgba(244,237,223,.45)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.2rem"}}>
+            <span style={{fontSize:".78rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"rgba(244,237,223,.4)"}}>{profile?.address?.split(",")[0] || profile?.name || "My Home"}</span>
+            <span style={{fontSize:".75rem",fontWeight:600,color:"rgba(244,237,223,.3)"}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span>
           </div>
 
-          {/* Status + score */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",position:"relative"}}>
-            <div style={{minWidth:0}}>
-              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"rgba(244,237,223,.55)",marginBottom:".4rem"}}>Home status</div>
+          {/* Status + ring */}
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:"1rem"}}>
+            <div>
+              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"rgba(244,237,223,.4)",marginBottom:".4rem"}}>Home status</div>
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.5px"}}>{heroStatus}</div>
-              <div style={{fontSize:".85rem",color:"rgba(244,237,223,.7)",marginTop:".4rem",lineHeight:1.4,maxWidth:360}}>{heroSub}</div>
+              <div style={{fontSize:".82rem",color:"rgba(244,237,223,.5)",marginTop:".35rem",lineHeight:1.4,maxWidth:220}}>{heroSub}</div>
             </div>
-            <div onClick={()=>onNavigate("profile")} title="See Home Health breakdown" style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}>
-              {scoreOn ? (
-                <>
-                  <div style={{position:"relative",width:104,height:104,margin:"0 auto"}}>
-                    <svg width="104" height="104" viewBox="0 0 104 104" style={{transform:"rotate(-90deg)"}}>
-                      <circle cx="52" cy="52" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="8"/>
-                      <circle cx="52" cy="52" r={R} fill="none" stroke={scoreRing} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(homeHealthScore/100)*C} ${C}`}/>
-                    </svg>
-                    <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#F4EDDF",lineHeight:1,letterSpacing:"-.5px"}}>{homeHealthScore}</span>
-                    </div>
-                  </div>
-                  <div style={{fontSize:".74rem",fontWeight:700,color:scoreRing,marginTop:".5rem",letterSpacing:".04em",textTransform:"uppercase"}}>Home Health · {homeHealthGrade}</div>
-                  <div style={{fontSize:".68rem",color:"rgba(244,237,223,.55)",marginTop:2}}>out of 100</div>
-                </>
-              ) : (
-                <>
-                  <div style={{width:88,height:88,borderRadius:"50%",border:"7px solid rgba(255,255,255,.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",boxSizing:"border-box"}}>
-                    {heroLevel === "ok"
-                      ? <span style={{fontSize:"1.6rem",color:"#7DCBA1"}}>✓</span>
-                      : <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:600,color:"#F4EDDF"}}>{urgentCount + warnCount}</span>}
-                  </div>
-                  <div style={{fontSize:".72rem",fontWeight:700,color:"rgba(244,237,223,.7)",marginTop:".4rem"}}>Home Health score →</div>
-                </>
-              )}
+            <div style={{flexShrink:0,position:"relative",width:64,height:64}}>
+              <svg width="64" height="64" viewBox="0 0 64 64" style={{transform:"rotate(-90deg)"}}>
+                <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="6"/>
+                <circle cx="32" cy="32" r="26" fill="none" stroke={ringColor} strokeWidth="6"
+                  strokeDasharray={`${ringDash} 163`} strokeLinecap="round"/>
+              </svg>
+              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                {heroLevel === "ok"
+                  ? <span style={{fontSize:"1.1rem",color:"#7DCBA1",lineHeight:1}}>✓</span>
+                  : <><span style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:700,color:"#F4EDDF",lineHeight:1}}>{urgentCount + warnCount}</span>
+                     <span style={{fontSize:".5rem",textTransform:"uppercase",letterSpacing:".08em",color:"rgba(244,237,223,.4)",fontWeight:700,marginTop:2}}>items</span></>
+                }
+              </div>
             </div>
           </div>
-
-          {/* Live counts */}
-          <div className="dash-stats">
-            {stats.map(st => (
-              <button key={st.label} onClick={()=>onNavigate(st.go)} className="dash-stat">
-                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,lineHeight:1,color:st.hot?"#F0A57F":"#F4EDDF"}}>{st.value}</span>
-                <span style={{fontSize:".72rem",color:"rgba(244,237,223,.7)",fontWeight:600,marginTop:".3rem",textAlign:"left"}}>{st.label}{st.sub?<span style={{display:"block",fontWeight:500,color:"rgba(244,237,223,.5)"}}>{st.sub}</span>:null}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Score factors */}
-          {scoreOn && (
-            <div className="dash-factors">
-              {homeHealthFactors.map(f => (
-                <div key={f.label}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",fontWeight:600,color:"rgba(244,237,223,.75)",marginBottom:4}}>
-                    <span>{f.label} <span style={{opacity:.55,fontWeight:500}}>· {({Assets:"35%",Tasks:"30%",Warranties:"20%",Profile:"15%"})[f.label]}</span></span><span>{f.val}</span>
-                  </div>
-                  <div style={{height:5,borderRadius:3,background:"rgba(255,255,255,.14)",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${f.val}%`,borderRadius:3,background:f.val>=75?"#7DCBA1":f.val>=60?"#F0CE7A":"#F0A57F"}}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {scoreOn && (
-            <div style={{position:"relative",marginTop:".85rem"}}>
-              <button onClick={()=>setShowScoreInfo(v=>!v)} style={{background:"none",border:"none",color:"rgba(244,237,223,.75)",fontSize:".76rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>
-                {showScoreInfo ? "Hide how it's scored ▴" : "How is this scored? ▾"}
-              </button>
-              <button onClick={()=>onNavigate("profile")} style={{float:"right",background:"none",border:"none",color:"rgba(244,237,223,.75)",fontSize:".76rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>Full breakdown →</button>
-              {showScoreInfo && (
-                <div style={{marginTop:".7rem",background:"rgba(0,0,0,.18)",borderRadius:12,padding:".85rem 1rem",fontSize:".78rem",lineHeight:1.55,color:"rgba(244,237,223,.85)"}}>
-                  <div style={{marginBottom:".4rem"}}>Your score is a weighted average of four parts (each 0–100):</div>
-                  <div><b>Assets · 35%</b> — average condition of your tracked appliances and systems. Healthy = 100, age unknown = 85, heads up = 70, service due = 40, needs attention = 10.</div>
-                  <div><b>Tasks · 30%</b> — starts at 100 and drops for overdue tasks (heavily) and for tasks still open (lightly).</div>
-                  <div><b>Warranties · 20%</b> — drops as more of your tracked warranties are expired or ending within 30 days.</div>
-                  <div><b>Profile · 15%</b> — how complete your home details are (address, type, year, size, beds, baths, insurance, renewal date).</div>
-                  <div style={{marginTop:".4rem",opacity:.8}}>90+ Excellent · 75+ Good · 60+ Fair · below 60 At risk. Parts with no data yet get a neutral starting value.</div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
-        );
-      })()}
+      )}
+
+      {/* ── HOME HEALTH — a pointer to the one canonical score (My Home's
+           HealthScoreWidget), never a second number computed here, so this
+           can't drift out of sync with what "My Home" shows. ── */}
+      {!isNewUser && (
+        <div onClick={()=>onNavigate("profile")}
+          style={{display:"flex",alignItems:"center",gap:".65rem",padding:".7rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",cursor:"pointer"}}>
+          <span style={{fontSize:".95rem"}}>🏠</span>
+          <span style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",flex:1}}>
+            Home Health{planData.healthScore ? <> — <span style={{color:homeHealthColor,fontWeight:700}}>{homeHealthScore} · {homeHealthGrade}</span></> : null}
+          </span>
+          <span style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,whiteSpace:"nowrap"}}>See breakdown →</span>
+        </div>
+      )}
 
       {/* ── QUICK ACTIONS — front and center ── */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".65rem",padding:".85rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)"}}>
@@ -8812,10 +8626,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         ))}
       </div>
 
-      </div>{/* /dash-top */}
-
-      <div className="dash-cols">
-      <div className="dash-left">
       {/* ── WHAT'S POSSIBLE — 30-day feature discovery ── */}
       {showWhatsNew && !wpDismissed && (
         <div style={{margin:".75rem 1.25rem 0",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-md)",padding:".65rem .85rem"}}>
@@ -8906,8 +8716,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         )}
       </div>
 
-      </div>{/* /dash-left */}
-      <div className="dash-right">
       {/* ── WEEK STRIP ── */}
       <div style={{background:"var(--white)",margin:".75rem 0",padding:"1rem 1.25rem"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".85rem"}}>
@@ -8942,39 +8750,6 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         </div>
       )}
 
-      </div>{/* /dash-right */}
-      </div>{/* /dash-cols */}
-
-      {/* ── SYSTEMS AT A GLANCE — desktop only (mobile keeps the Assets tab) ── */}
-      {!isNewUser && dashSystems.length > 0 && (
-        <div className="dash-systems">
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".75rem"}}>
-            <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:500}}>Your systems</span>
-            <button onClick={()=>onNavigate("warranties")} style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View all assets →</button>
-          </div>
-          <div className="dash-systems-grid">
-            {dashSystems.map(({a,h}) => (
-              <div key={a.id} onClick={()=>onNavigate("warranties")}
-                style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",cursor:"pointer",textAlign:"left"}}>
-                <div style={{marginBottom:".65rem"}}>
-                  <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",lineHeight:1.25}}>{a.item}</div>
-                  <div style={{fontSize:".78rem",color:"#8A8178",marginTop:".15rem"}}>{[a.brand, a.category].filter(Boolean).join(" · ") || "Asset"}</div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",marginBottom:".55rem"}}>
-                  <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:h.bg,color:h.color,whiteSpace:"nowrap"}}>{h.label}</span>
-                  {h.lifePct != null && <span style={{fontSize:".72rem",color:"#8A8178"}}>{Math.min(100,h.lifePct)}% of lifespan</span>}
-                </div>
-                {h.lifePct != null && (
-                  <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${Math.min(100,h.lifePct)}%`,background:h.color,borderRadius:4}}/>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Day detail modal */}
       {selectedDay && (
         <DayDetail
@@ -8993,9 +8768,9 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
   const climate = getClimateProfile(zone);
   const month = new Date().getMonth();
   const season = month>=2&&month<=4?"spring":month>=5&&month<=7?"summer":month>=8&&month<=10?"fall":"winter";
-  const seasonLabel = MONTH_NAMES[month];
-  const seasonIcon = climate.icon || {spring:"🌸",summer:"☀️",fall:"🍂",winter:"❄️"}[season];
-  const seasonalSuggestions = getMonthTasks(climate, month);
+  const seasonLabel = season.charAt(0).toUpperCase()+season.slice(1);
+  const seasonIcon = {spring:"🌸",summer:"☀️",fall:"🍂",winter:"❄️"}[season];
+  const seasonalSuggestions = climate[season] || [];
 
   const [statusF, setStatusF] = useState("Active"); // default to Active — what needs doing
   const [catF, setCatF] = useState("All");
@@ -9006,17 +8781,6 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
   const [confirm, setConfirm] = useState(null);
   const [showSeasonal, setShowSeasonal] = useState(false); // collapsed by default
   const [showCatFilter, setShowCatFilter] = useState(false);
-  const [dueF, setDueF] = useState("all");      // all | overdue | week | later
-  const [q, setQ] = useState("");
-  const [menuId, setMenuId] = useState(null);   // row whose ⋯ menu is open
-
-  // Close a row's ⋯ menu on any outside click
-  useEffect(() => {
-    if (menuId == null) return;
-    const h = () => setMenuId(null);
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [menuId]);
 
   const openNew = (cat) => {
     setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||""});
@@ -9125,29 +8889,12 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 
   const overdueCount = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
 
-  // Which time bucket a task falls in — drives the summary tiles, the
-  // due-date filter and the grouped list headings.
-  const bucketOf = (t) => {
-    if (t.status === "Completed") return "done";
-    const d = daysTo(t.due_date);
-    if (t.status === "Overdue" || (d !== null && d < 0)) return "overdue";
-    if (d === null) return "none";
-    return d <= 7 ? "week" : "later";
-  };
-  const bucketCounts = tasks.reduce((acc, t) => { const b = bucketOf(t); acc[b] = (acc[b]||0) + 1; return acc; }, {});
-  const needle = q.trim().toLowerCase();
-
   let filtered = tasks.filter(t => {
     const statusMatch = statusF === "All" ? true
       : statusF === "Active" ? t.status !== "Completed"
       : t.status === "Completed";
     const catMatch = catF === "All" || t.category === catF;
-    const b = bucketOf(t);
-    const dueMatch = statusF === "Done" || dueF === "all" ? true
-      : dueF === "later" ? (b === "later" || b === "none")
-      : b === dueF;
-    const textMatch = !needle || [t.title, t.category, t.vendor, t.notes].some(v => (v||"").toLowerCase().includes(needle));
-    return statusMatch && catMatch && dueMatch && textMatch;
+    return statusMatch && catMatch;
   });
   filtered = [...filtered].sort((a,b) => {
     if(sort==="due_date") return new Date(a.due_date||"9999")-new Date(b.due_date||"9999");
@@ -9157,82 +8904,85 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     return 0;
   });
 
-  // One task row: check + title/meta on the left, status + date on the right,
-  // secondary actions tucked into a ⋯ menu.
-  const TaskRow = ({ t }) => {
+  const TaskCard = ({ t }) => {
+    const sc = STATUS_STYLE[t.status]||STATUS_STYLE.Scheduled;
     const d = daysTo(t.due_date);
-    const isDone = t.status === "Completed";
-    const b = bucketOf(t);
-    const isOverdue = b === "overdue";
-    const isToday = d === 0 && !isDone;
-    const dateLabel = !t.due_date ? "No due date"
-      : isDone ? fmtD(t.due_date)
-      : isOverdue ? `${Math.abs(d)}d overdue`
-      : d === 0 ? "Today" : d === 1 ? "Tomorrow" : fmtD(t.due_date);
-    const dateColor = isDone ? "#A8A09A" : isOverdue ? "var(--red)" : isToday ? "var(--rust)" : "#7A7370";
-    const linked = t.asset_id ? assets.find(a => a.id === t.asset_id) : null;
-    const showStatus = t.status === "In Progress";
-    const menuOpen = menuId === t.id;
+    const isDone = t.status==="Completed";
+    const isOverdue = t.status==="Overdue" || (d!==null && d<0 && !isDone);
+    const isToday = d===0 && !isDone;
     return (
-      <div className={`trow ${isOverdue?"is-overdue":""} ${isToday?"is-today":""} ${isDone?"is-done":""}`}>
-        <div className={`task-card-check ${isDone?"done":""}`} onClick={()=>toggleStatus(t, isDone?"Scheduled":"Completed")} title={isDone?"Mark as scheduled":"Mark as complete"}>
-          {isDone && "✓"}
-        </div>
-        <div className="trow-body" onClick={()=>openEdit(t)}>
-          <div className={`task-card-title ${isDone?"done":""}`} style={{marginBottom:".3rem"}}>{t.title}</div>
-          <div className="task-card-meta">
-            {t.category && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.category}</span>}
-            {linked && <span className="task-meta-pill" style={{background:"var(--rust-light)",color:"var(--rust)"}}>{linked.item}</span>}
-            {t.priority && t.priority!=="Medium" && (
-              <span className="task-meta-pill" style={{background:t.priority==="Urgent"?"var(--red-light)":t.priority==="High"?"#FBF0E8":"var(--sage-light)",color:t.priority==="Urgent"?"var(--red)":t.priority==="High"?"var(--rust)":"var(--sage)"}}>{t.priority}</span>
-            )}
-            {t.recurring && <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>↻ {t.recurring}</span>}
-            {t.vendor && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>}
-            {t.cost>0 && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>}
+      <div className={`task-card ${isOverdue?"is-overdue":""} ${isToday?"is-today":""} ${isDone?"is-done":""}`}>
+        <div className="task-card-top">
+          <div
+            className={`task-card-check ${isDone?"done":""}`}
+            onClick={() => toggleStatus(t, isDone?"Scheduled":"Completed")}
+            title={isDone?"Mark as scheduled":"Mark as complete"}
+          >
+            {isDone && "✓"}
           </div>
-          {t.notes && !t.notes.startsWith("[") && <div className="task-card-note">{t.notes}</div>}
-        </div>
-        <div className="trow-right">
-          <span style={{fontSize:".8rem",fontWeight:700,color:dateColor,whiteSpace:"nowrap"}}>{dateLabel}</span>
-          {showStatus && <span className="task-meta-pill" style={{background:STATUS_STYLE["In Progress"].bg,color:STATUS_STYLE["In Progress"].text}}>In progress</span>}
-        </div>
-        <div className="trow-menu" onMouseDown={e=>e.stopPropagation()}>
-          <button className="trow-menu-btn" aria-label="Task actions" onClick={()=>setMenuId(menuOpen?null:t.id)}>⋯</button>
-          {menuOpen && (
-            <div className="trow-menu-pop">
-              <button onClick={()=>{setMenuId(null);openEdit(t);}}>Edit</button>
-              {STATUS_OPTIONS.filter(s=>s!==t.status && s!=="Overdue").map(s => (
-                <button key={s} onClick={()=>{setMenuId(null);toggleStatus(t,s);}}>{s==="Completed"?"Mark complete":s==="In Progress"?"Mark in progress":"Mark scheduled"}</button>
-              ))}
-              <button style={{color:"var(--red)"}} onClick={()=>{setMenuId(null);setConfirm(t.id);}}>Delete</button>
+          <div
+            className="task-card-body"
+            onClick={() => openEdit(t)}
+            style={{cursor:"pointer", flex:1, minWidth:0}}
+          >
+            <div className={`task-card-title ${isDone?"done":""}`}>{t.title}</div>
+            <div className="task-card-meta">
+              {t.due_date && (
+                <span className="task-meta-pill" style={{background:isOverdue?"var(--red-light)":isToday?"var(--rust-light)":"var(--cream2)",color:isOverdue?"var(--red)":isToday?"var(--rust)":"#7A7370"}}>
+                  {d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}
+                </span>
+              )}
+              {t.priority && t.priority!=="Medium" && (
+                <span className="task-meta-pill" style={{background:t.priority==="Urgent"?"var(--red-light)":t.priority==="High"?"#FBF0E8":"var(--sage-light)",color:t.priority==="Urgent"?"var(--red)":t.priority==="High"?"var(--rust)":"var(--sage)"}}>
+                  {t.priority}
+                </span>
+              )}
+              {t.vendor && (
+                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>
+              )}
+              {t.cost>0 && (
+                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>
+              )}
+              {t.recurring && (
+                <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>↻ {t.recurring}</span>
+              )}
+              {t.asset_id && (() => {
+                const linked = assets.find(a => a.id === t.asset_id);
+                return linked ? (
+                  <span className="task-meta-pill" style={{background:"var(--rust-light)",color:"var(--rust)"}}>
+                    {linked.item}
+                  </span>
+                ) : null;
+              })()}
             </div>
-          )}
+            {t.notes && !t.notes.startsWith("[") && <div className="task-card-note">{t.notes}</div>}
+          </div>
+          <div className="task-card-actions">
+            <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(t)} style={{fontSize:".72rem"}}>Edit</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(t.id)} style={{fontSize:".72rem",color:"var(--red)"}}>Delete</button>
+          </div>
         </div>
+        {!isDone && (
+          <div className="task-card-bottom">
+            {STATUS_OPTIONS.filter(s=>s!==t.status).map(s => {
+              const sc2=STATUS_STYLE[s];
+              return (
+                <button key={s} className="task-status-btn" style={{background:sc2.bg,color:sc2.text,borderColor:sc2.border}} onClick={()=>toggleStatus(t,s)}>
+                  → {s}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
-
-  // Grouped list (by due date) when sorted by due date; flat otherwise.
-  const GROUPS = [
-    { key:"overdue", label:"Overdue",      color:"var(--red)" },
-    { key:"week",    label:"Next 7 days",  color:"var(--rust)" },
-    { key:"later",   label:"Later",        color:"#7A7370" },
-    { key:"none",    label:"No due date",  color:"#7A7370" },
-    { key:"done",    label:"Completed",    color:"#A8A09A" },
-  ];
-  const grouped = sort === "due_date";
 
   return (
     <div>
       {/* Header */}
       <div className="sh">
-        <div>
-          <span className="sh-title">Tasks</span>
-          <div style={{fontSize:".8rem",color:"#8A8178",marginTop:2}}>
-            {(bucketCounts.overdue||0)+(bucketCounts.week||0)+(bucketCounts.later||0)+(bucketCounts.none||0)} open
-            {(bucketCounts.overdue||0)>0 && <> · <span style={{color:"var(--red)",fontWeight:700}}>{bucketCounts.overdue} overdue</span></>}
-          </div>
-        </div>
+        <span className="sh-title">Tasks</span>
         <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
       </div>
 
@@ -9245,39 +8995,13 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
       </div>
       <div className="tasks-main">
 
-      {/* Summary tiles — also quick filters */}
-      <div className="tasks-tiles">
-        {[
-          { key:"overdue", label:"Overdue",     n:bucketCounts.overdue||0,                       color:"var(--red)" },
-          { key:"week",    label:"Next 7 days", n:bucketCounts.week||0,                          color:"var(--rust)" },
-          { key:"later",   label:"Later",       n:(bucketCounts.later||0)+(bucketCounts.none||0), color:"var(--pine)" },
-          { key:"done",    label:"Completed",   n:bucketCounts.done||0,                          color:"#8A8178" },
-        ].map(tile => {
-          const on = tile.key === "done" ? statusF === "Done" : (statusF !== "Done" && dueF === tile.key);
-          return (
-            <button key={tile.key} className={`tasks-tile ${on?"on":""}`}
-              onClick={()=>{
-                if (tile.key === "done") { setStatusF(on ? "Active" : "Done"); setDueF("all"); }
-                else { setStatusF("Active"); setDueF(on ? "all" : tile.key); }
-              }}>
-              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:600,lineHeight:1,color:tile.n>0?tile.color:"#C2B8AE"}}>{tile.n}</span>
-              <span style={{fontSize:".74rem",fontWeight:600,color:"#7A7370",marginTop:".3rem"}}>{tile.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search */}
-      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search tasks…" aria-label="Search tasks"
-        style={{marginTop:".9rem",width:"100%",padding:".55rem .9rem",fontSize:".85rem"}}/>
-
       {/* ── Task List ── */}
       <div style={{margin:"1.1rem 0 .6rem",display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
 
         {/* Status toggle — pill group */}
         <div style={{display:"flex",background:"var(--cream2)",borderRadius:"22px",padding:"3px",gap:0}}>
           {["Active","All","Done"].map(s => (
-            <button key={s} onClick={()=>{setStatusF(s);setDueF("all");}} style={{
+            <button key={s} onClick={()=>setStatusF(s)} style={{
               padding:".3rem .85rem",borderRadius:"19px",border:"none",cursor:"pointer",
               fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:600,
               background:statusF===s?"var(--white)":"transparent",
@@ -9357,31 +9081,20 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
       )}
 
       {/* Task list */}
-      {grouped
-        ? GROUPS.map(g => {
-            const items = filtered.filter(t => bucketOf(t) === g.key);
-            if (items.length === 0) return null;
-            return (
-              <div key={g.key} style={{marginBottom:"1.1rem"}}>
-                <div className="trow-group" style={{color:g.color}}>{g.label} <span style={{opacity:.6}}>· {items.length}</span></div>
-                <div className="trow-list">{items.map(t => <TaskRow key={t.id} t={t} />)}</div>
-              </div>
-            );
-          })
-        : <div className="trow-list">{filtered.map(t => <TaskRow key={t.id} t={t} />)}</div>}
+      {filtered.map(t => <TaskCard key={t.id} t={t} />)}
 
       {/* Seasonal suggestions — collapsed at bottom */}
       {seasonalSuggestions.length > 0 && (
         <div style={{marginTop:"1.25rem"}}>
           <button onClick={()=>setShowSeasonal(v=>!v)} style={{display:"flex",alignItems:"center",gap:".4rem",background:"none",border:"none",cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".75rem",fontWeight:600,color:"#9E9690",padding:".25rem 0",width:"100%"}}>
             <span>{seasonIcon}</span>
-            <span>{seasonLabel} to-dos for your area</span>
+            <span>{seasonLabel} maintenance suggestions</span>
             <span style={{marginLeft:"auto",fontSize:".7rem"}}>{showSeasonal?"▲":"▾"}</span>
           </button>
           {showSeasonal && (
             <div style={{marginTop:".5rem",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
-              {seasonalSuggestions.slice(0,5).map((title,i) => (
-                <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem 1rem",borderBottom:i<Math.min(seasonalSuggestions.length,5)-1?"1px solid var(--stone)":"none",cursor:"pointer",transition:"background .12s"}}
+              {seasonalSuggestions.slice(0,4).map((title,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".65rem 1rem",borderBottom:i<3?"1px solid var(--stone)":"none",cursor:"pointer",transition:"background .12s"}}
                   onClick={()=>addSeasonalTask(title)}
                   onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
                   onMouseLeave={e=>e.currentTarget.style.background=""}>
@@ -15573,8 +15286,7 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
-function generateHomeProfile(answers, climateZone = 5) {
-  const freezeClimate = climateZone >= 3; // zones 1-2 (FL / Gulf / HI) rarely or never hard-freeze
+function generateHomeProfile(answers) {
   const now     = new Date();
   const yr      = now.getFullYear();
   const assets  = [];
@@ -16304,21 +16016,12 @@ function generateHomeProfile(answers, climateZone = 5) {
       category: "Landscaping",
       notes: "Inspect all heads for damage and proper coverage. Adjust timer for season. Check backflow preventer.",
     });
-    if (freezeClimate) {
-      addTask("irrigation", "Irrigation system winterization (blowout)", "annually", {
-        priority: "High",
-        due_date: nextSeason("fall"),
-        category: "Landscaping",
-        notes: "Blow out all lines with compressed air before first hard freeze. Failing to winterize will burst lines.",
-      });
-    } else {
-      addTask("irrigation", "Check irrigation timer against local watering restrictions", "every 6 months", {
-        priority: "Low",
-        due_date: dueIn(30),
-        category: "Landscaping",
-        notes: "Many Florida/Gulf counties limit watering days and hours. Update the timer when restrictions change and shut off after heavy rain. Protect backflow preventer during rare freezes.",
-      });
-    }
+    addTask("irrigation", "Irrigation system winterization (blowout)", "annually", {
+      priority: "High",
+      due_date: nextSeason("fall"),
+      category: "Landscaping",
+      notes: "Blow out all lines with compressed air before first hard freeze. Failing to winterize will burst lines.",
+    });
     addTask("irrigation", "Check irrigation heads and adjust spray patterns", "every 6 months", {
       priority: "Low",
       due_date: dueIn(30),
@@ -16638,17 +16341,16 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const openGenerate = () => {
     const zone = profile?.address ? getClimateZone({address:profile.address}) : 5;
     const cp = getClimateProfile(zone);
+    const SEASON_MO = { spring:2, summer:5, fall:8, winter:11 };
     const items = [];
-    const startMo = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endMo = new Date(today.getFullYear(), today.getMonth() + 12, 1); // next 12 months
     [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
-      for (let mo = 0; mo < 12; mo++) {
-        const monthStart = new Date(yr, mo, 1);
-        if (monthStart < startMo || monthStart >= endMo) continue;
-        getMonthTasks(cp, mo).forEach((title, i) => {
-          items.push({ id:`gen-${yr}-${mo}-${i}`, title, date:localISO(new Date(yr,mo,monthTaskDay(i))), category:guessCategory(title), season:MONTH_NAMES[mo]+" "+yr });
+      Object.entries(SEASON_MO).forEach(([season, mo]) => {
+        const seasonStart = new Date(yr, mo, 1);
+        if (seasonStart < new Date(today.getFullYear(), today.getMonth(), 1)) return;
+        (cp[season]||[]).forEach((title, i) => {
+          items.push({ id:`gen-${yr}-${season}-${i}`, title, date:localISO(new Date(yr,mo,1+i*2)), category:guessCategory(title), season:season.charAt(0).toUpperCase()+season.slice(1)+" "+yr });
         });
-      }
+      });
     });
     const checked = {};
     items.forEach(it => { checked[it.id] = true; });
@@ -23328,7 +23030,7 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
     docScore     * 0.15
   );
 
-  const grade = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 60 ? "Fair" : "At risk";
+  const grade = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 60 ? "Fair" : "Needs attention";
   const color = score >= 90 ? "#2A9D6A" : score >= 75 ? "#234A3D" : score >= 60 ? "#B8861E" : "#C16140";
 
   return {
@@ -23633,7 +23335,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
   // Navigate to review — generate output and auto-expand assets
   const goReview = () => {
-    const result = generateHomeProfile(A, getClimateZone(profile));
+    const result = generateHomeProfile(A);
     setGenerated(result);
     const ac={}, tc={}, pc={};
     result.assets.forEach((_,i)   => ac[i] = true);
