@@ -1,4 +1,4 @@
-// Steadwell v261 — 2026-09-29T18:45:00.000Z
+// Steadwell v262 — 2026-09-29T19:10:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1615,6 +1615,30 @@ img,.lp-root img{max-width:100%;height:auto}
   .dash-systems-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
 }
 @media(min-width:1300px){.dash-systems-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Tasks tab: summary tiles + grouped rows */
+.tasks-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}
+.tasks-tile{display:flex;flex-direction:column;align-items:flex-start;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:.75rem .9rem;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;text-align:left;transition:border-color .15s,box-shadow .15s}
+.tasks-tile:hover{border-color:var(--mid)}
+.tasks-tile.on{border-color:var(--pine);box-shadow:0 0 0 3px rgba(35,74,61,.1)}
+.trow-group{font-size:.72rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin:0 0 .5rem .15rem}
+.trow-list{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow)}
+.trow{display:flex;align-items:flex-start;gap:.8rem;padding:.85rem 1rem;border-bottom:1px solid var(--cream2);position:relative;text-align:left}
+.trow:first-child{border-radius:var(--r) var(--r) 0 0}
+.trow:last-child{border-bottom:none;border-radius:0 0 var(--r) var(--r)}
+.trow:hover{background:var(--cream)}
+.trow.is-overdue{box-shadow:inset 3px 0 0 var(--red)}
+.trow.is-today{box-shadow:inset 3px 0 0 var(--rust)}
+.trow.is-done{opacity:.6}
+.trow-body{flex:1;min-width:0;cursor:pointer}
+.trow-right{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0;padding-top:1px;text-align:right}
+.trow-menu{position:relative;flex-shrink:0}
+.trow-menu-btn{width:30px;height:30px;border-radius:8px;border:none;background:none;cursor:pointer;font-size:1.15rem;line-height:1;color:#8A8178;font-family:inherit}
+.trow-menu-btn:hover{background:var(--cream2)}
+.trow-menu-pop{position:absolute;right:0;top:100%;z-index:60;min-width:160px;background:var(--white);border:1px solid var(--stone);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:.3rem}
+.trow-menu-pop button{display:block;width:100%;text-align:left;padding:.5rem .75rem;border:none;background:none;border-radius:6px;font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;font-weight:600;color:var(--dark);cursor:pointer}
+.trow-menu-pop button:hover{background:var(--cream)}
+@media(max-width:600px){.tasks-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Dashboard hero: live counts + score factors */
 .dash-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem;margin-top:1.25rem;position:relative}
@@ -8913,6 +8937,17 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
   const [confirm, setConfirm] = useState(null);
   const [showSeasonal, setShowSeasonal] = useState(false); // collapsed by default
   const [showCatFilter, setShowCatFilter] = useState(false);
+  const [dueF, setDueF] = useState("all");      // all | overdue | week | later
+  const [q, setQ] = useState("");
+  const [menuId, setMenuId] = useState(null);   // row whose ⋯ menu is open
+
+  // Close a row's ⋯ menu on any outside click
+  useEffect(() => {
+    if (menuId == null) return;
+    const h = () => setMenuId(null);
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [menuId]);
 
   const openNew = (cat) => {
     setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||""});
@@ -9021,12 +9056,29 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 
   const overdueCount = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
 
+  // Which time bucket a task falls in — drives the summary tiles, the
+  // due-date filter and the grouped list headings.
+  const bucketOf = (t) => {
+    if (t.status === "Completed") return "done";
+    const d = daysTo(t.due_date);
+    if (t.status === "Overdue" || (d !== null && d < 0)) return "overdue";
+    if (d === null) return "none";
+    return d <= 7 ? "week" : "later";
+  };
+  const bucketCounts = tasks.reduce((acc, t) => { const b = bucketOf(t); acc[b] = (acc[b]||0) + 1; return acc; }, {});
+  const needle = q.trim().toLowerCase();
+
   let filtered = tasks.filter(t => {
     const statusMatch = statusF === "All" ? true
       : statusF === "Active" ? t.status !== "Completed"
       : t.status === "Completed";
     const catMatch = catF === "All" || t.category === catF;
-    return statusMatch && catMatch;
+    const b = bucketOf(t);
+    const dueMatch = statusF === "Done" || dueF === "all" ? true
+      : dueF === "later" ? (b === "later" || b === "none")
+      : b === dueF;
+    const textMatch = !needle || [t.title, t.category, t.vendor, t.notes].some(v => (v||"").toLowerCase().includes(needle));
+    return statusMatch && catMatch && dueMatch && textMatch;
   });
   filtered = [...filtered].sort((a,b) => {
     if(sort==="due_date") return new Date(a.due_date||"9999")-new Date(b.due_date||"9999");
@@ -9036,85 +9088,82 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     return 0;
   });
 
-  const TaskCard = ({ t }) => {
-    const sc = STATUS_STYLE[t.status]||STATUS_STYLE.Scheduled;
+  // One task row: check + title/meta on the left, status + date on the right,
+  // secondary actions tucked into a ⋯ menu.
+  const TaskRow = ({ t }) => {
     const d = daysTo(t.due_date);
-    const isDone = t.status==="Completed";
-    const isOverdue = t.status==="Overdue" || (d!==null && d<0 && !isDone);
-    const isToday = d===0 && !isDone;
+    const isDone = t.status === "Completed";
+    const b = bucketOf(t);
+    const isOverdue = b === "overdue";
+    const isToday = d === 0 && !isDone;
+    const dateLabel = !t.due_date ? "No due date"
+      : isDone ? fmtD(t.due_date)
+      : isOverdue ? `${Math.abs(d)}d overdue`
+      : d === 0 ? "Today" : d === 1 ? "Tomorrow" : fmtD(t.due_date);
+    const dateColor = isDone ? "#A8A09A" : isOverdue ? "var(--red)" : isToday ? "var(--rust)" : "#7A7370";
+    const linked = t.asset_id ? assets.find(a => a.id === t.asset_id) : null;
+    const showStatus = t.status === "In Progress";
+    const menuOpen = menuId === t.id;
     return (
-      <div className={`task-card ${isOverdue?"is-overdue":""} ${isToday?"is-today":""} ${isDone?"is-done":""}`}>
-        <div className="task-card-top">
-          <div
-            className={`task-card-check ${isDone?"done":""}`}
-            onClick={() => toggleStatus(t, isDone?"Scheduled":"Completed")}
-            title={isDone?"Mark as scheduled":"Mark as complete"}
-          >
-            {isDone && "✓"}
-          </div>
-          <div
-            className="task-card-body"
-            onClick={() => openEdit(t)}
-            style={{cursor:"pointer", flex:1, minWidth:0}}
-          >
-            <div className={`task-card-title ${isDone?"done":""}`}>{t.title}</div>
-            <div className="task-card-meta">
-              {t.due_date && (
-                <span className="task-meta-pill" style={{background:isOverdue?"var(--red-light)":isToday?"var(--rust-light)":"var(--cream2)",color:isOverdue?"var(--red)":isToday?"var(--rust)":"#7A7370"}}>
-                  {d===0?"Today":d===1?"Tomorrow":isOverdue?`${Math.abs(d)}d overdue`:fmtD(t.due_date)}
-                </span>
-              )}
-              {t.priority && t.priority!=="Medium" && (
-                <span className="task-meta-pill" style={{background:t.priority==="Urgent"?"var(--red-light)":t.priority==="High"?"#FBF0E8":"var(--sage-light)",color:t.priority==="Urgent"?"var(--red)":t.priority==="High"?"var(--rust)":"var(--sage)"}}>
-                  {t.priority}
-                </span>
-              )}
-              {t.vendor && (
-                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>
-              )}
-              {t.cost>0 && (
-                <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>
-              )}
-              {t.recurring && (
-                <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>↻ {t.recurring}</span>
-              )}
-              {t.asset_id && (() => {
-                const linked = assets.find(a => a.id === t.asset_id);
-                return linked ? (
-                  <span className="task-meta-pill" style={{background:"var(--rust-light)",color:"var(--rust)"}}>
-                    {linked.item}
-                  </span>
-                ) : null;
-              })()}
-            </div>
-            {t.notes && !t.notes.startsWith("[") && <div className="task-card-note">{t.notes}</div>}
-          </div>
-          <div className="task-card-actions">
-            <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(t)} style={{fontSize:".72rem"}}>Edit</button>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(t.id)} style={{fontSize:".72rem",color:"var(--red)"}}>Delete</button>
-          </div>
+      <div className={`trow ${isOverdue?"is-overdue":""} ${isToday?"is-today":""} ${isDone?"is-done":""}`}>
+        <div className={`task-card-check ${isDone?"done":""}`} onClick={()=>toggleStatus(t, isDone?"Scheduled":"Completed")} title={isDone?"Mark as scheduled":"Mark as complete"}>
+          {isDone && "✓"}
         </div>
-        {!isDone && (
-          <div className="task-card-bottom">
-            {STATUS_OPTIONS.filter(s=>s!==t.status).map(s => {
-              const sc2=STATUS_STYLE[s];
-              return (
-                <button key={s} className="task-status-btn" style={{background:sc2.bg,color:sc2.text,borderColor:sc2.border}} onClick={()=>toggleStatus(t,s)}>
-                  → {s}
-                </button>
-              );
-            })}
+        <div className="trow-body" onClick={()=>openEdit(t)}>
+          <div className={`task-card-title ${isDone?"done":""}`} style={{marginBottom:".3rem"}}>{t.title}</div>
+          <div className="task-card-meta">
+            {t.category && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.category}</span>}
+            {linked && <span className="task-meta-pill" style={{background:"var(--rust-light)",color:"var(--rust)"}}>{linked.item}</span>}
+            {t.priority && t.priority!=="Medium" && (
+              <span className="task-meta-pill" style={{background:t.priority==="Urgent"?"var(--red-light)":t.priority==="High"?"#FBF0E8":"var(--sage-light)",color:t.priority==="Urgent"?"var(--red)":t.priority==="High"?"var(--rust)":"var(--sage)"}}>{t.priority}</span>
+            )}
+            {t.recurring && <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>↻ {t.recurring}</span>}
+            {t.vendor && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>}
+            {t.cost>0 && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>}
           </div>
-        )}
+          {t.notes && !t.notes.startsWith("[") && <div className="task-card-note">{t.notes}</div>}
+        </div>
+        <div className="trow-right">
+          <span style={{fontSize:".8rem",fontWeight:700,color:dateColor,whiteSpace:"nowrap"}}>{dateLabel}</span>
+          {showStatus && <span className="task-meta-pill" style={{background:STATUS_STYLE["In Progress"].bg,color:STATUS_STYLE["In Progress"].text}}>In progress</span>}
+        </div>
+        <div className="trow-menu" onMouseDown={e=>e.stopPropagation()}>
+          <button className="trow-menu-btn" aria-label="Task actions" onClick={()=>setMenuId(menuOpen?null:t.id)}>⋯</button>
+          {menuOpen && (
+            <div className="trow-menu-pop">
+              <button onClick={()=>{setMenuId(null);openEdit(t);}}>Edit</button>
+              {STATUS_OPTIONS.filter(s=>s!==t.status && s!=="Overdue").map(s => (
+                <button key={s} onClick={()=>{setMenuId(null);toggleStatus(t,s);}}>{s==="Completed"?"Mark complete":s==="In Progress"?"Mark in progress":"Mark scheduled"}</button>
+              ))}
+              <button style={{color:"var(--red)"}} onClick={()=>{setMenuId(null);setConfirm(t.id);}}>Delete</button>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
+
+  // Grouped list (by due date) when sorted by due date; flat otherwise.
+  const GROUPS = [
+    { key:"overdue", label:"Overdue",      color:"var(--red)" },
+    { key:"week",    label:"Next 7 days",  color:"var(--rust)" },
+    { key:"later",   label:"Later",        color:"#7A7370" },
+    { key:"none",    label:"No due date",  color:"#7A7370" },
+    { key:"done",    label:"Completed",    color:"#A8A09A" },
+  ];
+  const grouped = sort === "due_date";
 
   return (
     <div>
       {/* Header */}
       <div className="sh">
-        <span className="sh-title">Tasks</span>
+        <div>
+          <span className="sh-title">Tasks</span>
+          <div style={{fontSize:".8rem",color:"#8A8178",marginTop:2}}>
+            {(bucketCounts.overdue||0)+(bucketCounts.week||0)+(bucketCounts.later||0)+(bucketCounts.none||0)} open
+            {(bucketCounts.overdue||0)>0 && <> · <span style={{color:"var(--red)",fontWeight:700}}>{bucketCounts.overdue} overdue</span></>}
+          </div>
+        </div>
         <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
       </div>
 
@@ -9127,13 +9176,39 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
       </div>
       <div className="tasks-main">
 
+      {/* Summary tiles — also quick filters */}
+      <div className="tasks-tiles">
+        {[
+          { key:"overdue", label:"Overdue",     n:bucketCounts.overdue||0,                       color:"var(--red)" },
+          { key:"week",    label:"Next 7 days", n:bucketCounts.week||0,                          color:"var(--rust)" },
+          { key:"later",   label:"Later",       n:(bucketCounts.later||0)+(bucketCounts.none||0), color:"var(--pine)" },
+          { key:"done",    label:"Completed",   n:bucketCounts.done||0,                          color:"#8A8178" },
+        ].map(tile => {
+          const on = tile.key === "done" ? statusF === "Done" : (statusF !== "Done" && dueF === tile.key);
+          return (
+            <button key={tile.key} className={`tasks-tile ${on?"on":""}`}
+              onClick={()=>{
+                if (tile.key === "done") { setStatusF(on ? "Active" : "Done"); setDueF("all"); }
+                else { setStatusF("Active"); setDueF(on ? "all" : tile.key); }
+              }}>
+              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:600,lineHeight:1,color:tile.n>0?tile.color:"#C2B8AE"}}>{tile.n}</span>
+              <span style={{fontSize:".74rem",fontWeight:600,color:"#7A7370",marginTop:".3rem"}}>{tile.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search tasks…" aria-label="Search tasks"
+        style={{marginTop:".9rem",width:"100%",padding:".55rem .9rem",fontSize:".85rem"}}/>
+
       {/* ── Task List ── */}
       <div style={{margin:"1.1rem 0 .6rem",display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
 
         {/* Status toggle — pill group */}
         <div style={{display:"flex",background:"var(--cream2)",borderRadius:"22px",padding:"3px",gap:0}}>
           {["Active","All","Done"].map(s => (
-            <button key={s} onClick={()=>setStatusF(s)} style={{
+            <button key={s} onClick={()=>{setStatusF(s);setDueF("all");}} style={{
               padding:".3rem .85rem",borderRadius:"19px",border:"none",cursor:"pointer",
               fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".78rem",fontWeight:600,
               background:statusF===s?"var(--white)":"transparent",
@@ -9213,7 +9288,18 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
       )}
 
       {/* Task list */}
-      {filtered.map(t => <TaskCard key={t.id} t={t} />)}
+      {grouped
+        ? GROUPS.map(g => {
+            const items = filtered.filter(t => bucketOf(t) === g.key);
+            if (items.length === 0) return null;
+            return (
+              <div key={g.key} style={{marginBottom:"1.1rem"}}>
+                <div className="trow-group" style={{color:g.color}}>{g.label} <span style={{opacity:.6}}>· {items.length}</span></div>
+                <div className="trow-list">{items.map(t => <TaskRow key={t.id} t={t} />)}</div>
+              </div>
+            );
+          })
+        : <div className="trow-list">{filtered.map(t => <TaskRow key={t.id} t={t} />)}</div>}
 
       {/* Seasonal suggestions — collapsed at bottom */}
       {seasonalSuggestions.length > 0 && (
