@@ -1,4 +1,4 @@
-// Steadwell v259 — 2026-09-29T18:50:00.000Z
+// Steadwell v260 — 2026-09-29T18:40:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1608,7 +1608,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .dash-systems{display:none}
 @media(min-width:1024px){
   .dash-top{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
-  .dash-cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:1.25rem;align-items:start}
+  .dash-cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:1.25rem;align-items:stretch}
   .dash-left,.dash-right{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden}
   .dash-right > div:first-child{margin:0 !important}
   .dash-systems{display:block;margin-top:1.5rem}
