@@ -1,4 +1,4 @@
-// Steadwell v291 — 2026-09-30
+// Steadwell v292 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3561,6 +3561,77 @@ img,.lp-root img{max-width:100%;height:auto}
 .ig-banner-quiet{background:rgba(244,237,223,.1);color:rgba(244,237,223,.7);border:none;border-radius:10px;padding:.5rem .9rem;font-family:inherit;font-size:.82rem;cursor:pointer}
 .ig-banner-x{background:none;border:none;color:rgba(244,237,223,.45);cursor:pointer;font-size:1.05rem;padding:0;line-height:1;flex-shrink:0}
 @media(max-width:639px){.ig-modal{max-height:94vh}.ig-title{font-size:1.55rem}}
+
+/* ── Ask Steadwell ── */
+.ask-panel{position:fixed;z-index:430;top:0;right:0;bottom:0;width:min(440px,100vw);background:var(--white);box-shadow:-14px 0 48px rgba(38,33,28,.2);border-left:1px solid var(--stone);display:flex;flex-direction:column;animation:askIn .22s ease-out;font-family:'Hanken Grotesk',sans-serif}
+@keyframes askIn{from{transform:translateX(28px);opacity:0}to{transform:none;opacity:1}}
+.ask-hdr{display:flex;align-items:center;gap:.65rem;padding:.8rem .9rem;background:var(--pine);color:#F4EDDF;flex-shrink:0}
+.ask-spark{font-size:1.25rem;line-height:1}
+.ask-title{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:500;line-height:1.15}
+.ask-pill{font-size:.7rem;color:rgba(244,237,223,.72);font-weight:600;margin-top:1px}
+.ask-icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid rgba(244,237,223,.22);background:rgba(244,237,223,.08);color:#F4EDDF;font-size:1rem;cursor:pointer;font-family:inherit;flex-shrink:0}
+.ask-icon-btn:hover{background:rgba(244,237,223,.16)}
+.ask-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1rem .9rem;background:var(--cream);display:flex;flex-direction:column;gap:.85rem}
+.ask-empty{padding:.4rem .15rem}
+.ask-empty-title{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:var(--dark);line-height:1.2;margin-bottom:.4rem}
+.ask-empty-sub{font-size:.85rem;color:#6B645C;line-height:1.55;margin-bottom:1rem}
+.ask-chips{display:flex;flex-direction:column;gap:.45rem;align-items:flex-start}
+.ask-chip{text-align:left;background:var(--white);border:1.5px solid var(--stone);border-radius:14px;padding:.6rem .85rem;font-family:inherit;font-size:.84rem;color:var(--dark);cursor:pointer;line-height:1.35;max-width:100%}
+.ask-chip:hover:not(:disabled){border-color:var(--pine);background:#fff}
+.ask-chip:disabled{opacity:.5;cursor:default}
+.ask-notice{margin-top:1.1rem;background:var(--white);border:1px solid var(--stone);border-radius:14px;padding:.8rem .9rem;font-size:.76rem;color:#6B645C;line-height:1.5}
+.ask-mini-btn{background:var(--pine);color:#fff;border:1.5px solid var(--pine);border-radius:9px;padding:.4rem .8rem;font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer}
+.ask-mini-btn.ghost{background:transparent;color:var(--pine)}
+.ask-mini-btn:disabled{opacity:.55;cursor:default}
+.ask-row{display:flex;flex-direction:column;gap:.4rem;min-width:0}
+.ask-row.user{align-items:flex-end}.ask-row.bot{align-items:flex-start}
+.ask-msg{max-width:94%;font-size:.88rem;line-height:1.55;border-radius:16px;padding:.65rem .85rem;overflow-wrap:anywhere;white-space:pre-wrap}
+.ask-msg.user{background:var(--pine);color:#fff;border-bottom-right-radius:5px}
+.ask-msg.bot{background:var(--white);border:1px solid var(--stone);border-bottom-left-radius:5px;color:var(--dark);white-space:normal}
+.ask-msg.err{background:var(--rust-light);border-color:#E7C3B4}
+.ask-msg p{margin:0 0 .5rem}.ask-msg p:last-child{margin-bottom:0}
+.ask-msg ul{margin:.1rem 0 .5rem;padding-left:1.1rem}.ask-msg li{margin:.15rem 0}
+.ask-srcs{display:flex;flex-wrap:wrap;gap:.35rem;max-width:94%}
+.ask-src{display:inline-flex;align-items:center;gap:.3rem;background:var(--white);border:1px solid var(--stone);border-radius:999px;padding:.25rem .6rem;font-family:inherit;font-size:.72rem;color:#5E574F;cursor:pointer;max-width:100%}
+.ask-src:hover{border-color:var(--pine);color:var(--pine)}
+.ask-src-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.ask-act{display:flex;align-items:center;gap:.7rem;background:#fff;border:1.5px solid #CFE0D6;border-radius:14px;padding:.65rem .75rem;max-width:94%;width:100%;box-sizing:border-box}
+.ask-act-t{font-size:.86rem;font-weight:700;color:var(--dark);line-height:1.3;overflow-wrap:anywhere}
+.ask-act-s{font-size:.72rem;color:#7A7370;margin-top:2px}
+.ask-act-n{font-size:.74rem;color:#6B645C;margin-top:4px;line-height:1.4;overflow-wrap:anywhere}
+.ask-add{flex-shrink:0;background:var(--pine);color:#fff;border:none;border-radius:10px;padding:.5rem .8rem;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.ask-add.done{background:var(--ok-bg);color:var(--ok)}
+.ask-add:disabled{cursor:default}
+.ask-rate{display:flex;gap:.2rem}
+.ask-rate button{background:none;border:1px solid transparent;border-radius:8px;padding:.15rem .4rem;cursor:pointer;font-size:.85rem;opacity:.55;filter:grayscale(1)}
+.ask-rate button:hover:not(:disabled){opacity:1;filter:none}
+.ask-rate button.on{opacity:1;filter:none;background:var(--ok-bg)}
+.ask-rate button:disabled{cursor:default}
+.ask-typing{display:flex;align-items:center;gap:5px;padding:.75rem .9rem}
+.ask-typing span{width:7px;height:7px;border-radius:50%;background:var(--mid);animation:askDot 1s infinite ease-in-out}
+.ask-typing span:nth-child(2){animation-delay:.15s}.ask-typing span:nth-child(3){animation-delay:.3s}
+.ask-typing em{font-style:normal;font-size:.76rem;color:#8A8178;margin-left:.4rem}
+@keyframes askDot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.ask-compose{display:flex;align-items:flex-end;gap:.5rem;padding:.65rem .8rem;border-top:1px solid var(--stone);background:var(--white);flex-shrink:0}
+.ask-compose textarea{flex:1;min-width:0;resize:none;height:44px;min-height:44px;box-sizing:border-box;border:1.5px solid var(--stone);border-radius:14px;padding:.6rem .8rem;font-family:inherit;font-size:16px;line-height:1.4;color:var(--dark);background:var(--cream);outline:none;max-height:120px}
+.ask-compose textarea:focus{border-color:var(--pine);background:#fff}
+.ask-send{width:42px;height:42px;border-radius:50%;border:none;background:var(--pine);color:#fff;font-size:1.15rem;font-weight:700;cursor:pointer;flex-shrink:0}
+.ask-send:disabled{background:var(--stone);color:#fff;cursor:default}
+.ask-limit{padding:.9rem 1rem;border-top:1px solid var(--stone);background:var(--white);text-align:center;flex-shrink:0}
+.ask-limit-t{font-size:.92rem;font-weight:700;color:var(--dark)}
+.ask-limit-s{font-size:.8rem;color:#7A7370;margin:.25rem 0 .7rem;line-height:1.45}
+.ask-cta{background:var(--pine);color:#fff;border:none;border-radius:12px;padding:.65rem 1.2rem;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+.ask-foot{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.35rem .9rem calc(.45rem + env(safe-area-inset-bottom));background:var(--white);font-size:.68rem;color:#A8A09A;flex-shrink:0}
+.ask-foot-btn{background:none;border:none;color:#8A8178;text-decoration:underline;text-underline-offset:2px;font-family:inherit;font-size:.68rem;cursor:pointer;padding:.2rem 0}
+.ask-privacy{padding:.8rem .9rem calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid var(--stone);background:var(--cream);flex-shrink:0}
+.ask-toggle-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.sr-ask{background:linear-gradient(90deg,rgba(35,74,61,.07),rgba(35,74,61,.02))}
+.sr-ask-tag{font-size:.6rem;font-weight:800;letter-spacing:.06em;padding:1px 6px;border-radius:6px;background:var(--pine);color:#fff;flex-shrink:0}
+@media(max-width:639px){
+  .ask-panel{width:100vw;height:100dvh;border-left:none;animation:askUp .22s ease-out}
+  @keyframes askUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+  .ask-msg,.ask-srcs,.ask-act{max-width:100%}
+}
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
@@ -5710,6 +5781,10 @@ function PrivacySettingsModal({ userId, profile, setProfile, toast, onClose }) {
             </div>
           </div>
 
+          <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1.1rem",marginBottom:"1rem"}}>
+            <AssistantHistoryToggle toast={toast} />
+          </div>
+
           <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.6}}>
             These settings have no effect on any Steadwell feature — free or paid. You can change them anytime. Full details in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{color:"var(--pine)",fontWeight:600}}>Privacy Policy</a>.
           </div>
@@ -5918,6 +5993,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
     ["Properties", plan==="free" ? "1" : String(planData?.maxProperties ?? PLANS[plan]?.maxProperties ?? 1)],
     ["Documents", (() => { const n = planData?.maxDocs ?? PLANS[plan]?.maxDocs; return (n === Infinity || n == null) ? "Unlimited" : String(n); })()],
     ["AI scanning", (planData?.aiScan ?? PLANS[plan]?.aiScan) ? "Included" : "Plus and up"],
+    ["Ask Steadwell", plan==="pro" ? `${PLAN_ASK_LIMITS.pro} / month` : plan==="plus" ? `${PLAN_ASK_LIMITS.plus} / month` : "3 free to try"],
     ["Shared home access", (planData?.sharedAccess ?? PLANS[plan]?.sharedAccess) ? "Included" : "Pro"],
   ];
 
@@ -5983,6 +6059,8 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
       // Feedback save + notification email are now handled server-side in the
       // delete-account edge function itself — more reliable than a client-side
       // insert, and lets the same request send the notification to hello@.
+      // Erase any saved Ask Steadwell question text first (needs the still-valid session).
+      try { await assistantCall({ action: "purge_log" }); } catch { /* never block deletion */ }
       const resp = await fetch(DELETE_ACCOUNT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
@@ -8064,6 +8142,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
       pitch: "Automation and intelligence for the serious homeowner.",
       features: [
         "Full recurring task engine — all intervals",
+        "Ask Steadwell AI assistant — 30 questions a month",
         "Home health score + factor breakdown",
         "5-year cost forecasting",
         "AI receipt, nameplate & policy scanning",
@@ -8080,6 +8159,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
       pitch: "Multiple properties, shared access, and the complete platform.",
       features: [
         "Everything in Plus",
+        "Ask Steadwell AI assistant — 150 questions a month",
         "Up to 3 properties",
         "Full home document vault",
         "Shared home access — invite spouse/partner",
@@ -9760,6 +9840,369 @@ function ClaimEntryForm({ data, onChange }) {
 }
 
 // ─── SEARCH BAR ───────────────────────────────────────────────────────────────
+// ─── ASK STEADWELL (AI home assistant) ───────────────────────────────────────
+// Lives behind the header search bar. SearchBar fires `sw:open-ask` ({q}) and this panel
+// does the rest. All AI work happens in the `home-assistant` edge function, which reads the
+// caller's records under row-level security, enforces plan limits, and cannot write anything:
+// suggested tasks come back as cards and are only saved when the person taps "Add".
+const ASSISTANT_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/home-assistant";
+
+async function assistantCall(body) {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) return { status: 401, json: { ok: false, code: "unauthorized" } };
+  const resp = await fetch(ASSISTANT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: ANON_KEY },
+    body: JSON.stringify(body),
+  });
+  let json = null;
+  try { json = await resp.json(); } catch { /* non-JSON error page */ }
+  return { status: resp.status, json: json || { ok: false, code: "bad_response" } };
+}
+
+// Tiny, safe formatter for the assistant's replies: paragraphs, "- " bullets and **bold**.
+function askInline(s) {
+  return String(s).split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.length > 4 && p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : p);
+}
+function AskText({ text }) {
+  const blocks = []; let list = null;
+  String(text || "").split("\n").forEach(line => {
+    const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+    if (m) { if (!list) { list = []; blocks.push({ t: "ul", items: list }); } list.push(m[1]); }
+    else { list = null; if (line.trim()) blocks.push({ t: "p", text: line.trim() }); }
+  });
+  return blocks.map((b, i) => b.t === "ul"
+    ? <ul key={i}>{b.items.map((x, j) => <li key={j}>{askInline(x)}</li>)}</ul>
+    : <p key={i}>{askInline(b.text)}</p>);
+}
+
+// "Save my questions to help improve Steadwell" switch (on by default; off = opt-out).
+function AssistantHistoryToggle({ toast, compact = false }) {
+  const [state, setState] = useState({ loading: true, optout: false, failed: false });
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    let off = false;
+    assistantCall({ action: "usage" }).then(({ json }) => {
+      if (off) return;
+      if (json?.ok) setState({ loading: false, optout: !!json.optout, failed: false });
+      else setState({ loading: false, optout: false, failed: true });
+    }).catch(() => { if (!off) setState({ loading: false, optout: false, failed: true }); });
+    return () => { off = true; };
+  }, []);
+  const on = !state.optout;
+  const flip = async () => {
+    if (saving || state.loading || state.failed) return;
+    setSaving(true);
+    const next = on; // currently on -> opting out
+    const { json } = await assistantCall({ action: "set_optout", value: next }).catch(() => ({ json: null }));
+    if (json?.ok) { setState(s => ({ ...s, optout: next })); toast?.(next ? "Question history off — saved questions deleted ✓" : "Thanks — this helps us improve Steadwell ✓"); }
+    else toast?.("Could not update — try again", "error");
+    setSaving(false);
+  };
+  return (
+    <div className="ask-toggle-row">
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: compact ? ".8rem" : ".95rem", fontWeight: 700, color: "var(--dark)", marginBottom: ".2rem" }}>Help improve Ask Steadwell</div>
+        <div style={{ fontSize: compact ? ".72rem" : ".82rem", color: "#7A7370", lineHeight: 1.55 }}>
+          {state.failed ? "Available once Ask Steadwell is set up for your account." : <>Save the text of my questions, with emails, phone numbers and addresses removed. <strong>Never sold or used for ads.</strong> Turning this off also deletes questions already saved.</>}
+        </div>
+        {!state.failed && <div style={{ fontSize: ".72rem", fontWeight: 700, marginTop: ".35rem", color: state.loading ? "#A8A09A" : on ? "var(--ok)" : "#A8A09A" }}>{state.loading ? "Loading…" : on ? "✓ On (default)" : "Off"}</div>}
+      </div>
+      <button type="button" onClick={flip} disabled={saving || state.loading || state.failed} role="switch" aria-checked={on} aria-label="Save my Ask Steadwell questions to help improve Steadwell"
+        style={{ flexShrink: 0, width: 48, height: 28, borderRadius: 14, border: "none", background: on && !state.failed ? "var(--pine)" : "var(--stone)", position: "relative", cursor: saving ? "default" : "pointer", transition: "background .15s", opacity: saving || state.loading || state.failed ? .55 : 1 }}>
+        <div style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 22, height: 22, borderRadius: "50%", background: "#fff", transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+      </button>
+    </div>
+  );
+}
+
+function AskSteadwell({ session, propertyId, profile, planData, warranties = [], tasks = [], setTasks, toast, onUpgrade, onOpenAsset, onNavigate, onOpenDocs, onOpenExpense }) {
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const [usage, setUsage] = useState(null);
+  const [meta, setMeta] = useState({ optout: false, noticeSeen: true, loaded: false });
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const bodyRef = useRef(null);
+  const inputRef = useRef(null);
+  const sendRef = useRef(null);
+  const lastLoad = useRef(0);
+  const uid = session?.user?.id;
+  const plan = planData?.plan || "free";
+
+  const isPhone = () => typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width:639px)").matches;
+
+  // Fresh conversation per home.
+  useEffect(() => { setMsgs([]); setInput(""); }, [propertyId]);
+
+  const loadUsage = async (force) => {
+    if (!force && Date.now() - lastLoad.current < 30000) return;
+    lastLoad.current = Date.now();
+    try {
+      const { json } = await assistantCall({ action: "usage" });
+      if (json?.ok) { setUsage(json.usage); setMeta({ optout: !!json.optout, noticeSeen: !!json.notice_seen, loaded: true }); }
+    } catch { /* offline: leave as is */ }
+  };
+
+  useEffect(() => {
+    const onOpen = (e) => {
+      setOpen(true);
+      const q = e?.detail?.q;
+      if (q && String(q).trim()) setTimeout(() => sendRef.current && sendRef.current(String(q)), 60);
+    };
+    window.addEventListener("sw:open-ask", onOpen);
+    return () => window.removeEventListener("sw:open-ask", onOpen);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    loadUsage(false);
+    if (!isPhone()) setTimeout(() => inputRef.current && inputRef.current.focus(), 120);
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    // Phones: lock the page behind the full-screen sheet and track the on-screen keyboard.
+    const phone = isPhone();
+    const prevOverflow = document.body.style.overflow;
+    if (phone) document.body.style.overflow = "hidden";
+    const vv = window.visualViewport;
+    const fit = () => {
+      const el = document.getElementById("ask-panel");
+      if (!el || !phone || !vv) return;
+      el.style.height = vv.height + "px";
+      el.style.top = vv.offsetTop + "px";
+    };
+    if (phone && vv) { fit(); vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); }
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (phone) document.body.style.overflow = prevOverflow;
+      if (phone && vv) { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); }
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
+  }, [msgs, busy, open]);
+
+  const suggestions = useMemo(() => {
+    const assetQs = [];
+    const has = (re) => warranties.some(w => !w.retired_at && re.test(`${w.item || ""} ${w.category || ""}`));
+    if (has(/roof/i)) assetQs.push("When should I replace my roof?");
+    if (has(/hvac|air handler|furnace|condens|a\/c|ac unit/i)) assetQs.push("How old is my HVAC, and what should I plan for?");
+    if (has(/water heater/i)) assetQs.push("Is my water heater near the end of its life?");
+    const overdue = tasks.filter(t => t.status === "Overdue").length;
+    const s = assetQs.slice(0, 2);
+    if (overdue) s.push(`I have ${overdue} overdue task${overdue > 1 ? "s" : ""}. What should I do first?`);
+    if (/\bFL\b|florida/i.test(profile?.address || "")) s.push("Am I ready for hurricane season?");
+    s.push("What's expiring soon?");
+    s.push("What did I spend on repairs this year?");
+    s.push("What should I budget for over the next 5 years?");
+    return [...new Set(s)].slice(0, 5);
+  }, [warranties, tasks, profile?.address]);
+
+  const remaining = usage ? usage.remaining : null;
+  const atLimit = remaining !== null && remaining <= 0;
+
+  const send = async (text) => {
+    const q = String(text ?? input).trim();
+    if (!q || busy) return;
+    if (atLimit) return;
+    const id = Date.now() + Math.random();
+    const history = msgs.filter(m => !m.error && m.text).slice(-6).map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
+    setMsgs(m => [...m, { id, role: "user", text: q }]);
+    setInput(""); setBusy(true); setSlow(false);
+    const slowTimer = setTimeout(() => setSlow(true), 2500);
+    const fail = (text2, extra = {}) => setMsgs(m => [...m, { id: id + 1, role: "bot", error: true, text: text2, retry: q, ...extra }]);
+    try {
+      const { status, json } = await assistantCall({
+        action: "ask", message: q, history, property_id: propertyId, today: localISO(new Date()),
+        tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ""; } })(),
+      });
+      if (json?.ok) {
+        if (json.usage) setUsage(json.usage);
+        setMsgs(m => [...m, { id: id + 1, role: "bot", text: json.answer, sources: json.sources || [], actions: (json.actions || []).map(a => ({ ...a, state: "idle" })), logId: json.log_id, rating: 0 }]);
+      } else if (json?.code === "limit_reached") {
+        if (json.usage) setUsage(json.usage);
+        setMsgs(m => m.filter(x => x.id !== id));
+        setInput(q);
+      } else if (status === 404 && json?.code !== "no_home") {
+        fail("Ask Steadwell isn't available on your account yet. Please check back soon.", { retry: null });
+      } else if (status === 401) {
+        fail("Your session expired. Please refresh the page and sign in again.", { retry: null });
+      } else {
+        fail(json?.error || "Something went wrong. Your question wasn't counted — please try again.");
+      }
+    } catch {
+      fail("Couldn't reach Steadwell. Check your connection and try again.");
+    }
+    clearTimeout(slowTimer); setSlow(false); setBusy(false);
+  };
+  sendRef.current = send;
+
+  const addTask = async (msgId, idx) => {
+    const msg = msgs.find(m => m.id === msgId); const a = msg?.actions?.[idx];
+    if (!a || a.state === "saving" || a.state === "added") return;
+    const setAct = (patch) => setMsgs(ms => ms.map(m => m.id !== msgId ? m : { ...m, actions: m.actions.map((x, i) => i === idx ? { ...x, ...patch } : x) }));
+    setAct({ state: "saving" });
+    const payload = { title: a.title, due_date: a.due_date, status: "Scheduled", priority: a.priority || "Medium", category: a.category || "Other", notes: a.notes || "", user_id: uid, property_id: propertyId };
+    if (a.asset_id) payload.asset_id = a.asset_id;
+    let { data, error } = await supabase.from("tasks").insert([payload]).select();
+    if (error && payload.asset_id) { // asset link is a nicety; don't lose the task if that column rejects it
+      delete payload.asset_id;
+      ({ data, error } = await supabase.from("tasks").insert([payload]).select());
+    }
+    if (!error && data && data[0]) { setTasks && setTasks(p => [data[0], ...p]); setAct({ state: "added" }); toast && toast("Task added ✓"); }
+    else { setAct({ state: "idle" }); toast && toast("Could not add task — try again", "error"); }
+  };
+
+  const rate = (msgId, logId, value) => {
+    setMsgs(ms => ms.map(m => m.id === msgId ? { ...m, rating: value } : m));
+    if (logId) assistantCall({ action: "rate", log_id: logId, rating: value }).catch(() => {});
+  };
+
+  const openSource = (s) => {
+    const phone = isPhone();
+    if (s.type === "asset") onOpenAsset && onOpenAsset(s.id);
+    else if (s.type === "task") onNavigate && onNavigate("tasks");
+    else if (s.type === "expense") { if (onOpenExpense) onOpenExpense(s.id); else onNavigate && onNavigate("expenses"); }
+    else if (s.type === "doc") onOpenDocs && onOpenDocs();
+    else if (s.type === "log") onNavigate && onNavigate("warranties");
+    else if (s.type === "contractor") onNavigate && onNavigate("profile");
+    else onNavigate && onNavigate("expenses");
+    if (phone) setOpen(false);
+  };
+
+  const dismissNotice = () => {
+    setMeta(m => ({ ...m, noticeSeen: true }));
+    assistantCall({ action: "notice_seen" }).catch(() => {});
+  };
+
+  if (!open) return null;
+
+  const SRC_ICON = { asset: "🔧", task: "✓", expense: "💸", doc: "📄", log: "⚙️", project: "🔨", contractor: "👷", utility: "💡" };
+  const pill = usage ? (usage.period === "lifetime"
+    ? `${usage.remaining} free question${usage.remaining === 1 ? "" : "s"} left`
+    : `${usage.remaining} left this month`) : "";
+  const resetsTxt = usage?.resets ? new Date(usage.resets + "T12:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric" }) : "";
+
+  return (
+    <div id="ask-panel" className="ask-panel" role="dialog" aria-label="Ask Steadwell" aria-modal={isPhone() ? "true" : undefined}>
+      <div className="ask-hdr">
+        <span className="ask-spark" aria-hidden="true">✨</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="ask-title">Ask Steadwell</div>
+          {pill && <div className="ask-pill" aria-live="polite">{pill}</div>}
+        </div>
+        {msgs.length > 0 && <button type="button" className="ask-icon-btn" onClick={() => { setMsgs([]); setInput(""); }} aria-label="Start a new conversation" title="New conversation">↺</button>}
+        <button type="button" className="ask-icon-btn" onClick={() => setOpen(false)} aria-label="Close Ask Steadwell">✕</button>
+      </div>
+
+      <div className="ask-body" ref={bodyRef} aria-live="polite">
+        {msgs.length === 0 && (
+          <div className="ask-empty">
+            <div className="ask-empty-title">Ask anything about your home</div>
+            <div className="ask-empty-sub">I read your assets, warranties, tasks, service history, expenses and documents, then help you plan what's next.</div>
+            <div className="ask-chips">
+              {suggestions.map(s => <button key={s} type="button" className="ask-chip" disabled={atLimit} onClick={() => send(s)}>{s}</button>)}
+            </div>
+            {meta.loaded && !meta.noticeSeen && !meta.optout && (
+              <div className="ask-notice">
+                <div style={{ fontWeight: 700, color: "var(--dark)", marginBottom: ".2rem" }}>How your questions are used</div>
+                To improve Steadwell we save the text of your questions, with emails, phone numbers and addresses removed. Never sold or used for ads. You can turn this off anytime.
+                <div style={{ display: "flex", gap: ".5rem", marginTop: ".6rem", flexWrap: "wrap" }}>
+                  <button type="button" className="ask-mini-btn" onClick={dismissNotice}>Got it</button>
+                  <button type="button" className="ask-mini-btn ghost" onClick={() => { dismissNotice(); setShowPrivacy(true); }}>Turn off</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {msgs.map(m => (
+          <div key={m.id} className={`ask-row ${m.role}`}>
+            <div className={`ask-msg ${m.role}${m.error ? " err" : ""}`}>
+              {m.role === "user" ? m.text : <AskText text={m.text} />}
+              {m.error && m.retry && <button type="button" className="ask-mini-btn" style={{ marginTop: ".5rem" }} disabled={busy} onClick={() => { setMsgs(ms => ms.filter(x => x.id !== m.id)); send(m.retry); }}>Try again</button>}
+            </div>
+            {m.sources && m.sources.length > 0 && (
+              <div className="ask-srcs" aria-label="Records used for this answer">
+                {m.sources.map(s => <button key={s.type + s.id} type="button" className="ask-src" onClick={() => openSource(s)}><span aria-hidden="true">{SRC_ICON[s.type] || "•"}</span><span className="ask-src-t">{s.label}</span></button>)}
+              </div>
+            )}
+            {m.actions && m.actions.map((a, i) => (
+              <div key={i} className="ask-act">
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="ask-act-t">{a.title}</div>
+                  <div className="ask-act-s">{[a.due_date ? `Due ${fmtD(a.due_date)}` : null, a.category, a.priority ? `${a.priority} priority` : null, a.asset_label].filter(Boolean).join(" · ")}</div>
+                  {a.notes && <div className="ask-act-n">{a.notes}</div>}
+                </div>
+                <button type="button" className={`ask-add${a.state === "added" ? " done" : ""}`} disabled={a.state === "saving" || a.state === "added"} onClick={() => addTask(m.id, i)}>
+                  {a.state === "added" ? "Added ✓" : a.state === "saving" ? "Adding…" : "+ Add task"}
+                </button>
+              </div>
+            ))}
+            {m.role === "bot" && !m.error && m.logId && (
+              <div className="ask-rate" aria-label="Rate this answer">
+                <button type="button" className={m.rating === 1 ? "on" : ""} disabled={!!m.rating} onClick={() => rate(m.id, m.logId, 1)} aria-label="Helpful">👍</button>
+                <button type="button" className={m.rating === -1 ? "on" : ""} disabled={!!m.rating} onClick={() => rate(m.id, m.logId, -1)} aria-label="Not helpful">👎</button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {busy && (
+          <div className="ask-row bot">
+            <div className="ask-msg bot ask-typing" aria-label="Ask Steadwell is thinking"><span /><span /><span />{slow && <em>Looking through your home records…</em>}</div>
+          </div>
+        )}
+      </div>
+
+      {atLimit ? (
+        <div className="ask-limit">
+          {usage.plan === "free" ? (<>
+            <div className="ask-limit-t">You've used your {usage.limit} free questions</div>
+            <div className="ask-limit-s">Plus includes {PLAN_ASK_LIMITS.plus} questions a month, and Pro includes {PLAN_ASK_LIMITS.pro}.</div>
+            <button type="button" className="ask-cta" onClick={() => { setOpen(false); onUpgrade && onUpgrade(); }}>See plans</button>
+          </>) : usage.plan === "plus" ? (<>
+            <div className="ask-limit-t">You've used all {usage.limit} questions this month</div>
+            <div className="ask-limit-s">They reset on {resetsTxt}. Pro includes {PLAN_ASK_LIMITS.pro} a month.</div>
+            <button type="button" className="ask-cta" onClick={() => { setOpen(false); onUpgrade && onUpgrade(); }}>Upgrade to Pro</button>
+          </>) : (<>
+            <div className="ask-limit-t">You've reached this month's {usage.limit} questions</div>
+            <div className="ask-limit-s">They reset on {resetsTxt}.</div>
+          </>)}
+        </div>
+      ) : (
+        <form className="ask-compose" onSubmit={e => { e.preventDefault(); send(); }}>
+          <textarea
+            ref={inputRef} rows={1} value={input} maxLength={600}
+            onChange={e => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) { e.preventDefault(); send(); } }}
+            placeholder="Ask about your home…" aria-label="Your question" disabled={busy}
+          />
+          <button type="submit" className="ask-send" disabled={busy || !input.trim()} aria-label="Send">↑</button>
+        </form>
+      )}
+      <div className="ask-foot">
+        <span>AI can make mistakes. Check important details.</span>
+        <button type="button" className="ask-foot-btn" onClick={() => setShowPrivacy(v => !v)} aria-expanded={showPrivacy}>Privacy</button>
+      </div>
+      {showPrivacy && (
+        <div className="ask-privacy">
+          <AssistantHistoryToggle toast={toast} compact />
+          <div style={{ fontSize: ".72rem", color: "#8A8178", marginTop: ".5rem" }}>See our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--pine)", fontWeight: 600 }}>Privacy Policy</a>.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+const PLAN_ASK_LIMITS = { plus: 30, pro: 150 };
+
+
 function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], userId, onNavigate, onOpenAsset, onNavigateToTask, onOpenExpense, onOpenDocs }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -9913,6 +10356,22 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     setMobileOpen(false);
   };
 
+  // "Ask Steadwell": hand the text to the assistant panel (mounted once in App).
+  const looksLikeQuestion = (t) => /\?\s*$/.test(t) || /^(what|when|why|how|which|who|where|should|can|could|do|does|is|are|am|will|would|tell|show|give|help|remind|add)\b/i.test(t.trim()) || t.trim().split(/\s+/).length >= 5;
+  const askAI = (text) => {
+    window.dispatchEvent(new CustomEvent("sw:open-ask", { detail: { q: String(text || "").trim() } }));
+    setQ(""); setOpen(false); setFocused(false); setMobileOpen(false);
+    if (inputRef.current) inputRef.current.blur();
+  };
+  const isQuestion = trimmed.length >= 3 && looksLikeQuestion(q);
+  const askRow = trimmed.length >= 3 ? (
+    <div className="sr-item sr-ask" role="button" tabIndex={0} onClick={()=>askAI(q)} onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); askAI(q); } }}>
+      <span style={{fontSize:"1rem",flexShrink:0}} aria-hidden="true">✨</span>
+      <span style={{flex:1,fontWeight:600,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--pine)"}}>Ask Steadwell: “{q.trim()}”</span>
+      <span className="sr-ask-tag">AI</span>
+    </div>
+  ) : null;
+
   return (
     <div className={`search-wrap${mobileOpen ? " mobile-open" : ""}`} ref={ref} role="search">
       <span className="search-icon" onClick={() => setMobileOpen(true)} role="button" aria-label="Open search">🔍</span>
@@ -9921,17 +10380,29 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
         value={q}
         onChange={e=>{ setQ(e.target.value); setOpen(true); }}
         onFocus={()=>{ setOpen(true); setFocused(true); }}
-        onKeyDown={e=>{ if(e.key==="Escape"){ setOpen(false); setFocused(false); setMobileOpen(false); inputRef.current?.blur(); } }}
-        placeholder="Search assets, tasks, expenses…"
-        aria-label="Search your home data"
+        onKeyDown={e=>{
+          if(e.key==="Escape"){ setOpen(false); setFocused(false); setMobileOpen(false); inputRef.current?.blur(); }
+          else if(e.key==="Enter" && trimmed.length>=3 && (e.ctrlKey || e.metaKey || isQuestion || !hasResults)){ e.preventDefault(); askAI(q); }
+        }}
+        placeholder="Search or ask Steadwell…"
+        aria-label="Search your home data or ask Steadwell a question"
       />
       {showDropdown && (
         <div className="search-results">
           {trimmed.length < 2 && (
-            <div style={{padding:".6rem .85rem",fontSize:".75rem",color:"#A8A09A",lineHeight:1.5}}>
-              Search assets, tasks, expenses, documents, service logs, projects, and contractors
-            </div>
+            <>
+              <div className="sr-item sr-ask" role="button" tabIndex={0} onClick={()=>askAI("")} onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); askAI(""); } }}>
+                <span style={{fontSize:"1rem",flexShrink:0}} aria-hidden="true">✨</span>
+                <span style={{flex:1,fontWeight:600,color:"var(--pine)"}}>Ask Steadwell about your home</span>
+                <span className="sr-ask-tag">AI</span>
+              </div>
+              <div style={{padding:".6rem .85rem",fontSize:".75rem",color:"#A8A09A",lineHeight:1.5}}>
+                Or search assets, tasks, expenses, documents, service logs, projects, and contractors
+              </div>
+            </>
           )}
+
+          {isQuestion && askRow}
 
           {trimmed.length >= 2 && hasResults && groups.map(group => (
             <div key={group.label}>
@@ -9961,7 +10432,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
             </div>
           ))}
 
-          {trimmed.length >= 2 && !hasResults && (
+          {trimmed.length >= 2 && !hasResults && !isQuestion && (
             <div style={{padding:".85rem",textAlign:"center"}}>
               <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",marginBottom:".25rem"}}>Nothing found for "{trimmed}"</div>
               <div style={{fontSize:".74rem",color:"#A8A09A",lineHeight:1.5}}>
@@ -9969,6 +10440,8 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
               </div>
             </div>
           )}
+
+          {!isQuestion && askRow}
         </div>
       )}
     </div>
@@ -21213,6 +21686,21 @@ export default function App() {
         </nav>
 
         <Toasts toasts={toasts} dismiss={dismissToast}/>
+        <AskSteadwell
+          session={session}
+          propertyId={activePropertyId}
+          profile={profile}
+          planData={planData}
+          warranties={warranties}
+          tasks={tasks}
+          setTasks={setTasks}
+          toast={toast}
+          onUpgrade={()=>setShowUpgrade(true)}
+          onNavigate={(t)=>{setShowWarrantyModule(false);setShowDocs(false);setShowContractors(false);setTab(t);}}
+          onOpenDocs={()=>{setShowWarrantyModule(false);setShowContractors(false);setShowDocs(true);}}
+          onOpenAsset={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedAsset(id);setTab("warranties");}}
+          onOpenExpense={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedExpense(id);setTab("expenses");}}
+        />
         <PWAInstallPrompt/>
         {showFeedback && (
           <FeedbackModal
@@ -25631,7 +26119,7 @@ function PrivacyPage() {
     {t:"1. Who We Are",b:"Steadwell is a home management platform operated by Steadwell, LLC, a Florida limited liability company. This Privacy Policy explains what information we collect, how we use it, and your rights regarding it. By using Steadwell, you agree to the practices described here. Questions? Email privacy@trysteadwell.app."},
     {t:"2. Information We Collect",b:"Information you provide: your email address and name when you create an account; your home address and property details; maintenance records, expenses, warranties, and insurance details you enter; documents, photos, and files you upload; and emails you forward to your unique Steadwell capture address. Information provided by others: if a participating real estate agent gifts you a Steadwell trial, the agent provides us your name and email address so we can send the gift invitation — see Section 5 for how that's handled. Information we retrieve on your behalf: property data from Zillow (via APIllow) when you look up your address; address suggestions from Google Places API as you type. Technical and analytics data: log files, device type, browser type, and IP address for security monitoring and service improvement; anonymized usage analytics via Google Analytics 4 (page views and feature interactions, not linked to your identity); and error monitoring data via Sentry, which may include a replay of your browser session for a random sample of about 5% of sessions, plus 100% of sessions in which an error occurs (personally identifiable information such as form fields is masked in all cases). We do not collect payment card details — those go directly to Stripe."},
     {t:"3. How We Use Your Information",b:"To provide and operate the Service — storing your home data, generating reminders, processing emails you forward to your capture address, and running AI-powered features. To improve the Service — understanding how features are used (never tied to your personal identity). To communicate with you — sending warranty expiry alerts, maintenance reminders, weekly digests, and transactional emails like receipts and account confirmations. To process payments — through Stripe, which handles all payment data directly. To maintain security — detecting and preventing fraud, unauthorized access, and abuse. To comply with law — responding to valid legal requests. We do not use your data to serve third-party advertisements. Ever."},
-    {t:"4. AI Processing",b:"When you use AI-powered features — including email receipt capture, document scanning, and appliance nameplate recognition — your content is sent to Anthropic's Claude API for processing. Anthropic processes this data solely to return results to you and does not use it to train AI models under their standard API terms. Extracted data is returned to Steadwell and stored in your account for your review. You can review, edit, or delete any AI-extracted record at any time."},
+    {t:"4. AI Processing",b:"When you use AI-powered features — including email receipt capture, document scanning, and appliance nameplate recognition — your content is sent to Anthropic's Claude API for processing. Anthropic processes this data solely to return results to you and does not use it to train AI models under their standard API terms. Extracted data is returned to Steadwell and stored in your account for your review. You can review, edit, or delete any AI-extracted record at any time. Ask Steadwell (the in-app home assistant): when you ask it a question, it looks up the relevant records in your account — such as your assets, tasks, expenses, service history, contractor names, and document names and summaries, but not your email address, phone number, street address, or account numbers — and sends them with your question to Anthropic's Claude API to write an answer. Unless you turn it off in Settings → Privacy, we also keep the text of your questions, with emails, phone numbers, and addresses automatically removed, under a pseudonymous identifier that is stored separately from your account, to understand what homeowners need and to improve the Service. We do not sell this information, use it for advertising, or share it with anyone other than the service providers in Section 5. If you turn the setting off, we stop saving your questions and delete the ones already saved; we still keep a count of questions (for plan limits) and a generic topic label, such as \"roof replacement,\" that is not linked to you. Saved question text is deleted after 13 months or when you delete your account. AI answers can be wrong, so check important details and consult a licensed professional for safety, legal, insurance, or financial decisions."},
     {t:"5. How We Share Your Information",b:"We share your data with the following service providers strictly to operate the Service: Supabase (database, authentication, and file storage — SOC 2 Type II certified, row-level security enforced); Stripe (payment processing); Resend (email delivery and inbound email processing); Anthropic (AI feature processing via Claude API); APIllow / Zillow (property data lookups — your address only); Google Places API (address autocomplete); Sentry (error monitoring and session replay — Sentry may receive page interaction data and a replay of your browser session, either for a random sample of about 5% of all sessions or for any session in which an error occurs; personally identifiable information is masked in all cases and Sentry does not receive your documents or uploaded files); Google Analytics 4 (anonymous usage analytics — GA4 receives anonymized page views and feature usage patterns; no personally identifiable information is shared). We do not sell, rent, broker, or share your personal information with any other third party. The only exception is the optional Contractor Insights program described in Section 6, which is off by default and requires your explicit opt-in."},
     {t:"6. Agent Gift Referrals",b:"If a participating real estate agent gifts you a Steadwell trial, we receive your name and email address from that agent solely to send you the gift invitation. We do not use this information for any other purpose unless and until you claim the gift and create an account. If the gift is not claimed within 12 months, we delete this referral information. Email privacy@trysteadwell.app if you'd like it removed sooner."},
     {t:"7. Optional: Contractor Insights Program",b:"If you choose to opt in from Settings → Privacy, we may share de-identified, aggregated, non-personal trends — such as regional data about home system ages or common maintenance needs — with local contractor partners. This program never includes your name, address, contact information, property details, service history, uploaded documents, or any data that could identify you. We do not sell your information under this program. You can opt in or out at any time from Settings, and this choice has no effect on your access to any Steadwell feature."},
@@ -25659,7 +26147,7 @@ function PrivacyPage() {
       <main id="privacy-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Privacy Policy</h1>
-        <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last updated: September 22, 2026</p>
+        <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last updated: September 30, 2026</p>
         <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> We store your home data to run the Service — we never sell it, never show you ads, and never share it without your consent. AI features (scanning, email capture) send content to Anthropic's Claude API, which does not train on your data. There's an optional, off-by-default program to share anonymized regional trends with local contractors — your personal data is never included. You own your data, can export it anytime, and can permanently delete your account from Settings.</div>
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
