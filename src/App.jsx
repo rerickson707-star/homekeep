@@ -1,4 +1,4 @@
-// Steadwell v282 — 2026-09-30T05:00:00.000Z
+// Steadwell v283 — 2026-09-30T05:20:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3425,6 +3425,20 @@ img,.lp-root img{max-width:100%;height:auto}
 @media(min-width:1024px){
   .hdr .user-menu{display:none}
   .sidebar .user-menu.side{margin-top:auto;position:sticky;bottom:-1.5rem;background:var(--white);padding-top:.6rem;margin-bottom:-1.5rem;padding-bottom:1.5rem;border-top:1px solid var(--stone);flex-shrink:0;box-sizing:border-box}
+}
+
+/* Header (desktop/tablet): logo left, search centred, home switcher on the right */
+.ps-dd{max-width:min(320px,calc(100vw - 1.5rem))}
+@media(min-width:769px){
+  .hdr .prop-switcher-hdr{order:3}
+  .hdr .user-menu{order:4}
+  .ps-dd{left:auto!important;right:0}
+}
+@media(min-width:1024px){
+  .hdr{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,520px) minmax(0,1fr);align-items:center}
+  .hdr-logo{grid-column:1;justify-self:start}
+  .hdr .search-wrap{grid-column:2;max-width:none;width:100%}
+  .hdr .prop-switcher-hdr{grid-column:3;justify-self:end;min-width:0;max-width:100%}
 }
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
@@ -19101,7 +19115,7 @@ function PropertySwitcher({ allProfiles, activePropertyId, onSwitch, onAdd, plan
         <span style={{opacity:.5,fontSize:".65rem",flexShrink:0}}>▾</span>
       </button>
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:"var(--white)",borderRadius:14,boxShadow:"var(--shadow-lg)",border:"1px solid var(--stone)",overflow:"hidden",minWidth:200,zIndex:300}}>
+        <div className="ps-dd" style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:"var(--white)",borderRadius:14,boxShadow:"var(--shadow-lg)",border:"1px solid var(--stone)",overflow:"hidden",minWidth:200,zIndex:300}}>
           {allProfiles.map(p => (
             <button key={p.id}
               onClick={() => { onSwitch(p.id); setOpen(false); }}
