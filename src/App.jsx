@@ -1,4 +1,4 @@
-// Steadwell v276 — 2026-09-30T01:10:00.000Z
+// Steadwell v277 — 2026-09-30T01:55:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3202,6 +3202,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .mh-flat{margin-left:0!important;margin-right:0!important}
   .mh-stats{border:1.5px solid var(--stone);border-radius:var(--r-sm);overflow:hidden;margin:1.25rem 0!important}
   .mh-cols>*{margin:0 0 1.25rem!important}
+  .mh-cols>.ins-overlay{margin:0!important}
 }
 @media(min-width:1200px){
   .mh-cols{column-count:2;column-gap:1.25rem}
@@ -3284,6 +3285,43 @@ img,.lp-root img{max-width:100%;height:auto}
   .xr-tags{flex-direction:column;align-items:flex-start;gap:.25rem}
   .xr-tags:empty{display:block}
   .xr-amt{flex-direction:row;align-items:center;justify-content:flex-end;gap:.5rem;align-self:center}
+}
+
+
+/* ── Insurance: in-shell desktop page, two columns, grouped gaps ── */
+.ins-cols{display:flex;flex-direction:column}
+.ins-left,.ins-right{display:contents}
+.io-1{order:1}.io-2{order:2}.io-3{order:3}.io-4{order:4}.io-5{order:5}.io-6{order:6}.io-7{order:7}.io-8{order:8}
+.ins-sec-head{display:flex;align-items:center;gap:.55rem;padding:.95rem 1rem;cursor:pointer;user-select:none}
+.ins-sec-head:hover{background:var(--cream)}
+.ins-sec-title{font-size:1rem;font-weight:700;flex:1}
+.ins-sec-count{font-size:.76rem;font-weight:600;color:#A8A09A}
+.ins-sec-add{font-size:.82rem;font-weight:700;color:var(--pine);background:none;border:none;cursor:pointer;font-family:inherit;padding:.15rem .3rem}
+.ins-sec-head+*{border-top:1px solid var(--cream2)}
+.gap-group{border-top:1px solid var(--cream2);padding:.85rem 1rem .25rem}
+.gap-group-head{display:flex;align-items:center;gap:.5rem}
+.gap-group-title{font-size:.9rem;font-weight:700}
+.gap-group-count{font-size:.72rem;font-weight:700;color:var(--warn);background:var(--warn-bg);padding:1px 8px;border-radius:10px}
+.gap-group-hint{font-size:.76rem;color:#8A8178;margin:.2rem 0 .5rem;line-height:1.4}
+.gap-rows{display:flex;flex-direction:column}
+.gap-row{display:flex;align-items:center;gap:.7rem;padding:.55rem .1rem;border-top:1px solid var(--cream2);cursor:pointer;min-width:0}
+.gap-row:hover{background:var(--cream)}
+.gap-thumb{width:34px;height:34px;border-radius:9px;object-fit:cover;border:1.5px solid var(--stone);flex-shrink:0}
+.gap-thumb-empty{display:flex;align-items:center;justify-content:center;background:var(--cream2);border:1.5px dashed var(--mid);font-size:1rem}
+.gap-name{flex:1;min-width:0;font-size:.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gap-fix{font-size:.78rem;font-weight:700;color:var(--pine);flex-shrink:0}
+.gap-more{display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--cream2);padding:.6rem .1rem .7rem;font-family:inherit;font-size:.82rem;font-weight:700;color:var(--pine);cursor:pointer}
+@media(min-width:1024px){
+  .ins-overlay{inset:auto!important;top:var(--hdr)!important;left:var(--sidebar-w)!important;right:0!important;bottom:0!important;z-index:140!important}
+  .ins-hdr{padding-left:2rem!important;padding-right:2rem!important}
+  .ins-body{width:100%;max-width:1280px;margin:0 auto;padding:1.5rem 2rem 3rem!important;box-sizing:border-box}
+  .ins-cols{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:0 1.25rem;align-items:start}
+  .ins-left,.ins-right{display:block;min-width:0}
+  .ins-left{grid-column:1;grid-row:1}
+  .ins-right{grid-column:2;grid-row:1}
+  .ins-left>*,.ins-right>*{margin:0 0 1.25rem!important}
+  .ins-body>div>:first-child:not(.ins-cols){margin-bottom:1rem}
+  .gap-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:1.5rem}
 }
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
@@ -15935,6 +15973,14 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const [addClaimModal, setAddClaimModal]         = useState(false);
   const [claimData, setClaimData]                 = useState({});
   const [showCheckin, setShowCheckin]             = useState(false);
+  useEffect(() => {
+    // Sidebar tab clicks land on the tab's main page, not a leftover sub-view.
+    const h = (e) => { if (e.detail === "profile") { setShowInsurance(false); setShowCheckin(false); } };
+    window.addEventListener("sw:tab-reselect", h);
+    return () => window.removeEventListener("sw:tab-reselect", h);
+  }, []);
+  const [gapOpen, setGapOpen]                       = useState({});   // check-in gap groups: label -> show all
+  const [insSecOpen, setInsSecOpen]                 = useState({});   // collapsible sections: add / claims -> bool (user choice)
   const [checkinPhoto, setCheckinPhoto]           = useState({}); // {task_key: url}
   const [checkinUploading, setCheckinUploading]   = useState({});
   const checkinInputRefs                          = useRef({});
@@ -16038,6 +16084,19 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   });
   const assetsWithGaps    = assetGaps.filter(a => a.gaps.length > 0);
   const assetsFully       = assetGaps.filter(a => a.gaps.length === 0);
+  // Group the gaps by kind ("No photo" x14 reads far better than 14 near-identical rows)
+  const GAP_HINTS = {
+    "No photo":    "One clear photo per item is the strongest proof of ownership and condition.",
+    "No serial #": "Add a model or serial number - usually on a label on the item.",
+    "No value":    "Add what you paid, or what it would cost to replace.",
+  };
+  const gapGroups = ["No photo","No serial #","No value"]
+    .map(label => ({ label, items: assetsWithGaps.filter(a => a.gaps.includes(label)) }))
+    .filter(g => g.items.length > 0)
+    .sort((a,b) => b.items.length - a.items.length);
+  const totalGapCount = assetsWithGaps.reduce((n,a) => n + a.gaps.length, 0);
+  const addSecOpen    = insSecOpen.add    ?? (additionalPolicies.length > 0);
+  const claimsSecOpen = insSecOpen.claims ?? false;
   const totalCheckinItems = assetGaps.length + CHECKIN_TASKS.length;
   const doneCheckinItems  = assetsFully.length + checkinDone;
   const checkinScore      = totalCheckinItems > 0 ? Math.round((doneCheckinItems / totalCheckinItems) * 100) : 0;
@@ -16635,63 +16694,17 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── INSURANCE FULL-SCREEN VIEW ── */}
       {showInsurance && (
-        <div style={{position:"fixed",inset:0,background:"var(--cream)",zIndex:300,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+        <div className="ins-overlay" style={{position:"fixed",inset:0,background:"var(--cream)",zIndex:300,overflowY:"auto",display:"flex",flexDirection:"column"}}>
           {/* Header */}
-          <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
+          <div className="ins-hdr" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
             <button onClick={()=>{setShowInsurance(false);setShowCheckin(false);}} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>←</button>
             <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,flex:1}}>Insurance</span>
             <button onClick={()=>{setInsData({...profile});setInsModal(true);}} style={{background:"none",border:"none",fontSize:".9rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem",fontFamily:"inherit"}}>{profile?.ins_company?"Edit policy":"Add policy"}</button>
           </div>
 
-          <div style={{flex:1,padding:"0 0 3rem"}}>
+          <div className="ins-body" style={{flex:1,padding:"0 0 3rem"}}>
 
-            {/* ── ANNUAL CHECK-IN ── */}
-            {!showCheckin ? (
-              // Check-in summary card
-              <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.5rem 1.25rem",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
-                <div style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"rgba(193,97,64,.35)",border:"1px solid rgba(193,97,64,.5)",borderRadius:20,padding:".3rem .8rem",fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:".85rem"}}>
-                  <span style={{width:7,height:7,borderRadius:"50%",background:"#E8A57F"}}/>
-                  {checkinYear} annual check-in
-                </div>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#fff",lineHeight:1.2,marginBottom:".5rem"}}>
-                  Your home is {checkinScore}% claim-ready
-                </div>
-                <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",marginBottom:"1rem",lineHeight:1.5}}>
-                  {checkinScore===100
-                    ? "Everything is documented. If you ever need to file a claim, you're prepared."
-                    : "We only flag what's actually missing — no need to re-photograph things already in your asset records."}
-                </div>
-                {/* Score ring */}
-                <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"1rem",alignItems:"center",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:14,padding:".85rem 1rem",marginBottom:"1rem"}}>
-                  <div style={{position:"relative",width:72,height:72}}>
-                    <svg width="72" height="72" viewBox="0 0 72 72">
-                      <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="8"/>
-                      <circle cx="36" cy="36" r="28" fill="none" stroke={checkinScore>=80?"#7DCBA1":"#E8A57F"} strokeWidth="8"
-                        strokeDasharray={`${Math.round((checkinScore/100)*176)} 176`} strokeDashoffset="44" strokeLinecap="round"/>
-                    </svg>
-                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
-                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,color:"#fff",lineHeight:1}}>{checkinScore}%</div>
-                      <div style={{fontSize:".52rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",fontWeight:700,marginTop:2}}>ready</div>
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".92rem",fontWeight:700,color:"#fff",marginBottom:".3rem"}}>
-                      {assetsWithGaps.length===0&&checkinDone===CHECKIN_TASKS.length ? "Everything documented ✓" : `${assetsWithGaps.length + (CHECKIN_TASKS.length - checkinDone)} things need attention`}
-                    </div>
-                    <div style={{fontSize:".8rem",color:"rgba(244,237,223,.6)",lineHeight:1.45}}>
-                      {assetsWithGaps.length>0&&`${assetsWithGaps.length} asset${assetsWithGaps.length!==1?"s":""} missing info`}
-                      {assetsWithGaps.length>0&&checkinDone<CHECKIN_TASKS.length&&" · "}
-                      {checkinDone<CHECKIN_TASKS.length&&`${CHECKIN_TASKS.length-checkinDone} dwelling photo${CHECKIN_TASKS.length-checkinDone!==1?"s":""} remaining`}
-                    </div>
-                    {lastCheckinYear&&<div style={{fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".35rem"}}>Last completed: {lastCheckinYear}</div>}
-                  </div>
-                </div>
-                <button onClick={()=>setShowCheckin(true)} style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".95rem",width:"100%",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem",fontWeight:700,cursor:"pointer"}}>
-                  {checkinScore===100 ? "Review your check-in →" : "Complete check-in →"}
-                </button>
-              </div>
-            ) : (
+            {showCheckin ? (
               // Check-in detail view
               <div>
                 <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem .5rem"}}>
@@ -16699,33 +16712,54 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                   <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500}}>{checkinYear} check-in</span>
                 </div>
 
-                {/* Asset gaps section */}
-                {assetsWithGaps.length > 0 && (
-                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                <div className="ins-cols">
+                  <div className="ins-left">
+                {/* Asset gaps — grouped by kind */}
+                {assetsWithGaps.length > 0 ? (
+                  <div className="io" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
                       <div style={{display:"flex",alignItems:"center",gap:".5rem"}}><span>🔧</span><span style={{fontSize:".95rem",fontWeight:700}}>Assets needing info</span></div>
-                      <span style={{fontSize:".75rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 8px",borderRadius:10}}>{assetsWithGaps.length} gaps</span>
+                      <span style={{fontSize:".75rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 8px",borderRadius:10}}>{assetsWithGaps.length} asset{assetsWithGaps.length!==1?"s":""} · {totalGapCount} gap{totalGapCount!==1?"s":""}</span>
                     </div>
                     <div style={{padding:".6rem 1rem",background:"var(--cream)",borderBottom:"1px solid var(--cream2)",fontSize:".78rem",color:"#8A8178"}}>
-                      Tap to add what's missing — no need to re-photograph assets already documented.
+                      Tap an item to add what's missing - nothing already documented needs redoing.
                     </div>
-                    {assetsWithGaps.map(a => (
-                      <div key={a.id} onClick={()=>{ setShowCheckin(false); setShowInsurance(false); onOpenAsset?.(a.id); }} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",cursor:"pointer"}}>
-                        {a.asset_photo_url
-                          ? <img src={a.asset_photo_url} alt={a.item} style={{width:44,height:44,borderRadius:11,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0}}/>
-                          : <div style={{width:44,height:44,borderRadius:11,background:"var(--cream2)",border:"1.5px dashed var(--mid)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem"}}>📦</div>}
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:".95rem",fontWeight:700,marginBottom:".2rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
-                          <div style={{display:"flex",gap:".35rem",flexWrap:"wrap"}}>
-                            {a.gaps.map(g=><span key={g} style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:6,background:"var(--warn-bg)",color:"var(--warn)",border:"1px solid #EAD9A6"}}>{g}</span>)}
+                    {gapGroups.map(g => {
+                      const showAll = !!gapOpen[g.label];
+                      const shown = showAll ? g.items : g.items.slice(0,4);
+                      return (
+                        <div key={g.label} className="gap-group">
+                          <div className="gap-group-head">
+                            <span className="gap-group-title">{g.label}</span>
+                            <span className="gap-group-count">{g.items.length}</span>
                           </div>
+                          <div className="gap-group-hint">{GAP_HINTS[g.label]}</div>
+                          <div className="gap-rows">
+                            {shown.map(a => (
+                              <div key={a.id} className="gap-row" onClick={()=>{ setShowCheckin(false); setShowInsurance(false); onOpenAsset?.(a.id); }}>
+                                {a.asset_photo_url
+                                  ? <img src={a.asset_photo_url} alt="" className="gap-thumb"/>
+                                  : <div className="gap-thumb gap-thumb-empty">📦</div>}
+                                <div className="gap-name">{a.item}</div>
+                                <span className="gap-fix">Fix →</span>
+                              </div>
+                            ))}
+                          </div>
+                          {g.items.length > 4 && (
+                            <button type="button" className="gap-more" onClick={()=>setGapOpen(o=>({...o,[g.label]:!showAll}))}>
+                              {showAll ? "Show fewer" : `Show all ${g.items.length}`}
+                            </button>
+                          )}
                         </div>
-                        <span style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Fix →</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
+                ) : (
+                  <div className="io" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",padding:"1rem",fontSize:".9rem",fontWeight:600,color:"var(--ok)"}}>✓ Every asset has a photo, a model or serial number, and a value.</div>
                 )}
 
+                  </div>
+                  <div className="ins-right">
                 {/* Fully documented assets */}
                 {assetsFully.length > 0 && (
                   <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
@@ -16790,12 +16824,58 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     </div>
                   )}
                 </div>
+                  </div>
+                </div>
               </div>
-            )}
-
+            ) : (
+              <div className="ins-cols">
+                <div className="ins-right">
+              <div className="io io-1" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.5rem 1.25rem",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+                <div style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"rgba(193,97,64,.35)",border:"1px solid rgba(193,97,64,.5)",borderRadius:20,padding:".3rem .8rem",fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:".85rem"}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:"#E8A57F"}}/>
+                  {checkinYear} annual check-in
+                </div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#fff",lineHeight:1.2,marginBottom:".5rem"}}>
+                  Your home is {checkinScore}% claim-ready
+                </div>
+                <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",marginBottom:"1rem",lineHeight:1.5}}>
+                  {checkinScore===100
+                    ? "Everything is documented. If you ever need to file a claim, you're prepared."
+                    : "We only flag what's actually missing — no need to re-photograph things already in your asset records."}
+                </div>
+                {/* Score ring */}
+                <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"1rem",alignItems:"center",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:14,padding:".85rem 1rem",marginBottom:"1rem"}}>
+                  <div style={{position:"relative",width:72,height:72}}>
+                    <svg width="72" height="72" viewBox="0 0 72 72">
+                      <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="8"/>
+                      <circle cx="36" cy="36" r="28" fill="none" stroke={checkinScore>=80?"#7DCBA1":"#E8A57F"} strokeWidth="8"
+                        strokeDasharray={`${Math.round((checkinScore/100)*176)} 176`} strokeDashoffset="44" strokeLinecap="round"/>
+                    </svg>
+                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:700,color:"#fff",lineHeight:1}}>{checkinScore}%</div>
+                      <div style={{fontSize:".52rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",fontWeight:700,marginTop:2}}>ready</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".92rem",fontWeight:700,color:"#fff",marginBottom:".3rem"}}>
+                      {assetsWithGaps.length===0&&checkinDone===CHECKIN_TASKS.length ? "Everything documented ✓" : `${assetsWithGaps.length + (CHECKIN_TASKS.length - checkinDone)} things need attention`}
+                    </div>
+                    <div style={{fontSize:".8rem",color:"rgba(244,237,223,.6)",lineHeight:1.45}}>
+                      {assetsWithGaps.length>0&&`${assetsWithGaps.length} asset${assetsWithGaps.length!==1?"s":""} missing info`}
+                      {assetsWithGaps.length>0&&checkinDone<CHECKIN_TASKS.length&&" · "}
+                      {checkinDone<CHECKIN_TASKS.length&&`${CHECKIN_TASKS.length-checkinDone} dwelling photo${CHECKIN_TASKS.length-checkinDone!==1?"s":""} remaining`}
+                    </div>
+                    {lastCheckinYear&&<div style={{fontSize:".72rem",color:"rgba(244,237,223,.35)",marginTop:".35rem"}}>Last completed: {lastCheckinYear}</div>}
+                  </div>
+                </div>
+                <button onClick={()=>setShowCheckin(true)} style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".95rem",width:"100%",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem",fontWeight:700,cursor:"pointer"}}>
+                  {checkinScore===100 ? "Review your check-in →" : "Complete check-in →"}
+                </button>
+              </div>
             {/* ── CLAIM-READY EXPORT ── */}
             {!showCheckin && (
-              <div onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
+              <div className="io io-2" onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
                 style={{margin:"0 1rem 1rem",background:"linear-gradient(135deg,#1a3a2e,var(--pine-soft))",borderRadius:"var(--r-sm)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"center",gap:"1rem",cursor:"pointer"}}>
                 <div style={{width:50,height:50,borderRadius:13,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>📋</div>
                 <div style={{flex:1}}>
@@ -16806,12 +16886,60 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               </div>
             )}
 
-            {/* ── PRIMARY POLICY ── (only when not in check-in) */}
-            {!showCheckin && (
-              <>
-                {/* Coverage gap alert */}
+
+{/* ── RELATED DOCUMENTS ── pulled from the shared Documents vault */}
+                {insuranceDocuments.length > 0 && (
+                  <div className="io io-6" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📄</span><span style={{fontSize:"1rem",fontWeight:700}}>Documents</span></div>
+                      <button onClick={onShowDocs} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View all →</button>
+                    </div>
+                    <div style={{padding:".55rem 1rem",background:"var(--cream)",fontSize:".75rem",color:"#8A8178"}}>Scanned here or uploaded in Documents — all insurance files live in one place.</div>
+                    {insuranceDocuments.map(doc => (
+                      <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                        style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1rem",borderTop:"1px solid var(--cream2)",textDecoration:"none",color:"inherit"}}>
+                        <div style={{width:38,height:38,borderRadius:10,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>
+                          {doc.file_type?.includes("pdf") ? "📄" : "🖼️"}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.name}</div>
+                          <div style={{fontSize:".72rem",color:"#A8A09A"}}>{doc.expiry_date ? `Renews ${fmtD(doc.expiry_date)}` : fmtD(doc.created_at?.slice(0,10))}</div>
+                        </div>
+                        <span style={{fontSize:".8rem",color:"#C2B8AE",flexShrink:0}}>↗</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                
+{/* Renewal checklist — Plus gate */}
+                {insRenewalDays!==null&&insRenewalDays<=90&&insRenewalDays>=0&&profile?.ins_company&&(
+                  <div className="io io-8" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📅</span><span style={{fontSize:"1rem",fontWeight:700}}>Renewal checklist</span></div>
+                      <span style={{fontSize:".78rem",fontWeight:600,color:insRenewalDays<=30?"#B0432B":"var(--warn)"}}>{insRenewalDays} days away</span>
+                    </div>
+                    {[
+                      coverageGap!==null&&coverageGap>10000&&{icon:"🏗️",bg:"#EAF1F6",color:"#3A6E92",title:"Update dwelling coverage",body:`Your estimated rebuild cost is ${fmt$(estimatedRebuild)}. Your current coverage of ${fmt$(dwellingCoverage)} may leave a ${fmt$(coverageGap)} gap.`,action:"Review with agent"},
+                      checkinScore<100&&{icon:"📷",bg:"var(--ok-bg)",color:"var(--ok)",title:"Complete your annual check-in",body:`${checkinScore}% complete. A documented home record strengthens any future claim.`,action:"Complete check-in",onClick:()=>setShowCheckin(true)},
+                      {icon:"💬",bg:"var(--rust-light)",color:"var(--rust)",title:"Ask about discounts",body:"New systems, security upgrades, or loyalty discounts may lower your premium. Always worth asking at renewal.",action:"Call your agent"},
+                    ].filter(Boolean).map((item,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".85rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
+                        <div style={{width:36,height:36,borderRadius:10,background:item.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0,color:item.color}}>{item.icon}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:".92rem",fontWeight:700,marginBottom:".2rem"}}>{item.title}</div>
+                          <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.4,marginBottom:".35rem"}}>{item.body}</div>
+                          <button onClick={item.onClick||undefined} style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>{item.action} →</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                </div>
+                <div className="ins-left">
+{/* Coverage gap alert */}
                 {coverageGap!==null&&coverageGap>10000&&(
-                  <div style={{margin:"0 1rem .75rem",padding:".85rem .95rem",borderRadius:10,background:"var(--warn-bg)",border:"1px solid #EAD9A6",display:"flex",alignItems:"flex-start",gap:".65rem"}}>
+                  <div className="io io-3" style={{margin:"0 1rem .75rem",padding:".85rem .95rem",borderRadius:10,background:"var(--warn-bg)",border:"1px solid #EAD9A6",display:"flex",alignItems:"flex-start",gap:".65rem"}}>
                     <span style={{fontSize:"1.2rem",flexShrink:0}}>⚠️</span>
                     <div>
                       <div style={{fontSize:".88rem",fontWeight:700,color:"var(--warn)",marginBottom:".25rem"}}>Possible coverage gap</div>
@@ -16824,7 +16952,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 )}
 
                 {/* Primary policy card */}
-                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                <div className="io io-4" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🛡️</span><span style={{fontSize:"1rem",fontWeight:700}}>Homeowners policy</span></div>
                     <button onClick={()=>{setInsData({...profile});setInsModal(true);}} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{profile?.ins_company?"Edit":"Add"}</button>
@@ -16899,12 +17027,18 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                 </div>
 
                 {/* ── ADDITIONAL POLICIES ── */}
-                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📋</span><span style={{fontSize:"1rem",fontWeight:700}}>Additional coverage</span></div>
-                    <button onClick={openAddPolicy} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>+ Add</button>
+                <div className="io io-5" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  <div className="ins-sec-head" role="button" tabIndex={0} aria-expanded={addSecOpen}
+                    onClick={()=>setInsSecOpen(o=>({...o,add:!addSecOpen}))}
+                    onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setInsSecOpen(o=>({...o,add:!addSecOpen})); } }}>
+                    <span className={"ag-chev"+(addSecOpen?" open":"")} aria-hidden="true">›</span>
+                    <span style={{fontSize:"1.1rem"}}>📋</span><span className="ins-sec-title">Additional coverage</span>
+                    <span className="ins-sec-count">{additionalPolicies.length>0 ? `${additionalPolicies.length} polic${additionalPolicies.length===1?"y":"ies"}` : "None added"}</span>
+                    <button type="button" className="ins-sec-add" onClick={e=>{e.stopPropagation();openAddPolicy();}}>+ Add</button>
                   </div>
 
+                  {addSecOpen && (
+                  <>
                   {additionalPolicies.length === 0 ? (
                     <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:".5rem"}}>
                       {[{icon:"🌊",label:"Flood insurance",hint:"Required for many FL properties — separate from homeowners"},
@@ -16952,39 +17086,23 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                       </div>
                     </>
                   )}
+                  </>
+                  )}
                 </div>
 
-                {/* ── RELATED DOCUMENTS ── pulled from the shared Documents vault */}
-                {insuranceDocuments.length > 0 && (
-                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📄</span><span style={{fontSize:"1rem",fontWeight:700}}>Documents</span></div>
-                      <button onClick={onShowDocs} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View all →</button>
-                    </div>
-                    <div style={{padding:".55rem 1rem",background:"var(--cream)",fontSize:".75rem",color:"#8A8178"}}>Scanned here or uploaded in Documents — all insurance files live in one place.</div>
-                    {insuranceDocuments.map(doc => (
-                      <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
-                        style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1rem",borderTop:"1px solid var(--cream2)",textDecoration:"none",color:"inherit"}}>
-                        <div style={{width:38,height:38,borderRadius:10,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>
-                          {doc.file_type?.includes("pdf") ? "📄" : "🖼️"}
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.name}</div>
-                          <div style={{fontSize:".72rem",color:"#A8A09A"}}>{doc.expiry_date ? `Renews ${fmtD(doc.expiry_date)}` : fmtD(doc.created_at?.slice(0,10))}</div>
-                        </div>
-                        <span style={{fontSize:".8rem",color:"#C2B8AE",flexShrink:0}}>↗</span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-
                 {/* ── CLAIM LOG ── */}
-                <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📁</span><span style={{fontSize:"1rem",fontWeight:700}}>Claim log</span></div>
-                    <button onClick={()=>{setClaimData({date:localISO()});setAddClaimModal(true);}} style={{fontSize:".82rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>+ Log entry</button>
+                <div className="io io-7" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
+                  <div className="ins-sec-head" role="button" tabIndex={0} aria-expanded={claimsSecOpen}
+                    onClick={()=>setInsSecOpen(o=>({...o,claims:!claimsSecOpen}))}
+                    onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setInsSecOpen(o=>({...o,claims:!claimsSecOpen})); } }}>
+                    <span className={"ag-chev"+(claimsSecOpen?" open":"")} aria-hidden="true">›</span>
+                    <span style={{fontSize:"1.1rem"}}>📁</span><span className="ins-sec-title">Claim log</span>
+                    <span className="ins-sec-count">{claimLog.length>0 ? `${claimLog.length} entr${claimLog.length===1?"y":"ies"}` : "No claims"}</span>
+                    <button type="button" className="ins-sec-add" onClick={e=>{e.stopPropagation();setClaimData({date:localISO()});setAddClaimModal(true);}}>+ Log</button>
                   </div>
 
+                  {claimsSecOpen && (
+                  <>
                   {claimLog.length === 0 ? (
                     <div style={{padding:"1.25rem 1rem",textAlign:"center"}}>
                       <div style={{fontSize:"1.5rem",marginBottom:".5rem"}}>📁</div>
@@ -17003,32 +17121,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                       <button onClick={()=>deleteClaimEntry(entry.id||i)} style={{background:"none",border:"none",fontSize:".75rem",color:"#B0432B",cursor:"pointer",fontFamily:"inherit",flexShrink:0,alignSelf:"flex-start",padding:".2rem 0"}}>✕</button>
                     </div>
                   ))}
+                  </>
+                  )}
                 </div>
 
-                {/* Renewal checklist — Plus gate */}
-                {insRenewalDays!==null&&insRenewalDays<=90&&insRenewalDays>=0&&profile?.ins_company&&(
-                  <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>📅</span><span style={{fontSize:"1rem",fontWeight:700}}>Renewal checklist</span></div>
-                      <span style={{fontSize:".78rem",fontWeight:600,color:insRenewalDays<=30?"#B0432B":"var(--warn)"}}>{insRenewalDays} days away</span>
-                    </div>
-                    {[
-                      coverageGap!==null&&coverageGap>10000&&{icon:"🏗️",bg:"#EAF1F6",color:"#3A6E92",title:"Update dwelling coverage",body:`Your estimated rebuild cost is ${fmt$(estimatedRebuild)}. Your current coverage of ${fmt$(dwellingCoverage)} may leave a ${fmt$(coverageGap)} gap.`,action:"Review with agent"},
-                      checkinScore<100&&{icon:"📷",bg:"var(--ok-bg)",color:"var(--ok)",title:"Complete your annual check-in",body:`${checkinScore}% complete. A documented home record strengthens any future claim.`,action:"Complete check-in",onClick:()=>setShowCheckin(true)},
-                      {icon:"💬",bg:"var(--rust-light)",color:"var(--rust)",title:"Ask about discounts",body:"New systems, security upgrades, or loyalty discounts may lower your premium. Always worth asking at renewal.",action:"Call your agent"},
-                    ].filter(Boolean).map((item,i)=>(
-                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".85rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                        <div style={{width:36,height:36,borderRadius:10,background:item.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0,color:item.color}}>{item.icon}</div>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:".92rem",fontWeight:700,marginBottom:".2rem"}}>{item.title}</div>
-                          <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.4,marginBottom:".35rem"}}>{item.body}</div>
-                          <button onClick={item.onClick||undefined} style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>{item.action} →</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+                                </div>
+              </div>
             )}
           </div>
         </div>
@@ -19769,7 +19867,7 @@ export default function App() {
              wizard), and stays visible over Contractors like bottom-nav does. ── */}
         <nav className="sidebar" aria-label="Primary" style={showSetup ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs; setShowContractors(false); setShowDocs(false); if(!wasOverlay&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&tab===t.id)?"page":undefined}>
+            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs; setShowContractors(false); setShowDocs(false); window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:t.id})); if(!wasOverlay&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&tab===t.id)?"page":undefined}>
               <span className="sbar-icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.badge>0 && <span className="sbar-badge">{t.badge}</span>}
