@@ -1,4 +1,4 @@
-// Steadwell v279 — 2026-09-30T03:30:00.000Z
+// Steadwell v280 — 2026-09-30T04:10:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1738,6 +1738,7 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .sbar-icon{font-size:1.1rem;width:22px;text-align:center;flex-shrink:0}
 .sbar-badge{margin-left:auto;background:var(--red);color:#fff;border-radius:10px;font-size:.62rem;padding:1px 6px;font-weight:700;flex-shrink:0}
 .sbar-divider{height:1px;background:var(--stone);margin:.6rem .3rem}
+.sbar-label{font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#A8A09A;padding:.2rem .85rem .3rem}
 
 /* ══ MAIN ══ */
 .main{flex:1;padding:1.25rem 1rem;max-width:var(--max);margin:0 auto;width:100%;box-sizing:border-box}
@@ -2983,12 +2984,14 @@ img,.lp-root img{max-width:100%;height:auto}
 .setup-inner{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:5rem 2rem 10rem;max-width:540px;width:100%;margin:0 auto;box-sizing:border-box}
 @media(max-width:480px){.setup-inner{padding:5rem 1.25rem 11rem}}
 .setup-actions{position:fixed;bottom:0;left:0;right:0;padding:.85rem 2rem calc(2rem + env(safe-area-inset-bottom));background:linear-gradient(to bottom,transparent,#1C3D31 30%);z-index:501;pointer-events:none}
-.setup-actions>*{pointer-events:auto;max-width:540px;margin:0 auto;display:block}
+.setup-actions>*{pointer-events:auto;max-width:476px;margin:0 auto;display:block}
 @media(max-width:480px){.setup-actions{padding:.85rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom))}}
 .setup-q{font-family:'Fraunces',serif;font-size:clamp(1.4rem,4.5vw,1.9rem);font-weight:400;color:#F4EDDF;line-height:1.2;margin-bottom:.45rem}
 .setup-hint{font-size:.84rem;color:rgba(244,237,223,.45);line-height:1.6;margin-bottom:1.6rem}
 .setup-label{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(244,237,223,.38);margin-bottom:.6rem;margin-top:1.2rem}
 .setup-cards{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.5rem}
+.setup-cards.yn{flex-direction:row}
+.setup-cards.yn .setup-card{flex:1;min-width:0;padding:.8rem .9rem}
 .setup-card{display:flex;align-items:center;gap:.85rem;padding:.9rem 1.05rem;background:rgba(244,237,223,.06);border:1.5px solid rgba(244,237,223,.1);border-radius:14px;cursor:pointer;transition:all .16s;text-align:left;width:100%;font-family:'Hanken Grotesk',sans-serif}
 .setup-card:hover{background:rgba(244,237,223,.1);border-color:rgba(244,237,223,.2)}
 .setup-card.sel{background:rgba(193,97,64,.2);border-color:#C16140}
@@ -3377,6 +3380,22 @@ img,.lp-root img{max-width:100%;height:auto}
 }
 @media(min-width:1500px){
   .wc-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Money (phones/tablets): its blocks carry their own 1rem side inset on top of the page padding, which put
+   everything 16px further in than the other tabs. Pull the root out by that amount so it lines up. */
+@media(max-width:1023px){
+  .money-root{margin-left:-1rem;margin-right:-1rem}
+  .money-sub{margin-left:1rem!important;margin-right:1rem!important;padding-left:0!important;padding-right:0!important}
+}
+
+/* Money → Expenses on phones: the category cards were a second tall row stacked over the type pills.
+   Slim them to one-line chips (icon, name, total) so the two filter rows read as light filters, not blocks. */
+@media(max-width:1023px){
+  .mc-chip{display:flex!important;align-items:center;gap:.4rem;min-width:0!important;padding:.4rem .75rem!important;border-radius:20px!important;text-align:left!important}
+  .mc-chip .mc-ico{margin:0!important;font-size:.95rem!important}
+  .mc-chip .mc-count{display:none}
+  .mc-chip>div:not(.mc-ico){max-width:none!important;white-space:nowrap}
 }
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
@@ -13371,7 +13390,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   return (
-    <div>
+    <div className="money-root">
       {/* ── Page header — add button changes per view ── */}
       <div className="money-hdr" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem .5rem"}}>
         <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.9rem",fontWeight:500,letterSpacing:"-.5px"}}>Money</span>
@@ -13472,18 +13491,18 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           {/* Category chips */}
           {catData.length > 0 && (
             <div className="money-cats" style={{display:"flex",gap:".55rem",overflowX:"auto",padding:"0 1rem",marginBottom:".9rem",scrollbarWidth:"none"}}>
-              <div onClick={()=>setCatF("All")} style={{flexShrink:0,background:catF==="All"?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF==="All"?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:80}}>
-                <div style={{fontSize:"1.1rem",marginBottom:".2rem"}}>🏠</div>
+              <div className="mc-chip" onClick={()=>setCatF("All")} style={{flexShrink:0,background:catF==="All"?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF==="All"?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:80}}>
+                <div className="mc-ico" style={{fontSize:"1.1rem",marginBottom:".2rem"}}>🏠</div>
                 <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)"}}>All</div>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(allTotal)}</div>
-                <div style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{allExpenseItems.length} item{allExpenseItems.length!==1?"s":""}</div>
+                <div className="mc-count" style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{allExpenseItems.length} item{allExpenseItems.length!==1?"s":""}</div>
               </div>
               {catData.map(([cat,{total,count}],i)=>(
-                <div key={cat} onClick={()=>setCatF(catF===cat?"All":cat)} style={{flexShrink:0,background:catF===cat?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF===cat?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:90}}>
-                  <div style={{fontSize:"1.1rem",marginBottom:".2rem"}}>{CAT_ICONS[cat]||"🔧"}</div>
+                <div key={cat} className="mc-chip" onClick={()=>setCatF(catF===cat?"All":cat)} style={{flexShrink:0,background:catF===cat?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF===cat?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:90}}>
+                  <div className="mc-ico" style={{fontSize:"1.1rem",marginBottom:".2rem"}}>{CAT_ICONS[cat]||"🔧"}</div>
                   <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:90}}>{cat}</div>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(total)}</div>
-                  <div style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{count} item{count!==1?"s":""}</div>
+                  <div className="mc-count" style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{count} item{count!==1?"s":""}</div>
                 </div>
               ))}
             </div>
@@ -20076,6 +20095,7 @@ export default function App() {
             </button>
           ))}
           <div className="sbar-divider"/>
+          <div className="sbar-label" aria-hidden="true">Records</div>
           <button className={`sbar-btn ${showWarrantyModule?"active":""}`} onClick={()=>{ window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:"profile"})); setShowContractors(false); setShowDocs(false); setShowWarrantyModule(true); }} aria-current={showWarrantyModule?"page":undefined}>
             <span className="sbar-icon" aria-hidden="true">🔖</span>
             <span>Warranties</span>
@@ -25853,7 +25873,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
   // ── Shared sub-components ────────────────────────────────────────────────────
   const YN = ({ section, field, val }) => (
-    <div className="setup-cards">
+    <div className="setup-cards yn">
       <button className={`setup-card ${val===true?"sel":""}`} onClick={()=>set(section,field,val===true?null:true)}>
         <div className="setup-card-check">
           {val===true&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -26026,7 +26046,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
       </div>
     </div>
-    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",alignItems:"center",maxWidth:476,margin:"0 auto"}}>
         <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(0)}>← Back</button>
         <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={()=>setStep(2)}>Continue →</button>
       </div></div>
@@ -26074,7 +26094,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
       </div>
     </div>
-    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",alignItems:"center",maxWidth:476,margin:"0 auto"}}>
         <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(1)}>← Back</button>
         <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={()=>setStep(3)}>Continue →</button>
       </div></div>
@@ -26132,7 +26152,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
       </div>
     </div>
-    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",alignItems:"center",maxWidth:476,margin:"0 auto"}}>
         <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(2)}>← Back</button>
         <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={()=>setStep(4)}>Continue →</button>
       </div></div>
@@ -26201,7 +26221,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
       </div>
     </div>
-    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",maxWidth:540,margin:"0 auto"}}>
+    <div className="setup-actions"><div style={{display:"flex",gap:".75rem",alignItems:"center",maxWidth:476,margin:"0 auto"}}>
         <button className="onb-back" style={{display:"inline",marginTop:0}} onClick={()=>setStep(3)}>← Back</button>
         <button className="onb-btn" style={{flex:1,marginTop:0}} onClick={goReview}>Review my plan →</button>
       </div></div>
