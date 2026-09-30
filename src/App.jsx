@@ -1,4 +1,4 @@
-// Steadwell v288 — 2026-09-30
+// Steadwell v289 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3473,6 +3473,62 @@ img,.lp-root img{max-width:100%;height:auto}
 .vb-short{display:none}
 .tasks-cal-jump{display:none}
 @media(max-width:599px){.vb-bar{padding:.5rem .85rem;gap:.6rem;font-size:.8rem}}
+
+/* ── My Account modal ── */
+.acct-modal{max-width:780px!important;width:100%;height:min(720px,92vh);overflow:hidden!important}
+.acct-layout{display:flex;flex:1;min-height:0}
+.acct-nav{display:flex;flex-direction:column;gap:2px;width:200px;flex-shrink:0;padding:1rem .75rem;border-right:1px solid var(--stone);background:var(--cream);overflow-y:auto}
+.acct-nav-btn{display:flex;align-items:center;gap:.6rem;padding:.65rem .8rem;border-radius:10px;border:none;background:none;font-family:inherit;font-size:.86rem;font-weight:600;color:#6B6259;cursor:pointer;text-align:left;transition:background .12s,color .12s}
+.acct-nav-btn:hover{background:rgba(255,255,255,.6)}
+.acct-nav-btn.on{background:var(--white);color:var(--pine);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.acct-content{flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;padding:1.1rem 1.4rem 1.6rem;-webkit-overflow-scrolling:touch}
+.acct-wrap{min-width:0;overflow-wrap:anywhere;word-break:normal}
+.acct-ident{display:flex;align-items:flex-start;gap:.95rem;padding:1.1rem;background:var(--cream);border:1.5px solid var(--stone);border-radius:var(--r-sm);margin-bottom:1rem}
+.acct-avatar{width:54px;height:54px;border-radius:50%;background:var(--pine);color:#F4EDDF;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;flex-shrink:0}
+.acct-ident-name{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:500;color:var(--dark);line-height:1.25}
+.acct-ident-sub{font-size:.8rem;color:#8A8178;margin-top:2px;line-height:1.4}
+.acct-pill{display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:20px;border:1px solid var(--stone);background:var(--cream2);color:#6B6259;white-space:nowrap}
+.acct-pill.ok{background:#E8F3EE;color:#2A7A5A;border-color:#BFDCCB}
+.acct-pill.warn{background:#FBF0DD;color:#A0511A;border-color:#F0D6A8}
+.acct-pill.bad{background:#F8DEDA;color:#B0432B;border-color:#EBBDB3}
+.acct-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:1rem 1.05rem;margin-bottom:1rem}
+.acct-card-title{margin:0;font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--pine)}
+.acct-card-sub{font-size:.8rem;color:#7A7370;line-height:1.5;margin-top:.3rem;overflow-wrap:anywhere}
+.acct-card-body{margin-top:.75rem;display:flex;flex-direction:column;gap:.7rem}
+.acct-card-title:only-child+.acct-card-body{margin-top:.75rem}
+.acct-row{display:flex;gap:.8rem;align-items:flex-start;min-width:0}
+.acct-rowline{padding:.15rem 0;align-items:center}
+.acct-rowline+.acct-rowline{border-top:1px solid var(--cream2);padding-top:.7rem}
+.acct-val{font-size:.9rem;font-weight:600;color:var(--dark);line-height:1.35}
+.acct-hint{font-size:.76rem;color:#8A8178;line-height:1.5;margin-top:.25rem;overflow-wrap:anywhere}
+.acct-form{display:flex;flex-direction:column;gap:.55rem;margin-top:.2rem}
+.acct-input{padding:.6rem .75rem;border-radius:9px;border:1.5px solid var(--stone);font-size:.88rem;font-family:inherit;background:var(--white);color:var(--dark);min-width:0;width:100%;box-sizing:border-box}
+.acct-input:focus{outline:none;border-color:var(--pine)}
+.acct-link{align-self:flex-start;background:none;border:none;padding:0;font-family:inherit;font-size:.82rem;font-weight:700;color:var(--pine);cursor:pointer;text-align:left}
+.acct-link:disabled{color:#8A8178;cursor:default}
+.acct-btnrow{display:flex;gap:.5rem;flex-wrap:wrap;padding-top:.7rem;border-top:1px solid var(--cream2)}
+.acct-limits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.acct-limit{display:flex;flex-direction:column;gap:2px;background:var(--cream);border-radius:10px;padding:.55rem .7rem;min-width:0}
+.acct-limit-k{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A8178}
+.acct-limit-v{font-size:.88rem;font-weight:700;color:var(--dark);overflow-wrap:anywhere}
+.acct-addr{display:flex;align-items:center;gap:.6rem;background:var(--cream);border:1.5px solid var(--stone);border-radius:10px;padding:.6rem .75rem}
+.acct-addr code{flex:1;min-width:0;font-size:.8rem;color:#3A3530;line-height:1.4}
+.acct-danger{border:1.5px solid #E3B2A6;background:#FDF3F0;border-radius:var(--r-sm);padding:1rem 1.05rem}
+.acct-danger-title{font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#B0432B;margin-bottom:.6rem}
+.acct-danger-btn{flex-shrink:0;padding:.55rem .9rem;border-radius:10px;border:1.5px solid #E3B2A6;background:#F7E0DA;color:#B0432B;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit}
+@media(max-width:639px){
+  .acct-modal{height:92vh;max-width:100%!important}
+  .acct-layout{flex-direction:column}
+  .acct-nav{flex-direction:row;width:auto;overflow-x:auto;overflow-y:hidden;padding:.5rem .75rem;border-right:none;border-bottom:1px solid var(--stone);gap:.35rem;scrollbar-width:none}
+  .acct-nav::-webkit-scrollbar{display:none}
+  .acct-nav-btn{white-space:nowrap;padding:.5rem .85rem;flex-shrink:0;font-size:.82rem}
+  .acct-nav-ico{display:none}
+  .acct-content{padding:1rem 1rem 1.6rem}
+  .acct-limits{grid-template-columns:1fr 1fr}
+  .acct-row{flex-wrap:wrap}
+  .acct-danger .acct-row{flex-direction:column;align-items:stretch}
+  .acct-danger-btn{width:100%}
+}
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
@@ -5633,7 +5689,7 @@ const CANCEL_SUBSCRIPTION_URL = "https://hjkyameroqufaojuerns.supabase.co/functi
 // ─── NAME + PASSWORD (My Account) ───────────────────────────────────────────
 // Previously there was no way to edit your display name or change your
 // password from within the app at all.
-function NameAndPasswordSection({ profile, setProfile, userId, user, toast }) {
+function NameAndPasswordSection({ profile, setProfile, userId, user, toast, part }) {
   const shownName = accountName(profile, user);
   const [name, setName] = useState(shownName);
   const [savingName, setSavingName] = useState(false);
@@ -5669,40 +5725,85 @@ function NameAndPasswordSection({ profile, setProfile, userId, user, toast }) {
     setSavingPw(false);
   };
 
+  const showName = part !== "password", showPassword = part !== "name";
+  const pwTooShort = pw1.length > 0 && pw1.length < 8;
+  const pwMismatch = pw2.length > 0 && pw1 !== pw2;
   return (
-    <div style={{padding:"1rem",background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:"1rem"}}>
-      <div style={{fontSize:".78rem",fontWeight:700,color:"#8A8178",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".6rem"}}>Name & Password</div>
-      <div style={{display:"flex",gap:".5rem",marginBottom:showPw?".85rem":0}}>
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
-          style={{flex:1,padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
-        <button className="btn btn-ghost btn-sm" disabled={savingName || !name.trim() || name.trim()===shownName} onClick={saveName}>
-          {savingName ? "Saving…" : "Save"}
-        </button>
-      </div>
-      {!showPw ? (
-        <button className="btn btn-ghost btn-sm" style={{padding:0,fontSize:".82rem",fontWeight:600,color:"var(--pine)"}} onClick={()=>setShowPw(true)}>
-          Change password
-        </button>
+    <div>
+      {showName && (
+        <div className="acct-form" style={{marginTop:0}}>
+          <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+            <input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") saveName(); }} placeholder="Your name" autoComplete="name" className="acct-input" style={{flex:"1 1 180px"}}/>
+            <button className="btn btn-primary btn-sm" disabled={savingName || !name.trim() || name.trim()===shownName} onClick={saveName}>
+              {savingName ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      )}
+      {showPassword && (!showPw ? (
+        <button className="btn btn-ghost btn-sm" onClick={()=>setShowPw(true)}>Change password</button>
       ) : (
-        <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
-          <input type="password" value={pw1} onChange={e=>setPw1(e.target.value)} placeholder="New password (min. 8 characters)"
-            style={{padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
-          <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Confirm new password"
-            style={{padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
-          <div style={{display:"flex",gap:".5rem"}}>
-            <button className="btn btn-primary btn-sm" disabled={savingPw || !pw1 || !pw2} onClick={savePassword}>
+        <div className="acct-form" style={{marginTop:0}}>
+          <input type="password" autoComplete="new-password" value={pw1} onChange={e=>setPw1(e.target.value)} placeholder="New password (min. 8 characters)" className="acct-input"/>
+          {pwTooShort && <div className="acct-hint" style={{color:"#B0432B",marginTop:0}}>Use at least 8 characters.</div>}
+          <input type="password" autoComplete="new-password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Confirm new password" className="acct-input"/>
+          {pwMismatch && <div className="acct-hint" style={{color:"#B0432B",marginTop:0}}>Passwords don't match yet.</div>}
+          <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+            <button className="btn btn-primary btn-sm" disabled={savingPw || pw1.length<8 || pw1!==pw2} onClick={savePassword}>
               {savingPw ? "Saving…" : "Update password"}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={()=>{setShowPw(false);setPw1("");setPw2("");}}>Cancel</button>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
-function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow, onCheckout, checkoutLoading }) {
+// Small building blocks for the My Account modal.
+function AcctCard({ title, sub, children }) {
+  return (
+    <section className="acct-card">
+      {title && <h3 className="acct-card-title">{title}</h3>}
+      {sub && <div className="acct-card-sub">{sub}</div>}
+      <div className="acct-card-body">{children}</div>
+    </section>
+  );
+}
+function AcctToggleRow({ on, busy, onClick, title, desc }) {
+  return (
+    <div className="acct-row" style={{alignItems:"flex-start"}}>
+      <div className="acct-wrap" style={{flex:1}}>
+        <div className="acct-val">{title}</div>
+        <div className="acct-hint" style={{marginTop:2}}>{desc}</div>
+      </div>
+      <button type="button" role="switch" aria-checked={on} aria-label={title} disabled={busy} onClick={onClick}
+        style={{flexShrink:0,width:48,height:28,borderRadius:14,border:"none",background:on?"var(--pine)":"var(--stone)",position:"relative",cursor:busy?"default":"pointer",transition:"background .15s",opacity:busy?.6:1}}>
+        <span style={{position:"absolute",top:3,left:on?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+      </button>
+    </div>
+  );
+}
+
+const ACCT_SECTIONS = [
+  { id:"profile", label:"Profile",          ico:"👤" },
+  { id:"plan",    label:"Plan & billing",   ico:"💳" },
+  { id:"notify",  label:"Notifications",    ico:"🔔" },
+  { id:"connect", label:"Inbox & calendar", ico:"📬" },
+  { id:"data",    label:"Data & privacy",   ico:"🔒" },
+];
+
+function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow, onCheckout, checkoutLoading, onSignOut, onExport, onFeedback }) {
+  const [acctTab, setAcctTab] = useState("profile");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editEmail, setEditEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [resendState, setResendState] = useState("idle");
+  const [signingOutAll, setSigningOutAll] = useState(false);
+  const [savingDigest, setSavingDigest] = useState(false);
+  const [savingInsights, setSavingInsights] = useState(false);
+  const [addrCopied, setAddrCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -5768,6 +5869,77 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
     }
   };
 
+  const userEmail = session?.user?.email || "";
+  const shownName = accountName(profile, session?.user);
+  const meta = session?.user?.app_metadata || {};
+  const emailState = meta.email_bounced === true ? "bounced" : meta.email_verified === false ? "unverified" : "verified";
+  const signInProvider = meta.provider || "email";
+  const emailDigest = profile?.email_digest !== false;
+  const insightsOptIn = !!profile?.consent_contractor_insights;
+  const fmtLimit = (n, noun) => (n === Infinity || n == null || n > 999) ? `Unlimited ${noun}` : `Up to ${n} ${noun}`;
+  const planIncludes = [
+    ["Properties", plan==="free" ? "1" : String(planData?.maxProperties ?? PLANS[plan]?.maxProperties ?? 1)],
+    ["Documents", (() => { const n = planData?.maxDocs ?? PLANS[plan]?.maxDocs; return (n === Infinity || n == null) ? "Unlimited" : String(n); })()],
+    ["AI scanning", (planData?.aiScan ?? PLANS[plan]?.aiScan) ? "Included" : "Plus and up"],
+    ["Shared home access", (planData?.sharedAccess ?? PLANS[plan]?.sharedAccess) ? "Included" : "Pro"],
+  ];
+
+  const saveEmail = async () => {
+    const addr = newEmail.trim();
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: addr });
+    if (error) toast(error.message || "Could not update email — try again", "error");
+    else { toast("Confirmation sent — follow the link in the email to finish ✓"); setEditEmail(false); setNewEmail(""); }
+    setSavingEmail(false);
+  };
+  const resendVerification = async () => {
+    setResendState("sending");
+    try {
+      await supabase.functions.invoke("send-verify-email", { body: { record: { id: session.user.id, email: userEmail } } });
+      setResendState("sent");
+    } catch { setResendState("idle"); toast("Could not send — try again", "error"); }
+  };
+  const signOutEverywhere = async () => {
+    setSigningOutAll(true);
+    try { await supabase.auth.signOut({ scope: "global" }); } catch { toast("Could not sign out everywhere — try again", "error"); setSigningOutAll(false); }
+  };
+  const updateProfileFlag = async (field, val, setBusy, okMsg) => {
+    if (!profile?.id) return;
+    setBusy(true);
+    const { error } = await supabase.from("profiles").update({ [field]: val }).eq("id", profile.id);
+    if (!error) { setProfile(p => ({ ...p, [field]: val })); toast(okMsg); }
+    else toast("Could not update — try again", "error");
+    setBusy(false);
+  };
+  const toggleDigest = () => updateProfileFlag("email_digest", !emailDigest, setSavingDigest, !emailDigest ? "Email reminders enabled ✓" : "Email reminders disabled ✓");
+  const toggleInsights = () => updateProfileFlag("consent_contractor_insights", !insightsOptIn, setSavingInsights, !insightsOptIn ? "Opted in — thank you ✓" : "Opted out ✓");
+  const copyInbound = async () => {
+    const v = profile?.inbound_email || "";
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(v);
+      else { const ta = document.createElement("textarea"); ta.value = v; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+      setAddrCopied(true); setTimeout(() => setAddrCopied(false), 1800);
+    } catch { toast("Could not copy — select the address and copy manually", "error"); }
+  };
+  const cancelSubscription = async () => {
+    setCancelling(true);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const resp = await fetch(CANCEL_SUBSCRIPTION_URL, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${s.access_token}`},
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || "Cancel failed");
+      setProfile(p => ({...p, plan_cancel_at: data.expires_at}));
+      toast("Subscription cancelled — access continues until " + new Date(data.expires_at).toLocaleDateString());
+      setConfirmCancel(false);
+    } catch(err) {
+      toast(err.message || "Could not cancel — contact hello@trysteadwell.app", "error");
+    }
+    setCancelling(false);
+  };
+
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
@@ -5795,185 +5967,264 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
 
   return (
     <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
-      <div className="modal" style={{maxWidth:460}}>
+      <div className="modal acct-modal" role="dialog" aria-modal="true" aria-label="My Account">
         <div className="modal-handle" />
         <div className="modal-hdr">
           <span className="modal-title">👤 My Account</span>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">✕</button>
         </div>
-        <div className="modal-body">
-
-          {/* Identity card */}
-          <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem",background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:"1rem"}}>
-            <div style={{width:48,height:48,borderRadius:"50%",background:"var(--pine)",color:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,flexShrink:0}}>
-              {nameInitials(accountName(profile, session?.user), session?.user?.email)}
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{accountName(profile, session?.user) || session?.user?.email}</div>
-              <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{accountName(profile, session?.user) ? session?.user?.email : ""}{accountName(profile, session?.user) && tenureLabel ? " · " : ""}{tenureLabel}</div>
-            </div>
+        <div className="acct-layout">
+          <div className="acct-nav" role="tablist" aria-label="Account sections">
+            {ACCT_SECTIONS.map(sec => (
+              <button key={sec.id} role="tab" aria-selected={acctTab===sec.id} className={"acct-nav-btn"+(acctTab===sec.id?" on":"")} onClick={()=>setAcctTab(sec.id)}>
+                <span className="acct-nav-ico" aria-hidden="true">{sec.ico}</span>{sec.label}
+              </button>
+            ))}
           </div>
 
-          {/* Name + password — editable account basics */}
-          <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} user={session?.user} toast={toast}/>
+          <div className="acct-content" role="tabpanel">
 
-          {/* Segmented plan card — native app style */}
-          {(() => {
-            const viewTier = TIERS.find(t => t.key === viewPlan) || TIERS[0];
-            const isViewingCurrent = viewPlan === plan;
-            const isUpgradeTier = tierOrder[viewPlan] > tierOrder[plan];
-            return (
-              <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:16,overflow:"hidden",marginBottom:".85rem"}}>
+          {/* ───────────── PROFILE ───────────── */}
+          {acctTab==="profile" && (<>
+            <div className="acct-ident">
+              <div className="acct-avatar">{nameInitials(shownName, userEmail)}</div>
+              <div className="acct-wrap" style={{flex:1}}>
+                <div className="acct-ident-name">{shownName || userEmail}</div>
+                {shownName && <div className="acct-ident-sub">{userEmail}</div>}
+                <div style={{display:"flex",flexWrap:"wrap",gap:".4rem",marginTop:".5rem"}}>
+                  <span className="acct-pill" style={{background:pc.bg,color:pc.color,borderColor:pc.border}}>{planLabel} plan</span>
+                  {emailState==="verified" && <span className="acct-pill ok">✓ Email verified</span>}
+                  {emailState==="unverified" && <span className="acct-pill warn">Email not verified</span>}
+                  {emailState==="bounced" && <span className="acct-pill bad">Email bouncing</span>}
+                </div>
+                {memberSince && <div className="acct-ident-sub" style={{marginTop:".5rem"}}>{tenureLabel} · joined {memberSince.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>}
+              </div>
+            </div>
 
-                {/* Segmented selector */}
-                <div style={{padding:"1rem 1rem 0"}}>
-                  <div style={{display:"flex",background:"rgba(35,74,61,.08)",borderRadius:14,padding:3,gap:2}}>
-                    {TIERS.map(t => {
-                      const isSel = viewPlan === t.key;
-                      return (
-                        <button key={t.key} onClick={()=>setViewPlan(t.key)}
-                          style={{flex:1,border:"none",background:isSel?t.color:"transparent",padding:"9px 0",fontSize:".82rem",fontWeight:600,color:isSel?"#fff":"#7A7370",cursor:"pointer",borderRadius:11,fontFamily:"inherit",position:"relative",transition:"background .15s,color .15s"}}>
-                          {t.label}
-                          {t.key===plan && (
-                            <span style={{position:"absolute",top:5,right:9,width:5,height:5,borderRadius:"50%",background:isSel?"#fff":t.color}}/>
-                          )}
+            <AcctCard title="Your name" sub="Shown in your account menu and on shared home reports.">
+              <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} user={session?.user} toast={toast} part="name"/>
+            </AcctCard>
+
+            <AcctCard title="Email address" sub="Reminders, digests and receipts are sent here.">
+              <div className="acct-row">
+                <div className="acct-wrap" style={{flex:1}}>
+                  <div className="acct-val">{userEmail}</div>
+                  <div className="acct-hint">
+                    {emailState==="verified" && "Verified"}
+                    {emailState==="unverified" && "Not verified yet — confirm it so you don't miss reminders."}
+                    {emailState==="bounced" && "Delivery to this address is failing. Update it or email hello@trysteadwell.app."}
+                  </div>
+                </div>
+                {!editEmail && <button className="btn btn-ghost btn-sm" onClick={()=>{setEditEmail(true);setNewEmail("");}}>Change</button>}
+              </div>
+              {emailState==="unverified" && !editEmail && (
+                <button className="acct-link" disabled={resendState==="sending"||resendState==="sent"} onClick={resendVerification}>
+                  {resendState==="sent" ? "✓ Verification email sent — check your inbox" : resendState==="sending" ? "Sending…" : "Resend verification email"}
+                </button>
+              )}
+              {editEmail && (
+                <div className="acct-form">
+                  <input type="email" autoComplete="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="New email address" className="acct-input"/>
+                  <div className="acct-hint">We'll send a confirmation link. Your email doesn't change until you confirm it.</div>
+                  <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+                    <button className="btn btn-primary btn-sm" disabled={savingEmail || !/^\S+@\S+\.\S+$/.test(newEmail.trim()) || newEmail.trim().toLowerCase()===(userEmail||"").toLowerCase()} onClick={saveEmail}>{savingEmail?"Sending…":"Send confirmation"}</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setEditEmail(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </AcctCard>
+
+            <AcctCard title="Password & sign-in">
+              {signInProvider!=="email"
+                ? <div className="acct-hint" style={{marginTop:0}}>You sign in with {signInProvider.charAt(0).toUpperCase()+signInProvider.slice(1)}, so there's no Steadwell password to manage.</div>
+                : <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} user={session?.user} toast={toast} part="password"/>}
+              <div className="acct-btnrow">
+                {onSignOut && <button className="btn btn-ghost btn-sm" onClick={()=>{onClose();onSignOut();}}>Sign out</button>}
+                <button className="btn btn-ghost btn-sm" disabled={signingOutAll} onClick={signOutEverywhere}>{signingOutAll?"Signing out…":"Sign out on all devices"}</button>
+              </div>
+            </AcctCard>
+          </>)}
+
+          {/* ───────────── PLAN & BILLING ───────────── */}
+          {acctTab==="plan" && (<>
+            <AcctCard title="Current plan">
+              <div className="acct-row" style={{alignItems:"center"}}>
+                <div className="acct-wrap" style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
+                    <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:500,color:"var(--dark)"}}>{planLabel}</span>
+                    <span className="acct-pill" style={{background:pc.bg,color:pc.color,borderColor:pc.border}}>{plan==="free" ? "Free forever" : profile?.plan_cancel_at ? "Cancelled" : "Active"}</span>
+                  </div>
+                  <div className="acct-hint" style={{marginTop:".3rem"}}>
+                    {plan==="free" && "Core tracking for one home."}
+                    {plan!=="free" && profile?.plan_cancel_at && <>Access continues until <strong>{new Date(profile.plan_cancel_at).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</strong>, then reverts to Free.</>}
+                    {plan!=="free" && !profile?.plan_cancel_at && "Renews automatically. Manage or cancel below."}
+                  </div>
+                </div>
+              </div>
+              <div className="acct-limits">
+                {planIncludes.map(([k,v]) => (
+                  <div key={k} className="acct-limit"><span className="acct-limit-k">{k}</span><span className="acct-limit-v">{v}</span></div>
+                ))}
+              </div>
+            </AcctCard>
+
+            {/* Segmented plan card — native app style */}
+            {(() => {
+              const viewTier = TIERS.find(t => t.key === viewPlan) || TIERS[0];
+              const isViewingCurrent = viewPlan === plan;
+              const isUpgradeTier = tierOrder[viewPlan] > tierOrder[plan];
+              return (
+                <div style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:16,overflow:"hidden",marginBottom:".85rem"}}>
+                  <div style={{padding:"1rem 1rem 0"}}>
+                    <div style={{display:"flex",background:"rgba(35,74,61,.08)",borderRadius:14,padding:3,gap:2}}>
+                      {TIERS.map(t => {
+                        const isSel = viewPlan === t.key;
+                        return (
+                          <button key={t.key} onClick={()=>setViewPlan(t.key)}
+                            style={{flex:1,border:"none",background:isSel?t.color:"transparent",padding:"9px 0",fontSize:".82rem",fontWeight:600,color:isSel?"#fff":"#7A7370",cursor:"pointer",borderRadius:11,fontFamily:"inherit",position:"relative",transition:"background .15s,color .15s"}}>
+                            {t.label}
+                            {t.key===plan && (<span style={{position:"absolute",top:5,right:9,width:5,height:5,borderRadius:"50%",background:isSel?"#fff":t.color}}/>)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{textAlign:"center",padding:"1.2rem 1.5rem .2rem"}}>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",color:"var(--dark)"}}>
+                      {billingAnnual && viewTier.priceAnnual ? viewTier.priceAnnual : viewTier.price}
+                      <span style={{fontSize:".8rem",color:"#8A8178"}}> {billingAnnual && viewTier.priceAnnual ? viewTier.periodAnnual : viewTier.period}</span>
+                    </div>
+                    <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2}}>{viewTier.pitch}</div>
+                    {isViewingCurrent && (<div style={{display:"inline-block",marginTop:9,fontSize:".64rem",fontWeight:700,color:"#fff",background:viewTier.color,padding:"2px 9px",borderRadius:8,letterSpacing:".02em"}}>YOUR CURRENT PLAN</div>)}
+                  </div>
+                  {viewPlan !== "free" && (
+                    <div style={{display:"flex",justifyContent:"center",padding:".7rem 1.5rem 0"}}>
+                      <div style={{display:"inline-flex",background:"var(--cream2)",borderRadius:16,padding:2,gap:2}}>
+                        <button onClick={()=>setBillingAnnual(false)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:!billingAnnual?"var(--white)":"transparent",color:!billingAnnual?"var(--dark)":"var(--mid)",fontWeight:!billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",boxShadow:!billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none"}}>Monthly</button>
+                        <button onClick={()=>setBillingAnnual(true)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:billingAnnual?"var(--white)":"transparent",color:billingAnnual?"var(--dark)":"var(--mid)",fontWeight:billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",boxShadow:billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:4}}>
+                          Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>Save 33%</span>
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Price + pitch — updates with selected segment */}
-                <div style={{textAlign:"center",padding:"1.4rem 1.5rem .2rem"}}>
-                  <div style={{width:0,height:0,borderLeft:"7px solid transparent",borderRight:"7px solid transparent",borderBottom:`7px solid ${viewTier.color}`,margin:"0 auto 12px"}}/>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",color:"var(--dark)"}}>
-                    {billingAnnual && viewTier.priceAnnual ? viewTier.priceAnnual : viewTier.price}
-                    <span style={{fontSize:".8rem",color:"#8A8178"}}> {billingAnnual && viewTier.priceAnnual ? viewTier.periodAnnual : viewTier.period}</span>
-                  </div>
-                  <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2}}>{viewTier.pitch}</div>
-                  {isViewingCurrent && (
-                    <div style={{display:"inline-block",marginTop:9,fontSize:".64rem",fontWeight:700,color:"#fff",background:viewTier.color,padding:"2px 9px",borderRadius:8,letterSpacing:".02em"}}>YOUR CURRENT PLAN</div>
+                      </div>
+                    </div>
                   )}
+                  <div style={{padding:"1.1rem 1.5rem 0",display:"flex",flexDirection:"column",gap:7}}>
+                    {viewTier.features.map(f => (
+                      <div key={f} style={{display:"flex",gap:8,fontSize:".82rem",color:"#3A3530"}}><span style={{color:viewTier.color,flexShrink:0}}>✓</span><span className="acct-wrap">{f}</span></div>
+                    ))}
+                  </div>
+                  <div style={{padding:"1.2rem 1.5rem 1.4rem"}}>
+                    {isViewingCurrent ? (
+                      <div style={{textAlign:"center",fontSize:".78rem",color:"#A8A09A"}}>{plan === "free" ? "You're all set on Free" : "Manage billing or cancel below"}</div>
+                    ) : isUpgradeTier ? (
+                      <button disabled={checkoutLoading} onClick={()=>handlePlanChange(viewPlan)}
+                        style={{width:"100%",padding:".8rem",background:viewTier.color,border:"none",borderRadius:12,color:"#fff",fontSize:".88rem",fontWeight:700,cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.6:1,fontFamily:"inherit"}}>
+                        {checkoutLoading ? "Loading…" : `Upgrade to ${viewTier.label} →`}
+                      </button>
+                    ) : (
+                      <div style={{textAlign:"center",fontSize:".76rem",color:"#A8A09A",lineHeight:1.5}}>To switch to {viewTier.label}, cancel your current plan below first.</div>
+                    )}
+                  </div>
                 </div>
+              );
+            })()}
+            <div className="acct-hint" style={{textAlign:"center",marginBottom:"1rem"}}>Cancel anytime · No long-term commitment · Secure payments via Stripe</div>
 
-                {/* Billing toggle — only relevant for paid tiers */}
-                {viewPlan !== "free" && (
-                  <div style={{display:"flex",justifyContent:"center",padding:".7rem 1.5rem 0"}}>
-                    <div style={{display:"inline-flex",background:"var(--cream2)",borderRadius:16,padding:2,gap:2}}>
-                      <button onClick={()=>setBillingAnnual(false)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:!billingAnnual?"var(--white)":"transparent",color:!billingAnnual?"var(--dark)":"var(--mid)",fontWeight:!billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:!billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none"}}>Monthly</button>
-                      <button onClick={()=>setBillingAnnual(true)} style={{padding:"3px 12px",borderRadius:12,border:"none",background:billingAnnual?"var(--white)":"transparent",color:billingAnnual?"var(--dark)":"var(--mid)",fontWeight:billingAnnual?700:400,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",boxShadow:billingAnnual?"0 1px 3px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:4}}>
-                        Annual <span style={{fontSize:".62rem",background:"#E8F5ED",color:"#2A7A4A",fontWeight:700,padding:"1px 6px",borderRadius:8}}>Save 33%</span>
+            {plan !== "free" && !profile?.plan_cancel_at && (
+              <AcctCard title="Cancel subscription">
+                {!confirmCancel ? (
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setConfirmCancel(true)}>Cancel subscription…</button>
+                ) : (
+                  <div style={{background:"#FFF8F6",border:"1.5px solid #F5D5B0",borderRadius:10,padding:".9rem 1rem"}}>
+                    <div style={{fontSize:".85rem",fontWeight:700,color:"#A0511A",marginBottom:".3rem"}}>Cancel your subscription?</div>
+                    <div style={{fontSize:".78rem",color:"#7A7370",lineHeight:1.5,marginBottom:".75rem"}}>You'll keep access until the end of your current billing period. No refunds for partial periods.</div>
+                    <div style={{display:"flex",gap:".5rem"}}>
+                      <button onClick={()=>setConfirmCancel(false)} style={{flex:1,padding:".6rem",borderRadius:8,border:"1.5px solid var(--stone)",background:"var(--white)",color:"var(--dark)",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Keep plan</button>
+                      <button disabled={cancelling} onClick={cancelSubscription}
+                        style={{flex:1,padding:".6rem",borderRadius:8,border:"none",background:"#C16140",color:"#fff",fontSize:".82rem",fontWeight:700,cursor:cancelling?"default":"pointer",opacity:cancelling?.6:1,fontFamily:"inherit"}}>
+                        {cancelling ? "Cancelling…" : "Yes, cancel"}
                       </button>
                     </div>
                   </div>
                 )}
+              </AcctCard>
+            )}
+            <div className="acct-hint" style={{textAlign:"center"}}>Billing question or need an invoice? <a href="mailto:hello@trysteadwell.app" style={{color:"var(--pine)",fontWeight:700}}>hello@trysteadwell.app</a></div>
+          </>)}
 
-                {/* Feature list — updates with selected segment */}
-                <div style={{padding:"1.1rem 1.5rem 0",display:"flex",flexDirection:"column",gap:7}}>
-                  {viewTier.features.map(f => (
-                    <div key={f} style={{display:"flex",gap:8,fontSize:".82rem",color:"#3A3530"}}>
-                      <span style={{color:viewTier.color,flexShrink:0}}>✓</span>{f}
-                    </div>
-                  ))}
+          {/* ───────────── NOTIFICATIONS ───────────── */}
+          {acctTab==="notify" && (<>
+            <AcctCard title="Email reminders & digest" sub={<>Sent to <strong className="acct-wrap">{userEmail}</strong></>}>
+              <AcctToggleRow on={emailDigest} busy={savingDigest} onClick={toggleDigest}
+                title="Weekly digest & task reminders" desc="A weekly summary of what's coming up, plus reminders for due and overdue tasks and warranty alerts."/>
+              <div className="acct-hint">Time-sensitive alerts — warranties expiring within 7 days — and account or security emails are always sent, even when this is off.</div>
+            </AcctCard>
+            <AcctCard title="What we send">
+              {[
+                ["📋","Task reminders","Due soon and overdue maintenance",emailDigest,"On","Off"],
+                ["📰","Weekly digest","One email a week with your home at a glance",emailDigest,"On","Off"],
+                ["🔖","Warranty alerts",emailDigest?"Heads-up ahead of expiry dates":"Only the 7-day expiry alert is sent",emailDigest,"On","7-day only"],
+                ["🔐","Account & billing","Receipts, security and password emails",true,"Always","Always"],
+              ].map(([ico,t,d,on,onLbl,offLbl]) => (
+                <div key={t} className="acct-row acct-rowline">
+                  <span aria-hidden="true" style={{fontSize:"1.05rem"}}>{ico}</span>
+                  <div className="acct-wrap" style={{flex:1}}><div className="acct-val">{t}</div><div className="acct-hint" style={{marginTop:1}}>{d}</div></div>
+                  <span className={"acct-pill "+(on?"ok":"")}>{on?onLbl:offLbl}</span>
                 </div>
+              ))}
+            </AcctCard>
+          </>)}
 
-                {/* CTA — contextual to what's being viewed */}
-                <div style={{padding:"1.2rem 1.5rem 1.4rem"}}>
-                  {isViewingCurrent ? (
-                    <div style={{textAlign:"center",fontSize:".78rem",color:"#A8A09A"}}>
-                      {plan === "free" ? "You're all set on Free" : "Manage billing or cancel below"}
-                    </div>
-                  ) : isUpgradeTier ? (
-                    <button
-                      disabled={checkoutLoading}
-                      onClick={()=>handlePlanChange(viewPlan)}
-                      style={{width:"100%",padding:".8rem",background:viewTier.color,border:"none",borderRadius:12,color:"#fff",fontSize:".88rem",fontWeight:700,cursor:checkoutLoading?"default":"pointer",opacity:checkoutLoading?.6:1,fontFamily:"inherit"}}>
-                      {checkoutLoading ? "Loading…" : `Upgrade to ${viewTier.label} →`}
-                    </button>
-                  ) : (
-                    <div style={{textAlign:"center",fontSize:".76rem",color:"#A8A09A",lineHeight:1.5}}>
-                      To switch to {viewTier.label}, cancel your current plan below first.
-                    </div>
-                  )}
+          {/* ───────────── INBOX & CALENDAR ───────────── */}
+          {acctTab==="connect" && (<>
+            <AcctCard title="Email capture address" sub="Forward receipts, warranty PDFs and invoices here and they land in your Steadwell inbox.">
+              <div className="acct-addr">
+                <code className="acct-wrap">{profile?.inbound_email || "Not available yet"}</code>
+                <button className="btn btn-primary btn-sm" disabled={!profile?.inbound_email} onClick={copyInbound}>{addrCopied ? "✓ Copied" : "Copy"}</button>
+              </div>
+              <div className="acct-hint">Keep this address private — anyone who has it can send mail to your inbox. If it ever leaks, email hello@trysteadwell.app.</div>
+            </AcctCard>
+            <AcctCard title="Calendar sync" sub="Subscribe to your maintenance tasks and warranty expiries in Apple Calendar, Google Calendar, or Outlook. Updates automatically.">
+              {session?.user?.id && <CalendarSyncWidget userId={session.user.id} calendarToken={profile?.calendar_token} />}
+            </AcctCard>
+          </>)}
+
+          {/* ───────────── DATA & PRIVACY ───────────── */}
+          {acctTab==="data" && (<>
+            <AcctCard title="Your data">
+              <div className="acct-row acct-rowline">
+                <div className="acct-wrap" style={{flex:1}}><div className="acct-val">Export my data</div><div className="acct-hint" style={{marginTop:1}}>Download tasks, assets, expenses, service logs and more.</div></div>
+                {onExport && <button className="btn btn-ghost btn-sm" onClick={()=>{onClose();onExport();}}>Export</button>}
+              </div>
+              <div className="acct-row acct-rowline">
+                <div className="acct-wrap" style={{flex:1}}><div className="acct-val">Terms & Privacy Policy</div><div className="acct-hint" style={{marginTop:1}}>How we store and use your information.</div></div>
+                <div style={{display:"flex",gap:".4rem"}}>
+                  <a className="btn btn-ghost btn-sm" href="/terms" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}>Terms</a>
+                  <a className="btn btn-ghost btn-sm" href="/privacy" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}>Privacy</a>
                 </div>
               </div>
-            );
-          })()}
-
-          <div style={{textAlign:"center",fontSize:".72rem",color:"#9E9690",marginBottom:"1.25rem"}}>
-            Cancel anytime · No long-term commitment · Secure payments via Stripe
-          </div>
-
-          {/* Cancel subscription */}
-          {plan !== "free" && !profile?.plan_cancel_at && (
-            <div style={{marginBottom:"1rem"}}>
-              {!confirmCancel ? (
-                <button
-                  onClick={()=>setConfirmCancel(true)}
-                  style={{width:"100%",padding:".65rem",borderRadius:10,border:"1.5px solid var(--stone)",background:"transparent",color:"#A8A09A",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                  Cancel subscription
-                </button>
-              ) : (
-                <div style={{background:"#FFF8F6",border:"1.5px solid #F5D5B0",borderRadius:10,padding:".9rem 1rem"}}>
-                  <div style={{fontSize:".85rem",fontWeight:700,color:"#A0511A",marginBottom:".3rem"}}>Cancel your subscription?</div>
-                  <div style={{fontSize:".78rem",color:"#7A7370",lineHeight:1.5,marginBottom:".75rem"}}>You'll keep access until the end of your current billing period. No refunds for partial periods.</div>
-                  <div style={{display:"flex",gap:".5rem"}}>
-                    <button onClick={()=>setConfirmCancel(false)}
-                      style={{flex:1,padding:".6rem",borderRadius:8,border:"1.5px solid var(--stone)",background:"var(--white)",color:"var(--dark)",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                      Keep plan
-                    </button>
-                    <button
-                      disabled={cancelling}
-                      onClick={async ()=>{
-                        setCancelling(true);
-                        try {
-                          const { data: { session: s } } = await supabase.auth.getSession();
-                          const resp = await fetch(CANCEL_SUBSCRIPTION_URL, {
-                            method:"POST",
-                            headers:{"Content-Type":"application/json","Authorization":`Bearer ${s.access_token}`},
-                          });
-                          const data = await resp.json();
-                          if (!resp.ok || !data.ok) throw new Error(data.error || "Cancel failed");
-                          setProfile(p => ({...p, plan_cancel_at: data.expires_at}));
-                          toast("Subscription cancelled — access continues until " + new Date(data.expires_at).toLocaleDateString());
-                          setConfirmCancel(false);
-                        } catch(err) {
-                          toast(err.message || "Could not cancel — contact hello@trysteadwell.app", "error");
-                        }
-                        setCancelling(false);
-                      }}
-                      style={{flex:1,padding:".6rem",borderRadius:8,border:"none",background:"#C16140",color:"#fff",fontSize:".82rem",fontWeight:700,cursor:cancelling?"default":"pointer",opacity:cancelling?.6:1,fontFamily:"inherit"}}>
-                      {cancelling ? "Cancelling…" : "Yes, cancel"}
-                    </button>
-                  </div>
+              {onFeedback && (
+                <div className="acct-row acct-rowline">
+                  <div className="acct-wrap" style={{flex:1}}><div className="acct-val">Send feedback</div><div className="acct-hint" style={{marginTop:1}}>Report a bug or suggest an improvement.</div></div>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>{onClose();onFeedback();}}>Open</button>
                 </div>
               )}
+            </AcctCard>
+            <AcctCard title="Privacy choices">
+              <AcctToggleRow on={insightsOptIn} busy={savingInsights} onClick={toggleInsights}
+                title="Contractor Insights Program" desc="Share anonymized, aggregated trends with local contractor partners. Your name, address and records are never included. Off by default."/>
+            </AcctCard>
+            <div className="acct-danger">
+              <div className="acct-danger-title">Danger zone</div>
+              <div className="acct-row" style={{alignItems:"center"}}>
+                <div className="acct-wrap" style={{flex:1}}>
+                  <div className="acct-val">Delete my account</div>
+                  <div className="acct-hint" style={{marginTop:1}}>Permanently deletes your account and all home data after a 30-day grace period. This cannot be undone.</div>
+                </div>
+                <button className="acct-danger-btn" onClick={()=>setShowExitSurvey(true)}>Delete account</button>
+              </div>
             </div>
-          )}
-          {profile?.plan_cancel_at && plan !== "free" && (
-            <div style={{background:"#FFF8F6",border:"1.5px solid #F5D5B0",borderRadius:10,padding:".75rem 1rem",marginBottom:"1rem",fontSize:".8rem",color:"#A0511A",lineHeight:1.5}}>
-              ⚠ Your subscription is cancelled. Access continues until <strong>{new Date(profile.plan_cancel_at).toLocaleDateString()}</strong>.
-            </div>
-          )}
+          </>)}
 
-          {/* Calendar sync */}
-          <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem",marginBottom:"1.1rem"}}>
-            <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"var(--pine)",marginBottom:".5rem"}}>Calendar sync</div>
-            <div style={{fontSize:".82rem",color:"var(--mid)",lineHeight:1.6,marginBottom:".75rem"}}>Subscribe to your maintenance tasks and warranty expiries in Apple Calendar, Google Calendar, or Outlook. Updates automatically.</div>
-            {session?.user?.id && <CalendarSyncWidget userId={session.user.id} calendarToken={profile?.calendar_token} />}
-          </div>
-
-          {/* Danger zone */}
-          <div style={{borderTop:"1px solid var(--cream2)",paddingTop:"1.1rem"}}>
-            <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#B0432B",marginBottom:".6rem"}}>Danger zone</div>
-            <button
-              onClick={()=>setShowExitSurvey(true)}
-              style={{width:"100%",padding:".75rem",borderRadius:10,border:"1.5px solid #E3B2A6",background:"#F7E0DA",color:"#B0432B",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-              Delete my account
-            </button>
-            <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".5rem",lineHeight:1.5}}>
-              Permanently deletes your account and all home data after a 30-day grace period. This cannot be undone.
-            </div>
           </div>
         </div>
       </div>
@@ -20720,6 +20971,9 @@ export default function App() {
             onUpgradeFlow={()=>{setShowAccount(false);setShowUpgrade(true);}}
             onCheckout={startCheckout}
             checkoutLoading={checkoutLoading}
+            onSignOut={handleSignOut}
+            onExport={()=>setShowExport(true)}
+            onFeedback={()=>setShowFeedback(true)}
           />
         )}
         {showExport && (
