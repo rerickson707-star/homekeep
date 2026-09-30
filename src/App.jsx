@@ -1,4 +1,4 @@
-// Steadwell v290 — 2026-09-30
+// Steadwell v291 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3542,6 +3542,8 @@ img,.lp-root img{max-width:100%;height:auto}
 .ig-step{display:flex;align-items:center;gap:.8rem;background:var(--cream);border:1.5px solid var(--stone);border-radius:14px;padding:.8rem .85rem}
 .ig-num{font-family:'Fraunces',serif;font-weight:700;font-size:1.05rem;color:var(--rust);width:1rem;text-align:center;flex-shrink:0}
 .ig-icon{width:48px;height:48px;border-radius:12px;background:#1C3D31;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ig-icon.ig-logo{background:none;overflow:hidden}
+.ig-icon.ig-logo img,.ig-banner-icon img{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover;border-radius:inherit}
 .ig-step-txt{display:flex;flex-direction:column;gap:2px;min-width:0;overflow-wrap:anywhere}
 .ig-step-title{font-size:.95rem;font-weight:700;color:var(--dark);line-height:1.3}
 .ig-step-body{font-size:.8rem;color:#7A7370;line-height:1.45}
@@ -20044,13 +20046,8 @@ function InstallIcon({ name }) {
   if (name === "install") return (<svg {...p}><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 7v5M9.5 10l2.5 2.5L14.5 10"/><path d="M8 20h8"/></svg>);
   if (name === "safari") return (<svg {...p}><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>);
   if (name === "link")  return (<svg {...p}><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>);
-  return (
-    <svg viewBox="0 0 48 48" width="30" height="30" fill="none" aria-hidden="true">
-      <rect width="48" height="48" rx="11" fill="#C16140"/>
-      <path d="M12 34L12 20L24 10L36 20L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M8 35.5L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
-    </svg>
-  );
+  // "app": the real Steadwell icon (same file used on the Home Screen and in the app header)
+  return <img src="/icon-192.png" alt="" style={{display:"block",width:"100%",height:"100%",objectFit:"cover"}}/>;
 }
 
 // The actual instructions for each device/browser combination.
@@ -20201,7 +20198,7 @@ function InstallGuideModal({ env, fromPrompt, onClose, onNever, nativeReady, onN
             {content.steps.map((st, i) => (
               <li key={i} className="ig-step">
                 <span className="ig-num">{i + 1}</span>
-                <span className="ig-icon"><InstallIcon name={st.icon}/></span>
+                <span className={"ig-icon"+(st.icon==="app"?" ig-logo":"")}><InstallIcon name={st.icon}/></span>
                 <span className="ig-step-txt">
                   <span className="ig-step-title">{st.title}</span>
                   <span className="ig-step-body">{st.body}</span>
