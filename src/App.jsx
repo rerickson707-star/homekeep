@@ -1,4 +1,4 @@
-// Steadwell v280 — 2026-09-30T04:10:00.000Z
+// Steadwell v281 — 2026-09-30T04:30:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1800,8 +1800,8 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 /* ══ BUTTONS ══ */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:.56rem 1.15rem;border-radius:var(--r-sm);font-family:'Hanken Grotesk',sans-serif;font-size:.82rem;font-weight:600;border:none;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex-shrink:0}
 .btn:active{transform:scale(.97)}
-.btn-primary{background:var(--rust);color:#fff;box-shadow:0 2px 10px rgba(193,97,64,.28)}
-.btn-primary:hover{background:#A84820;box-shadow:0 4px 16px rgba(193,97,64,.4);transform:translateY(-1px)}
+.btn-primary,.btn-rust{background:var(--rust);color:#fff;box-shadow:0 2px 10px rgba(193,97,64,.28)}
+.btn-primary:hover,.btn-rust:hover{background:#A84820;box-shadow:0 4px 16px rgba(193,97,64,.4);transform:translateY(-1px)}
 .btn-ghost{background:var(--stone);color:var(--dark)}
 .btn-ghost:hover{background:var(--mid)}
 .btn-sm{padding:.34rem .75rem;font-size:.72rem}
@@ -2884,7 +2884,11 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-gen-list{display:flex;flex-direction:column;gap:.35rem;max-height:52vh;overflow-y:auto;padding-right:.25rem}
 .ct-gen-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .7rem;background:var(--cream2);border-radius:9px;border:1px solid var(--stone);cursor:pointer;transition:background .1s}
 .ct-gen-item:hover{background:rgba(193,97,64,.07)}
-.ct-gen-item input[type=checkbox]{accent-color:var(--rust);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.ct-gen-check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--mid);background:var(--white);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .16s}
+.ct-gen-item.on{background:rgba(193,97,64,.09);border-color:var(--rust)}
+.ct-gen-item.on .ct-gen-check{background:var(--rust);border-color:var(--rust)}
+.ct-gen-item:not(.on) .ct-gen-title{color:#8A8178}
+.ct-gen-item:focus-visible{outline:2px solid var(--rust);outline-offset:1px}
 .ct-gen-info{flex:1;min-width:0}
 .ct-gen-title{font-size:.82rem;font-weight:500;color:var(--dark);line-height:1.3}
 .ct-gen-sub{font-size:.7rem;color:#9E9690;margin-top:1px}
@@ -18965,8 +18969,12 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                     return (
                       <div key={it.id}>
                         {showSeason && <div className="ct-gen-season">{it.season}</div>}
-                        <div className="ct-gen-item" onClick={()=>setGenChecked(c=>({...c,[it.id]:!c[it.id]}))}>
-                          <input type="checkbox" checked={!!genChecked[it.id]} readOnly/>
+                        <div className={"ct-gen-item"+(genChecked[it.id]?" on":"")} role="checkbox" aria-checked={!!genChecked[it.id]} tabIndex={0}
+                          onClick={()=>setGenChecked(c=>({...c,[it.id]:!c[it.id]}))}
+                          onKeyDown={e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setGenChecked(c=>({...c,[it.id]:!c[it.id]})); } }}>
+                          <span className="ct-gen-check" aria-hidden="true">
+                            {genChecked[it.id] && <svg width="11" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </span>
                           <div className="ct-gen-info">
                             <div className="ct-gen-title">{it.title}</div>
                             <div className="ct-gen-sub">{new Date(it.date+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})} · {it.category}</div>
