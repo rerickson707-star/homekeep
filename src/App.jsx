@@ -1,4 +1,4 @@
-// Steadwell v278 — 2026-09-30T02:40:00.000Z
+// Steadwell v279 — 2026-09-30T03:30:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1828,13 +1828,15 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 .qs-btn{padding:3px 9px;border-radius:12px;font-size:.64rem;font-weight:700;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:'Hanken Grotesk',sans-serif}
 
 /* ══ MODAL / OVERLAY ══ */
-.overlay{position:fixed;inset:0;background:rgba(23,30,28,.5);z-index:400;display:flex;align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-@media(min-width:640px){.overlay{align-items:center;padding:1rem}}
+.overlay,.modal-overlay{position:fixed;inset:0;background:rgba(23,30,28,.5);z-index:400;display:flex;align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+@media(min-width:640px){.overlay,.modal-overlay{align-items:center;padding:1rem}}
 .modal{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 -12px 50px rgba(38,33,28,.25);display:flex;flex-direction:column}
 @media(min-width:640px){.modal{border-radius:22px;max-width:560px;box-shadow:var(--shadow-lg)}}
 .modal-handle{width:40px;height:4px;border-radius:2px;background:var(--stone);margin:.65rem auto .2rem;flex-shrink:0}
-.modal-hdr{padding:.9rem 1.4rem .7rem;border-bottom:1px solid var(--stone);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-hdr,.modal-header{padding:.9rem 1.4rem .7rem;border-bottom:1px solid var(--stone);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-title{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:600;color:var(--dark)}
+.modal-close{display:inline-flex;align-items:center;justify-content:center;padding:.34rem .75rem;border-radius:var(--r-sm);background:var(--stone);color:var(--dark);border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;font-size:.72rem;font-weight:600;flex-shrink:0}
+.modal-close:hover{background:var(--mid)}
 .modal-body{padding:1.1rem 1.4rem;flex:1;overflow-y:auto}
 .modal-footer{padding:.8rem 1.4rem 1.1rem;display:flex;gap:.55rem;justify-content:flex-end;border-top:1px solid var(--stone);flex-shrink:0}
 .modal-footer .btn{flex:1}
@@ -3203,7 +3205,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .mh-flat{margin-left:0!important;margin-right:0!important}
   .mh-stats{border:1.5px solid var(--stone);border-radius:var(--r-sm);overflow:hidden;margin:1.25rem 0!important}
   .mh-cols>*{margin:0 0 1.25rem!important}
-  .mh-cols>.ins-overlay{margin:0!important}
+  .mh-cols>.ins-overlay,.mh-cols>.overlay,.mh-cols>.modal-overlay{margin:0!important}
 }
 @media(min-width:1200px){
   .mh-cols{column-count:2;column-gap:1.25rem}
@@ -10117,7 +10119,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
   );
 }
 
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[] }) {
+function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[], onOpenWarranties, onOpenInsurance, onViewAsset }) {
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   // The ONE Home Health score — same computeHealthScore() the "My Home" tab's
   // HealthScoreWidget shows, so this never disagrees with it. This hero stays
@@ -10245,7 +10247,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       title:  insRenewalDays < 0 ? "Insurance renewal overdue" : "Insurance renews soon",
       sub:    profile.ins_company ? `${profile.ins_company} · ${insRenewalDays >= 0 ? `${insRenewalDays} days away` : "expired"}` : "Review your policy",
       badge:  insRenewalDays >= 0 ? `${insRenewalDays}d` : "Expired",
-      action: () => onNavigate("profile"),
+      action: () => (onOpenInsurance ? onOpenInsurance() : onNavigate("profile")),
     });
   }
 
@@ -10263,7 +10265,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       title:  `${expiredWarr.length} warrant${expiredWarr.length === 1 ? "y has" : "ies have"} expired`,
       sub:    `${names}${expiredWarr.length > 2 ? ` +${expiredWarr.length - 2} more` : ""} · repairs are now out-of-pocket`,
       badge:  "Review",
-      action: () => onNavigate("warranties"),
+      action: () => (onOpenWarranties ? onOpenWarranties() : onNavigate("warranties")),
     });
   }
 
@@ -10282,7 +10284,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         title:  `${w.item} warranty`,
         sub:    `Expires ${fmtD(w.expiry_date)}`,
         badge:  `${d}d left`,
-        action: () => onNavigate("warranties"),
+        action: () => (onViewAsset ? onViewAsset(w.id) : onNavigate("warranties")),
       });
     });
 
@@ -10411,7 +10413,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
         const stats = [
           { label:"Overdue tasks",       value:overdueN,          hot:overdueN>0,          go:"tasks" },
           { label:"Due in 30 days",      value:upcoming.length,   hot:false,               go:"tasks" },
-          { label:"Warranties ending",   value:expiringW.length,  hot:expiringW.length>0,  go:"warranties", sub:"within 90 days" },
+          { label:"Warranties ending",   value:expiringW.length,  hot:expiringW.length>0,  go:"warranties", open:onOpenWarranties, sub:"within 90 days" },
           { label:"Open recalls",        value:(recalls||[]).length, hot:(recalls||[]).length>0, go:"warranties" },
         ];
         return (
@@ -10452,7 +10454,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           {/* Live counts */}
           <div className="dash-stats">
             {stats.map(st => (
-              <button key={st.label} onClick={()=>onNavigate(st.go)} className="dash-stat">
+              <button key={st.label} onClick={()=>(st.open ? st.open() : onNavigate(st.go))} className="dash-stat">
                 <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,lineHeight:1,color:st.hot?"#F0A57F":"#F4EDDF"}}>{st.value}</span>
                 <span style={{fontSize:".72rem",color:"rgba(244,237,223,.7)",fontWeight:600,marginTop:".3rem",textAlign:"left"}}>{st.label}{st.sub?<span style={{display:"block",fontWeight:500,color:"rgba(244,237,223,.5)"}}>{st.sub}</span>:null}</span>
               </button>
@@ -14149,10 +14151,10 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                               const isLast=i===chartBills.length-1;
                               const isHigher=isLast&&i>0&&Number(b.amount)>Number(chartBills[i-1]?.amount||0)*1.4;
                               const barColor=isHigher?"#B8861E":isLast?"#C16140":"#3E7D5A";
-                              const mo=new Date(b.bill_date+"T00:00:00").toLocaleString("default",{month:"short"}).slice(0,1);
+                              const mo=new Date(b.bill_date+"T00:00:00").toLocaleString("default",{month:"short"});
                               return (
-                                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                                  <div style={{width:"100%",height:`${h}%`,borderRadius:"3px 3px 0 0",background:barColor,minHeight:2}}/>
+                                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:3,height:"100%"}}>
+                                  <div style={{width:"100%",height:Math.max(3,Math.round(h/100*34)),borderRadius:"3px 3px 0 0",background:barColor}}/>
                                   <div style={{fontSize:".58rem",color:isLast?barColor:"#A8A09A",fontWeight:isLast?700:600}}>{mo}</div>
                                 </div>
                               );
@@ -14357,10 +14359,10 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
   };
 
   return (
-    <div>
+    <div className="fg">
       {/* ── AI Scan + Upload — primary action ── */}
       {!data.file_url && (
-        <>
+        <div style={{gridColumn:"1 / -1"}}>
           <input ref={scanRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx"
             style={{display:"none"}} onChange={e=>handleScanAndUpload(e.target.files[0])}/>
           <button type="button" className="scan-btn scan-btn-bg"
@@ -14384,7 +14386,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
           </button>
           {uploadError && <div style={{fontSize:".74rem",color:"var(--red)",margin:".35rem 0"}}>⚠ {uploadError}</div>}
           <div className="scan-divider">or upload without AI</div>
-        </>
+        </div>
       )}
 
       {/* ── File attached confirmation ── */}
@@ -16012,8 +16014,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   useEffect(() => {
     // Sidebar tab clicks land on the tab's main page, not a leftover sub-view.
     const h = (e) => { if (e.detail === "profile") { setShowInsurance(false); setShowCheckin(false); } };
+    const open = () => setShowInsurance(true);   // Dashboard renewal item deep-links straight into Insurance
     window.addEventListener("sw:tab-reselect", h);
-    return () => window.removeEventListener("sw:tab-reselect", h);
+    window.addEventListener("sw:open-insurance", open);
+    return () => { window.removeEventListener("sw:tab-reselect", h); window.removeEventListener("sw:open-insurance", open); };
   }, []);
   const [gapOpen, setGapOpen]                       = useState({});   // check-in gap groups: label -> show all
   const [insSecOpen, setInsSecOpen]                 = useState({});   // collapsible sections: add / claims -> bool (user choice)
@@ -17493,7 +17497,7 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
               </div>
               <div style={{flex:1}}>
                 <span style={{fontSize:".85rem",fontWeight:500,color:"var(--dark)"}}>{sheet.name}</span>
-                <span style={{fontSize:".75rem",color:"#9E9690",marginLeft:".5rem"}}>{sheet.count} records</span>
+                <span style={{fontSize:".75rem",color:"#9E9690",marginLeft:".5rem"}}>{sheet.count} {sheet.count===1?"record":"records"}</span>
               </div>
               {sheet.count === 0 && <span style={{fontSize:".7rem",color:"#C2B8AE"}}>Empty</span>}
             </div>
@@ -20072,7 +20076,7 @@ export default function App() {
             </button>
           ))}
           <div className="sbar-divider"/>
-          <button className={`sbar-btn ${showWarrantyModule?"active":""}`} onClick={()=>{ setShowContractors(false); setShowDocs(false); setShowWarrantyModule(true); }} aria-current={showWarrantyModule?"page":undefined}>
+          <button className={`sbar-btn ${showWarrantyModule?"active":""}`} onClick={()=>{ window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:"profile"})); setShowContractors(false); setShowDocs(false); setShowWarrantyModule(true); }} aria-current={showWarrantyModule?"page":undefined}>
             <span className="sbar-icon" aria-hidden="true">🔖</span>
             <span>Warranties</span>
             {warrantyUrgent>0 && <span className="sbar-badge" title="Expiring within 30 days">{warrantyUrgent}</span>}
@@ -20168,7 +20172,7 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)}/></div>
