@@ -1,4 +1,4 @@
-// Steadwell v287 — 2026-09-30
+// Steadwell v288 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1752,6 +1752,8 @@ body{background:var(--cream);font-family:'Hanken Grotesk',sans-serif;color:var(-
 @keyframes scanPulse{0%{box-shadow:0 0 0 0 rgba(193,97,64,.5)}70%{box-shadow:0 0 0 8px rgba(193,97,64,0)}100%{box-shadow:0 0 0 0 rgba(193,97,64,0)}}
 .toast{background:var(--dark);color:#fff;padding:.6rem 1rem;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:280px}
 .toast.show{opacity:1;transform:translateY(0)}
+.toast{display:flex;align-items:center;gap:.9rem}
+.toast-action{pointer-events:auto;background:none;border:none;color:#F0C9A8;font-weight:800;font-size:.82rem;cursor:pointer;font-family:inherit;padding:.15rem .3rem;margin:-.15rem -.3rem -.15rem 0;text-decoration:underline;text-underline-offset:2px}
 .toast.success{border-left:3px solid var(--sage)}
 .toast.error{border-left:3px solid var(--red)}
 .toast.info{border-left:3px solid var(--rust);background:var(--pine-deep)}
@@ -3702,14 +3704,20 @@ const accountName = (profile, user) => {
 // ─── TOAST HOOK ──────────────────────────────────────────────────────────────
 function useToast() {
   const [toasts, setToasts] = useState([]);
-  const show = (msg, type="success") => {
-    const id = Date.now();
-    setToasts(t => [...t, {id, msg, type, visible:false}]);
+  // opts.action = { label, onClick } adds a button (e.g. Undo) and keeps the toast up longer.
+  const show = (msg, type="success", opts) => {
+    const id = Date.now() + Math.random();
+    const hold = opts?.action ? 7000 : 2800;
+    setToasts(t => [...t, {id, msg, type, visible:false, action:opts?.action}]);
     setTimeout(() => setToasts(t => t.map(x => x.id===id ? {...x, visible:true} : x)), 30);
-    setTimeout(() => setToasts(t => t.map(x => x.id===id ? {...x, visible:false} : x)), 2800);
-    setTimeout(() => setToasts(t => t.filter(x => x.id!==id)), 3200);
+    setTimeout(() => setToasts(t => t.map(x => x.id===id ? {...x, visible:false} : x)), hold);
+    setTimeout(() => setToasts(t => t.filter(x => x.id!==id)), hold + 400);
   };
-  return { toasts, show };
+  const dismiss = (id) => {
+    setToasts(t => t.map(x => x.id===id ? {...x, visible:false} : x));
+    setTimeout(() => setToasts(t => t.filter(x => x.id!==id)), 400);
+  };
+  return { toasts, show, dismiss };
 }
 
 // Lock background scroll while an overlay/modal is mounted (mobile UX)
@@ -3721,10 +3729,15 @@ function useBodyScrollLock() {
   }, []);
 }
 
-function Toasts({ toasts }) {
+function Toasts({ toasts, dismiss }) {
   return (
     <div className="toast-wrap" role="status" aria-live="polite" aria-atomic="false">
-      {toasts.map(t => <div key={t.id} className={`toast ${t.type} ${t.visible?"show":""}`}>{t.msg}</div>)}
+      {toasts.map(t => (
+        <div key={t.id} className={`toast ${t.type} ${t.visible?"show":""}`}>
+          <span>{t.msg}</span>
+          {t.action && <button type="button" className="toast-action" onClick={()=>{ t.action.onClick(); if (dismiss) dismiss(t.id); }}>{t.action.label}</button>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -9453,11 +9466,13 @@ function ClaimEntryForm({ data, onChange }) {
 }
 
 // ─── SEARCH BAR ───────────────────────────────────────────────────────────────
-function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], onNavigate, onOpenAsset, onNavigateToTask, onOpenExpense }) {
+function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], userId, onNavigate, onOpenAsset, onNavigateToTask, onOpenExpense, onOpenDocs }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [docs, setDocs] = useState([]);
   const ref = useRef(null);
   const inputRef = useRef(null);
 
@@ -9471,16 +9486,26 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     if (mobileOpen && inputRef.current) inputRef.current.focus();
   }, [mobileOpen]);
 
+  // Documents live in their own table; fetch names only when search is opened.
+  useEffect(() => {
+    if (!open || !userId) return;
+    let off = false;
+    supabase.from("home_documents").select("id,name,description,category").eq("user_id", userId)
+      .then(({ data }) => { if (!off && data) setDocs(data); });
+    return () => { off = true; };
+  }, [open, userId]);
+  useEffect(() => { setExpandedGroups({}); }, [q]);
+
   const trimmed = q.trim().toLowerCase();
   const match = (str) => str?.toLowerCase().includes(trimmed);
 
   const groups = trimmed.length < 2 ? [] : [
     {
       label: "Assets",
+      limit: 4,
       icon: "🔧",
       items: warranties
         .filter(w => match(w.item) || match(w.brand) || match(w.model) || match(w.serial_number) || match(w.category))
-        .slice(0, 4)
         .map(w => ({
           id:     w.id,
           icon:   ASSET_ICONS[w.category] || "🔧",
@@ -9492,10 +9517,10 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     },
     {
       label: "Tasks",
+      limit: 3,
       icon: "✓",
       items: tasks
         .filter(t => match(t.title) || match(t.category) || match(t.notes))
-        .slice(0, 3)
         .map(t => {
           const d = daysTo(t.due_date);
           return {
@@ -9510,10 +9535,10 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     },
     {
       label: "Expenses",
+      limit: 3,
       icon: "💸",
       items: expenses
         .filter(e => match(e.description) || match(e.category) || match(e.vendor))
-        .slice(0, 3)
         .map(e => ({
           id:     e.id,
           icon:   "💸",
@@ -9524,10 +9549,10 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     },
     {
       label: "Service logs",
+      limit: 2,
       icon: "⚙️",
       items: serviceLogs
         .filter(s => match(s.description) || match(s.vendor) || match(s.notes))
-        .slice(0, 2)
         .map(s => {
           const asset = warranties.find(w => w.id === s.asset_id);
           return {
@@ -9541,10 +9566,10 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     },
     {
       label: "Projects",
+      limit: 2,
       icon: "🔨",
       items: (projects || [])
         .filter(p => match(p.name) || match(p.description) || match(p.category))
-        .slice(0, 2)
         .map(p => ({
           id:     p.id,
           icon:   "🔨",
@@ -9554,11 +9579,25 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
         })),
     },
     {
+      label: "Documents",
+      icon: "📄",
+      limit: 3,
+      items: docs
+        .filter(d => match(d.name) || match(d.description) || match((DOC_CATEGORIES.find(c=>c.id===d.category)||{}).label))
+        .map(d => ({
+          id:     d.id,
+          icon:   "📄",
+          label:  d.name || "Untitled",
+          sub:    (DOC_CATEGORIES.find(c=>c.id===d.category)||{}).label || "",
+          action: () => { if (onOpenDocs) onOpenDocs(); },
+        })),
+    },
+    {
       label: "Contractors",
+      limit: 2,
       icon: "👷",
       items: (contractors || [])
         .filter(c => match(c.name) || match(c.trade) || match(c.notes))
-        .slice(0, 2)
         .map(c => ({
           id:     c.id,
           icon:   "👷",
@@ -9596,7 +9635,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
         <div className="search-results">
           {trimmed.length < 2 && (
             <div style={{padding:".6rem .85rem",fontSize:".75rem",color:"#A8A09A",lineHeight:1.5}}>
-              Search assets, tasks, expenses, service logs, projects, and contractors
+              Search assets, tasks, expenses, documents, service logs, projects, and contractors
             </div>
           )}
 
@@ -9605,7 +9644,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
               <div style={{padding:".3rem .85rem .15rem",fontSize:".65rem",fontWeight:700,color:"#C2B8AE",textTransform:"uppercase",letterSpacing:".06em",background:"var(--cream)"}}>
                 {group.label}
               </div>
-              {group.items.map((r, i) => (
+              {(expandedGroups[group.label] ? group.items.slice(0, 50) : group.items.slice(0, group.limit)).map((r, i) => (
                 <div key={r.id||i} className="sr-item" onClick={()=>handleSelect(r.action)}>
                   <span style={{fontSize:"1rem",flexShrink:0}}>{r.icon}</span>
                   <span style={{flex:1,fontWeight:500,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.label}</span>
@@ -9618,6 +9657,13 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
                   <span style={{fontSize:".75rem",color:"#C2B8AE",flexShrink:0}}>→</span>
                 </div>
               ))}
+              {group.items.length > group.limit && !expandedGroups[group.label] && (
+                <button type="button" className="sr-item" style={{width:"100%",border:"none",background:"none",textAlign:"left",fontFamily:"inherit",color:"var(--pine)",fontWeight:700,fontSize:".76rem"}}
+                  onMouseDown={e=>e.preventDefault()}
+                  onClick={()=>setExpandedGroups(g=>({...g,[group.label]:true}))}>
+                  See all {group.items.length} {group.label.toLowerCase()} ↓
+                </button>
+              )}
             </div>
           ))}
 
@@ -11089,6 +11135,8 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     const {error} = await supabase.from("tasks").update({status:s}).eq("id",t.id).eq("user_id",userId);
     if(!error) {
       setTasks(tasks.map(x=>x.id===t.id?{...x,status:s}:x));
+      const prevStatus = t.status;
+      let nextId = null, logId = null, prevServiced = null, toastMsg = `Marked as ${s} ✓`;
 
       // Auto-create next occurrence when a recurring task is completed
       if (s === "Completed" && t.recurring && t.recurring !== "") {
@@ -11110,18 +11158,18 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           const { data: created } = await supabase.from("tasks").insert([nextPayload]).select();
           if (created) {
             setTasks(prev => [...prev, created[0]]);
+            nextId = created[0].id;
             const nextFmt = new Date(nextDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
-            toast(`✓ Done! Next scheduled for ${nextFmt}`);
+            toastMsg = `✓ Done! Next scheduled for ${nextFmt}`;
           }
         }
-      } else {
-        toast(`Marked as ${s} ✓`);
       }
 
       // Auto-log service entry when task linked to an asset is completed
       const isServiceTask = t.notes?.startsWith("[Service]") || t.notes?.startsWith("[Auto-created from service");
       if(s === "Completed" && t.asset_id && !isServiceTask) {
-        await supabase.from("asset_service_log").insert([{
+        prevServiced = (assets||[]).find(w=>w.id===t.asset_id)?.last_serviced ?? null;
+        const { data: newLog } = await supabase.from("asset_service_log").insert([{
           user_id:      userId,
           property_id:  propertyId,
           asset_id:     t.asset_id,
@@ -11129,10 +11177,31 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           description:  t.title,
           cost:         t.cost ? Number(t.cost) : null,
           notes:        `Auto-logged from task completion${t.vendor ? ` · ${t.vendor}` : ""}`,
-        }]);
+        }]).select();
+        logId = newLog?.[0]?.id || null;
         await supabase.from("warranties").update({last_serviced: localISO()}).eq("id",t.asset_id).eq("user_id",userId);
         const {data: sl} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).eq("property_id",propertyId).order("service_date",{ascending:false});
         if(sl) setServiceLogs(sl);
+      }
+
+      // Completing a task offers Undo: puts the status back and removes anything
+      // completion created (the next recurring copy, the auto service log).
+      if (s === "Completed") {
+        const undo = async () => {
+          await supabase.from("tasks").update({status:prevStatus}).eq("id",t.id).eq("user_id",userId);
+          if (nextId) await supabase.from("tasks").delete().eq("id",nextId).eq("user_id",userId);
+          setTasks(ts => ts.filter(x=>x.id!==nextId).map(x=>x.id===t.id?{...x,status:prevStatus}:x));
+          if (logId) {
+            await supabase.from("asset_service_log").delete().eq("id",logId).eq("user_id",userId);
+            await supabase.from("warranties").update({last_serviced: prevServiced}).eq("id",t.asset_id).eq("user_id",userId);
+            const {data: sl2} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).eq("property_id",propertyId).order("service_date",{ascending:false});
+            if (sl2) setServiceLogs(sl2);
+          }
+          toast("Undone — task is back ✓");
+        };
+        toast(toastMsg, "success", { action:{ label:"Undo", onClick:undo } });
+      } else {
+        toast(toastMsg);
       }
     }
   };
@@ -12702,7 +12771,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             onCancel={()=>setRetireConfirm(null)}
           />
         )}
-        {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
+        {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId} contractors={contractors}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
         {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
         {/* Inline task edit modal */}
@@ -13218,7 +13287,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           onCancel={()=>setRetireConfirm(null)}
         />
       )}
-      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId}/></Modal>}
+      {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId} contractors={contractors}/></Modal>}
       {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
       {warrantyModal && <Modal title={warrantyEditId?"Edit Warranty":"Track a Warranty"} onClose={()=>setWarrantyModal(false)} onSave={saveWarranty}><WarrantyOnlyForm data={warrantyData} onChange={setWarrantyData} userId={userId} planData={planData} onUpgrade={onUpgrade} assets={assets}/></Modal>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
@@ -15098,7 +15167,17 @@ function ContractorForm({ data, onChange }) {
   );
 }
 
-function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, toast, onBack }) {
+// Everything a contractor has been attached to: logged services plus tasks
+// assigned to them (tasks carry the contractor name in `vendor`).
+const _vendorIs = (c, v) => { const x = (v||"").trim().toLowerCase(); return !!x && (x === (c.name||"").trim().toLowerCase() || (!!c.company && x === c.company.trim().toLowerCase())); };
+const contractorJobs = (c, serviceLogs=[], tasks=[]) => {
+  const logs = serviceLogs.filter(s => _vendorIs(c, s.vendor) || s.notes?.includes(c.name) || (c.company && s.notes?.includes(c.company)))
+    .map(s => ({ id:"log-"+s.id, kind:"log", title:s.description, date:s.service_date, cost:Number(s.cost||0) }));
+  const tsk = tasks.filter(t => _vendorIs(c, t.vendor))
+    .map(t => ({ id:"task-"+t.id, kind:"task", title:t.title, date:t.due_date, cost:Number(t.cost||0), status:t.status }));
+  return [...logs, ...tsk].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+};
+function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], toast, onBack }) {
   const [modal, setModal]         = useState(false);
   const [editData, setEditData]   = useState({});
   const [editId, setEditId]       = useState(null);
@@ -15166,13 +15245,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   if (selected) {
     const c = contractors.find(x=>x.id===selected);
     if (!c) { setSelected(null); return null; }
-    const jobs = serviceLogs.filter(s=>
-      s.vendor === c.name ||
-      (c.company && s.vendor === c.company) ||
-      s.notes?.includes(c.name) ||
-      (c.company && s.notes?.includes(c.company))
-    );
-    const totalSpent = jobs.reduce((s,j)=>s+Number(j.cost||0),0);
+    const jobs = contractorJobs(c, serviceLogs, tasks);
+    const totalSpent = jobs.filter(j=>j.kind==="log").reduce((s,j)=>s+j.cost,0);
     return (
       <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--linen)"}}>
         <div className="wc-hdr" style={{position:"static"}}>
@@ -15213,22 +15287,25 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem",borderBottom:jobs.length>0?"1px solid var(--stone)":"none"}}>
               <div>
                 <span style={{fontFamily:"'Fraunces',serif",fontSize:".9rem",fontWeight:500,color:"var(--dark)"}}>Job History</span>
-                {jobs.length>0&&<span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{jobs.length} jobs · ${totalSpent.toLocaleString()} total</span>}
+                {jobs.length>0&&<span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".72rem",color:"#A8A09A",fontWeight:400,marginLeft:".5rem"}}>{jobs.length} job{jobs.length!==1?"s":""}{totalSpent>0?` · $${totalSpent.toLocaleString()} spent`:""}</span>}
               </div>
             </div>
             {jobs.length===0?(
               <div style={{padding:"1.5rem",textAlign:"center",fontSize:".82rem",color:"#A8A09A",lineHeight:1.6}}>
-                No service logs linked yet.<br/>
-                <span style={{fontSize:".75rem"}}>Log a service on an asset and set vendor to "{c.name}" to track jobs here.</span>
+                No jobs linked yet.<br/>
+                <span style={{fontSize:".75rem"}}>Log a service or assign a task to "{c.name}" to track jobs here.</span>
               </div>
             ):jobs.map((j,i)=>(
               <div key={j.id} style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".8rem 1rem",borderBottom:i<jobs.length-1?"1px solid var(--stone)":"none"}}>
                 <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{j.description}</div>
-                  <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2}}>{j.service_date?new Date(j.service_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):""}</div>
+                  <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{j.title}</div>
+                  <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2,display:"flex",alignItems:"center",gap:".4rem",flexWrap:"wrap"}}>
+                    {j.date?new Date(j.date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):""}
+                    {j.kind==="task" && <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:j.status==="Done"?"#E8F3EE":j.status==="Overdue"?"#F8DEDA":"var(--cream2)",color:j.status==="Done"?"#2A7A5A":j.status==="Overdue"?"#B9422C":"#7A7370"}}>{j.status==="Done"?"Task done":j.status==="Overdue"?"Task overdue":"Task scheduled"}</span>}
+                  </div>
                 </div>
-                <div style={{fontSize:".85rem",fontWeight:600,color:j.cost>0?"var(--dark)":"#C8C0B8",flexShrink:0}}>{j.cost>0?`$${Number(j.cost).toLocaleString()}`:"—"}</div>
+                <div style={{fontSize:".85rem",fontWeight:600,color:j.cost>0?"var(--dark)":"#C8C0B8",flexShrink:0}}>{j.cost>0?`${j.kind==="task"&&j.status!=="Done"?"~":""}$${Number(j.cost).toLocaleString()}`:"—"}</div>
               </div>
             ))}
           </div>
@@ -15285,7 +15362,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         {/* Contractor list */}
         <div className="cr-grid">
         {filtered.map(c=>{
-          const jobs = serviceLogs.filter(s=>s.vendor===c.name);
+          const jobs = contractorJobs(c, serviceLogs, tasks);
           return (
             <div key={c.id} onClick={()=>setSelected(c.id)} style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:".9rem 1rem",marginBottom:".5rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".85rem",transition:"background .12s"}}
               onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
@@ -20069,7 +20146,7 @@ export default function App() {
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [serviceLogs, setServiceLogs] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
-  const { toasts, show: toast } = useToast();
+  const { toasts, show: toast, dismiss: dismissToast } = useToast();
 
   // ── Global toast event bus — lets deeply nested components without a toast prop
   // surface styled toasts via: window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg, type } }))
@@ -20338,7 +20415,7 @@ export default function App() {
           onAuth={() => setNeedsPasswordReset(false)}
           initialMode="update"
         />
-        <Toasts toasts={toasts} />
+        <Toasts toasts={toasts} dismiss={dismissToast} />
       </>
     );
   }
@@ -20353,7 +20430,7 @@ export default function App() {
             onSignIn={() => setScreen("login")}
             onSignUp={() => setScreen("signup")}
           />
-          <Toasts toasts={toasts} />
+          <Toasts toasts={toasts} dismiss={dismissToast} />
         </>
       );
     }
@@ -20361,7 +20438,7 @@ export default function App() {
       <>
         <style>{CSS}</style>
         <AuthScreen onAuth={setSession} initialMode={screen === "signup" ? "signup" : "login"} />
-        <Toasts toasts={toasts} />
+        <Toasts toasts={toasts} dismiss={dismissToast} />
       </>
     );
   }
@@ -20386,7 +20463,7 @@ export default function App() {
             if (launchSetup) { setTab("profile"); setAutoOpenSetup(true); }
           }}
         />
-        <Toasts toasts={toasts} />
+        <Toasts toasts={toasts} dismiss={dismissToast} />
       </>
     );
   }
@@ -20410,7 +20487,7 @@ export default function App() {
             if (launchSetup) { setTab("profile"); setAutoOpenSetup(true); }
           }}
         />
-        <Toasts toasts={toasts} />
+        <Toasts toasts={toasts} dismiss={dismissToast} />
       </>
     );
   }
@@ -20463,6 +20540,8 @@ export default function App() {
             serviceLogs={serviceLogs}
             contractors={contractors}
             projects={projects}
+            userId={uid}
+            onOpenDocs={()=>{setShowWarrantyModule(false);setShowContractors(false);setShowDocs(true);}}
             onNavigate={(t)=>{setShowWarrantyModule(false);setTab(t);}}
             onOpenAsset={(id)=>{
               setShowWarrantyModule(false);
@@ -20575,6 +20654,7 @@ export default function App() {
               contractors={contractors}
               setContractors={setContractors}
               serviceLogs={serviceLogs}
+              tasks={tasks}
               toast={toast}
               onBack={()=>setShowContractors(false)}
             />
@@ -20610,7 +20690,7 @@ export default function App() {
           ))}
         </nav>
 
-        <Toasts toasts={toasts}/>
+        <Toasts toasts={toasts} dismiss={dismissToast}/>
         <PWAInstallPrompt/>
         {showFeedback && (
           <FeedbackModal
