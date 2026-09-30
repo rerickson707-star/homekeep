@@ -1,4 +1,4 @@
-// Steadwell v277 — 2026-09-30T01:55:00.000Z
+// Steadwell v278 — 2026-09-30T02:40:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -1653,6 +1653,7 @@ const CSS = `
   --linen:#F4EDDF; /* alias of --cream — fixes app-level UI (e.g. UpgradeModal) that referenced --linen outside the .lp-root landing-page scope where it was previously only defined */
   --sage:#234A3D; --sage-light:#E7EDE7; --sage-soft:#A7BFA8; --gold:#B8861E; --sky:#3A7AAF; --sky-light:#EBF3FA;
   --red:#C0392B; --red-light:#FDECEA;
+  --ok:#3E7D5A; --ok-bg:#E9F1EA; --warn:#B8861E; --warn-bg:#FBF3DE; /* status colours — were referenced in ~50 places but never defined, so those badges rendered unstyled */
   --ink-soft:#6B645C;
   --shadow:0 1px 2px rgba(38,33,28,.04),0 2px 8px rgba(38,33,28,.05);
   --shadow-md:0 4px 16px rgba(38,33,28,.08),0 1px 3px rgba(38,33,28,.05);
@@ -3322,6 +3323,58 @@ img,.lp-root img{max-width:100%;height:auto}
   .ins-left>*,.ins-right>*{margin:0 0 1.25rem!important}
   .ins-body>div>:first-child:not(.ins-cols){margin-bottom:1rem}
   .gap-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:1.5rem}
+}
+
+/* ── Warranties center ── */
+.wc-overlay{position:fixed;inset:0;background:var(--cream);z-index:400;overflow-y:auto;display:flex;flex-direction:column}
+.wc-hdr{display:flex;align-items:center;gap:.6rem;padding:.85rem 1rem;background:var(--white);border-bottom:1px solid var(--stone);flex-shrink:0;position:sticky;top:0;z-index:10}
+.wc-back{background:var(--cream);border:1.5px solid var(--stone);border-radius:10px;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0}
+.wc-title{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;line-height:1.15}
+.wc-sub{font-size:.72rem;color:#8A8178;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc-add{background:var(--pine);color:#fff;border:none;border-radius:10px;padding:.5rem .95rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
+.wc-body{padding:1rem 1rem 3rem;width:100%;box-sizing:border-box}
+.wc-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
+.wc-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:.75rem .4rem;cursor:pointer;font-family:inherit;min-width:0}
+.wc-tile:disabled{cursor:default;opacity:.6}
+.wc-tile:not(:disabled):hover{border-color:var(--mid)}
+.wc-tile.on{border-color:var(--pine);box-shadow:0 0 0 1px var(--pine)}
+.wc-tile-n{font-family:'Fraunces',serif;font-size:1.6rem;font-weight:500;line-height:1}
+.wc-tile-l{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8A8178;margin-top:.35rem}
+.wc-clear{background:none;border:none;color:var(--pine);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;padding:0 0 .8rem}
+.wc-sec{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);margin-bottom:1rem;overflow:hidden}
+.wc-sec-exp .wc-list{opacity:.8}
+.wc-sec-head{display:flex;align-items:center;gap:.5rem;width:100%;box-sizing:border-box;padding:.8rem 1rem;background:none;border:none;font-family:inherit;text-align:left;cursor:pointer}
+.wc-sec-static{cursor:default}
+.wc-sec-title{font-size:.9rem;font-weight:700}
+.wc-count{font-size:.72rem;font-weight:700;color:var(--mid);background:var(--cream2);border-radius:20px;padding:1px 8px}
+.wc-hint{font-size:.76rem;color:#8A8178;padding:0 1rem .65rem;line-height:1.4}
+.wc-list{display:block;border-top:1px solid var(--cream2)}
+.wc-row{display:flex;align-items:center;gap:.8rem;padding:.8rem 1rem;border-bottom:1px solid var(--cream2);cursor:pointer;min-width:0}
+.wc-row:last-child{border-bottom:none}
+.wc-row:hover,.wc-row:focus-visible{background:var(--cream);outline:none}
+.wc-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.wc-main{flex:1;min-width:0}
+.wc-name{font-size:.95rem;font-weight:700;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wc-meta{font-size:.75rem;color:#8A8178;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wc-right{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
+.wc-pill{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.wc-date{font-size:.68rem;color:#A8A09A;white-space:nowrap}
+.wc-go{font-size:.9rem;color:#C2B8AE;flex-shrink:0}
+.wc-empty{text-align:center;padding:3rem 1.5rem;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm)}
+@media(min-width:1024px){
+  .wc-overlay{inset:auto!important;top:var(--hdr)!important;left:var(--sidebar-w)!important;right:0!important;bottom:0!important;z-index:140!important}
+  .wc-hdr{padding-left:2rem;padding-right:2rem}
+  .wc-body{max-width:1280px;margin:0 auto;padding:1.5rem 2rem 3rem}
+  .wc-tiles{grid-template-columns:repeat(auto-fit,minmax(0,200px))}
+  .wc-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;padding:.75rem}
+  .wc-row{border:1px solid var(--cream2);border-radius:12px}
+  .wc-row:last-child{border-bottom:1px solid var(--cream2)}
+  .wc-row:hover{border-color:var(--stone)}
+  .wc-hint{padding-left:1.1rem}
+  .wc-sec-head{padding-left:1.1rem}
+}
+@media(min-width:1500px){
+  .wc-list{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
@@ -12495,26 +12548,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Warranties</div>
               <div style={{fontSize:".75rem",color:"#8A8178",marginTop:1}}>
                 {(()=>{
-                  // Include both standalone warranty-only records AND full assets that
-                  // have a warranty (expiry_date) saved on them — not just warranty_only rows.
-                  // Must match the Warranty Module's own dedup exactly (see the
-                  // top-level "WARRANTY MODULE" overlay), or a warranty-only record that's
-                  // really the same item as a full tracked asset (e.g. two "Refrigerator"
-                  // rows) gets counted here but not there, so this tile disagreed with the
-                  // module it's a shortcut to.
-                  const allAssetW = assets.filter(w=>!w.warranty_only && w.expiry_date);
-                  const assetItemNames = new Set(allAssetW.map(w => (w.item||"").trim().toLowerCase()).filter(Boolean));
-                  const allW = assets.filter(w =>
-                    w.warranty_only &&
-                    !(w.asset_id && assets.find(a=>a.id===w.asset_id)) &&
-                    !assetItemNames.has((w.item||"").trim().toLowerCase())
-                  );
-                  const trackedW = [...allAssetW, ...allW];
-                  const activeCount = trackedW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
-                  const expiredCount = trackedW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; }).length;
-                  return trackedW.length > 0
-                    ? `${activeCount} active · ${expiredCount > 0 ? expiredCount + " expired" : "all current"}`
-                    : "Track warranties for any item you own";
+                  const wb = getWarrantyBuckets(assets);
+                  if (wb.all.length === 0) return "Track warranties for any item you own";
+                  return `${wb.covered} active · ${wb.soon.length > 0 ? wb.soon.length + " expiring soon" : wb.expired.length > 0 ? wb.expired.length + " expired" : "all current"}`;
                 })()}
               </div>
             </div>
@@ -19287,6 +19323,165 @@ class AppErrorBoundary extends Component {
   }
 }
 
+// ─── WARRANTIES ─────────────────────────────────────────────────────────────
+// One source of truth for "which warranties exist and what state are they in".
+// Used by the Warranties center, the sidebar badge and the Assets-tab tile so
+// the three can never disagree. A warranty-only record is dropped when it's
+// really the same physical item as a full asset (formally linked via asset_id,
+// or sharing an exact item name with an asset that already has its own expiry),
+// otherwise the same item would show up twice.
+function getWarrantyBuckets(list = []) {
+  const assetW = list.filter(w => !w.warranty_only && w.expiry_date);
+  const assetNames = new Set(assetW.map(w => (w.item||"").trim().toLowerCase()).filter(Boolean));
+  const only = list.filter(w =>
+    w.warranty_only &&
+    !(w.asset_id && list.find(a => a.id === w.asset_id)) &&
+    !assetNames.has((w.item||"").trim().toLowerCase())
+  );
+  const all = [
+    ...assetW.map(w => ({ w, isAsset: true,  d: daysTo(w.expiry_date) })),
+    ...only.map(w   => ({ w, isAsset: false, d: daysTo(w.expiry_date) })),
+  ];
+  const byName = (a, b) => (a.w.item||"").localeCompare(b.w.item||"");
+  const soon    = all.filter(x => x.d !== null && x.d >= 0 && x.d <= 90).sort((a, b) => a.d - b.d);
+  const active  = all.filter(x => x.d !== null && x.d > 90).sort((a, b) => a.d - b.d);
+  const expired = all.filter(x => x.d !== null && x.d < 0).sort((a, b) => b.d - a.d);
+  const noDate  = all.filter(x => x.d === null).sort(byName);
+  return {
+    all, soon, active, expired, noDate,
+    covered: soon.length + active.length,
+    urgent: soon.filter(x => x.d <= 30).length,
+  };
+}
+
+function warrantyPill(d) {
+  if (d === null) return { label: "No date", color: "#6E665D", bg: "var(--cream2)" };
+  if (d < 0)   return { label: `${Math.abs(d)}d ago`, color: "#B0432B", bg: "#F7E0DA" };
+  if (d === 0) return { label: "Today",    color: "#B8861E", bg: "#FBF3DE" };
+  if (d === 1) return { label: "Tomorrow", color: "#B8861E", bg: "#FBF3DE" };
+  if (d <= 90) return { label: `${d}d left`, color: "#B8861E", bg: "#FBF3DE" };
+  if (d < 730) return { label: `${Math.round(d/30)}mo left`, color: "var(--ok)", bg: "var(--ok-bg)" };
+  return { label: `${(d/365).toFixed(1).replace(/\.0$/,"")}y left`, color: "var(--ok)", bg: "var(--ok-bg)" };
+}
+
+function WarrantiesCenter({ warranties, onClose, onAdd, onOpen }) {
+  const b = getWarrantyBuckets(warranties);
+  const [filter, setFilter] = useState(null);       // null = everything, else a section key
+  const [expOpen, setExpOpen] = useState(null);     // null = auto (open only when nothing else to show)
+  const othersCount = b.soon.length + b.active.length + b.noDate.length;
+  const expiredOpen = filter === "expired" ? true : (expOpen === null ? othersCount === 0 : expOpen);
+
+  const sections = [
+    { key: "soon",    title: "Expiring soon",     hint: "Within 90 days — file any claims now", items: b.soon,    tone: "warn" },
+    { key: "active",  title: "Active",            hint: null,                                   items: b.active,  tone: "ok" },
+    { key: "nodate",  title: "No expiry date set", hint: "Add a date to get reminders",         items: b.noDate,  tone: "mute" },
+    { key: "expired", title: "Expired",           hint: "Consider extended coverage or budget for replacement", items: b.expired, tone: "bad", collapsible: true },
+  ];
+  const tiles = [
+    { key: "covered", n: b.covered,       label: "Covered",  tone: "ok" },
+    { key: "soon",    n: b.soon.length,   label: "Expiring", tone: "warn" },
+    { key: "expired", n: b.expired.length, label: "Expired", tone: "bad" },
+    ...(b.noDate.length > 0 ? [{ key: "nodate", n: b.noDate.length, label: "No date", tone: "mute" }] : []),
+  ];
+  const toneColor = { ok: "var(--ok)", warn: "#B8861E", bad: "#B0432B", mute: "#6E665D" };
+  const empty = b.all.length === 0;
+
+  const renderRow = (x) => {
+    const { w, isAsset, d } = x;
+    const p = warrantyPill(d);
+    const catColor = CATEGORY_COLORS[w.category] || CATEGORY_COLORS.Other;
+    const linked = w.asset_id ? warranties.find(a => a.id === w.asset_id) : null;
+    const sub = [w.brand, w.model, linked ? `🔗 ${linked.item}` : null].filter(Boolean).join(" · ") || (isAsset ? "From asset record" : "Warranty only");
+    return (
+      <div key={w.id} className="wc-row" role="button" tabIndex={0}
+        onClick={() => onOpen(w, isAsset)}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(w, isAsset); } }}>
+        <div className="wc-ico" style={{ background: catColor.bg, border: `1px solid ${catColor.border}` }}>{ASSET_ICONS[w.category] || "🔧"}</div>
+        <div className="wc-main">
+          <div className="wc-name">{w.item}</div>
+          <div className="wc-meta">{sub}</div>
+        </div>
+        <div className="wc-right">
+          <span className="wc-pill" style={{ background: p.bg, color: p.color }}>{p.label}</span>
+          {w.expiry_date && <span className="wc-date">{fmtD(w.expiry_date)}</span>}
+        </div>
+        <span className="wc-go" aria-hidden="true">›</span>
+      </div>
+    );
+  };
+
+  const visible = sections.filter(s => filter ? (filter === "covered" ? (s.key === "soon" || s.key === "active") : s.key === filter) : s.items.length > 0);
+
+  return (
+    <div className="wc-overlay">
+      <div className="wc-hdr">
+        <button className="wc-back" onClick={onClose} aria-label="Back">←</button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="wc-title">Warranties</div>
+          {!empty && <div className="wc-sub">{b.covered} active{b.urgent > 0 ? ` · ${b.urgent} expiring within 30 days` : ""}</div>}
+        </div>
+        <button className="wc-add" onClick={onAdd}>+ Add</button>
+      </div>
+
+      <div className="wc-body">
+        {empty ? (
+          <div className="wc-empty">
+            <div style={{ fontSize: "2rem", marginBottom: ".75rem" }}>🔖</div>
+            <div style={{ fontFamily: "'Fraunces',serif", fontSize: "1.1rem", fontWeight: 500, marginBottom: ".5rem" }}>No warranties tracked yet</div>
+            <div style={{ fontSize: ".85rem", color: "#8A8178", lineHeight: 1.6, maxWidth: 320, margin: "0 auto 1.1rem" }}>
+              Track warranties for appliances, electronics, vehicles, jewelry — anything with a warranty. We'll remind you before they expire.
+            </div>
+            <button onClick={onAdd} className="btn btn-primary">Track your first warranty →</button>
+          </div>
+        ) : (<>
+          <div className="wc-tiles">
+            {tiles.map(t => (
+              <button key={t.key} type="button" disabled={t.n === 0}
+                className={"wc-tile" + (filter === t.key ? " on" : "")}
+                aria-pressed={filter === t.key}
+                onClick={() => setFilter(filter === t.key ? null : t.key)}>
+                <span className="wc-tile-n" style={{ color: t.n > 0 ? toneColor[t.tone] : "#B5ADA4" }}>{t.n}</span>
+                <span className="wc-tile-l">{t.label}</span>
+              </button>
+            ))}
+          </div>
+          {filter && (
+            <button type="button" className="wc-clear" onClick={() => setFilter(null)}>Show all warranties</button>
+          )}
+
+          {visible.length === 0 && (
+            <div className="wc-empty" style={{ padding: "1.5rem" }}>
+              <div style={{ fontSize: ".9rem", color: "#8A8178" }}>Nothing in this list.</div>
+            </div>
+          )}
+
+          {visible.map(s => {
+            const isOpen = s.collapsible ? expiredOpen : true;
+            return (
+              <div key={s.key} className={"wc-sec" + (s.key === "expired" ? " wc-sec-exp" : "")}>
+                {s.collapsible && filter !== s.key ? (
+                  <button type="button" className="wc-sec-head" onClick={() => setExpOpen(!expiredOpen)} aria-expanded={isOpen}>
+                    <span className={"ag-chev" + (isOpen ? " open" : "")} aria-hidden="true">›</span>
+                    <span className="wc-sec-title" style={{ color: "#8A8178" }}>{s.title}</span>
+                    <span className="wc-count">{s.items.length}</span>
+                  </button>
+                ) : (
+                  <div className="wc-sec-head wc-sec-static">
+                    <span className="wc-sec-title" style={{ color: s.tone === "mute" ? "#8A8178" : "var(--dark)" }}>{s.title}</span>
+                    <span className="wc-count" style={s.tone === "warn" ? { background: "var(--warn-bg)", color: "var(--warn)" } : undefined}>{s.items.length}</span>
+                  </div>
+                )}
+                {isOpen && s.hint && <div className="wc-hint">{s.hint}</div>}
+                {isOpen && <div className="wc-list">{s.items.map(renderRow)}</div>}
+              </div>
+            );
+          })}
+        </>)}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // Rewardful affiliate tracking — capture ?via= param and store in cookie
   useEffect(() => {
@@ -19815,6 +20010,7 @@ export default function App() {
     {id:"profile",   label:"My Home",    icon:"🏡"},
   ];
   const uid = session.user.id;
+  const warrantyUrgent = getWarrantyBuckets(warranties).urgent;
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -19847,13 +20043,15 @@ export default function App() {
             serviceLogs={serviceLogs}
             contractors={contractors}
             projects={projects}
-            onNavigate={setTab}
+            onNavigate={(t)=>{setShowWarrantyModule(false);setTab(t);}}
             onOpenAsset={(id)=>{
+              setShowWarrantyModule(false);
               setPendingSelectedAsset(id);
               setTab("warranties");
             }}
-            onNavigateToTask={()=>setTab("tasks")}
+            onNavigateToTask={()=>{setShowWarrantyModule(false);setTab("tasks");}}
             onOpenExpense={(id)=>{
+              setShowWarrantyModule(false);
               setPendingSelectedExpense(id);
               setTab("expenses");
             }}
@@ -19867,18 +20065,23 @@ export default function App() {
              wizard), and stays visible over Contractors like bottom-nav does. ── */}
         <nav className="sidebar" aria-label="Primary" style={showSetup ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs; setShowContractors(false); setShowDocs(false); window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:t.id})); if(!wasOverlay&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&tab===t.id)?"page":undefined}>
+            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&!showWarrantyModule&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs||showWarrantyModule; setShowContractors(false); setShowDocs(false); setShowWarrantyModule(false); window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:t.id})); if(!wasOverlay&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&!showWarrantyModule&&tab===t.id)?"page":undefined}>
               <span className="sbar-icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.badge>0 && <span className="sbar-badge">{t.badge}</span>}
             </button>
           ))}
           <div className="sbar-divider"/>
-          <button className={`sbar-btn ${showContractors?"active":""}`} onClick={()=>{ setShowDocs(false); setShowContractors(true); }} aria-current={showContractors?"page":undefined}>
+          <button className={`sbar-btn ${showWarrantyModule?"active":""}`} onClick={()=>{ setShowContractors(false); setShowDocs(false); setShowWarrantyModule(true); }} aria-current={showWarrantyModule?"page":undefined}>
+            <span className="sbar-icon" aria-hidden="true">🔖</span>
+            <span>Warranties</span>
+            {warrantyUrgent>0 && <span className="sbar-badge" title="Expiring within 30 days">{warrantyUrgent}</span>}
+          </button>
+          <button className={`sbar-btn ${showContractors&&!showWarrantyModule?"active":""}`} onClick={()=>{ setShowDocs(false); setShowWarrantyModule(false); setShowContractors(true); }} aria-current={showContractors?"page":undefined}>
             <span className="sbar-icon" aria-hidden="true">👥</span>
             <span>Contractors</span>
           </button>
-          <button className={`sbar-btn ${showDocs?"active":""}`} onClick={()=>{ setShowContractors(false); setShowDocs(true); }} aria-current={showDocs?"page":undefined}>
+          <button className={`sbar-btn ${showDocs&&!showWarrantyModule?"active":""}`} onClick={()=>{ setShowContractors(false); setShowWarrantyModule(false); setShowDocs(true); }} aria-current={showDocs?"page":undefined}>
             <span className="sbar-icon" aria-hidden="true">📄</span>
             <span>Documents</span>
           </button>
@@ -19917,140 +20120,19 @@ export default function App() {
           </div>
         )}
 
-        {/* ── WARRANTY MODULE — top-level overlay so it works from any tab ── */}
+        {/* ── WARRANTIES CENTER — sits over the page area on desktop (sidebar stays usable), full-screen on phones ── */}
         {showWarrantyModule && (
-          <div style={{position:"fixed",inset:0,background:"var(--cream)",zIndex:400,overflowY:"auto",display:"flex",flexDirection:"column"}}>
-            <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
-              <button onClick={()=>setShowWarrantyModule(false)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>←</button>
-              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,flex:1}}>Warranties</span>
-              <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,padding:".45rem .9rem",fontSize:".85rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Add</button>
-            </div>
-            <div style={{flex:1,padding:"0 0 3rem"}}>
-              {(()=>{
-                const allAssetW    = warranties.filter(w=>!w.warranty_only && w.expiry_date);
-                // A warranty-only record shouldn't be double-listed alongside a
-                // real asset that's actually the same physical item — either
-                // because it's formally linked (w.asset_id), or because it
-                // shares an exact item name with a full asset that already has
-                // its own tracked expiry date (the common case when a
-                // warranty-only card and a full asset both ended up named
-                // "Refrigerator"). Without this, the same item could show as
-                // both "Expired" and "Expired asset warranties".
-                const assetItemNames = new Set(allAssetW.map(w => (w.item||"").trim().toLowerCase()).filter(Boolean));
-                const allW  = warranties.filter(w =>
-                  w.warranty_only &&
-                  !(w.asset_id && warranties.find(a=>a.id===w.asset_id)) &&
-                  !assetItemNames.has((w.item||"").trim().toLowerCase())
-                );
-                const active   = allW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; });
-                const urgent   = active.filter(w=>daysTo(w.expiry_date)<=30);
-                const upcoming = active.filter(w=>daysTo(w.expiry_date)>30);
-                const expired  = allW.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d<0; });
-                const noDate   = allW.filter(w=>!w.expiry_date);
-                const assetActive  = allAssetW.filter(w=>daysTo(w.expiry_date)>=0);
-                const assetExp     = allAssetW.filter(w=>daysTo(w.expiry_date)>=0&&daysTo(w.expiry_date)<=90);
-                const assetExpired = allAssetW.filter(w=>daysTo(w.expiry_date)<0);
-
-                const WRow = ({w,isAsset=false})=>{
-                  const d=daysTo(w.expiry_date);
-                  const isExp=d!==null&&d<0, isUrg=d!==null&&d>=0&&d<=30;
-                  const sColor=isExp?"#B0432B":isUrg?"#B8861E":"var(--ok)";
-                  const sBg=isExp?"#F7E0DA":isUrg?"#FBF3DE":"var(--ok-bg)";
-                  const sLabel=d===null?"No date":isExp?`${Math.abs(d)}d ago`:d===0?"Today":d===1?"Tomorrow":d<=30?`${d}d left`:`${Math.round(d/30)}mo left`;
-                  const catColor=CATEGORY_COLORS[w.category]||CATEGORY_COLORS.Other;
-                  const linked=w.asset_id?warranties.find(a=>a.id===w.asset_id):null;
-                  return (
-                    <div onClick={()=>{if(isAsset){setPendingSelectedAsset(w.id);setTab("warranties");setShowWarrantyModule(false);}else{setPendingWarrantyTracker(false);setTab("warranties");setShowWarrantyModule(false);setTimeout(()=>{setPendingSelectedAsset(w.id);},100);}}}
-                      style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--cream2)",cursor:"pointer"}}
-                      onTouchStart={e=>e.currentTarget.style.background="var(--cream)"}
-                      onTouchEnd={e=>e.currentTarget.style.background="var(--white)"}>
-                      <div style={{width:42,height:42,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`}}>
-                        {ASSET_ICONS[w.category]||"🔧"}
-                      </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:".15rem"}}>{w.item}</div>
-                        <div style={{fontSize:".75rem",color:"#8A8178"}}>{[w.brand,w.model,linked?`🔗 ${linked.item}`:null].filter(Boolean).join(" · ")||(isAsset?"Full asset":"Warranty only")}</div>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
-                        <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:20,background:sBg,color:sColor,whiteSpace:"nowrap"}}>{sLabel}</span>
-                        {w.expiry_date&&<span style={{fontSize:".68rem",color:"#A8A09A"}}>{fmtD(w.expiry_date)}</span>}
-                      </div>
-                      <span style={{fontSize:".9rem",color:"#C2B8AE",flexShrink:0}}>›</span>
-                    </div>
-                  );
-                };
-
-                return (<>
-                  {/* Hero */}
-                  <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.35rem 1.25rem",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.2,marginBottom:".4rem"}}>
-                      {allW.length===0&&allAssetW.length===0?"No warranties tracked yet":`${active.length + assetActive.length} active warrant${(active.length+assetActive.length)!==1?"ies":"y"}`}
-                    </div>
-                    <div style={{fontSize:".82rem",color:"rgba(244,237,223,.55)",marginBottom:"1rem",lineHeight:1.5}}>
-                      {allW.length===0&&allAssetW.length===0?"Track warranties for any item — appliances, electronics, vehicles, jewelry":[urgent.length>0&&`${urgent.length} expiring within 30 days`,assetExp.length>0&&`${assetExp.length} asset warranties expiring soon`,(expired.length+assetExpired.length)>0&&`${expired.length+assetExpired.length} expired`].filter(Boolean).join(" · ")||"All warranties are current"}
-                    </div>
-                    <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}}
-                      style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".8rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".9rem",fontWeight:700,cursor:"pointer"}}>
-                      + Track a warranty
-                    </button>
-                  </div>
-
-                  {urgent.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid #EAD9A6",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)"}}><span style={{fontSize:".75rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 8px",borderRadius:8}}>⚠ Expiring within 30 days</span></div>
-                    {urgent.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WRow key={w.id} w={w}/>)}
-                  </div>)}
-
-                  {assetActive.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:".88rem",fontWeight:700}}>Asset warranties</span>
-                      <span style={{fontSize:".72rem",color:"#8A8178"}}>{assetActive.length} from asset records</span>
-                    </div>
-                    {assetActive.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WRow key={w.id} w={w} isAsset={true}/>)}
-                  </div>)}
-
-                  {assetExpired.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden",opacity:.75}}>
-                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:".88rem",fontWeight:700,color:"#8A8178"}}>Expired asset warranties</span>
-                      <span style={{fontSize:".72rem",color:"#A8A09A"}}>{assetExpired.length} item{assetExpired.length!==1?"s":""}</span>
-                    </div>
-                    {assetExpired.sort((a,b)=>daysTo(b.expiry_date)-daysTo(a.expiry_date)).map(w=><WRow key={w.id} w={w} isAsset={true}/>)}
-                  </div>)}
-
-                  {upcoming.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:".88rem",fontWeight:700}}>Active</span>
-                      <span style={{fontSize:".75rem",fontWeight:700,color:"var(--ok)",background:"var(--ok-bg)",padding:"2px 8px",borderRadius:8}}>{upcoming.length} covered</span>
-                    </div>
-                    {upcoming.sort((a,b)=>daysTo(a.expiry_date)-daysTo(b.expiry_date)).map(w=><WRow key={w.id} w={w}/>)}
-                  </div>)}
-
-                  {noDate.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
-                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)"}}><span style={{fontSize:".88rem",fontWeight:700,color:"#8A8178"}}>No expiry date set</span></div>
-                    {noDate.map(w=><WRow key={w.id} w={w}/>)}
-                  </div>)}
-
-                  {expired.length>0&&(<div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden",opacity:.75}}>
-                    <div style={{padding:".85rem 1rem",borderBottom:"1px solid var(--cream2)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:".88rem",fontWeight:700,color:"#8A8178"}}>Expired</span>
-                      <span style={{fontSize:".72rem",color:"#A8A09A"}}>{expired.length} item{expired.length!==1?"s":""}</span>
-                    </div>
-                    <div style={{padding:".55rem 1rem",background:"var(--cream2)",borderBottom:"1px solid var(--cream2)",fontSize:".75rem",color:"#8A8178"}}>Consider extended coverage or budget for replacement</div>
-                    {expired.sort((a,b)=>daysTo(b.expiry_date)-daysTo(a.expiry_date)).map(w=><WRow key={w.id} w={w}/>)}
-                  </div>)}
-
-                  {allW.length===0&&allAssetW.length===0&&(
-                    <div style={{textAlign:"center",padding:"2rem 1.5rem"}}>
-                      <div style={{fontSize:"2rem",marginBottom:".75rem"}}>🔖</div>
-                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,marginBottom:".5rem"}}>No warranties tracked yet</div>
-                      <div style={{fontSize:".85rem",color:"#8A8178",lineHeight:1.6,marginBottom:"1.25rem",maxWidth:300,margin:"0 auto .85rem"}}>Track warranties for appliances, electronics, vehicles, jewelry — anything with a warranty.</div>
-                      <button onClick={()=>{setShowWarrantyModule(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}} className="btn btn-primary">Track your first warranty →</button>
-                    </div>
-                  )}
-                </>);
-              })()}
-            </div>
-          </div>
+          <WarrantiesCenter
+            warranties={warranties}
+            onClose={()=>setShowWarrantyModule(false)}
+            onAdd={()=>{setShowWarrantyModule(false);setShowDocs(false);setShowContractors(false);setTab("warranties");setTimeout(()=>setPendingWarrantyTracker(true),100);}}
+            onOpen={(w,isAsset)=>{
+              setShowWarrantyModule(false);setShowDocs(false);setShowContractors(false);
+              setTab("warranties");
+              if(isAsset){ setPendingSelectedAsset(w.id); }
+              else { setPendingWarrantyTracker(false); setTimeout(()=>{setPendingSelectedAsset(w.id);},100); }
+            }}
+          />
         )}
 
         {/* ── Main Content ── */}
