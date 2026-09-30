@@ -1,4 +1,4 @@
-// Steadwell v274 — 2026-09-30T00:20:00.000Z
+// Steadwell v275 — 2026-09-30T00:45:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3236,6 +3236,49 @@ img,.lp-root img{max-width:100%;height:auto}
 .ag-badges{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:.25rem}
 .ag-badge{font-size:.72rem;font-weight:700;padding:.15rem .55rem;border-radius:20px;white-space:nowrap}
 .ag-eyebrow{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#A8A09A;margin-bottom:.15rem}
+
+
+/* ── Money: grouped, simplified expense rows ── */
+.xt-seg{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;padding:0 1rem;margin-bottom:.8rem}
+.xt-btn{flex-shrink:0;border:1.5px solid var(--stone);background:var(--white);color:var(--dark);border-radius:20px;padding:.35rem .8rem;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.xt-btn span{color:#A8A09A;font-weight:600;margin-left:.15rem}
+.xt-btn.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.xt-btn.on span{color:rgba(255,255,255,.65)}
+.xm-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);overflow:hidden;margin:0 1rem .9rem}
+.xm-head{display:flex;align-items:center;gap:.6rem;width:100%;background:var(--cream);border:none;padding:.7rem 1rem;cursor:pointer;font-family:inherit;text-align:left}
+.xm-head:disabled{cursor:default}
+.xm-name{font-family:'Fraunces',serif;font-size:1rem;font-weight:500;color:var(--dark);flex:1}
+.xm-meta{font-size:.76rem;color:#A8A09A;font-weight:600}
+.xm-total{font-family:'Fraunces',serif;font-size:.95rem;font-weight:700;color:var(--dark);min-width:4.5rem;text-align:right}
+.xr{display:grid;grid-template-columns:40px minmax(0,1fr) auto;grid-template-areas:"icon main amt" "icon tags amt";column-gap:.8rem;row-gap:.3rem;align-items:center;padding:.8rem 1rem;border-top:1px solid var(--cream2)}
+.xr:first-child{border-top:none}
+.xr-link{cursor:pointer}
+.xr-link:hover{background:var(--cream)}
+.xr-icon{grid-area:icon;align-self:start;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.xr-main{grid-area:main;min-width:0}
+.xr-title{font-size:.95rem;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xr-meta{font-size:.78rem;color:#8A8178;display:flex;gap:.3rem;align-items:center;margin-top:.15rem;min-width:0;white-space:nowrap;overflow:hidden}
+.xr-meta>span{flex-shrink:0}
+.xr-meta>.xr-ctx{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.xr-clip{border:none;background:none;padding:0 .1rem;cursor:pointer;font-size:.8rem;line-height:1;flex-shrink:0}
+.xr-tags{grid-area:tags;display:flex;gap:.4rem;flex-wrap:wrap;min-height:0}
+.xr-tags:empty{display:none}
+.xr-pill{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.xr-cat{background:var(--cream2);color:#6E665D}
+.xr-amt{grid-area:amt;display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;align-self:start}
+.xr-amount{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:700;color:var(--dark)}
+.xr-go{font-size:1.1rem;color:#C2B8AE;line-height:1}
+.xr-actions{display:flex;gap:.2rem}
+.xr-actions button{font-size:.75rem;font-weight:600;color:var(--mid);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px}
+.xr-actions button.del{color:#B0432B}
+@media(min-width:1024px){
+  .xt-seg.mpad{padding-left:0!important;padding-right:0!important}
+  .xr{grid-template-columns:40px minmax(0,1fr) 112px 128px;grid-template-areas:"icon main tags amt";padding:.7rem 1rem}
+  .xr-icon{align-self:center}
+  .xr-tags{flex-direction:column;align-items:flex-start;gap:.25rem}
+  .xr-tags:empty{display:block}
+  .xr-amt{flex-direction:row;align-items:center;justify-content:flex-end;gap:.5rem;align-self:center}
+}
 
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
@@ -12848,6 +12891,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [editId, setEditId] = useState(null);
   const [catF, setCatF] = useState("All");
   const [sort, setSort] = useState("date_desc");
+  const [typeF, setTypeF] = useState("All");       // All | expense | project | service | bill
+  const [monthPref, setMonthPref] = useState({});  // month key -> "open" | "closed" (user choices)
   const [confirm, setConfirm] = useState(null);
   // projects/setProjects come from App props
   const [projectModal, setProjectModal] = useState(false);
@@ -13065,17 +13110,24 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   // folded into allTotal/thisYrTotalWithService but never appeared in
   // allExpenseItems, so "All time home spend" counted them while the "All"
   // category list (and its item count) never listed them at all.
-  const billsAsExpenses = bills.map(b => ({
-    id: `bill-${b.id}`,
-    description: `${UTIL_TYPES[b.type]?.label || "Utility"} bill`,
-    amount: b.amount,
-    date: b.bill_date,
-    category: "Utilities",
-    vendor: "",
-    notes: b.notes || "",
-    _isBill: true,
-    _billId: b.id,
-  }));
+  const billsAsExpenses = bills.map(b => {
+    const util = utilities.find(x => x.id === b.utility_id);
+    const utype = util?.type || b.type;
+    const tlabel = UTIL_TYPES[utype]?.label || "Utility";
+    return {
+      id: `bill-${b.id}`,
+      description: `${tlabel} bill`,
+      amount: b.amount,
+      date: b.bill_date,
+      category: "Utilities",
+      // Show the provider/account name (e.g. "Duke Energy") when it adds
+      // information beyond the type label already in the title.
+      vendor: util?.name && util.name !== tlabel ? util.name : "",
+      notes: b.notes || "",
+      _isBill: true,
+      _billId: b.id,
+    };
+  });
 
   // Combine expenses + service log line items + utility bills for display
   const allExpenseItems = [...expenses, ...serviceAsExpenses, ...billsAsExpenses];
@@ -13109,7 +13161,17 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const catData = Object.entries(bycat).sort((a,b)=>b[1].total-a[1].total);
 
   // Filtered expense list — includes service log line items
-  const filtered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>e.category===catF);
+  const typeOf = e => e._isBill ? "bill" : e._isServiceLog ? "service" : e.project_id ? "project" : "expense";
+  const TYPE_META = {
+    expense: { label:"Expense", color:"#6E665D",     bg:"var(--cream2)" },
+    project: { label:"Project", color:"var(--pine)", bg:"rgba(35,74,61,.09)" },
+    service: { label:"Service", color:"var(--rust)", bg:"var(--rust-light)" },
+    bill:    { label:"Bill",    color:"#B8861E",     bg:"#FBF3DE" },
+  };
+  const catFiltered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>e.category===catF);
+  const typeCounts = catFiltered.reduce((acc,e)=>{ const t=typeOf(e); acc[t]=(acc[t]||0)+1; return acc; },{});
+  const typeTabs = ["expense","project","service","bill"].filter(t => typeCounts[t] > 0 || typeF===t);
+  const filtered = typeF==="All" ? catFiltered : catFiltered.filter(e => typeOf(e)===typeF);
   const sorted = [...filtered].sort((a,b) => {
     if(sort==="date_desc") return new Date(b.date||0)-new Date(a.date||0);
     if(sort==="date_asc")  return new Date(a.date||0)-new Date(b.date||0);
@@ -13141,6 +13203,87 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   // ── Project status filter state ────────────────────────────────────────────
   const [projFilter, setProjFilter] = useState("All");
   const filteredProjects = projFilter === "All" ? projects : projects.filter(p => p.status === projFilter);
+
+  // ── Month grouping (only while sorting by date; amount / A–Z stay one flat list)
+  const groupByMonth = sort==="date_desc" || sort==="date_asc";
+  const monthGroups = (() => {
+    if (!groupByMonth) return [{ key:"all", label:"", items:sorted, total:filteredTotal, flat:true }];
+    const map = new Map();
+    sorted.forEach(e => {
+      const k = e.date ? e.date.slice(0,7) : "nodate";
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(e);
+    });
+    return [...map.entries()].map(([k, items]) => {
+      let label = "No date";
+      if (k !== "nodate") {
+        const [y, m] = k.split("-");
+        label = `${MONTH_NAMES[Number(m)-1] || m} ${y}`;
+      }
+      return { key:k, label, items, total: items.reduce((t,e)=>t+Number(e.amount||0),0) };
+    });
+  })();
+  // The two most recent months start open; filters force everything open so a
+  // result is never hidden inside a collapsed month.
+  const recentKeys = new Set([...monthGroups].map(g=>g.key).filter(k=>k!=="nodate").sort().reverse().slice(0,2));
+  const monthForceOpen = catF!=="All" || typeF!=="All";
+  const isMonthOpen = g => {
+    if (g.flat || monthForceOpen) return true;
+    if (monthPref[g.key]) return monthPref[g.key]==="open";
+    return recentKeys.has(g.key) || g.key==="nodate";
+  };
+  const allMonthsOpen = monthGroups.every(isMonthOpen);
+  const setAllMonths = open => { const n={}; monthGroups.forEach(g=>{ n[g.key]=open?"open":"closed"; }); setMonthPref(n); };
+
+  const renderExpenseRow = (e) => {
+    const proj = e.project_id ? projects.find(p=>p.id===e.project_id) : null;
+    const isImage = e.file_url && e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
+    const isServiceLog = e._isServiceLog;
+    const isBill = e._isBill;
+    const t = typeOf(e);
+    const tm = TYPE_META[t];
+    const catColor = CHART_COLORS[Math.max(CATEGORIES.indexOf(e.category),0)%CHART_COLORS.length];
+    let dest = null;
+    if (isServiceLog && e._assetId && onOpenAsset) dest = { title:`Open ${e._assetName||"asset"}`, action:()=>onOpenAsset(e._assetId) };
+    else if (isBill) dest = { title:"Open Utilities", action:()=>setView("utilities") };
+    else if (proj && onNavigate) dest = { title:`Open project: ${proj.name}`, action:()=>{setView("projects");setSelectedProject(proj.id);} };
+    // Bills and service logs always carry the same category, so repeating it
+    // on every row is noise -- their type pill already says what they are.
+    const showCat = !!e.category && !isBill && !isServiceLog;
+    return (
+      <div key={e.id} className={"xr"+(dest?" xr-link":"")} onClick={dest?dest.action:undefined} title={dest?dest.title:undefined}>
+        <div className="xr-icon" style={{background:isServiceLog?"var(--rust-light)":isBill?"rgba(35,74,61,.08)":catColor+"22"}}>{isServiceLog?"⚙️":isBill?"⚡":CAT_ICONS[e.category]||"🔧"}</div>
+        <div className="xr-main">
+          <div className="xr-title">{e.description}</div>
+          <div className="xr-meta">
+            {e.date && <span>{fmtD(e.date)}</span>}
+            {e.vendor && <span>· {e.vendor}</span>}
+            {proj && <span className="xr-ctx">· 🔨 {proj.name}</span>}
+            {isServiceLog && e._assetName && <span className="xr-ctx">· {e._assetName}</span>}
+            {e.file_url && (
+              <button type="button" className="xr-clip" aria-label="View receipt" title="View receipt"
+                onClick={ev=>{ev.stopPropagation(); if(isImage) setLightbox(e.file_url); else window.open(e.file_url,"_blank","noopener,noreferrer");}}>📎</button>
+            )}
+          </div>
+        </div>
+        <div className="xr-tags">
+          {t!=="expense" && <span className="xr-pill" style={{background:tm.bg,color:tm.color}}>{tm.label}</span>}
+          {showCat && <span className="xr-pill xr-cat">{e.category}</span>}
+        </div>
+        <div className="xr-amt" onClick={dest?undefined:(ev=>ev.stopPropagation())}>
+          <div className="xr-amount">{fmt$(e.amount)}</div>
+          {dest ? (
+            <span className="xr-go" aria-hidden="true">›</span>
+          ) : (
+            <div className="xr-actions">
+              <button onClick={()=>openEdit(e)}>Edit</button>
+              <button className="del" onClick={()=>setConfirm(e.id)}>Delete</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -13264,17 +13407,34 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           {/* Expense list */}
           <div className={"money-body"+(catData.length>0?"":" no-side")}>
           <div className="money-main">
+          {/* Type filter — separates expenses / project costs / service / bills */}
+          {typeTabs.length>1 && (
+            <div className="xt-seg mpad" role="group" aria-label="Filter by type">
+              {[["All",catFiltered.length],...typeTabs.map(t=>[t,typeCounts[t]||0])].map(([t,n])=>(
+                <button key={t} type="button" className={"xt-btn"+(typeF===t?" on":"")} aria-pressed={typeF===t} onClick={()=>setTypeF(typeF===t?"All":t)}>
+                  {t==="All" ? "All" : (t==="service" ? "Service" : t==="bill" ? "Bills" : t==="project" ? "Projects" : "Expenses")} <span>{n}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {sorted.length===0 ? (
             <div className="empty">
               <span className="ei">💲</span>
               <strong>{expenses.length===0?"No expenses yet":"No matching expenses"}</strong>
-              <p>{expenses.length===0?"Start tracking your home costs to understand your true investment over time":"Try a different category"}</p>
+              <p>{expenses.length===0?"Start tracking your home costs to understand your true investment over time":"Nothing matches these filters"}</p>
               {expenses.length===0&&<button className="btn btn-primary" onClick={openNew}>＋ Log your first expense</button>}
+              {expenses.length>0&&(catF!=="All"||typeF!=="All")&&<button className="btn btn-ghost" onClick={()=>{setCatF("All");setTypeF("All");}}>Clear filters</button>}
             </div>
           ) : (
             <div>
-              <div className="mpad" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1rem",marginBottom:".6rem"}}>
-                <span style={{fontSize:".8rem",color:"#A8A09A",fontWeight:600}}>{filtered.length} expense{filtered.length!==1?"s":""}{catF!=="All"?` · ${catF}`:""}</span>
+              <div className="mpad" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1rem",marginBottom:".6rem",gap:".75rem"}}>
+                <span style={{fontSize:".8rem",color:"#A8A09A",fontWeight:600}}>
+                  {filtered.length} item{filtered.length!==1?"s":""}{catF!=="All"?` · ${catF}`:""} · {fmt$(filteredTotal)}
+                  {groupByMonth && !monthForceOpen && monthGroups.length>1 && (
+                    <button type="button" className="ag-toggle-all" style={{marginLeft:".75rem"}} onClick={()=>setAllMonths(!allMonthsOpen)}>{allMonthsOpen?"Collapse all":"Expand all"}</button>
+                  )}
+                </span>
                 <select className="sort-select" value={sort} onChange={e=>setSort(e.target.value)} style={{fontSize:".8rem",color:"var(--pine)",fontWeight:700,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="date_desc">Newest first</option>
                   <option value="date_asc">Oldest first</option>
@@ -13283,74 +13443,23 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   <option value="desc_az">A–Z</option>
                 </select>
               </div>
-              <div className="mflat" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",margin:"0 1rem"}}>
-                {sorted.map((e,idx)=>{
-                  const proj=e.project_id?projects.find(p=>p.id===e.project_id):null;
-                  const isImage=e.file_url&&e.file_url.match(/\.(jpg|jpeg|png|webp|heic)/i);
-                  const isPdf=e.file_url&&e.file_url.match(/\.pdf/i);
-                  const isServiceLog=e._isServiceLog;
-                  const isBill=e._isBill;
-                  const catColor=CHART_COLORS[CATEGORIES.indexOf(e.category)%CHART_COLORS.length];
-
-                  // Determine where tapping this expense navigates to
-                  const getDestination = () => {
-                    if (isServiceLog && e._assetId && onOpenAsset) return { label: e._assetName||"Asset", icon:"→", action:()=>onOpenAsset(e._assetId) };
-                    if (isBill) return { label: "Utilities", icon:"→", action:()=>setView("utilities") };
-                    if (proj && onNavigate) return { label: proj.name, icon:"→", action:()=>{setView("projects");setSelectedProject(proj.id);} };
-                    return null;
-                  };
-                  const dest = getDestination();
-
-                  return (
-                    <div key={e.id} style={{borderBottom:idx<sorted.length-1?"1px solid var(--cream2)":"none"}}>
-                      {/* Main row */}
-                      <div style={{display:"flex",alignItems:"flex-start",gap:".8rem",padding:".9rem 1rem",cursor:dest?"pointer":"default"}}
-                        onClick={dest?dest.action:undefined}>
-                        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.15rem",flexShrink:0,background:isServiceLog?"var(--rust-light)":isBill?"rgba(35,74,61,.08)":catColor+"22"}}>{isServiceLog?"⚙️":isBill?"⚡":CAT_ICONS[e.category]||"🔧"}</div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:".2rem"}}>{e.description}</div>
-                          <div style={{fontSize:".8rem",color:"#8A8178",display:"flex",gap:".45rem",flexWrap:"wrap",alignItems:"center"}}>
-                            {e.date&&<span>{fmtD(e.date)}</span>}
-                            {e.category&&<span style={{background:"var(--cream2)",color:"#6E665D",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>{e.category}</span>}
-                            {e.vendor&&<span>{e.vendor}</span>}
-                            {proj&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>🔨 {proj.name}</span>}
-                            {isServiceLog&&e._assetName&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>⚙️ {e._assetName}</span>}
-                            {isServiceLog&&!e._assetName&&<span style={{background:"var(--rust-light)",color:"var(--rust)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>Asset service</span>}
-                            {e.file_url&&<span style={{background:"rgba(35,74,61,.08)",color:"var(--pine)",fontSize:".7rem",fontWeight:700,padding:"2px 7px",borderRadius:6}}>📎 Receipt</span>}
-                          </div>
-                          {!isServiceLog&&!isBill&&e.file_url&&(
-                            <div style={{marginTop:".4rem"}} onClick={ev=>ev.stopPropagation()}>
-                              {isImage?<img src={e.file_url} alt="Receipt" style={{width:60,height:60,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/>:
-                               isPdf?<a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a>:null}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
-                          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:700,color:"var(--dark)"}}>{fmt$(e.amount)}</div>
-                          {/* Show chevron if navigable, else edit/delete */}
-                          {dest ? (
-                            <span style={{fontSize:".75rem",color:"var(--pine)",fontWeight:700}}>{dest.icon}</span>
-                          ) : !isServiceLog&&!isBill&&(
-                            <div style={{display:"flex",gap:3}} onClick={ev=>ev.stopPropagation()}>
-                              <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Edit</button>
-                              <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"2px 4px"}}>Delete</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {/* Destination hint strip — only for navigable items */}
-                      {dest && (
-                        <div onClick={dest.action} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".45rem 1rem .55rem 3.7rem",background:"rgba(35,74,61,.03)",borderTop:"1px solid var(--cream2)",cursor:"pointer"}}>
-                          <span style={{fontSize:".78rem",color:"var(--pine)",fontWeight:600}}>
-                            {isServiceLog ? `View in ${dest.label} service history` : isBill ? `View in ${dest.label}` : `View in project: ${dest.label}`}
-                          </span>
-                          <span style={{fontSize:".8rem",color:"var(--pine)",fontWeight:700}}>→</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              {monthGroups.map(g => {
+                const open = isMonthOpen(g);
+                return (
+                  <div key={g.key} className="xm-card mflat">
+                    {!g.flat && (
+                      <button type="button" className="xm-head" aria-expanded={open} disabled={monthForceOpen}
+                        onClick={()=>setMonthPref(pr=>({...pr,[g.key]:open?"closed":"open"}))}>
+                        <span className={"ag-chev"+(open?" open":"")} aria-hidden="true">{monthForceOpen?"":"›"}</span>
+                        <span className="xm-name">{g.label}</span>
+                        <span className="xm-meta">{g.items.length} item{g.items.length!==1?"s":""}</span>
+                        <span className="xm-total">{fmt$(g.total)}</span>
+                      </button>
+                    )}
+                    {open && g.items.map(renderExpenseRow)}
+                  </div>
+                );
+              })}
             </div>
           )}
           </div>
