@@ -1,4 +1,4 @@
-// Steadwell v281 — 2026-09-30T04:30:00.000Z
+// Steadwell v282 — 2026-09-30T05:00:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3402,6 +3402,31 @@ img,.lp-root img{max-width:100%;height:auto}
   .mc-chip>div:not(.mc-ico){max-width:none!important;white-space:nowrap}
 }
 
+/* ── Profile card (desktop sidebar) + Homes section of the profile menu ── */
+.user-dd-label{font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#A8A09A;padding:.55rem .9rem .2rem}
+.user-dd-item.home.on{background:var(--cream)}
+.user-dd-home-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-dd-home-name em{font-style:normal;color:var(--pine);font-size:.72rem}
+.user-dd-check{color:var(--rust);font-weight:700;flex-shrink:0}
+.user-dd-item.add{color:var(--rust);font-weight:600}
+.user-dropdown{max-width:min(320px,calc(100vw - 1.5rem))}
+.sbar-user{display:flex;align-items:center;gap:.65rem;width:100%;padding:.5rem .55rem;border-radius:12px;border:none;background:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;text-align:left;color:var(--dark);transition:background .15s}
+.sbar-user:hover,.sbar-user.open{background:var(--cream)}
+.sbar-user .user-avatar{width:34px;height:34px;font-size:.78rem}
+.sbar-user-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.sbar-user-name{font-size:.86rem;font-weight:700;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbar-user-status{font-size:.72rem;font-weight:600;color:#8A8178;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbar-user-status.warn{color:#B8861E}
+.sbar-user-status.ok{color:var(--ok)}
+.sbar-user-plan.up{font-size:.65rem;font-weight:700;padding:2px 9px;border-radius:10px;color:var(--rust);border:1px solid var(--rust);background:var(--rust-light);flex-shrink:0;cursor:pointer}
+.sbar-user-plan.up:hover{background:var(--rust);color:#fff}
+.user-menu.side{width:100%}
+.user-menu.side .user-dropdown{top:auto;bottom:calc(100% + 8px);left:0;right:0;min-width:0;max-width:none;max-height:70vh;overflow-y:auto}
+@media(min-width:1024px){
+  .hdr .user-menu{display:none}
+  .sidebar .user-menu.side{margin-top:auto;position:sticky;bottom:-1.5rem;background:var(--white);padding-top:.6rem;margin-bottom:-1.5rem;padding-bottom:1.5rem;border-top:1px solid var(--stone);flex-shrink:0;box-sizing:border-box}
+}
+
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
@@ -5252,7 +5277,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
-function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount }) {
+function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount, variant="top", planData, status, onUpgrade, allProfiles=[], activePropertyId, onSwitchProperty, onAddProperty }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -5260,30 +5285,76 @@ function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySet
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    const k = e => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [open]);
+
+  const side = variant === "side";
+  const isPro = planData?.plan === "pro";
+  const canAddHome = isPro && allProfiles.length < 3;
+  const showHomes = onSwitchProperty && (allProfiles.length >= 2 || canAddHome);
+  const homeLabel = (p) => p?.name || p?.address?.split(",")[0] || "My Home";
+  const displayName = profile?.name || (user.email || "").split("@")[0];
+  const planLabel = planData?.label || "Free";
 
   return (
-    <div className="user-menu" ref={ref} role="navigation" aria-label="User menu">
-      <div className="user-btn" onClick={()=>setOpen(o=>!o)}>
-        <span className="user-avatar">{nameInitials(profile?.name, user.email)}</span>
-        <span style={{opacity:.5,fontSize:".7rem"}}>▾</span>
-      </div>
+    <div className={"user-menu"+(side?" side":"")} ref={ref} role="navigation" aria-label="User menu">
+      {side ? (
+        <button type="button" className={"sbar-user"+(open?" open":"")} onClick={()=>setOpen(o=>!o)} aria-haspopup="menu" aria-expanded={open}>
+          <span className="user-avatar">{nameInitials(profile?.name, user.email)}</span>
+          <span className="sbar-user-txt">
+            <span className="sbar-user-name">{displayName}</span>
+            {status && <span className={"sbar-user-status "+(status.tone||"")}>{status.text}</span>}
+          </span>
+          {planData?.plan === "free" && onUpgrade
+            ? <span className="sbar-user-plan up" role="button" tabIndex={0} title="See plans" onClick={e=>{e.stopPropagation();setOpen(false);onUpgrade();}} onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); e.stopPropagation(); setOpen(false); onUpgrade(); } }}>Upgrade</span>
+            : <span className={"plan-badge "+(planData?.color||"free")}>{planLabel}</span>}
+        </button>
+      ) : (
+        <div className="user-btn" onClick={()=>setOpen(o=>!o)}>
+          <span className="user-avatar">{nameInitials(profile?.name, user.email)}</span>
+          <span style={{opacity:.5,fontSize:".7rem"}}>▾</span>
+        </div>
+      )}
       {open && (
-        <div className="user-dropdown">
+        <div className="user-dropdown" role="menu">
           <div className="user-dd-email">{user.email}</div>
-          <button className="user-dd-item" onClick={()=>{setOpen(false);onAccount();}}>
+          {showHomes && (
+            <div className="user-dd-homes">
+              <div className="user-dd-label">Homes</div>
+              {allProfiles.map(p => (
+                <button key={p.id} type="button" role="menuitem" className={"user-dd-item home"+(p.id===activePropertyId?" on":"")}
+                  onClick={()=>{ setOpen(false); if (p.id !== activePropertyId) onSwitchProperty(p.id); }}>
+                  <span>🏡</span>
+                  <span className="user-dd-home-name">{homeLabel(p)}{p._shared && <em> · shared</em>}</span>
+                  {p.id===activePropertyId && <span className="user-dd-check">✓</span>}
+                </button>
+              ))}
+              {canAddHome && onAddProperty && (
+                <button type="button" role="menuitem" className="user-dd-item add" onClick={()=>{setOpen(false);onAddProperty();}}>
+                  <span>＋</span> Add a property
+                </button>
+              )}
+              <div className="user-dd-divider"/>
+            </div>
+          )}
+          <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onAccount();}}>
             <span>👤</span> My Account
           </button>
-          <button className="user-dd-item" onClick={()=>{setOpen(false);onPrivacySettings();}}>
+          <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onPrivacySettings();}}>
             <span>🔒</span> Privacy Settings
           </button>
-          <button className="user-dd-item" onClick={()=>{setOpen(false);onFeedback();}}>
+          <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onFeedback();}}>
             <span>💬</span> Send Feedback
           </button>
-          <button className="user-dd-item" onClick={()=>{setOpen(false);onExport();}}>
+          <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onExport();}}>
             <span>⬇</span> Export My Data
           </button>
           <div className="user-dd-divider"/>
-          <button className="user-dd-item danger" onClick={()=>{setOpen(false);onSignOut();}}>
+          <button className="user-dd-item danger" role="menuitem" onClick={()=>{setOpen(false);onSignOut();}}>
             <span>🚪</span> Sign Out
           </button>
         </div>
@@ -20042,6 +20113,11 @@ export default function App() {
   ];
   const uid = session.user.id;
   const warrantyUrgent = getWarrantyBuckets(warranties).urgent;
+  const emailUnverified = session?.user?.app_metadata?.email_verified === false;
+  const attentionCount = overdue + warrantyUrgent;
+  const sidebarStatus = emailUnverified ? { text:"Verify email", tone:"warn" }
+    : attentionCount > 0 ? { text:`${attentionCount} to review`, tone:"warn" }
+    : { text:"All caught up", tone:"ok" };
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -20087,7 +20163,7 @@ export default function App() {
               setTab("expenses");
             }}
           />
-          <UserMenu user={session.user} profile={profile} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)}/>
+          <UserMenu user={session.user} profile={profile} planData={planData} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)} allProfiles={allProfiles} activePropertyId={activePropertyId} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>
         </header>
 
         {/* ── Desktop sidebar — mirrors bottom-nav's tabs/handlers exactly so the
@@ -20117,6 +20193,7 @@ export default function App() {
             <span className="sbar-icon" aria-hidden="true">📄</span>
             <span>Documents</span>
           </button>
+          <UserMenu variant="side" user={session.user} profile={profile} planData={planData} status={sidebarStatus} onUpgrade={()=>setShowUpgrade(true)} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)} allProfiles={allProfiles} activePropertyId={activePropertyId} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>
         </nav>
 
         {/* ── Bounce banner — takes priority over the softer verify banner, since a bounce means
