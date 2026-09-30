@@ -1,4 +1,4 @@
-// Steadwell v275 — 2026-09-30T00:45:00.000Z
+// Steadwell v276 — 2026-09-30T01:10:00.000Z
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3257,7 +3257,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .xr-icon{grid-area:icon;align-self:start;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
 .xr-main{grid-area:main;min-width:0}
 .xr-title{font-size:.95rem;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.xr-meta{font-size:.78rem;color:#8A8178;display:flex;gap:.3rem;align-items:center;margin-top:.15rem;min-width:0;white-space:nowrap;overflow:hidden}
+.xr-meta{font-size:.78rem;color:#8A8178;display:flex;flex-wrap:wrap;gap:.1rem .3rem;align-items:center;margin-top:.15rem;min-width:0}
 .xr-meta>span{flex-shrink:0}
 .xr-meta>.xr-ctx{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .xr-clip{border:none;background:none;padding:0 .1rem;cursor:pointer;font-size:.8rem;line-height:1;flex-shrink:0}
@@ -3272,9 +3272,15 @@ img,.lp-root img{max-width:100%;height:auto}
 .xr-actions button{font-size:.75rem;font-weight:600;color:var(--mid);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px}
 .xr-actions button.del{color:#B0432B}
 @media(min-width:1024px){
-  .xt-seg.mpad{padding-left:0!important;padding-right:0!important}
+  .xt-seg.mpad{padding-left:0!important;padding-right:0!important;flex-wrap:wrap;overflow-x:visible}
+}
+/* Wide row layout (icon | title | type+category | amount) needs a wide list
+   column; between 1024 and 1359 the side panel leaves too little room, so
+   those widths keep the stacked phone-style row. */
+@media(min-width:1360px){
   .xr{grid-template-columns:40px minmax(0,1fr) 112px 128px;grid-template-areas:"icon main tags amt";padding:.7rem 1rem}
   .xr-icon{align-self:center}
+  .xr-meta{flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
   .xr-tags{flex-direction:column;align-items:flex-start;gap:.25rem}
   .xr-tags:empty{display:block}
   .xr-amt{flex-direction:row;align-items:center;justify-content:flex-end;gap:.5rem;align-self:center}
@@ -12361,7 +12367,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const sm = groupSummary(g.items);
     return sm.attn > 0 || sm.heads > 0;
   };
-  const openStates = displayGroups.map(isGroupOpen);
+  let openStates = displayGroups.map(isGroupOpen);
+  // If the defaults would leave every group closed (a big, all-healthy home),
+  // open the first one so the screen never looks empty.
+  if (openStates.length && !openStates.some(Boolean) && !Object.keys(catPref).length) openStates = openStates.map((_, i) => i === 0);
   const allOpen = openStates.every(Boolean);
   const setAllGroups = (open) => {
     const next = { ...catPref };
@@ -12369,7 +12378,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     saveCatPref(next);
   };
   const toggleGroup = (g) => {
-    saveCatPref({ ...catPref, [g.key]: isGroupOpen(g) ? "closed" : "open" });
+    saveCatPref({ ...catPref, [g.key]: openStates[displayGroups.indexOf(g)] ? "closed" : "open" });
   };
 
   return (
