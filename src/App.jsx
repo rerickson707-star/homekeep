@@ -1,4 +1,4 @@
-// Steadwell v289 — 2026-09-30
+// Steadwell v290 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3529,6 +3529,36 @@ img,.lp-root img{max-width:100%;height:auto}
   .acct-danger .acct-row{flex-direction:column;align-items:stretch}
   .acct-danger-btn{width:100%}
 }
+
+/* ── Install guide ── */
+.ig-modal{max-width:480px!important}
+.ig-body{position:relative;padding:1.4rem 1.4rem 1.5rem;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ig-close{position:absolute;top:.9rem;right:.9rem;width:38px;height:38px;border-radius:10px;border:1.5px solid var(--stone);background:var(--cream);color:var(--dark);font-size:1rem;cursor:pointer;font-family:inherit}
+.ig-eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--rust);margin:.2rem 3rem .5rem 0}
+.ig-title{font-family:'Fraunces',serif;font-size:1.7rem;font-weight:500;line-height:1.15;color:var(--dark);margin:0 0 .7rem;letter-spacing:-.01em}
+.ig-intro{font-size:.92rem;line-height:1.6;color:#5A534B;margin:0 0 1.1rem}
+.ig-tip{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;background:#FBF0DD;border:1px solid #F0D6A8;border-radius:12px;padding:.65rem .8rem;margin-bottom:1rem;font-size:.82rem;color:#7A5A1E}
+.ig-steps{list-style:none;margin:0 0 1rem;padding:0;display:flex;flex-direction:column;gap:.65rem}
+.ig-step{display:flex;align-items:center;gap:.8rem;background:var(--cream);border:1.5px solid var(--stone);border-radius:14px;padding:.8rem .85rem}
+.ig-num{font-family:'Fraunces',serif;font-weight:700;font-size:1.05rem;color:var(--rust);width:1rem;text-align:center;flex-shrink:0}
+.ig-icon{width:48px;height:48px;border-radius:12px;background:#1C3D31;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ig-step-txt{display:flex;flex-direction:column;gap:2px;min-width:0;overflow-wrap:anywhere}
+.ig-step-title{font-size:.95rem;font-weight:700;color:var(--dark);line-height:1.3}
+.ig-step-body{font-size:.8rem;color:#7A7370;line-height:1.45}
+.ig-note{font-size:.78rem;color:#8A8178;line-height:1.5;margin-bottom:1rem}
+.ig-actions{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.ig-primary{width:100%;background:var(--pine);color:#fff;border:none;border-radius:12px;padding:.85rem 1rem;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;margin-bottom:.4rem}
+.ig-primary:active{transform:translateY(1px)}
+.ig-or{text-align:center;font-size:.74rem;color:#A8A09A;margin:.15rem 0 .8rem}
+.ig-quiet{background:none;border:none;color:#8A8178;font-family:inherit;font-size:.8rem;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:.4rem 0;margin-bottom:.4rem}
+.ig-banner{position:fixed;left:12px;right:12px;bottom:calc(var(--bottom-nav) + 12px);background:#1C3D31;border-radius:16px;padding:1rem 1.1rem;box-shadow:0 8px 32px rgba(23,48,38,.5);z-index:399;display:flex;align-items:flex-start;gap:.85rem;animation:slideUp .3s ease}
+.ig-banner-icon{width:42px;height:42px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ig-banner-title{font-weight:700;font-size:.92rem;color:#F4EDDF;margin-bottom:3px}
+.ig-banner-sub{font-size:.76rem;color:rgba(244,237,223,.65);line-height:1.45;margin-bottom:.7rem}
+.ig-banner-btn{background:#C16140;color:#fff;border:none;border-radius:10px;padding:.5rem 1rem;font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer}
+.ig-banner-quiet{background:rgba(244,237,223,.1);color:rgba(244,237,223,.7);border:none;border-radius:10px;padding:.5rem .9rem;font-family:inherit;font-size:.82rem;cursor:pointer}
+.ig-banner-x{background:none;border:none;color:rgba(244,237,223,.45);cursor:pointer;font-size:1.05rem;padding:0;line-height:1;flex-shrink:0}
+@media(max-width:639px){.ig-modal{max-height:94vh}.ig-title{font-size:1.55rem}}
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
@@ -5568,6 +5598,11 @@ function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySet
           <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onAccount();}}>
             <span>👤</span> My Account
           </button>
+          {!isStandaloneApp() && (
+            <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);window.dispatchEvent(new CustomEvent("sw:open-install"));}}>
+              <span>📲</span> Install the app
+            </button>
+          )}
           <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onPrivacySettings();}}>
             <span>🔒</span> Privacy Settings
           </button>
@@ -6042,6 +6077,12 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                 {onSignOut && <button className="btn btn-ghost btn-sm" onClick={()=>{onClose();onSignOut();}}>Sign out</button>}
                 <button className="btn btn-ghost btn-sm" disabled={signingOutAll} onClick={signOutEverywhere}>{signingOutAll?"Signing out…":"Sign out on all devices"}</button>
               </div>
+            </AcctCard>
+
+            <AcctCard title="Get the app" sub="Put Steadwell on your Home Screen or desktop — it opens full screen, like an app.">
+              {isStandaloneApp()
+                ? <div><span className="acct-pill ok">✓ You're using the installed app</span></div>
+                : <div><button className="btn btn-ghost btn-sm" onClick={()=>window.dispatchEvent(new CustomEvent("sw:open-install"))}>📲 Show me how</button></div>}
             </AcctCard>
           </>)}
 
@@ -19935,95 +19976,328 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
   );
 }
 
-// ─── PWA INSTALL PROMPT ──────────────────────────────────────────────────────
+// ─── INSTALL / ADD TO HOME SCREEN ────────────────────────────────────────────
+// Device-aware install guide. The browser's own install event can fire before
+// React mounts, so it is captured at module level and reused by the banner, the
+// user-menu item and the My Account card.
+let _installEvt = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    _installEvt = e;
+    window.dispatchEvent(new CustomEvent("sw:install-ready"));
+  });
+  window.addEventListener("appinstalled", () => {
+    _installEvt = null;
+    try { localStorage.setItem("sw_pwa_installed", "1"); } catch {}
+    window.dispatchEvent(new CustomEvent("sw:installed"));
+  });
+}
+
+const isStandaloneApp = () => {
+  try { return !!(window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone); }
+  catch { return false; }
+};
+
+// Work out which install instructions apply to this device + browser.
+// `?install_demo=ios-safari|ios-chrome|ios-inapp|ipad|android|android-samsung|android-firefox|desktop|mac-safari|desktop-firefox`
+// forces a variant so each guide can be previewed from any device.
+function detectInstallEnv() {
+  let demo = "";
+  try { demo = new URLSearchParams(window.location.search).get("install_demo") || ""; } catch {}
+  const ua = navigator.userAgent || "";
+  const plat = navigator.platform || "";
+  let os, browser, inApp = false;
+  if (demo) {
+    const d = demo.toLowerCase();
+    if (d.startsWith("ios")) os = "ios"; else if (d === "ipad") os = "ipados";
+    else if (d.startsWith("android")) os = "android";
+    else if (d === "mac-safari") os = "mac"; else os = "desktop";
+    browser = d === "ios-chrome" ? "chrome" : d === "android-samsung" ? "samsung" : d === "android-firefox" || d === "desktop-firefox" ? "firefox"
+      : d === "mac-safari" ? "safari" : d === "desktop" || d === "android" ? "chrome" : "safari";
+    inApp = d === "ios-inapp";
+  } else {
+    const touchMac = plat === "MacIntel" && navigator.maxTouchPoints > 1;
+    os = /iphone|ipod/i.test(ua) ? "ios" : (/ipad/i.test(ua) || touchMac) ? "ipados" : /android/i.test(ua) ? "android" : /mac/i.test(plat) ? "mac" : "desktop";
+    inApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|LinkedInApp|Snapchat|TikTok|MicroMessenger|Pinterest|GSA\//i.test(ua) || (os === "android" && /; wv\)/.test(ua));
+    if (os === "ios" || os === "ipados") browser = /CriOS/.test(ua) ? "chrome" : /FxiOS/.test(ua) ? "firefox" : /EdgiOS/.test(ua) ? "edge" : /OPiOS/.test(ua) ? "opera" : "safari";
+    else if (os === "android") browser = /SamsungBrowser/.test(ua) ? "samsung" : /Firefox/.test(ua) ? "firefox" : /EdgA/.test(ua) ? "edge" : /OPR/.test(ua) ? "opera" : "chrome";
+    else browser = /Edg\//.test(ua) ? "edge" : /Firefox/.test(ua) ? "firefox" : /Chrome|Chromium/.test(ua) ? "chrome" : /Safari/.test(ua) ? "safari" : "other";
+  }
+  const mobile = os === "ios" || os === "android" || os === "ipados";
+  let kind;
+  if (os === "ios" || os === "ipados") kind = inApp ? "ios-inapp" : browser === "safari" ? "ios-safari" : "ios-other";
+  else if (os === "android") kind = inApp ? "android-inapp" : browser === "samsung" ? "android-samsung" : browser === "firefox" ? "android-firefox" : browser === "chrome" ? "android-chrome" : "android-other";
+  else if (browser === "safari") kind = "desktop-safari";
+  else if (browser === "firefox") kind = "desktop-firefox";
+  else kind = "desktop-chromium";
+  return { os, browser, kind, mobile, inApp, demo: !!demo };
+}
+
+// Small inline icons so each step can show what to look for on screen.
+function InstallIcon({ name }) {
+  const c = "#8EC5FF", p = { width: 26, height: 26, viewBox: "0 0 24 24", fill: "none", stroke: c, strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true };
+  if (name === "share") return (<svg {...p}><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 00-1 1v8a1 1 0 001 1h14a1 1 0 001-1v-8a1 1 0 00-1-1h-1"/></svg>);
+  if (name === "add")   return (<svg {...p}><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>);
+  if (name === "dots")  return (<svg {...p} fill={c} stroke="none"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>);
+  if (name === "menu")  return (<svg {...p}><path d="M4 7h16M4 12h16M4 17h16"/></svg>);
+  if (name === "install") return (<svg {...p}><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 7v5M9.5 10l2.5 2.5L14.5 10"/><path d="M8 20h8"/></svg>);
+  if (name === "safari") return (<svg {...p}><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>);
+  if (name === "link")  return (<svg {...p}><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>);
+  return (
+    <svg viewBox="0 0 48 48" width="30" height="30" fill="none" aria-hidden="true">
+      <rect width="48" height="48" rx="11" fill="#C16140"/>
+      <path d="M12 34L12 20L24 10L36 20L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M8 35.5L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// The actual instructions for each device/browser combination.
+function installContent(env) {
+  const openApp = { icon: "app", title: "Open Steadwell from the new icon",
+    body: (env.os === "ios" || env.os === "ipados")
+      ? "Sign in once in the app — it remembers you after that. Your homes, tasks and documents are the same as on the web."
+      : "Your homes, tasks and documents are the same as on the web." };
+  switch (env.kind) {
+    case "ios-safari": return {
+      intro: "Steadwell opens full screen from your Home Screen, like any other app — no browser bars, one tap away. It takes about ten seconds.",
+      steps: [
+        { icon: "share", title: "Tap Share", body: env.os === "ipados" ? "The square with an arrow, at the top of Safari." : "At the bottom of Safari — the square with an arrow." },
+        { icon: "add", title: "Tap “Add to Home Screen”", body: "Scroll the list if you don't see it. Leave “Open as Web App” on if it appears, then tap Add." },
+        openApp,
+      ],
+      note: "Works on any iPhone or iPad.",
+    };
+    case "ios-other": return {
+      intro: "The smoothest install is from Safari, but newer iPhones can do it from this browser too (iOS 16.4 or later).",
+      steps: [
+        { icon: "share", title: "Tap Share", body: "In Chrome it's the square-with-arrow in the address bar at the top. In other browsers, look in the ••• or ≡ menu." },
+        { icon: "add", title: "Tap “Add to Home Screen”", body: "Scroll the list if you don't see it, then tap Add." },
+        openApp,
+      ],
+      note: "Don't see “Add to Home Screen”? Open this page in Safari and follow the same steps there.",
+      safariTip: true,
+    };
+    case "ios-inapp": return {
+      intro: "You're viewing Steadwell inside another app's built-in browser, which can't add it to your Home Screen. Open it in Safari first.",
+      steps: [
+        { icon: "safari", title: "Open this page in Safari", body: "Tap the ••• or share button in this app and choose “Open in Safari” — or copy the link below and paste it into Safari." },
+        { icon: "share", title: "Tap Share, then “Add to Home Screen”", body: "In Safari, tap the square-with-arrow, scroll to “Add to Home Screen”, then tap Add." },
+        openApp,
+      ],
+      safariTip: true,
+    };
+    case "android-chrome": return {
+      intro: "Install Steadwell so it opens full screen from your home screen and keeps your place when you switch apps.",
+      steps: [
+        { icon: "dots", title: "Tap the ⋮ menu", body: "Top right corner of Chrome." },
+        { icon: "install", title: "Tap “Install app”", body: "Or “Add to Home screen” on some versions. Confirm with Install." },
+        openApp,
+      ],
+      native: true,
+    };
+    case "android-samsung": return {
+      intro: "Install Steadwell so it opens full screen from your home screen.",
+      steps: [
+        { icon: "menu", title: "Tap the ≡ menu", body: "Bottom right corner of Samsung Internet." },
+        { icon: "add", title: "Tap “Add page to”, then “Home screen”", body: "Confirm with Add." },
+        openApp,
+      ],
+    };
+    case "android-firefox": return {
+      intro: "Install Steadwell so it opens full screen from your home screen.",
+      steps: [
+        { icon: "dots", title: "Tap the ⋮ menu", body: "Top right corner of Firefox." },
+        { icon: "install", title: "Tap “Install”", body: "Then confirm by tapping Add." },
+        openApp,
+      ],
+    };
+    case "android-inapp": return {
+      intro: "You're viewing Steadwell inside another app's built-in browser, which can't install it. Open it in Chrome first.",
+      steps: [
+        { icon: "link", title: "Open this page in Chrome", body: "Tap the ⋮ or ••• button in this app and choose “Open in browser” or “Open in Chrome” — or copy the link below and paste it into Chrome." },
+        { icon: "dots", title: "In Chrome, tap ⋮ then “Install app”", body: "Or “Add to Home screen”." },
+        openApp,
+      ],
+      safariTip: true,
+    };
+    case "android-other": return {
+      intro: "Most Android browsers can add Steadwell to your home screen.",
+      steps: [
+        { icon: "dots", title: "Open the browser menu", body: "Usually ⋮ or ≡." },
+        { icon: "add", title: "Tap “Add to Home screen” or “Install app”", body: "Then confirm." },
+        openApp,
+      ],
+    };
+    case "desktop-safari": return {
+      intro: "Add Steadwell to your Dock so it opens in its own window (macOS Sonoma or later).",
+      steps: [
+        { icon: "share", title: "Click Share in the toolbar", body: "Or choose File from the menu bar." },
+        { icon: "add", title: "Choose “Add to Dock…”", body: "Then click Add." },
+        { icon: "app", title: "Open Steadwell from your Dock", body: "It opens in its own window, separate from your Safari tabs." },
+      ],
+    };
+    case "desktop-firefox": return {
+      intro: "Firefox on desktop can't install web apps, but you can still keep Steadwell one click away.",
+      steps: [
+        { icon: "link", title: "Bookmark Steadwell", body: "Press Ctrl+D (⌘+D on Mac) and save it to your bookmarks bar." },
+        { icon: "install", title: "Want an app window?", body: "Open trysteadwell.app in Chrome, Edge or Safari and use the install option there." },
+      ],
+    };
+    default: return {
+      intro: "Install Steadwell so it opens in its own window, with no browser tabs or address bar.",
+      steps: [
+        { icon: "install", title: "Click the install icon in the address bar", body: "It's a small monitor with a down arrow, at the right end of the address bar." },
+        { icon: "add", title: "Click Install", body: "No icon? Open the ⋮ menu and choose “Install Steadwell” (Edge: ⋯ → Apps → Install this site as an app)." },
+        { icon: "app", title: "Open Steadwell from your desktop", body: "Pin it to your taskbar or Dock for one-click access." },
+      ],
+      native: true,
+    };
+  }
+}
+
+function InstallGuideModal({ env, fromPrompt, onClose, onNever, nativeReady, onNative }) {
+  const content = installContent(env);
+  const [copied, setCopied] = useState(false);
+  useBodyScrollLock();
+  useEffect(() => {
+    const k = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, []);
+  const copyLink = async () => {
+    const url = window.location.origin + "/";
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url);
+      else { const ta = document.createElement("textarea"); ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+  const device = env.os === "ios" ? "iPhone" : env.os === "ipados" ? "iPad" : env.os === "android" ? "Android" : "your computer";
+  return (
+    <div className="overlay" style={{zIndex:700}} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal ig-modal" role="dialog" aria-modal="true" aria-label="Install Steadwell">
+        <div className="modal-handle" />
+        <div className="ig-body">
+          <button className="ig-close" onClick={onClose} aria-label="Close">✕</button>
+          <div className="ig-eyebrow">Install on {device}</div>
+          <h2 className="ig-title">Add Steadwell to your {env.mobile ? "Home Screen" : "desktop"}.</h2>
+          <p className="ig-intro">{content.intro}</p>
+
+          {content.safariTip && (
+            <div className="ig-tip">
+              <span>Copy the link to paste it into {env.os === "android" ? "Chrome" : "Safari"}:</span>
+              <button className="btn btn-ghost btn-sm" onClick={copyLink}>{copied ? "✓ Copied" : "Copy link"}</button>
+            </div>
+          )}
+
+          {content.native && nativeReady && (
+            <button className="ig-primary" onClick={onNative}>Install Steadwell</button>
+          )}
+          {content.native && nativeReady && <div className="ig-or">or follow the steps</div>}
+
+          <ol className="ig-steps">
+            {content.steps.map((st, i) => (
+              <li key={i} className="ig-step">
+                <span className="ig-num">{i + 1}</span>
+                <span className="ig-icon"><InstallIcon name={st.icon}/></span>
+                <span className="ig-step-txt">
+                  <span className="ig-step-title">{st.title}</span>
+                  <span className="ig-step-body">{st.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          {content.note && <div className="ig-note">{content.note}</div>}
+
+          <div className="ig-actions">
+            <button className="ig-primary" style={{width:"auto",padding:".75rem 1.6rem"}} onClick={onClose}>Got it</button>
+            {fromPrompt && <button className="ig-quiet" onClick={onNever}>Don't remind me again</button>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PWA INSTALL PROMPT (banner + guide host) ────────────────────────────────
+// Banner: phones only, from the 2nd visit. "Not now" snoozes for 14 days;
+// "Don't remind me again" (inside the guide) is permanent. The guide can also be
+// opened at any time from the user menu or My Account ("sw:open-install").
 function PWAInstallPrompt() {
-  const [prompt, setPrompt]     = useState(null);
-  const [visible, setVisible]   = useState(false);
-  const [isIOS, setIsIOS]       = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [env] = useState(detectInstallEnv);
+  const [banner, setBanner] = useState(false);
+  const [guide, setGuide] = useState(null); // null | { fromPrompt }
+  const [nativeReady, setNativeReady] = useState(!!_installEvt);
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
   useEffect(() => {
-    // Don't show if already installed or dismissed
-    const alreadyDismissed = localStorage.getItem("sw_pwa_dismissed");
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
-    if (isStandalone || alreadyDismissed) return;
-
-    // iOS detection — no beforeinstallprompt, needs manual instructions
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-    setIsIOS(ios);
-
-    // Show after 2nd visit
-    const visits = parseInt(localStorage.getItem("sw_visits") || "0") + 1;
-    localStorage.setItem("sw_visits", String(visits));
-    if (visits < 2) return;
-
-    if (ios) {
-      // Show iOS instructions after small delay
-      setTimeout(() => setVisible(true), 4000);
-    } else {
-      // Chrome/Android — capture beforeinstallprompt
-      const handler = (e) => {
-        e.preventDefault();
-        setPrompt(e);
-        setTimeout(() => setVisible(true), 4000);
-      };
-      window.addEventListener("beforeinstallprompt", handler);
-      return () => window.removeEventListener("beforeinstallprompt", handler);
-    }
+    const onReady = () => setNativeReady(true);
+    const onDone = () => { setBanner(false); setGuide(null); setNativeReady(false); };
+    const onOpen = () => setGuide({ fromPrompt: false });
+    window.addEventListener("sw:install-ready", onReady);
+    window.addEventListener("sw:installed", onDone);
+    window.addEventListener("sw:open-install", onOpen);
+    return () => {
+      window.removeEventListener("sw:install-ready", onReady);
+      window.removeEventListener("sw:installed", onDone);
+      window.removeEventListener("sw:open-install", onOpen);
+    };
   }, []);
 
-  const dismiss = () => {
-    setVisible(false);
-    setDismissed(true);
-    localStorage.setItem("sw_pwa_dismissed", "1");
-  };
+  useEffect(() => {
+    if (env.demo) { const t = setTimeout(() => setGuide({ fromPrompt: false }), 600); return () => clearTimeout(t); }
+    if (isStandaloneApp() || lsGet("sw_pwa_installed") || lsGet("sw_pwa_dismissed")) return;
+    if (!env.mobile || env.inApp) return;
+    const snooze = parseInt(lsGet("sw_pwa_snooze_until") || "0", 10);
+    if (snooze && Date.now() < snooze) return;
+    const visits = parseInt(lsGet("sw_visits") || "0", 10) + 1;
+    lsSet("sw_visits", String(visits));
+    if (visits < 2) return;
+    const t = setTimeout(() => setBanner(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
 
-  const install = async () => {
-    if (!prompt) return;
-    prompt.prompt();
-    const { outcome } = await prompt.userChoice;
-    if (outcome === "accepted") {
-      setVisible(false);
-      localStorage.setItem("sw_pwa_dismissed", "1");
-    }
+  const snooze = () => { setBanner(false); lsSet("sw_pwa_snooze_until", String(Date.now() + 14 * 86400000)); };
+  const never = () => { setBanner(false); setGuide(null); lsSet("sw_pwa_dismissed", "1"); };
+  const runNative = async () => {
+    if (!_installEvt) return;
+    const evt = _installEvt;
+    evt.prompt();
+    const { outcome } = await evt.userChoice;
+    if (outcome === "accepted") { lsSet("sw_pwa_installed", "1"); setBanner(false); setGuide(null); }
+    _installEvt = null; setNativeReady(false);
   };
-
-  if (!visible || dismissed) return null;
+  const primary = () => {
+    if (nativeReady && env.os === "android") { runNative(); return; }
+    setBanner(false);
+    setGuide({ fromPrompt: true });
+  };
 
   return (
-    <div style={{
-      position:"fixed", bottom:"calc(var(--bottom-nav) + 12px)", left:"12px", right:"12px",
-      background:"#1C3D31", borderRadius:16, padding:"1rem 1.1rem",
-      boxShadow:"0 8px 32px rgba(23,48,38,.5)", zIndex:399,
-      display:"flex", alignItems:"flex-start", gap:".85rem",
-      animation:"slideUp .3s ease"
-    }}>
-      <div style={{width:40,height:40,borderRadius:11,background:"#C16140",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-        <svg viewBox="0 0 48 48" fill="none" width="22" height="22">
-          <path d="M12 34L12 20L24 10L36 20L36 34" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M8 35.5L40 35.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontWeight:700,fontSize:".9rem",color:"#F4EDDF",marginBottom:3}}>
-          Add Steadwell to your home screen
+    <>
+      {banner && !guide && (
+        <div className="ig-banner" role="region" aria-label="Install Steadwell">
+          <div className="ig-banner-icon"><InstallIcon name="app"/></div>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="ig-banner-title">Add Steadwell to your Home Screen</div>
+            <div className="ig-banner-sub">Opens full screen, one tap away, like any other app.</div>
+            <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+              <button className="ig-banner-btn" onClick={primary}>{nativeReady && env.os === "android" ? "Install app" : "Show me how"}</button>
+              <button className="ig-banner-quiet" onClick={snooze}>Not now</button>
+            </div>
+          </div>
+          <button className="ig-banner-x" onClick={snooze} aria-label="Dismiss">✕</button>
         </div>
-        <div style={{fontSize:".75rem",color:"rgba(244,237,223,.6)",lineHeight:1.5,marginBottom:".7rem"}}>
-          {isIOS
-            ? 'Tap the share button below, then "Add to Home Screen" — keeps the app open when you switch between apps.'
-            : "Install Steadwell for a faster, app-like experience that stays open when you switch apps."}
-        </div>
-        {!isIOS && (
-          <button onClick={install} style={{background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:".45rem 1rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",fontWeight:700,cursor:"pointer",marginRight:8}}>
-            Install app
-          </button>
-        )}
-        <button onClick={dismiss} style={{background:"rgba(244,237,223,.1)",color:"rgba(244,237,223,.6)",border:"none",borderRadius:10,padding:".45rem .85rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",cursor:"pointer"}}>
-          Not now
-        </button>
-      </div>
-      <button onClick={dismiss} style={{background:"none",border:"none",color:"rgba(244,237,223,.4)",cursor:"pointer",fontSize:"1.1rem",padding:0,lineHeight:1,flexShrink:0}}>✕</button>
-    </div>
+      )}
+      {guide && (
+        <InstallGuideModal env={env} fromPrompt={guide.fromPrompt} nativeReady={nativeReady} onNative={runNative}
+          onClose={() => { setGuide(null); if (guide.fromPrompt) snooze(); }} onNever={never}/>
+      )}
+    </>
   );
 }
 
