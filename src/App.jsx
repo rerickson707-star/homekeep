@@ -1,4 +1,4 @@
-// Steadwell v283 — 2026-09-30T05:20:00.000Z
+// Steadwell v287 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2892,6 +2892,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-gen-info{flex:1;min-width:0}
 .ct-gen-title{font-size:.82rem;font-weight:500;color:var(--dark);line-height:1.3}
 .ct-gen-sub{font-size:.7rem;color:#9E9690;margin-top:1px}
+.ct-gen-dup{font-size:.62rem;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--warn-bg);color:var(--warn);margin-left:.45rem;white-space:nowrap;vertical-align:1px}
 
 /* ══ DASHBOARD WEEK TILE + QUICK ACTIONS ══ */
 .week-tile{background:var(--white);border-radius:var(--r);border:1px solid var(--stone);padding:.85rem .9rem .75rem;margin-bottom:.75rem}
@@ -3128,7 +3129,14 @@ img,.lp-root img{max-width:100%;height:auto}
 .assets-grid{display:flex;flex-direction:column}
 @media(min-width:900px){.assets-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 1rem}}
 @media(min-width:1300px){.assets-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.assets-grid>*{min-width:0;box-sizing:border-box;max-width:100%;overflow:hidden;overflow-wrap:anywhere}
+.assets-grid>*{min-width:0;box-sizing:border-box;max-width:100%;overflow:hidden;overflow-wrap:break-word}
+/* Multi-column asset grid: icon + full-width title on the first row, status pill on its own line below
+   (the pill used to squeeze the title into ~90px and split words mid-letter). */
+@media(min-width:900px){
+  .assets-grid .ac-top{display:grid!important;grid-template-columns:52px minmax(0,1fr);column-gap:.85rem;row-gap:.55rem}
+  .assets-grid .ac-status{grid-column:2;justify-self:start}
+  .assets-grid .ac-name{overflow-wrap:break-word;word-break:normal;hyphens:manual}
+}
 
 /* Tasks: calendar sits beside the list on desktop instead of stacked above it */
 .tasks-layout{display:flex;flex-direction:column;gap:1rem}
@@ -3441,6 +3449,28 @@ img,.lp-root img{max-width:100%;height:auto}
   .hdr .prop-switcher-hdr{grid-column:3;justify-self:end;min-width:0;max-width:100%}
 }
 
+/* Phones: calendar header wraps so the next-month arrow is never clipped, the
+   task list comes before the calendar, and the calendar is more compact. */
+@media(max-width:599px){
+  .ct-cal-hdr{flex-wrap:wrap;gap:.55rem;padding:.75rem .85rem}
+  .ct-cal-hdr>div:first-child{width:100%;justify-content:space-between;align-items:center!important;gap:.5rem!important}
+  .ct-month-lbl{white-space:nowrap}
+  .ct-navs{width:100%}
+  .ct-navs .ct-nav-btn{flex:0 0 40px;width:40px;height:34px}
+  .ct-navs .ct-today-btn{flex:1 1 auto}
+  .ct-day{min-height:46px;padding:.28rem .3rem .3rem}
+  .tasks-cal{order:2;scroll-margin-top:76px}
+  .tasks-main{order:1}
+  .tasks-cal-jump{display:inline-flex!important}
+  .vb-full{display:none}
+  .vb-short{display:inline!important}
+}
+/* Verify / bounce banners: keep the message, action and close on one tidy row. */
+.vb-bar{display:flex;align-items:center;gap:.75rem;padding:.65rem 1.25rem;font-size:.85rem;color:#5E574F}
+.vb-bar>.vb-msg{flex:1;min-width:0;line-height:1.35}
+.vb-short{display:none}
+.tasks-cal-jump{display:none}
+@media(max-width:599px){.vb-bar{padding:.5rem .85rem;gap:.6rem;font-size:.8rem}}
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
@@ -3451,6 +3481,99 @@ const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:0
 // Local-timezone YYYY-MM-DD (avoids UTC off-by-one from toISOString in evening hours)
 const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
+
+// ─── PRIVATE FILE STORAGE (signed URLs) ──────────────────────────────────────
+// The "expense-files" bucket is PRIVATE. Rows keep storing the original object URL
+// (…/storage/v1/object/public/expense-files/<user-id>/…) purely as a pointer; every
+// time a file is shown or opened we extract the object path and mint a short-lived
+// signed URL for it. Files in other buckets / external URLs pass through unchanged.
+const SIGNED_URL_TTL = 3600; // seconds
+const storagePathFromUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+  const m = url.match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/expense-files\/([^?#]+)/);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+};
+const _signedCache = new Map();   // stored url -> { url, exp }
+const _signedInflight = new Map();
+const peekSignedUrl = (url) => {
+  const hit = _signedCache.get(url);
+  return hit && hit.exp - Date.now() > 300000 ? hit.url : null;
+};
+async function getSignedFileUrl(url) {
+  const path = storagePathFromUrl(url);
+  if (!path) return url || "";
+  const cached = peekSignedUrl(url);
+  if (cached) return cached;
+  if (_signedInflight.has(url)) return _signedInflight.get(url);
+  const p = (async () => {
+    try {
+      const { data, error } = await supabase.storage.from("expense-files").createSignedUrl(path, SIGNED_URL_TTL);
+      if (error || !data?.signedUrl) return "";
+      _signedCache.set(url, { url: data.signedUrl, exp: Date.now() + SIGNED_URL_TTL * 1000 });
+      return data.signedUrl;
+    } catch { return ""; }
+  })().finally(() => _signedInflight.delete(url));
+  _signedInflight.set(url, p);
+  return p;
+}
+function useSignedUrl(url) {
+  const isPrivate = !!storagePathFromUrl(url);
+  const [signed, setSigned] = useState(() => isPrivate ? (peekSignedUrl(url) || "") : (url || ""));
+  useEffect(() => {
+    let alive = true;
+    if (!isPrivate) { setSigned(url || ""); return undefined; }
+    const c = peekSignedUrl(url);
+    if (c) { setSigned(c); return undefined; }
+    setSigned("");
+    getSignedFileUrl(url).then(u => { if (alive) setSigned(u); });
+    return () => { alive = false; };
+  }, [url, isPrivate]);
+  return signed;
+}
+// <img> that resolves private storage URLs; retries once with a fresh signature if the link expired
+function SImg({ src, alt = "", style, className, onClick, ...rest }) {
+  const signed = useSignedUrl(src);
+  const [retried, setRetried] = useState(false);
+  const [fresh, setFresh] = useState("");
+  useEffect(() => { setRetried(false); setFresh(""); }, [src]);
+  const shown = fresh || signed;
+  if (!shown) return <span className={className} style={{ display: "block", background: "var(--cream2)", ...style }} aria-hidden="true" />;
+  return (
+    <img src={shown} alt={alt} style={style} className={className} onClick={onClick}
+      onError={() => {
+        if (retried || !storagePathFromUrl(src)) return;
+        setRetried(true); _signedCache.delete(src);
+        getSignedFileUrl(src).then(u => { if (u) setFresh(u); });
+      }} {...rest} />
+  );
+}
+// Open a stored file (PDF / image) in a new tab via a fresh signed URL
+async function openStoredFile(url) {
+  if (!url) return;
+  if (!storagePathFromUrl(url)) { window.open(url, "_blank", "noopener,noreferrer"); return; }
+  const ready = peekSignedUrl(url);
+  if (ready) { window.open(ready, "_blank", "noopener,noreferrer"); return; }
+  // Open the tab synchronously (popup blockers), then point it at the signed URL
+  const w = window.open("", "_blank");
+  try { if (w) w.opener = null; } catch { /* ignore */ }
+  const signed = await getSignedFileUrl(url);
+  if (!signed) {
+    if (w) w.close();
+    window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: "Couldn't open that file — please try again.", type: "error" } }));
+    return;
+  }
+  if (w) w.location.href = signed; else window.open(signed, "_blank", "noopener,noreferrer");
+}
+// <a> that opens a stored file through a signed URL
+function StoredLink({ url, children, onClick, ...rest }) {
+  return (
+    <a href="#" role="link" {...rest}
+      onClick={e => { e.preventDefault(); e.stopPropagation(); if (onClick) onClick(e); openStoredFile(url); }}>
+      {children}
+    </a>
+  );
+}
 
 // Recurring task engine — computes next due date from current due date + recurrence rule
 function getNextRecurringDate(dueDateStr, recurring) {
@@ -3560,13 +3683,20 @@ function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
 const wPct = (p,e) => { const start=new Date(p+"T00:00:00"),end=new Date(e+"T00:00:00"),now=new Date(); return Math.min(100,Math.max(0,Math.round(((now-start)/(end-start))*100))); };
 const initials = email => email ? email.substring(0,2).toUpperCase() : "?";
 // Prefer the person's own name over their email for avatar initials — e.g.
-// "Robert Erickson" -> "RE", a single "Robert" -> "RO". Falls back to email
+// "Robert Erickson" -> "RE", a single "Robert" -> "R". Falls back to email
 // initials only when no name is on file yet.
 const nameInitials = (name, email) => {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  if (parts.length === 1) return parts[0].substring(0,2).toUpperCase();
+  if (parts.length >= 2) return (Array.from(parts[0])[0] + Array.from(parts[1])[0]).toUpperCase();
+  if (parts.length === 1) return Array.from(parts[0])[0].toUpperCase();
   return initials(email);
+};
+// The person's own name. profiles.name doubles as the home nickname ("Lake
+// House"), so the name they gave at sign-up/onboarding is also kept on the auth
+// user (user_metadata.full_name) and preferred here when present.
+const accountName = (profile, user) => {
+  const m = user?.user_metadata || {};
+  return (m.full_name || m.name || m.first_name || profile?.name || "").trim();
 };
 
 // ─── TOAST HOOK ──────────────────────────────────────────────────────────────
@@ -4471,7 +4601,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   };
 
   // Step 1 — Name
-  const [name, setName] = useState(() => loadOnbData().name || "");
+  const [name, setName] = useState(() => loadOnbData().name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
 
   // Step 2 — Address
   const [address, setAddress]         = useState(() => loadOnbData().address || "");
@@ -4654,8 +4784,18 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         schools: propertyData?.schools ? JSON.stringify(propertyData.schools) : "",
       };
       const { data: existing } = await supabase.from("profiles").select("id").eq("user_id", uid).limit(1);
-      if (existing?.length > 0) { await supabase.from("profiles").update(payload).eq("user_id", uid); }
-      else { await supabase.from("profiles").insert([payload]); }
+      let saveErr = null;
+      if (existing?.length > 0) { ({ error: saveErr } = await supabase.from("profiles").update(payload).eq("user_id", uid)); }
+      else { ({ error: saveErr } = await supabase.from("profiles").insert([payload])); }
+      if (saveErr) {
+        console.error("[onboarding] profile save failed", saveErr);
+        // One retry with only the essentials so a bad optional column can't drop the name.
+        const core = { user_id: uid, name: payload.name, goal: payload.goal, onboarding_complete: true, address: payload.address };
+        if (existing?.length > 0) await supabase.from("profiles").update(core).eq("user_id", uid);
+        else await supabase.from("profiles").insert([core]);
+      }
+      // Keep the person's own name on the auth user too, separate from the home nickname.
+      if (name.trim()) { try { await supabase.auth.updateUser({ data: { full_name: name.trim() } }); } catch {} }
       try { sessionStorage.removeItem(ONB_STEP_KEY); sessionStorage.removeItem(ONB_DATA_KEY); } catch {}
 
       // ── Gift redemption: if user came via agent gift link, activate Plus ──
@@ -5311,14 +5451,15 @@ function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySet
   const canAddHome = isPro && allProfiles.length < 3;
   const showHomes = onSwitchProperty && (allProfiles.length >= 2 || canAddHome);
   const homeLabel = (p) => p?.name || p?.address?.split(",")[0] || "My Home";
-  const displayName = profile?.name || (user.email || "").split("@")[0];
+  const acctName = accountName(profile, user);
+  const displayName = acctName || (user.email || "").split("@")[0];
   const planLabel = planData?.label || "Free";
 
   return (
     <div className={"user-menu"+(side?" side":"")} ref={ref} role="navigation" aria-label="User menu">
       {side ? (
         <button type="button" className={"sbar-user"+(open?" open":"")} onClick={()=>setOpen(o=>!o)} aria-haspopup="menu" aria-expanded={open}>
-          <span className="user-avatar">{nameInitials(profile?.name, user.email)}</span>
+          <span className="user-avatar">{nameInitials(acctName, user.email)}</span>
           <span className="sbar-user-txt">
             <span className="sbar-user-name">{displayName}</span>
             {status && <span className={"sbar-user-status "+(status.tone||"")}>{status.text}</span>}
@@ -5329,7 +5470,7 @@ function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySet
         </button>
       ) : (
         <div className="user-btn" onClick={()=>setOpen(o=>!o)}>
-          <span className="user-avatar">{nameInitials(profile?.name, user.email)}</span>
+          <span className="user-avatar">{nameInitials(acctName, user.email)}</span>
           <span style={{opacity:.5,fontSize:".7rem"}}>▾</span>
         </div>
       )}
@@ -5479,22 +5620,28 @@ const CANCEL_SUBSCRIPTION_URL = "https://hjkyameroqufaojuerns.supabase.co/functi
 // ─── NAME + PASSWORD (My Account) ───────────────────────────────────────────
 // Previously there was no way to edit your display name or change your
 // password from within the app at all.
-function NameAndPasswordSection({ profile, setProfile, userId, toast }) {
-  const [name, setName] = useState(profile?.name || "");
+function NameAndPasswordSection({ profile, setProfile, userId, user, toast }) {
+  const shownName = accountName(profile, user);
+  const [name, setName] = useState(shownName);
   const [savingName, setSavingName] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
-  useEffect(() => { setName(profile?.name || ""); }, [profile?.name]);
+  useEffect(() => { setName(shownName); }, [shownName]);
 
   const saveName = async () => {
     const trimmed = name.trim();
-    if (!trimmed || trimmed === profile?.name) return;
+    if (!trimmed || trimmed === shownName) return;
     setSavingName(true);
-    const { error } = await supabase.from("profiles").update({ name: trimmed }).eq("id", profile.id).eq("user_id", userId);
-    if (!error) { setProfile(p => ({ ...p, name: trimmed })); toast("Name updated ✓"); }
+    // The name lives on the auth user (so it never gets mistaken for the home
+    // nickname); profiles.name is kept in step for owner labels in reports.
+    const { error: authErr } = await supabase.auth.updateUser({ data: { full_name: trimmed } });
+    const { error } = profile?.id
+      ? await supabase.from("profiles").update({ name: trimmed }).eq("id", profile.id).eq("user_id", userId)
+      : { error: null };
+    if (!error || !authErr) { if (!error) setProfile(p => ({ ...p, name: trimmed })); toast("Name updated ✓"); }
     else toast("Could not update name — try again", "error");
     setSavingName(false);
   };
@@ -5515,7 +5662,7 @@ function NameAndPasswordSection({ profile, setProfile, userId, toast }) {
       <div style={{display:"flex",gap:".5rem",marginBottom:showPw?".85rem":0}}>
         <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
           style={{flex:1,padding:".55rem .7rem",borderRadius:8,border:"1.5px solid var(--stone)",fontSize:".85rem",fontFamily:"inherit"}}/>
-        <button className="btn btn-ghost btn-sm" disabled={savingName || !name.trim() || name.trim()===profile?.name} onClick={saveName}>
+        <button className="btn btn-ghost btn-sm" disabled={savingName || !name.trim() || name.trim()===shownName} onClick={saveName}>
           {savingName ? "Saving…" : "Save"}
         </button>
       </div>
@@ -5588,7 +5735,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
     { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border, pitch:"Core tracking, no cost.",
       features:["Core maintenance tracking","Basic task reminders","1 property"] },
     { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/mo", periodAnnual:"/yr", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border, pitch:"Automation and intelligence for your home.",
-      features:["Full recurring task engine","Home health score","AI receipt and bill scanning","5-year cost forecasting"] },
+      features:["Full recurring task engine","Home health score","AI receipt and bill scanning","5-year cost forecasting","Home history report (PDF)"] },
     { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/mo", periodAnnual:"/yr", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border, pitch:"Multiple properties, shared access.",
       features:["Everything in Plus","Up to 3 properties","Shared home access","Priority support"] },
   ];
@@ -5646,16 +5793,16 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           {/* Identity card */}
           <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem",background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:"1rem"}}>
             <div style={{width:48,height:48,borderRadius:"50%",background:"var(--pine)",color:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:700,flexShrink:0}}>
-              {nameInitials(profile?.name, session?.user?.email)}
+              {nameInitials(accountName(profile, session?.user), session?.user?.email)}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.name || session?.user?.email}</div>
-              <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.name ? session?.user?.email : ""}{profile?.name && tenureLabel ? " · " : ""}{tenureLabel}</div>
+              <div style={{fontSize:".95rem",fontWeight:700,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{accountName(profile, session?.user) || session?.user?.email}</div>
+              <div style={{fontSize:".78rem",color:"#8A8178",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{accountName(profile, session?.user) ? session?.user?.email : ""}{accountName(profile, session?.user) && tenureLabel ? " · " : ""}{tenureLabel}</div>
             </div>
           </div>
 
           {/* Name + password — editable account basics */}
-          <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} toast={toast}/>
+          <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} user={session?.user} toast={toast}/>
 
           {/* Segmented plan card — native app style */}
           {(() => {
@@ -5947,7 +6094,7 @@ function FeedbackModal({ user, userId, currentTab, onClose }) {
           ) : (
             <>
               <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:".75rem"}}>
-                From: <strong>{user.email}</strong> · Page: <strong>{currentTab}</strong>
+                From: <strong>{user.email}</strong> · Page: <strong>{({dashboard:"Dashboard",tasks:"Tasks",warranties:"Assets",expenses:"Money",profile:"My Home",calendar:"Calendar"})[currentTab] || currentTab}</strong>
               </div>
 
               <div style={{marginBottom:".75rem"}}>
@@ -6473,6 +6620,11 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   if (hasPM && logs.length === 0) return { ...HEALTH_STATES.heads, reason:"Maintenance recommended", lifePct, ageYears, lifespan };
   if (asset.condition === "Fair") return { ...HEALTH_STATES.heads, reason:"Fair condition", lifePct, ageYears, lifespan };
 
+  // No install/purchase date: nothing above flagged a problem, but "Healthy" would be a claim
+  // we can't back up (the age is only the home's build year, or missing entirely — a pool then
+  // read "0 yrs old · Healthy"). Say plainly that the age is unknown, on every screen.
+  if (!installDate) return { ...HEALTH_STATES.estimated, reason:"Age unknown — add install date for an accurate reading", lifePct, ageYears, lifespan };
+
   return { ...HEALTH_STATES.ok, reason:"In good shape", lifePct, ageYears, lifespan };
 }
 
@@ -6751,7 +6903,7 @@ function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(23,30,28,.6)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(8px)"}}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{background:"#1C3D31",width:"100%",maxWidth:"540px",borderRadius:"24px 24px 0 0",padding:"1.5rem 1.25rem 2rem",boxShadow:"0 -12px 50px rgba(23,48,38,.5)"}}>
+      <div style={{background:"#1C3D31",width:"100%",maxWidth:"540px",maxHeight:"94vh",overflowY:"auto",boxSizing:"border-box",borderRadius:"24px 24px 0 0",padding:"1.5rem 1.25rem 2rem",boxShadow:"0 -12px 50px rgba(23,48,38,.5)"}}>
         {/* Handle */}
         <div style={{width:36,height:4,background:"rgba(244,237,223,.2)",borderRadius:2,margin:"0 auto 1.25rem"}}/>
 
@@ -7609,6 +7761,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
         "5-year cost forecasting",
         "AI receipt, nameplate & policy scanning",
         "Smart Fill model lookup",
+        "Home history report (PDF)",
         "Daily task & warranty reminders",
         "Expanded document vault",
       ],
@@ -8039,7 +8192,7 @@ function Lightbox({ src, onClose }) {
   return (
     <div className="lightbox" onClick={onClose}>
       <button className="lightbox-close" onClick={onClose}>✕</button>
-      <img src={src} alt="Receipt" onClick={e=>e.stopPropagation()} />
+      <SImg src={src} alt="Receipt" onClick={e=>e.stopPropagation()} />
     </div>
   );
 }
@@ -8086,7 +8239,7 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
   const handleRemove = async () => {
     if (!currentUrl) return;
     // Extract path from URL
-    const path = currentUrl.split("/expense-files/")[1]?.split("?")[0];
+    const path = storagePathFromUrl(currentUrl);
     if (path) await supabase.storage.from("expense-files").remove([path]);
     onUploaded("");
   };
@@ -8097,11 +8250,11 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
       {currentUrl ? (
         <div>
           {currentUrl.match(/\.(jpg|jpeg|png|webp|heic)/i) ? (
-            <img src={currentUrl} alt="Receipt" style={{width:"100%",maxHeight:140,objectFit:"cover",borderRadius:"var(--r-sm)",marginBottom:"6px"}} />
+            <SImg src={currentUrl} alt="Receipt" style={{width:"100%",maxHeight:140,objectFit:"cover",borderRadius:"var(--r-sm)",marginBottom:"6px"}} />
           ) : (
-            <a href={currentUrl} target="_blank" rel="noopener noreferrer" className="exp-file-pdf">
+            <StoredLink url={currentUrl} className="exp-file-pdf">
               📄 View PDF receipt
-            </a>
+            </StoredLink>
           )}
           <button className="btn btn-danger btn-sm" style={{marginTop:"6px"}} onClick={handleRemove}>✕ Remove file</button>
         </div>
@@ -8393,7 +8546,7 @@ function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUr
 
   const handleRemove = async () => {
     if (!currentUrl) return;
-    const path = currentUrl.split("/expense-files/")[1]?.split("?")[0];
+    const path = storagePathFromUrl(currentUrl);
     if (path) await supabase.storage.from("expense-files").remove([path]);
     onUploaded("");
   };
@@ -8403,7 +8556,7 @@ function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUr
       {/* Photo preview or upload target */}
       {currentUrl ? (
         <div style={{position:"relative",borderRadius:10,overflow:"hidden",aspectRatio:"1",background:"var(--cream2)"}}>
-          <img src={currentUrl} alt={label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+          <SImg src={currentUrl} alt={label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
           <button onClick={handleRemove} style={{position:"absolute",top:5,right:5,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:6,width:22,height:22,fontSize:".7rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>✕</button>
         </div>
       ) : (
@@ -9169,7 +9322,7 @@ function InsuranceForm({ data, onChange, planData, onUpgrade, userId }) {
         {linkedDoc && (
           <div style={{marginTop:".75rem",display:"flex",alignItems:"center",gap:".6rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:".6rem .75rem"}}>
             <span style={{fontSize:"1rem"}}>📄</span>
-            <a href={linkedDoc.file_url} target="_blank" rel="noopener noreferrer" style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#F4EDDF",textDecoration:"none"}}>View in Documents — {linkedDoc.name} →</a>
+            <StoredLink url={linkedDoc.file_url} style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#F4EDDF",textDecoration:"none"}}>View in Documents — {linkedDoc.name} →</StoredLink>
             <button type="button" onClick={()=>f("ins_document_id","")} style={{background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".85rem",cursor:"pointer"}}>✕</button>
           </div>
         )}
@@ -9262,7 +9415,7 @@ function AdditionalPolicyForm({ data, onChange, planData, onUpgrade, userId }) {
         {linkedDoc && (
           <div style={{marginTop:".75rem",display:"flex",alignItems:"center",gap:".6rem",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:".6rem .75rem"}}>
             <span style={{fontSize:"1rem"}}>📄</span>
-            <a href={linkedDoc.file_url} target="_blank" rel="noopener noreferrer" style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#F4EDDF",textDecoration:"none"}}>View in Documents — {linkedDoc.name} →</a>
+            <StoredLink url={linkedDoc.file_url} style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#F4EDDF",textDecoration:"none"}}>View in Documents — {linkedDoc.name} →</StoredLink>
             <button type="button" onClick={()=>f("document_id","")} style={{background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".85rem",cursor:"pointer"}}>✕</button>
           </div>
         )}
@@ -9859,70 +10012,113 @@ async function checkCPSCRecall(brand, productType, model, serialNumber) {
   return json.recalls || [];
 }
 
+// Which assets can meaningfully be checked against the CPSC consumer-product database.
+// Structural / landscaping / valuables / vehicles / insurance records aren't CPSC products.
+const RECALL_SKIP_CATS = ["Insurance","Roofing","Structure","Structural","Landscaping","Jewelry & Valuables","Vehicle"];
+const isRecallEligible = a => !!a && !a.retired_at && !!a.item && !RECALL_SKIP_CATS.includes(a.category);
+const hasBrand = a => !!(a && a.brand && String(a.brand).trim());
+
+function parseRecallDate(d) {
+  if (!d) return null;
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+// A brand-level CPSC match is only plausible if the recall could have covered this unit.
+// - Recall published more than a year before the unit was installed/purchased → the unit was
+//   built after the fix, so it doesn't apply (2019 Rheem vs a 1980 LP-gas heater recall).
+// - No install date to compare: a brand-only (non-model) match older than 15 years is dropped.
+// A confirmed model match ("high") is always kept.
+function recallAppliesToAsset(asset, recall) {
+  if (recall?.confidence === "high") return true;
+  const rd = parseRecallDate(recall?.date);
+  if (!rd) return true;
+  const inst = asset?.install_date || asset?.purchase_date;
+  if (inst) {
+    const id = new Date(inst + "T00:00:00");
+    if (!isNaN(id.getTime())) return rd.getTime() >= id.getTime() - 365 * 86400000;
+  }
+  return Date.now() - rd.getTime() < 15 * 365.25 * 86400000;
+}
+const recallSig = list => (list || []).filter(a => isRecallEligible(a) && hasBrand(a))
+  .map(a => [a.id, a.brand, a.model || "", a.install_date || "", a.category || ""].join(":")).sort().join("|");
+
+async function scanRecalls(list) {
+  // Real assets first so a duplicate warranty-only record never "owns" the recall
+  const eligible = (list || []).filter(a => isRecallEligible(a) && hasBrand(a))
+    .sort((a, b) => (a.warranty_only ? 1 : 0) - (b.warranty_only ? 1 : 0));
+  const seen = new Set(); const jobs = [];
+  for (const a of eligible) {
+    const key = [a.brand, a.item, a.model || "", a.serial_number || ""].map(x => String(x).trim().toLowerCase()).join("|");
+    if (seen.has(key)) continue;
+    seen.add(key); jobs.push(a);
+  }
+  const found = []; const seenRecall = new Set(); let failed = false; let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const a = jobs[next++];
+      try {
+        const results = await checkCPSCRecall(a.brand, a.category, a.model, a.serial_number);
+        results.filter(r => recallAppliesToAsset(a, r)).forEach(r => {
+          const rk = (r.url || r.title || "") + (r.confidence === "high" ? "|" + a.id : "");
+          if (seenRecall.has(rk)) return;
+          seenRecall.add(rk);
+          found.push({ asset: a, recall: r });
+        });
+      } catch { failed = true; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+  found.sort((x, y) => (list || []).indexOf(x.asset) - (list || []).indexOf(y.asset));
+  return { found, failed };
+}
+
+const RECALL_CACHE_KEY = "sw_recall_cache_v2";
+const RECALL_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+let _recallInflight = null; // one scan at a time — Dashboard, Assets and My Home share it
+async function getRecallScan(list, force = false) {
+  const sig = recallSig(list);
+  if (!sig) return { found: [], failed: false };
+  if (!force) {
+    try {
+      const c = JSON.parse(localStorage.getItem(RECALL_CACHE_KEY) || "null");
+      if (c && c.sig === sig && Date.now() < c.expires) {
+        return { failed: false, found: c.found.map(f => ({ asset: (list || []).find(a => a.id === f.assetId), recall: f.recall })).filter(f => f.asset) };
+      }
+    } catch { /* ignore */ }
+  }
+  if (_recallInflight && _recallInflight.sig === sig) return _recallInflight.promise;
+  const promise = scanRecalls(list).then(res => {
+    if (!res.failed) {
+      try { localStorage.setItem(RECALL_CACHE_KEY, JSON.stringify({ sig, expires: Date.now() + RECALL_CACHE_TTL, found: res.found.map(f => ({ assetId: f.asset.id, recall: f.recall })) })); } catch { /* storage full */ }
+    }
+    return res;
+  }).finally(() => { if (_recallInflight && _recallInflight.sig === sig) _recallInflight = null; });
+  _recallInflight = { sig, promise };
+  return promise;
+}
+
 function useRecallAlerts(assets) {
   const [recalls, setRecalls]     = useState([]);
   const [checking, setChecking]   = useState(false);
   const [checked, setChecked]     = useState(false);
   const [recallError, setRecallError] = useState("");
+  const sig = recallSig(assets);
 
-  const CACHE_KEY = "sw_recall_cache";
-  const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-  const getCached = () => {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return null;
-      const { recalls: r, expires } = JSON.parse(raw);
-      if (Date.now() > expires) { localStorage.removeItem(CACHE_KEY); return null; }
-      return r;
-    } catch { return null; }
-  };
-
-  const setCache = (r) => {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ recalls: r, expires: Date.now() + CACHE_TTL }));
-    } catch { /* storage full */ }
-  };
-
-  const runCheck = async (assetList) => {
-    const list = assetList || assets;
-    const checkable = list.filter(a => a.brand && a.category !== "Insurance" && a.category !== "Other");
-    if (!checkable.length) { setChecked(true); return; }
-
-    // Return cached results immediately if fresh
-    const cached = getCached();
-    if (cached) { setRecalls(cached); setChecked(true); return; }
-
+  const runCheck = async (assetList, force = false) => {
     setChecking(true);
     setRecallError("");
-    const found = [];
-    const brandsDone = new Set();
-    for (const asset of checkable) {
-      const brandKey = asset.brand.split(" ")[0].toLowerCase();
-      if (brandsDone.has(brandKey)) continue;
-      brandsDone.add(brandKey);
-      try {
-        const results = await checkCPSCRecall(asset.brand, asset.category, asset.model, asset.serial_number);
-        results.forEach(r => found.push({ asset, recall: r }));
-      } catch(e) {
-        setRecallError("Could not reach recall database — try again later.");
-      }
-      await new Promise(res => setTimeout(res, 250));
-    }
-    setCache(found);
-    setRecalls(found);
+    const res = await getRecallScan(assetList || assets, force);
+    setRecalls(res.found);
+    if (res.failed) setRecallError("Could not reach recall database — try again later.");
     setChecked(true);
     setChecking(false);
   };
 
-  const hasAssets = assets.length > 0;
   useEffect(() => {
-    if (hasAssets && !checked && !checking) {
-      runCheck(assets);
-    }
-  }, [hasAssets]);
+    if (assets.length > 0) runCheck(assets);
+  }, [sig, assets.length > 0]);
 
-  return { recalls, checking, checked, recallError, runCheck: () => runCheck(assets) };
+  return { recalls, checking, checked, recallError, runCheck: () => runCheck(assets, true) };
 }
 
 
@@ -10052,7 +10248,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
             <div>
               <div style={{fontWeight:700,fontSize:"1rem"}}>Email Inbox</div>
               <div style={{fontSize:".75rem",color:"#8A8178"}}>
-                {profile?.inbound_email || "No capture address set"}
+                {profile?.inbound_email ? "Forward receipts, warranties & invoices" : "No capture address set"}
               </div>
             </div>
           </div>
@@ -10064,7 +10260,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
           <span style={{fontSize:"1rem"}}>📮</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)"}}>Your capture address</div>
-            <div style={{fontSize:".78rem",color:"#5A534B",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{profile?.inbound_email}</div>
+            <div style={{fontSize:".78rem",color:"#5A534B",fontFamily:"monospace",wordBreak:"break-all",lineHeight:1.35}}>{profile?.inbound_email || "Not available yet"}</div>
           </div>
           <button
             onClick={async () => {
@@ -10241,9 +10437,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   const serviceThisYr  = serviceLogs.filter(l=>l.service_date?.startsWith(String(yr))).reduce((s,l)=>s+Number(l.cost||0),0);
   const totalSpend = expenses.reduce((s,e)=>s+Number(e.amount||0),0) + serviceAllTime;
   const yrSpend    = expenses.filter(e=>e.date?.startsWith(String(yr))).reduce((s,e)=>s+Number(e.amount||0),0) + serviceThisYr;
-  const expiringW = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0&&d<=90; });
-  const activeW  = warranties.length; // total assets tracked
-  const expiringWCount = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
+  // One shared warranty count (dedupes a warranty-only record against its asset, skips retired)
+  const warrantyBuckets = getWarrantyBuckets(warranties);
+  const expiringW = warrantyBuckets.soon.map(x => x.w);
   const completed = tasks.filter(t=>t.status==="Completed").length;
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
@@ -10297,18 +10493,19 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     setWpDismissed(true);
   };
 
-  // Track which features have been used
-  const usedFeatures = {
-    warranties: warranties.length > 0,
-    tasks: tasks.length > 0,
-    expenses: expenses.length > 0,
-    email: !!profile?.inbound_email,
-    contractors: contractors.length > 0,
-    insurance: !!profile?.ins_company,
-    documents: false, // checked at render via expenses proxy
-    projects: projects.length > 0,
-  };
-  const usedCount = Object.values(usedFeatures).filter(Boolean).length;
+  // "Explore Steadwell" checklist — ONE list drives both the chips and the n/total counter,
+  // so the counter can never disagree with the ticks.
+  const exploreItems = [
+    { key:"email",       icon:"📬", label:"Email Inbox", action:()=>onNavigate("profile"),    done: !!profile?.inbound_email },
+    { key:"warranties",  icon:"🔖", label:"Warranties",  action:()=>onNavigate("warranties"), done: warranties.length > 0 },
+    { key:"tasks",       icon:"📋", label:"Maintenance", action:()=>onNavigate("tasks"),      done: tasks.length > 0 },
+    { key:"recall",      icon:"🔔", label:"Recalls",     action:()=>{ runCheck && runCheck(); }, done: !!checked },
+    { key:"contractors", icon:"👷", label:"Contractors", action:()=>onNavigate("profile"),    done: contractors.length > 0 },
+    { key:"insurance",   icon:"🛡️", label:"Insurance",   action:()=>onNavigate("profile"),    done: !!profile?.ins_company },
+    { key:"expenses",    icon:"💸", label:"Expenses",    action:()=>onNavigate("expenses"),   done: expenses.length > 0 },
+    { key:"projects",    icon:"🏗️", label:"Projects",    action:()=>onNavigate("expenses"),   done: projects.length > 0 },
+  ];
+  const usedCount = exploreItems.filter(f => f.done).length;
 
   // ── Build unified action feed ────────────────────────────────────────────
   const insRenewalDays = profile?.ins_renewal_date ? daysTo(profile.ins_renewal_date) : null;
@@ -10361,7 +10558,9 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
 
   // 3b. Expired warranties (not excluded) — the asset is now uncovered, so
   // call it out once as a single grouped item rather than one row per asset.
-  const expiredWarr = warranties.filter(w => !w.retired_at && w.expiry_date && !w.exclude_warranty_from_score && daysTo(w.expiry_date) !== null && daysTo(w.expiry_date) < 0);
+  // Uses the shared warranty buckets so a warranty-only record for the same item ("Refrigerator")
+  // is never counted next to its asset — the Warranties page and this card always agree.
+  const expiredWarr = warrantyBuckets.expired.map(x => x.w).filter(w => !w.exclude_warranty_from_score);
   if (expiredWarr.length > 0) {
     const names = expiredWarr.slice(0, 2).map(w => w.item).filter(Boolean).join(", ");
     allFeedItems.push({
@@ -10378,11 +10577,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   }
 
   // 4. Expiring warranties ≤ 90 days
-  warranties
-    .filter(w => { const d = daysTo(w.expiry_date); return d !== null && d >= 0 && d <= 90; })
-    .sort((a,b) => daysTo(a.expiry_date) - daysTo(b.expiry_date))
-    .forEach(w => {
-      const d = daysTo(w.expiry_date);
+  warrantyBuckets.soon
+    .forEach(({ w, d }) => {
       allFeedItems.push({
         id:     `warranty-${w.id}`,
         ackKey: `wsoon:${w.id}:${w.expiry_date}`,
@@ -10501,7 +10697,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
       {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
       {isNewUser && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+          <div style={{position:"absolute",right:-40,top:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,color:"#F4EDDF",lineHeight:1.15,marginBottom:".5rem"}}>Your home isn't set up yet</div>
           <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",lineHeight:1.6,marginBottom:"1.1rem",maxWidth:340}}>Takes about 3 minutes and unlocks your personalized maintenance schedule — no more guessing what needs attention.</div>
           <button style={{background:"var(--rust)",color:"#fff",border:"none",borderRadius:12,padding:".75rem 1.25rem",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".92rem",fontWeight:700,cursor:"pointer"}} onClick={()=>onLaunchSetup?onLaunchSetup():onNavigate("profile")}>
@@ -10639,20 +10835,11 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
           <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".55rem"}}>
             <span style={{fontSize:".82rem"}}>✨</span>
             <span style={{fontWeight:700,fontSize:".78rem",color:"var(--dark)"}}>Explore Steadwell</span>
-            <span style={{fontSize:".68rem",color:"#A8A09A",marginLeft:"auto"}}>{usedCount}/8</span>
+            <span style={{fontSize:".68rem",color:"#A8A09A",marginLeft:"auto"}}>{usedCount}/{exploreItems.length}</span>
             <button onClick={dismissWP} style={{background:"none",border:"none",cursor:"pointer",color:"#C0BAB2",fontSize:".85rem",padding:"0 0 0 4px",lineHeight:1}} aria-label="Dismiss">✕</button>
           </div>
           <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
-            {[
-              { key:"email",       icon:"📬", label:"Email Inbox", action:()=>onNavigate("profile"),    done: usedFeatures.email },
-              { key:"warranties",  icon:"🔖", label:"Warranties",  action:()=>onNavigate("warranties"), done: usedFeatures.warranties },
-              { key:"tasks",       icon:"📋", label:"Maintenance", action:()=>onNavigate("tasks"),      done: usedFeatures.tasks },
-              { key:"recall",      icon:"🔔", label:"Recalls",     action:()=>{ runCheck && runCheck(); }, done: checked },
-              { key:"contractors", icon:"👷", label:"Contractors", action:()=>onNavigate("profile"),    done: usedFeatures.contractors },
-              { key:"insurance",   icon:"🛡️", label:"Insurance",   action:()=>onNavigate("profile"),    done: usedFeatures.insurance },
-              { key:"expenses",    icon:"💸", label:"Expenses",    action:()=>onNavigate("expenses"),   done: usedFeatures.expenses },
-              { key:"projects",    icon:"🏗️", label:"Projects",    action:()=>onNavigate("expenses"),   done: usedFeatures.projects },
-            ].map(f => (
+            {exploreItems.map(f => (
               <button key={f.key} onClick={f.action}
                 style={{display:"flex",alignItems:"center",gap:".3rem",padding:"4px 10px",borderRadius:20,border:"1.5px solid",borderColor:f.done?"transparent":"var(--stone)",background:f.done?"var(--ok-bg)":"var(--cream)",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}
                 onMouseEnter={e=>!f.done&&(e.currentTarget.style.borderColor="var(--pine)")}
@@ -10790,9 +10977,11 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
                 </div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",marginBottom:".55rem"}}>
                   <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 10px",borderRadius:20,background:h.bg,color:h.color,whiteSpace:"nowrap"}}>{h.label}</span>
-                  {h.lifePct != null && <span style={{fontSize:".72rem",color:"#8A8178"}}>{Math.min(100,h.lifePct)}% of lifespan</span>}
+                  {h.key==="estimated"
+                    ? <span style={{fontSize:".72rem",color:"#A8A09A"}}>Add install date</span>
+                    : h.lifePct != null && <span style={{fontSize:".72rem",color:"#8A8178"}}>{Math.min(100,h.lifePct)}% of lifespan</span>}
                 </div>
-                {h.lifePct != null && (
+                {h.key!=="estimated" && h.lifePct != null && (
                   <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden"}}>
                     <div style={{height:"100%",width:`${Math.min(100,h.lifePct)}%`,background:h.color,borderRadius:4}}/>
                   </div>
@@ -11071,7 +11260,10 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             {(bucketCounts.overdue||0)>0 && <> · <span style={{color:"var(--red)",fontWeight:700}}>{bucketCounts.overdue} overdue</span></>}
           </div>
         </div>
-        <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+          <button className="btn btn-ghost btn-sm tasks-cal-jump" onClick={()=>document.querySelector(".tasks-cal")?.scrollIntoView({behavior:"smooth",block:"start"})}>📅 Calendar</button>
+          <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
+        </div>
       </div>
 
       {/* Calendar stacks above the list on mobile (unchanged); on desktop
@@ -11079,7 +11271,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           (wider, primary) with the calendar as a narrower column beside it. */}
       <div className="tasks-layout">
       <div className="tasks-cal">
-      <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} onEditTask={openEdit}/>
+      <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} propertyId={propertyId} onEditTask={openEdit}/>
       </div>
       <div className="tasks-main">
 
@@ -11245,7 +11437,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function RecallBadge({ brand, category, model, serialNumber }) {
+function RecallBadge({ brand, category, model, serialNumber, installDate }) {
   const [status, setStatus] = useState("idle"); // idle | checking | found | none | error
   const [recalls, setRecalls] = useState([]);
 
@@ -11253,12 +11445,13 @@ function RecallBadge({ brand, category, model, serialNumber }) {
     if (!brand) return;
     setStatus("checking");
     checkCPSCRecall(brand, category, model, serialNumber)
-      .then(results => {
+      .then(all => {
+        const results = all.filter(r => recallAppliesToAsset({ install_date: installDate }, r));
         setRecalls(results);
         setStatus(results.length > 0 ? "found" : "none");
       })
       .catch(() => setStatus("error"));
-  }, [brand, category]);
+  }, [brand, category, model, installDate]);
 
   if (status === "checking") return (
     <div style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".72rem",color:"var(--mid)",marginBottom:".75rem",padding:".6rem .75rem",background:"var(--white)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
@@ -11369,7 +11562,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [serviceAssetId, setServiceAssetId] = useState(null);
   const [serviceConfirm, setServiceConfirm] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  // An asset's detail page starts at the top, not wherever the list was scrolled
+  useEffect(() => {
+    window.scrollTo({top:0,left:0,behavior:"instant"});
+    document.querySelectorAll(".ad-scroll").forEach(e => { if (e.scrollTo) e.scrollTo({top:0,left:0,behavior:"instant"}); });
+  }, [selectedAsset]);
   const [editingTask, setEditingTask] = useState(null);
+  const [newTaskData, setNewTaskData] = useState(null);   // "Schedule task" form (null = closed)
   const [taskEditData, setTaskEditData] = useState({});
 
   // Tapping the nav tab you're already on (this tab is always-mounted, so a
@@ -11854,6 +12053,34 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     setTaskEditData({...task});
     setEditingTask(task);
   };
+  // "Schedule task" on an asset — opens a real task form, pre-linked to the asset
+  const openNewTask = (asset) => {
+    const due = new Date(); due.setMonth(due.getMonth() + 3);
+    setNewTaskData({
+      title: "", status: "Scheduled", priority: "Medium", due_date: localISO(due),
+      category: CATEGORIES.includes(asset.category) ? asset.category : "Other",
+      asset_id: asset.id, recurring: "",
+    });
+  };
+  const saveNewTask = async () => {
+    if (!newTaskData) return;
+    if (!newTaskData.title?.trim()) { toast("Please enter a task title","error"); return; }
+    if (newTaskData.cost !== "" && newTaskData.cost != null && Number(newTaskData.cost) < 0) { toast("Cost can't be negative","error"); return; }
+    const payload = {
+      ...newTaskData,
+      title: newTaskData.title.trim(),
+      asset_id: newTaskData.asset_id || null,
+      cost: newTaskData.cost === "" || newTaskData.cost == null ? null : Number(newTaskData.cost),
+      user_id: userId, property_id: propertyId,
+    };
+    const {data, error} = await supabase.from("tasks").insert([payload]).select();
+    if (!error && data) {
+      setTasks(prev => [data[0], ...prev]);
+      toast("Task scheduled ✓ — find it on the Tasks tab");
+      setNewTaskData(null);
+    } else toast("Could not create task","error");
+  };
+
   const saveTaskEdit = async () => {
     if (!editingTask) return;
     if (taskEditData.cost && Number(taskEditData.cost) < 0) { toast("Cost can't be negative","error"); return; }
@@ -12004,9 +12231,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
           {/* ── HERO ── */}
           <div className="ad-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+            <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
             {asset.asset_photo_url && (
-              <img src={asset.asset_photo_url} alt={asset.item}
+              <SImg src={asset.asset_photo_url} alt={asset.item}
                 style={{width:"100%",height:150,objectFit:"cover",borderRadius:14,marginBottom:"1rem",cursor:"pointer",border:"1.5px solid rgba(255,255,255,.12)",position:"relative"}}
                 onClick={()=>setLightbox(asset.asset_photo_url)}/>
             )}
@@ -12070,10 +12297,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 <span style={{fontSize:"1.3rem"}}>🧰</span>
                 <span style={{fontSize:".88rem",fontWeight:700,color:"#fff"}}>Log service</span>
               </button>
-              <button onClick={()=>{
-                  const due = new Date(); due.setMonth(due.getMonth()+3);
-                  openNewService(asset.id);
-                }}
+              <button onClick={()=>openNewTask(asset)}
                 style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".95rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".35rem",cursor:"pointer",fontFamily:"inherit"}}>
                 <span style={{fontSize:"1.3rem"}}>📅</span>
                 <span style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)"}}>Schedule task</span>
@@ -12094,7 +12318,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
             {/* ── Recall banner ── */}
             {asset.brand && (
-              <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} />
+              <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} installDate={asset.install_date||asset.purchase_date} />
             )}
 
             {/* ── Warranty banner ── */}
@@ -12176,15 +12400,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   </div>
                 )}
                 {hasUploadedDoc && (
-                  <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",textDecoration:"none"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem"}}>
                     <span style={{fontSize:"1.3rem"}}>🧾</span>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Attached document</div>
-                      <div style={{fontSize:".78rem",color:"#9E9690"}}>Tap to open</div>
+                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Document location</div>
+                      <div style={{fontSize:".78rem",color:"#9E9690",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref}</div>
                     </div>
-                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>View →</span>
-                  </a>
+                  </div>
                 )}
               </div>
             )}
@@ -12484,6 +12706,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
         {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
         {/* Inline task edit modal */}
+        {newTaskData && (
+          <Modal title="Schedule Task" onClose={()=>setNewTaskData(null)} onSave={saveNewTask}>
+            <TaskForm data={newTaskData} onChange={setNewTaskData} assets={assets.filter(a=>a.id===newTaskData.asset_id||(!a.retired_at&&!a.warranty_only))} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/>
+          </Modal>
+        )}
         {editingTask && (
           <Modal title="Edit Scheduled Task" onClose={()=>setEditingTask(null)} onSave={saveTaskEdit}>
             <div className="fg">
@@ -12512,7 +12739,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Group assets by category — normalize legacy plural/variant names
   const CAT_NORMALIZE = { "Appliances":"Appliance", "Structural":"Structure" };
   const grouped = {};
-  list.forEach(a => {
+  // Warranty-only records aren't systems — they get their own clearly labelled section below,
+  // so the category groups add up to the "All N" chip and the hero's system count.
+  const woList = showRetired ? [] : list.filter(a => a.warranty_only);
+  (showRetired ? list : list.filter(a => !a.warranty_only)).forEach(a => {
     const raw = a.category || "Other";
     const cat = CAT_NORMALIZE[raw] || raw;
     if (!grouped[cat]) grouped[cat] = [];
@@ -12543,6 +12773,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const displayGroups = [
     ...groupKeys.filter(c => !(mergeSingles && singleKeys.includes(c))).map(c => ({ key:c, label:catLabelOf(c), items:grouped[c], merged:false })),
     ...(mergeSingles ? [{ key:"__singles", label:"Other systems", items:singleKeys.map(c => grouped[c][0]), merged:true }] : []),
+    ...(woList.length ? [{ key:"__warranty_only", label:"Warranty-only records", items:woList, merged:false }] : []),
   ];
 
   // Per-group health summary (drives the collapsed header badges + defaults)
@@ -12596,17 +12827,23 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           {!showRetired && <button className="btn btn-primary" onClick={openNew}>+ Add</button>}
         </div>
       </div>
+      {showRetired && (
+        <div style={{fontSize:".82rem",color:"#8A8178",margin:"-.2rem 0 1rem",lineHeight:1.45}}>
+          {retiredAssets.length} retired asset{retiredAssets.length===1?"":"s"} — history is kept, but they don't count toward your home's health.
+        </div>
+      )}
 
-      {/* Home health hero */}
-      {systemAssets.length > 0 && (
+      {/* Home health hero — active assets only (the retired view has its own list) */}
+      {!showRetired && systemAssets.length > 0 && (
         <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",borderRadius:"var(--r)",padding:"1.2rem 1.25rem",marginBottom:"1.1rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+          <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",marginBottom:".5rem"}}>
             <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700}}>Home health</div>
             {onNavigate && (
-              <span onClick={()=>onNavigate("profile")} style={{fontSize:".74rem",fontWeight:700,color:"rgba(244,237,223,.85)",cursor:"pointer",whiteSpace:"nowrap"}}>
-                <>Home Health: {homeHealthScore} · {homeHealthGrade} →</>
-              </span>
+              <button type="button" onClick={()=>onNavigate("profile")} title="See the full Home Health breakdown on My Home"
+                style={{position:"relative",zIndex:1,background:"none",border:"none",padding:".25rem 0",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"rgba(244,237,223,.85)",cursor:"pointer",whiteSpace:"nowrap"}}>
+                Home Health: {homeHealthScore} · {homeHealthGrade} →
+              </button>
             )}
           </div>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,lineHeight:1.25,marginBottom:"1rem"}}>
@@ -12635,8 +12872,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
       )}
 
-      {/* Filter chips — health vocabulary */}
-      {activeAssets.length > 0 && (
+      {/* Filter chips — health vocabulary (active assets only) */}
+      {!showRetired && activeAssets.length > 0 && (
         <div className="toolbar" style={{marginBottom:".9rem"}}>
           {[["All",systemAssets.length],["Needs attention or service",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
             <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>
@@ -12814,7 +13051,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
               // "estimated" intentionally gets no colored edge -- it isn't a
               // confirmed issue, just an unconfirmed guess.
-              const edgeStyle = health.key==="bad" ? {borderLeft:"4px solid #B0432B"} : health.key==="due" ? {borderLeft:"4px solid #C16140"} : {};
+              const isRetired = !!a.retired_at;   // retired cards show "Retired", never a live health verdict
+              const edgeStyle = isRetired ? {} : health.key==="bad" ? {borderLeft:"4px solid #B0432B"} : health.key==="due" ? {borderLeft:"4px solid #C16140"} : {};
 
               return (
                 <div key={a.id}
@@ -12823,17 +13061,17 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--mid)";e.currentTarget.style.boxShadow="0 4px 16px -8px rgba(42,39,35,.2)";}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.boxShadow="none";}}>
                   {/* Top row: icon, name+detail, status */}
-                  <div style={{display:"flex",alignItems:"flex-start",gap:".85rem"}}>
+                  <div className="ac-top" style={{display:"flex",alignItems:"flex-start",gap:".85rem"}}>
                     <div style={{width:52,height:52,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`,color:catColor.icon}}>
                       <AssetIcon asset={a} size={25}/>
                     </div>
-                    <div style={{flex:1,minWidth:0}}>
+                    <div className="ac-body" style={{flex:1,minWidth:0}}>
                       {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
-                      <div style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
+                      <div className="ac-name" style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
                       <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                         {[a.brand, a.model, ageYears!==null?`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old${ageIsEstimate?" (est.)":""}`:null].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
                       </div>
-                      {ageIsEstimate && (
+                      {ageIsEstimate && !isRetired && (
                         <div onClick={e=>{e.stopPropagation();openEdit(a);}}
                           style={{fontSize:".68rem",color:"#A8A09A",marginTop:"1px",cursor:"pointer"}}
                           onMouseEnter={e=>e.currentTarget.style.color="var(--pine)"}
@@ -12842,13 +13080,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                         </div>
                       )}
                     </div>
-                    <span style={{display:"inline-flex",alignItems:"center",gap:".4rem",padding:".35rem .7rem",borderRadius:20,fontSize:".82rem",fontWeight:700,flexShrink:0,whiteSpace:"nowrap",background:health.bg,color:health.color}}>
-                      <span style={{width:8,height:8,borderRadius:"50%",background:health.color}}/>{health.label}
+                    <span className="ac-status" style={{display:"inline-flex",alignItems:"center",gap:".4rem",padding:".35rem .7rem",borderRadius:20,fontSize:".82rem",fontWeight:700,flexShrink:0,whiteSpace:"nowrap",background:isRetired?"#EFEBE4":health.bg,color:isRetired?"#8A8178":health.color}}>
+                      <span style={{width:8,height:8,borderRadius:"50%",background:isRetired?"#8A8178":health.color}}/>{isRetired?"Retired":health.label}
                     </span>
                   </div>
 
                   {/* Health bar — age vs lifespan */}
-                  {lifespanPct !== null && (
+                  {lifespanPct !== null && !isRetired && (
                     <div style={{marginTop:".9rem"}}>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"#8A8178",marginBottom:".35rem",fontWeight:600}}>
                         <span>Age vs. lifespan</span><span>{ageYears} / {lifespanYears} yrs</span>
@@ -12860,9 +13098,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   )}
 
                   {/* One useful fact line */}
-                  <div style={{marginTop:".75rem",paddingTop:".75rem",borderTop:"1px solid var(--cream2)",display:"flex",alignItems:"center",gap:".45rem",fontSize:".86rem",fontWeight:600,color:health.color}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:health.bg,fontSize:".7rem",flexShrink:0}}>{factIcon}</span>
-                    {factText}
+                  <div style={{marginTop:".75rem",paddingTop:".75rem",borderTop:"1px solid var(--cream2)",display:"flex",alignItems:"center",gap:".45rem",fontSize:".86rem",fontWeight:600,color:isRetired?"#8A8178":health.color}}>
+                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:isRetired?"#EFEBE4":health.bg,fontSize:".7rem",flexShrink:0}}>{isRetired?"–":factIcon}</span>
+                    {isRetired ? `Retired ${fmtD(a.retired_at.slice(0,10))}${a.retired_reason?` · ${a.retired_reason}`:""}` : factText}
                   </div>
                 </div>
               );
@@ -13094,6 +13332,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [projectConfirm, setProjectConfirm] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
+  useEffect(() => { window.scrollTo({top:0,left:0,behavior:"instant"}); }, [selectedProject]);
   const [addSheet, setAddSheet] = useState(false); // unified add action sheet
   const [lightbox, setLightbox] = useState(null);
   const [utilities, setUtilities] = useState([]);
@@ -13350,8 +13589,21 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
   // Category breakdown — include service as "Maintenance"
   const bycat = {};
-  allExpenseItems.forEach(e=>{ if(e.category) { bycat[e.category]=(bycat[e.category]||{total:0,count:0}); bycat[e.category].total+=Number(e.amount||0); bycat[e.category].count+=1; }});
+  // Every dollar lands in a bucket — an expense with no category goes to "Uncategorized"
+  // (it used to be dropped, so the shares summed to less than 100%).
+  const UNCAT = "Uncategorized";
+  allExpenseItems.forEach(e=>{ const c = e.category || UNCAT; bycat[c]=(bycat[c]||{total:0,count:0}); bycat[c].total+=Number(e.amount||0); bycat[c].count+=1; });
   const catData = Object.entries(bycat).sort((a,b)=>b[1].total-a[1].total);
+  // Whole-number shares that add up to exactly 100 (largest-remainder rounding)
+  const catShareMap = (() => {
+    const tot = catData.reduce((s,[,v])=>s+v.total,0);
+    if (!(tot>0)) return {};
+    const raw = catData.map(([c,v])=>({c, exact:(v.total/tot)*100}));
+    const out = Object.fromEntries(raw.map(r=>[r.c, Math.floor(r.exact)]));
+    let left = 100 - Object.values(out).reduce((s,n)=>s+n,0);
+    [...raw].sort((a,b)=>(b.exact-Math.floor(b.exact))-(a.exact-Math.floor(a.exact))).forEach(r=>{ if(left>0){ out[r.c]++; left--; } });
+    return out;
+  })();
 
   // Filtered expense list — includes service log line items
   const typeOf = e => e._isBill ? "bill" : e._isServiceLog ? "service" : e.project_id ? "project" : "expense";
@@ -13361,7 +13613,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     service: { label:"Service", color:"var(--rust)", bg:"var(--rust-light)" },
     bill:    { label:"Bill",    color:"#B8861E",     bg:"#FBF3DE" },
   };
-  const catFiltered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>e.category===catF);
+  const catFiltered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>(e.category||UNCAT)===catF);
   const typeCounts = catFiltered.reduce((acc,e)=>{ const t=typeOf(e); acc[t]=(acc[t]||0)+1; return acc; },{});
   const typeTabs = ["expense","project","service","bill"].filter(t => typeCounts[t] > 0 || typeF===t);
   const filtered = typeF==="All" ? catFiltered : catFiltered.filter(e => typeOf(e)===typeF);
@@ -13455,7 +13707,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             {isServiceLog && e._assetName && <span className="xr-ctx">· {e._assetName}</span>}
             {e.file_url && (
               <button type="button" className="xr-clip" aria-label="View receipt" title="View receipt"
-                onClick={ev=>{ev.stopPropagation(); if(isImage) setLightbox(e.file_url); else window.open(e.file_url,"_blank","noopener,noreferrer");}}>📎</button>
+                onClick={ev=>{ev.stopPropagation(); if(isImage) setLightbox(e.file_url); else openStoredFile(e.file_url);}}>📎</button>
             )}
           </div>
         </div>
@@ -13664,13 +13916,13 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   <span className="money-cat-row"><span>🏠 All categories</span><strong>{fmt$(allTotal)}</strong></span>
                 </button>
                 {catData.map(([cat,{total,count}],ci)=>{
-                  const share = allTotal>0 ? Math.round((total/allTotal)*100) : 0;
+                  const share = catShareMap[cat] ?? 0;
                   const col = CHART_COLORS[Math.max(CATEGORIES.indexOf(cat),ci)%CHART_COLORS.length];
                   return (
                     <button key={cat} className={"money-cat"+(catF===cat?" on":"")} onClick={()=>setCatF(catF===cat?"All":cat)}>
                       <span className="money-cat-row"><span>{CAT_ICONS[cat]||"🔧"} {cat}</span><strong>{fmt$(total)}</strong></span>
                       <span className="money-cat-bar"><span style={{width:Math.max(share,2)+"%",background:col}}/></span>
-                      <span className="money-cat-meta">{share}% · {count} item{count!==1?"s":""}</span>
+                      <span className="money-cat-meta">{share===0&&total>0?"<1":share}% · {count} item{count!==1?"s":""}</span>
                     </button>
                   );
                 })}
@@ -13722,7 +13974,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                 <div style={{flex:1,overflowY:"auto",background:"var(--linen,var(--cream))"}}>
                   {/* Hero */}
                   <div className="pd-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+                    <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
                     <div style={{display:"flex",alignItems:"flex-start",gap:".9rem",marginBottom:"1rem"}}>
                       <div style={{width:56,height:56,borderRadius:15,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.7rem",flexShrink:0}}>🔨</div>
                       <div style={{flex:1,minWidth:0}}>
@@ -13779,7 +14031,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(photos.length,3)},1fr)`,gap:2}}>
                           {photos.map((ph,i) => (
                             <div key={i} style={{position:"relative",cursor:"pointer",aspectRatio:"1"}} onClick={()=>setLightbox(ph.url)}>
-                              <img src={ph.url} alt={ph.label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                              <SImg src={ph.url} alt={ph.label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                               <span style={{position:"absolute",bottom:6,left:6,background:"rgba(0,0,0,.6)",color:"#fff",fontSize:".7rem",fontWeight:700,padding:"3px 9px",borderRadius:5}}>{ph.label}</span>
                             </div>
                           ))}
@@ -13953,8 +14205,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                                 {e.notes&&<div style={{fontSize:".8rem",color:"#8A8178",marginTop:".3rem",lineHeight:1.4}}>{e.notes}</div>}
                                 {e.file_url&&(
                                   <div style={{marginTop:".5rem"}}>
-                                    {isImage ? <img src={e.file_url} alt="Receipt" style={{width:64,height:64,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/> :
-                                     isPdf   ? <a href={e.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</a> : null}
+                                    {isImage ? <SImg src={e.file_url} alt="Receipt" style={{width:64,height:64,objectFit:"cover",borderRadius:8,cursor:"pointer",border:"1px solid var(--stone)"}} onClick={()=>setLightbox(e.file_url)}/> :
+                                     isPdf   ? <StoredLink url={e.file_url} style={{fontSize:".78rem",fontWeight:600,color:"var(--pine)",textDecoration:"none"}}>📄 View receipt</StoredLink> : null}
                                   </div>
                                 )}
                               </div>
@@ -14097,7 +14349,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                           <div style={{display:"grid",gridTemplateColumns:`repeat(${photos.length},1fr)`,gap:1}} onClick={e=>e.stopPropagation()}>
                             {photos.map((ph,i)=>(
                               <div key={i} style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(ph.url)}>
-                                <img src={ph.url} alt={ph.label} style={{width:"100%",height:80,objectFit:"cover",display:"block"}}/>
+                                <SImg src={ph.url} alt={ph.label} style={{width:"100%",height:80,objectFit:"cover",display:"block"}}/>
                                 <span style={{position:"absolute",bottom:4,left:5,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 6px",borderRadius:4}}>{ph.label}</span>
                               </div>
                             ))}
@@ -14557,7 +14809,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     </div>
   );
 }
-function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade }) {
+function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade, onBack }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -14605,7 +14857,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   const confirmDel = async () => {
     const doc = documents.find(d=>d.id===confirm);
     if (doc?.file_url) {
-      const path = doc.file_url.split("/expense-files/")[1]?.split("?")[0];
+      const path = storagePathFromUrl(doc.file_url);
       if (path) await supabase.storage.from("expense-files").remove([path]);
     }
     await supabase.from("home_documents").delete().eq("id",confirm).eq("user_id",userId);
@@ -14642,19 +14894,20 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
       {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-        <div>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>Documents</div>
-          {maxDocs !== Infinity && (
-            <div style={{fontSize:".7rem",color: atLimit ? "#C16140" : documents.length >= maxDocs * 0.8 ? "#B8861E" : "#A8A09A",marginTop:1}}>
-              {atLimit ? "Storage limit reached — upgrade for more" : `${documents.length} document${documents.length !== 1 ? "s" : ""} stored`}
+      <div className="wc-hdr" style={{position:"static"}}>
+        {onBack && <button className="wc-back" onClick={onBack} aria-label="Back">←</button>}
+        <div style={{flex:1,minWidth:0}}>
+          <div className="wc-title">Documents</div>
+          {(maxDocs !== Infinity || documents.length > 0) && (
+            <div className="wc-sub" style={{color: atLimit && maxDocs !== Infinity ? "#C16140" : maxDocs !== Infinity && documents.length >= maxDocs * 0.8 ? "#B8861E" : undefined}}>
+              {atLimit && maxDocs !== Infinity ? "Storage limit reached — upgrade for more" : `${documents.length} document${documents.length !== 1 ? "s" : ""} stored`}
             </div>
           )}
         </div>
         <button
-          className="btn btn-primary btn-sm"
+          className="wc-add"
           onClick={()=>openNew()}
-          style={atLimit ? {background:"#A8A09A",borderColor:"#A8A09A"} : {}}
+          style={atLimit ? {background:"#A8A09A"} : {}}
         >
           {atLimit ? "Upgrade to Add" : "+ Add"}
         </button>
@@ -14781,7 +15034,7 @@ function DocItem({ doc, assets, onEdit, onDelete, onView, fileTypeBadge, getExpi
       </div>
       <div className="doc-item-actions">
         {doc.file_url && (
-          <button className="btn btn-ghost btn-sm" onClick={()=> isImage ? onView(doc.file_url) : window.open(doc.file_url,"_blank")} style={{fontSize:".72rem"}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=> isImage ? onView(doc.file_url) : openStoredFile(doc.file_url)} style={{fontSize:".72rem"}}>
             View
           </button>
         )}
@@ -14861,7 +15114,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   // so it was inheriting whatever scroll position the previously-open tab
   // was left at — opening already scrolled down, with its own heading cut
   // off above the fold. Reset to the top whenever it mounts.
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { window.scrollTo({top:0,left:0,behavior:"instant"}); }, []);
 
   const save = async () => {
     if (!editData.name?.trim()) { toast("Name is required","error"); return; }
@@ -14922,9 +15175,9 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     const totalSpent = jobs.reduce((s,j)=>s+Number(j.cost||0),0);
     return (
       <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--linen)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setSelected(null)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
-          <span style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+        <div className="wc-hdr" style={{position:"static"}}>
+          <button className="wc-back" onClick={()=>setSelected(null)} aria-label="Back">←</button>
+          <div style={{flex:1,minWidth:0}}><div className="wc-title" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div></div>
           <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(c)} style={{fontSize:".78rem"}}>Edit</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>setConfirm(c.id)} style={{fontSize:".78rem",color:"var(--red)"}}>Delete</button>
         </div>
@@ -14990,10 +15243,13 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   return (
     <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--linen)"}}>
       {/* Header */}
-      <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".9rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-        <button className="btn btn-ghost btn-sm" onClick={onBack} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
-        <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,textAlign:"center"}}>Contractors</span>
-        <button className="btn btn-primary btn-sm" onClick={openNew}>+ Add</button>
+      <div className="wc-hdr" style={{position:"static"}}>
+        <button className="wc-back" onClick={onBack} aria-label="Back">←</button>
+        <div style={{flex:1,minWidth:0}}>
+          <div className="wc-title">Contractors</div>
+          {contractors.length > 0 && <div className="wc-sub">{contractors.length} saved</div>}
+        </div>
+        <button className="wc-add" onClick={openNew}>+ Add</button>
       </div>
 
       <div className="cr-scroll" style={{flex:1,overflowY:"auto",padding:".75rem 1rem",WebkitOverflowScrolling:"touch"}}>
@@ -15068,7 +15324,23 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 }
 
 // ─── HOME HISTORY REPORT GENERATOR ───────────────────────────────────────────
-function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null, projects = [], roiData = null }) {
+async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null, projects = [], roiData = null }) {
+  // Asset photos live in a private bucket — sign them before they're embedded in the report.
+  // The tab is opened synchronously (popup blockers) and filled in once the HTML is ready.
+  let popup = null;
+  const signedPhoto = {};
+  const needsSigning = warranties.some(w => storagePathFromUrl(w.asset_photo_url)) || !!storagePathFromUrl(photoUrl);
+  if (needsSigning) {
+    try {
+      popup = window.open("", "_blank");
+      if (popup) { popup.opener = null; popup.document.write('<p style="font-family:sans-serif;padding:2rem;color:#5A534B">Preparing your report…</p>'); }
+    } catch { popup = null; }
+    await Promise.all([
+      ...warranties.map(async w => { if (storagePathFromUrl(w.asset_photo_url)) signedPhoto[w.id] = await getSignedFileUrl(w.asset_photo_url); }),
+      (async () => { if (storagePathFromUrl(photoUrl)) photoUrl = await getSignedFileUrl(photoUrl); })(),
+    ]);
+  }
+  const photoOf = a => (signedPhoto[a.id] !== undefined ? signedPhoto[a.id] : a.asset_photo_url) || "";
   const addr     = profile?.address || "Your Home";
   const owner    = profile?.name    || "";
   const today    = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
@@ -15113,7 +15385,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   const done = tasks.filter(t => t.status === "Completed").slice(0, 15);
 
   // Assets with photos — for the photo gallery section
-  const assetsWithPhotos = assets.filter(a => a.asset_photo_url);
+  const assetsWithPhotos = assets.filter(a => photoOf(a));
 
   // ── Asset rows: now includes warranty expiry + photo thumbnail ──
   const assetRows = assets.map(a => {
@@ -15130,8 +15402,8 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
       const label   = expired ? `Expired ${fmtDate(a.expiry_date)}` : `Expires ${fmtDate(a.expiry_date)}`;
       return `<span style="background:${bg};color:${color};font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;">${label}</span>`;
     })() : `<span style="color:#C2B8AE;font-size:11px;">—</span>`;
-    const thumb = a.asset_photo_url
-      ? `<img src="${a.asset_photo_url}" alt="${a.item}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #E8E0D0;display:block;" onerror="this.style.display='none'">`
+    const thumb = photoOf(a)
+      ? `<img src="${photoOf(a)}" alt="${a.item}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #E8E0D0;display:block;" onerror="this.style.display='none'">`
       : `<div style="width:36px;height:36px;border-radius:6px;background:#F4EDDF;border:1px dashed #C2B8AE;"></div>`;
     return `<tr>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;">${thumb}</td>
@@ -15182,7 +15454,7 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   // ── Photo gallery cards ──
   const photoCards = assetsWithPhotos.map(a => `
     <div style="break-inside:avoid;background:#fff;border:1px solid #E8E0D0;border-radius:10px;overflow:hidden;">
-      <img src="${a.asset_photo_url}" alt="${a.item}" style="width:100%;height:160px;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'">
+      <img src="${photoOf(a)}" alt="${a.item}" style="width:100%;height:160px;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'">
       <div style="padding:10px 12px;">
         <div style="font-size:12px;font-weight:700;color:#2A2723;">${a.item}</div>
         <div style="font-size:11px;color:#8A8178;margin-top:2px;">${[a.brand,a.model].filter(Boolean).join(" · ")||a.category||""}</div>
@@ -15366,15 +15638,19 @@ function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [],
   // without requiring popup permissions
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.target   = "_blank";
-  a.rel      = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  if (popup && !popup.closed) {
+    popup.location.href = url;
+  } else {
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.target   = "_blank";
+    a.rel      = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
   // Revoke after a short delay to allow the tab to load
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // ─── SHARED ACCESS PANEL ─────────────────────────────────────────────────────
@@ -15906,22 +16182,11 @@ function RecallCheckPanel({ warranties }) {
   const [error, setError]       = useState("");
 
   const run = async () => {
-    const checkable = warranties.filter(a => a.brand && a.category !== "Insurance");
-    if (!checkable.length) { setChecked(true); setRecalls([]); return; }
+    if (!warranties.some(a => isRecallEligible(a) && hasBrand(a))) { setChecked(true); setRecalls([]); return; }
     setChecking(true); setError(""); setChecked(false);
-    const found = [];
-    const seen = new Set();
-    for (const asset of checkable) {
-      const key = asset.brand.split(" ")[0].toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      try {
-        const results = await checkCPSCRecall(asset.brand, asset.category, asset.model, asset.serial_number);
-        results.forEach(r => found.push({ asset, recall: r }));
-      } catch(e) { setError("Could not reach recall database — check your connection."); }
-      await new Promise(r => setTimeout(r, 250));
-    }
-    setRecalls(found);
+    const res = await getRecallScan(warranties, true);
+    if (res.failed) setError("Could not reach recall database — check your connection.");
+    setRecalls(res.found);
     setChecked(true);
     setChecking(false);
   };
@@ -16024,16 +16289,20 @@ function RecallCheckPanel({ warranties }) {
                 </div>
               )}
 
-              {/* Assets without brand — advisory */}
-              {warranties.filter(a => !a.brand && a.category !== "Insurance").length > 0 && checked && (
-                <div style={{marginTop:".85rem",padding:".7rem .85rem",background:"var(--cream)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
-                  <div style={{fontSize:".72rem",color:"var(--mid)",lineHeight:1.5}}>
-                    <strong style={{color:"var(--dark)"}}>
-                      {warranties.filter(a=>!a.brand&&a.category!=="Insurance").length} {warranties.filter(a=>!a.brand&&a.category!=="Insurance").length===1?"appliance":"appliances"} skipped
-                    </strong> — no brand on file. Use Smart Fill or a nameplate scan to add brand details and improve recall accuracy.
+              {/* Assets without a brand — advisory (only products CPSC can actually cover) */}
+              {(() => {
+                const missing = warranties.filter(a => isRecallEligible(a) && !hasBrand(a));
+                if (!missing.length || !checked) return null;
+                return (
+                  <div style={{marginTop:".85rem",padding:".7rem .85rem",background:"var(--cream)",borderRadius:"var(--r-sm)",border:"1px solid var(--stone)"}}>
+                    <div style={{fontSize:".72rem",color:"var(--mid)",lineHeight:1.5}}>
+                      <strong style={{color:"var(--dark)"}}>
+                        {missing.length} {missing.length===1?"item couldn't":"items couldn't"} be checked
+                      </strong> — no brand on file{missing.length<=3 ? ` (${missing.map(a=>a.item).join(", ")})` : ""}. Add a brand with Smart Fill or a nameplate scan to include {missing.length===1?"it":"them"}.
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -16223,7 +16492,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   };
 
   // Asset completeness scoring for check-in
-  const assetGaps = warranties.filter(w => w.category !== "Insurance").map(w => {
+  // Same population as the Assets tab's "All N" (active, non-warranty-only) so the counts agree
+  const assetGaps = warranties.filter(w => w.category !== "Insurance" && !w.retired_at && !w.warranty_only).map(w => {
     const gaps = [];
     if (!w.asset_photo_url) gaps.push("No photo");
     if (!w.serial_number && !w.model) gaps.push("No serial #");
@@ -16351,10 +16621,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // System age warnings — linked to real assets where available
   const SYSTEMS = [
     {name:"HVAC System",          icon:"🌡️", lifespan:20, ageNote:"15–20 year lifespan", categories:["HVAC"],        keywords:["hvac","heat","air","furnace","ac","cooling"]},
-    {name:"Water Heater",         icon:"🚿", lifespan:12, ageNote:"10–15 year lifespan", categories:["Plumbing"],    keywords:["water heater","hot water"]},
+    {name:"Water Heater",         icon:"🚿", lifespan:12, ageNote:"10–15 year lifespan", categories:["Plumbing"],    keywords:["water heater","hot water"], nameOnly:true},
     {name:"Roof",                 icon:"🏚️", lifespan:25, ageNote:"20–30 year lifespan", categories:["Roofing"],     keywords:["roof"]},
-    {name:"Electrical Panel",     icon:"⚡", lifespan:40, ageNote:"30–40 year lifespan", categories:["Electrical"],  keywords:["panel","electrical","breaker"]},
-    {name:"Plumbing",             icon:"🛠️", lifespan:50, ageNote:"40–70 year lifespan", categories:["Plumbing"],    keywords:["plumbing","pipe"]},
+    {name:"Electrical Panel",     icon:"⚡", lifespan:40, ageNote:"30–40 year lifespan", categories:["Electrical"],  keywords:["panel","electrical","breaker"], nameOnly:true},
+    {name:"Plumbing",             icon:"🛠️", lifespan:50, ageNote:"40–70 year lifespan", categories:["Plumbing"],    keywords:["plumbing","pipe"], nameOnly:true},
   ];
 
   // Maps getAssetHealth()'s ok/heads/due/bad vocabulary onto this widget's
@@ -16363,12 +16633,9 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // separate age/condition math (no overdue-task or recall check at all),
   // which is why the same HVAC unit could be "Needs attention" here and
   // "Healthy" everywhere else.
-  // "estimated" maps to "ok" here (not "alert"/"warn") -- this widget already
-  // has its own ageIsEstimate-driven detail text below ("~Xyr old (estimated
-  // from home age)") that flags the uncertainty without an alarming badge;
-  // getAssetHealth's "estimated" state exists so red/orange is reserved for
-  // a REAL confirmed reading, same intent, so it shouldn't re-introduce one here.
-  const HEALTH_KEY_TO_ALERT_STATUS = { ok:"ok", heads:"warn", due:"warn", bad:"alert", estimated:"ok" };
+  // "estimated" (no install date) stays its own neutral "Age unknown" state here, exactly as on
+  // Assets and the Dashboard — it is never shown as Healthy or as a red/orange verdict.
+  const HEALTH_KEY_TO_ALERT_STATUS = { ok:"ok", heads:"warn", due:"warn", bad:"alert", estimated:"estimated" };
   // Word-boundary match, not a bare substring — "heat" as a plain .includes()
   // check also matches inside "water heater", which was pulling the Water
   // Heater asset into the HVAC System row instead of the actual AC unit.
@@ -16392,7 +16659,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     // open recall. Only match real tracked assets here, same as the
     // "systemAssets" (non-warranty-only) rule used everywhere else.
     const linkedAsset = warranties.find(a => !a.retired_at && !a.warranty_only && s.keywords.some(kw => kwMatch(a.item, kw)))
-      || warranties.find(a => !a.retired_at && !a.warranty_only && s.categories.includes(a.category))
+      || (s.nameOnly ? null : warranties.find(a => !a.retired_at && !a.warranty_only && s.categories.includes(a.category)))
       || null;
 
     let ageYears, status, detail, fromAsset, ageIsEstimate = false;
@@ -16416,9 +16683,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         ? `${linkedAsset.item} · installed ${fmtD(installDate)} · ${ageYears}yr old`
         : `${linkedAsset.item} · ~${ageYears}yr old (estimated from home age)`;
     } else {
-      // Fall back to home age estimate
-      const pct = homeAge / s.lifespan;
-      status = pct >= 1 ? "alert" : pct >= 0.75 ? "warn" : "ok";
+      // Not tracked as an asset: the home's build year is only a rough hint, never a verdict
+      // (an "Electrical Panel" the person hasn't added used to show a red "Needs attention"
+      // while the same kind of estimate elsewhere said "Age unknown").
+      status = "estimated";
       ageYears = homeAge;
       fromAsset = false;
       detail = `${s.ageNote} · estimated from home age (${homeAge}yr)`;
@@ -16427,6 +16695,45 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     return {...s, ageYears, status, detail, fromAsset, ageIsEstimate, linkedAsset};
   }) : [];
 
+  // One shared "re-pull public-record data" routine (used by the Refresh value button, the
+  // Load value button and the toolbox's Refresh data tile — they each had their own copy, and
+  // none of them touched the sale price, so a stale "Purchased $94,000" survived every refresh).
+  // Reports what the lookup actually returned, so an address with no school/tax records says so
+  // instead of silently showing nothing.
+  const refreshPropertyData = async () => {
+    if (!profile?.address) { toast("Add your address first","error"); return false; }
+    try {
+      const result = await lookupProperty(profile.address);
+      if (!result) { toast("No data found for this address","error"); return false; }
+      const updated = {
+        zestimate:      result.zestimate      || profile.zestimate      || "",
+        rent_zestimate: result.rent_zestimate || profile.rent_zestimate || "",
+        tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : (profile.tax_history || ""),
+        price_history:  result.price_history  ? JSON.stringify(result.price_history)  : (profile.price_history || ""),
+        schools:        result.schools        ? JSON.stringify(result.schools)        : (profile.schools || ""),
+      };
+      // The sale record belongs to this address: take the lookup's when it has one
+      if (result.last_sale_price) {
+        updated.last_sale_price = result.last_sale_price;
+        updated.last_sale_date  = result.last_sale_date || "";
+      }
+      const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
+      if (error) { toast("Could not save — try again","error"); return false; }
+      setProfile(p => ({ ...p, ...updated }));
+      const has = v => Array.isArray(v) ? v.length > 0 : !!v;
+      const got = [], missing = [];
+      (has(result.zestimate) ? got : missing).push("value");
+      (has(result.schools) ? got : missing).push("schools");
+      (has(result.tax_history) ? got : missing).push("tax history");
+      (has(result.last_sale_price) ? got : missing).push("sale price");
+      let msg = "Refreshed ✓ " + (got.length ? got.join(", ") : "nothing new");
+      if (missing.length) msg += ` · none on record for this address: ${missing.join(", ")}`;
+      if (!result.last_sale_price && Number(profile.last_sale_price) > 0) msg += " · check your Purchased price (Edit home)";
+      toast(msg);
+      return true;
+    } catch { toast("Refresh failed — try again","error"); return false; }
+  };
+
   // Insurance renewal
   const insRenewalDays = profile?.ins_renewal_date ? daysTo(profile.ins_renewal_date) : null;
   const insRenewalStatus = insRenewalDays === null ? null : insRenewalDays < 0 ? "expired" : insRenewalDays <= 30 ? "urgent" : insRenewalDays <= 90 ? "soon" : "ok";
@@ -16434,7 +16741,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // Stats — match Tasks tab: expenses + service log costs
   const serviceLogTotal = serviceLogs.reduce((s,l)=>s+Number(l.cost||0),0);
   const totalCost = expenses.reduce((s,e)=>s+Number(e.amount||0),0) + serviceLogTotal;
-  const activeW   = warranties.filter(w=>{ const d=daysTo(w.expiry_date); return d!==null&&d>=0; }).length;
+  const activeW   = getWarrantyBuckets(warranties).covered;
 
   // Potential value added — recomputes reactively when roiData arrives from Supabase.
   // Includes ALL projects with an roi_category, regardless of status or whether
@@ -16590,23 +16897,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     </div>
                   )}
                   <button onClick={async(e)=>{
-                    if(!profile?.address)return;
                     const btn=e.currentTarget; btn.textContent="Updating…"; btn.disabled=true;
-                    try{
-                      const result=await lookupProperty(profile.address);
-                      if(result?.zestimate){
-                        const updated={
-                          zestimate:      result.zestimate,
-                          rent_zestimate: result.rent_zestimate||profile.rent_zestimate,
-                          tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : profile.tax_history,
-                          price_history:  result.price_history  ? JSON.stringify(result.price_history)  : profile.price_history,
-                          schools:        result.schools        ? JSON.stringify(result.schools)        : profile.schools,
-                        };
-                        const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
-                        if(!error){setProfile(p=>({...p,...updated}));toast("Home data updated ✓");}
-                        else toast("Could not save — try again","error");
-                      }else toast("No updated value found","error");
-                    }catch{toast("Refresh failed — try again","error");}
+                    await refreshPropertyData();
                     btn.textContent="↻ Refresh value"; btn.disabled=false;
                   }} style={{marginTop:".35rem",background:"none",border:"none",color:"rgba(244,237,223,.4)",fontSize:".68rem",fontWeight:600,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",padding:0}}>
                     ↻ Refresh value
@@ -16643,21 +16935,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
           <div style={{flex:1}}><div style={{fontWeight:600,fontSize:".88rem"}}>Home value not loaded</div><div style={{fontSize:".75rem",color:"#7A7370",marginTop:2}}>Tap to pull estimated value from public records</div></div>
           <button onClick={async(e)=>{
             const btn=e.currentTarget; btn.textContent="Loading…"; btn.disabled=true;
-            try{
-              const result=await lookupProperty(profile.address);
-              if(result?.zestimate){
-                const updated={
-                  zestimate:      result.zestimate,
-                  rent_zestimate: result.rent_zestimate||"",
-                  tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : "",
-                  price_history:  result.price_history  ? JSON.stringify(result.price_history)  : "",
-                  schools:        result.schools        ? JSON.stringify(result.schools)        : "",
-                };
-                const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
-                if(!error){setProfile(p=>({...p,...updated}));toast("Home data loaded ✓");}
-                else toast("Could not save — try again","error");
-              }else toast("No value found for this address","error");
-            }catch{toast("Could not load — try again","error");}
+            await refreshPropertyData();
             btn.textContent="Load value"; btn.disabled=false;
           }} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontSize:".78rem",fontWeight:600,padding:".5rem .9rem",cursor:"pointer",flexShrink:0,fontFamily:"'Hanken Grotesk',sans-serif"}}>
             Load value
@@ -16738,7 +17016,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             <button onClick={()=>onNavigate&&onNavigate("warranties")} style={{fontSize:".78rem",fontWeight:600,color:"#8A8178",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>View assets →</button>
           </div>
           {systemAlerts.map((s,i)=>{
-            const h = s.status==="alert"?{color:"#B0432B",bg:"#F7E0DA",label:"Needs attention"}:s.status==="warn"?{color:"#C16140",bg:"#F8E8E1",label:"Service due"}:{color:"#3E7D5A",bg:"#E9F1EA",label:"Healthy"};
+            const h = s.status==="alert"?{color:"#B0432B",bg:"#F7E0DA",label:"Needs attention"}:s.status==="warn"?{color:"#C16140",bg:"#F8E8E1",label:"Service due"}:s.status==="estimated"?{color:HEALTH_STATES.estimated.color,bg:HEALTH_STATES.estimated.bg,label:HEALTH_STATES.estimated.label}:{color:"#3E7D5A",bg:"#E9F1EA",label:"Healthy"};
             const lifespan = s.linkedAsset ? Number(s.linkedAsset.lifespan_years||s.lifespan) : s.lifespan;
             const pct = Math.min(100, Math.round((s.ageYears/lifespan)*100));
             const handleClick = () => {
@@ -16760,7 +17038,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                   <span style={{fontSize:".72rem",fontWeight:700,padding:"2px 9px",borderRadius:20,background:h.bg,color:h.color}}>{h.label}</span>
                 </div>
                 <div style={{height:6,background:"var(--cream2)",borderRadius:4,overflow:"hidden",marginBottom:".3rem"}}>
-                  <div style={{height:"100%",width:`${pct}%`,borderRadius:4,background:h.color}}/>
+                  {s.status!=="estimated" && <div style={{height:"100%",width:`${pct}%`,borderRadius:4,background:h.color}}/>}
                 </div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem"}}>
                   <span style={{fontSize:".75rem",color:s.fromAsset?"#8A8178":"#C2B8AE"}}>{s.detail}</span>
@@ -16886,7 +17164,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                             {shown.map(a => (
                               <div key={a.id} className="gap-row" onClick={()=>{ setShowCheckin(false); setShowInsurance(false); onOpenAsset?.(a.id); }}>
                                 {a.asset_photo_url
-                                  ? <img src={a.asset_photo_url} alt="" className="gap-thumb"/>
+                                  ? <SImg src={a.asset_photo_url} alt="" className="gap-thumb"/>
                                   : <div className="gap-thumb gap-thumb-empty">📦</div>}
                                 <div className="gap-name">{a.item}</div>
                                 <span className="gap-fix">Fix →</span>
@@ -16919,7 +17197,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     {assetsFully.slice(0,3).map(a => (
                       <div key={a.id} style={{display:"flex",alignItems:"center",gap:".85rem",padding:".75rem 1rem",borderTop:"1px solid var(--cream2)",opacity:.7}}>
                         {a.asset_photo_url
-                          ? <img src={a.asset_photo_url} alt={a.item} style={{width:40,height:40,borderRadius:10,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0}}/>
+                          ? <SImg src={a.asset_photo_url} alt={a.item} style={{width:40,height:40,borderRadius:10,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0}}/>
                           : <div style={{width:40,height:40,borderRadius:10,background:"var(--cream2)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem"}}>📦</div>}
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:".9rem",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
@@ -16955,7 +17233,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                           {done?.taken_at&&<div style={{fontSize:".7rem",color:"#A8A09A",marginTop:".2rem"}}>Taken {fmtD(done.taken_at.slice(0,10))}</div>}
                         </div>
                         {done?.url ? (
-                          <img src={done.url} alt={task.label} style={{width:52,height:52,borderRadius:10,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0,cursor:"pointer"}} onClick={()=>{}}/>
+                          <SImg src={done.url} alt={task.label} style={{width:52,height:52,borderRadius:10,objectFit:"cover",border:"1.5px solid var(--stone)",flexShrink:0,cursor:"pointer"}} onClick={()=>openStoredFile(done.url)}/>
                         ) : (
                           <div onClick={()=>checkinInputRefs.current[task.key]?.click()} style={{width:52,height:52,borderRadius:10,background:uploading?"var(--cream2)":"var(--cream)",border:"2px dashed var(--stone)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",cursor:"pointer"}}>
                             {uploading?"⏳":"📷"}
@@ -16979,7 +17257,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               <div className="ins-cols">
                 <div className="ins-right">
               <div className="io io-1" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"1rem",borderRadius:"var(--r)",padding:"1.5rem 1.25rem",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+                <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
                 <div style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"rgba(193,97,64,.35)",border:"1px solid rgba(193,97,64,.5)",borderRadius:20,padding:".3rem .8rem",fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:".85rem"}}>
                   <span style={{width:7,height:7,borderRadius:"50%",background:"#E8A57F"}}/>
                   {checkinYear} annual check-in
@@ -17044,7 +17322,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     </div>
                     <div style={{padding:".55rem 1rem",background:"var(--cream)",fontSize:".75rem",color:"#8A8178"}}>Scanned here or uploaded in Documents — all insurance files live in one place.</div>
                     {insuranceDocuments.map(doc => (
-                      <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                      <StoredLink key={doc.id} url={doc.file_url}
                         style={{display:"flex",alignItems:"center",gap:".75rem",padding:".8rem 1rem",borderTop:"1px solid var(--cream2)",textDecoration:"none",color:"inherit"}}>
                         <div style={{width:38,height:38,borderRadius:10,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>
                           {doc.file_type?.includes("pdf") ? "📄" : "🖼️"}
@@ -17054,7 +17332,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                           <div style={{fontSize:".72rem",color:"#A8A09A"}}>{doc.expiry_date ? `Renews ${fmtD(doc.expiry_date)}` : fmtD(doc.created_at?.slice(0,10))}</div>
                         </div>
                         <span style={{fontSize:".8rem",color:"#C2B8AE",flexShrink:0}}>↗</span>
-                      </a>
+                      </StoredLink>
                     ))}
                   </div>
                 )}
@@ -17312,25 +17590,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
               {ico:"📬", name:"Email inbox",      desc:pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
-              {ico:"🏡", name:"Refresh data",     desc:"Re-pull schools, tax & value",              action:async()=>{
-                if(!profile?.address){toast("Add your address first","error");return;}
-                toast("Fetching property data…");
-                try{
-                  const result=await lookupProperty(profile.address);
-                  if(result){
-                    const updated={
-                      zestimate:      result.zestimate      || profile.zestimate,
-                      rent_zestimate: result.rent_zestimate || profile.rent_zestimate,
-                      tax_history:    result.tax_history    ? JSON.stringify(result.tax_history)    : profile.tax_history,
-                      price_history:  result.price_history  ? JSON.stringify(result.price_history)  : profile.price_history,
-                      schools:        result.schools        ? JSON.stringify(result.schools)        : profile.schools,
-                    };
-                    const{error}=await supabase.from("profiles").update(updated).eq("id",profile.id);
-                    if(!error){setProfile(p=>({...p,...updated}));toast("Property data refreshed ✓");}
-                    else toast("Could not save — try again","error");
-                  }else toast("No data found for this address","error");
-                }catch{toast("Refresh failed — try again","error");}
-              }},
+              {ico:"🏡", name:"Refresh data",     desc:"Re-pull value, sale price, schools & tax", action:async()=>{ toast("Fetching property data…"); await refreshPropertyData(); }},
             ].map(t=>(
               <div key={t.name} onClick={t.action}
                 style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".85rem .9rem",display:"flex",flexDirection:"column",gap:".5rem",cursor:"pointer",transition:"border-color .15s",minHeight:90}}
@@ -18618,8 +18878,34 @@ function generateHomeProfile(answers, climateZone = 5) {
 }
 
 
+// ─── SIMILAR-TASK MATCHING ─────────────────────────────────────────────────
+// Used by Generate schedule so suggestions that the user already has ("Clean dryer vent" vs
+// "Clean the dryer vent and duct") aren't pre-selected again. Word-set containment, light
+// plural stemming, and only against not-yet-completed tasks that are recurring or due within
+// 45 days of the suggestion (a one-off task shouldn't block next year's copy).
+const TASK_STOPWORDS = new Set(["the","a","an","and","or","of","to","for","your","in","on","all","any","with","at","as"]);
+const taskTokens = (title) => (title||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/)
+  .filter(w => w && !TASK_STOPWORDS.has(w))
+  .map(w => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) ? w.slice(0,-1) : w);
+function findSimilarTask(title, date, existing) {
+  const a = taskTokens(title);
+  if (!a.length) return null;
+  const A = new Set(a);
+  return (existing || []).find(t => {
+    if (t.status === "Completed") return false;
+    const B = new Set(taskTokens(t.title));
+    if (!B.size) return false;
+    const [small, big] = A.size <= B.size ? [A, B] : [B, A];
+    if (small.size < 2 && A.size !== B.size) return false;   // one-word titles must match exactly
+    for (const w of small) if (!big.has(w)) return false;
+    if (t.recurring) return true;
+    if (!date || !t.due_date) return true;
+    return Math.abs(new Date(t.due_date+"T00:00:00") - new Date(date+"T00:00:00")) <= 45 * 86400000;
+  }) || null;
+}
+
 // ─── CALENDAR TAB ────────────────────────────────────────────────────────────
-function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId, onEditTask }) {
+function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId, propertyId, onEditTask }) {
   const today = new Date();
   const [curYear, setCurYear]       = useState(today.getFullYear());
   const [curMonth, setCurMonth]     = useState(today.getMonth());
@@ -18631,6 +18917,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const [showGen, setShowGen]       = useState(false);
   const [genItems, setGenItems]     = useState([]);
   const [genChecked, setGenChecked] = useState({});
+  const [genSkipped, setGenSkipped] = useState(0);   // suggestions dropped because their date already passed
   const [created, setCreated]       = useState(new Set()); // suggestion ids already created
   const [showCalSync, setShowCalSync] = useState(false);
 
@@ -18705,7 +18992,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const createFromSuggestion = async (ev, date) => {
     if (created.has(ev.id)) return;
     setSaving(true);
-    const payload = { title:ev.title, due_date:date, status:"Scheduled", priority:ev.priority||"Medium", category:ev.category || guessCategory(ev.title), notes:ev.notes||"", user_id:userId };
+    const payload = { title:ev.title, due_date:date, status:"Scheduled", priority:ev.priority||"Medium", category:ev.category || guessCategory(ev.title), notes:ev.notes||"", user_id:userId, property_id:propertyId };
     const { data, error } = await supabase.from("tasks").insert([payload]).select();
     if (!error && data) { setTasks(p=>[data[0],...p]); setCreated(s=>new Set(s).add(ev.id)); toast("Task added ✓"); }
     setSaving(false);
@@ -18716,7 +19003,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const saveAdd = async () => {
     if (!addData.title?.trim()) return;
     setSaving(true);
-    const payload = { title:addData.title.trim(), due_date:addData.due_date||selDate, status:"Scheduled", priority:addData.priority||"Medium", category:addData.category||"Other", notes:"", user_id:userId };
+    const payload = { title:addData.title.trim(), due_date:addData.due_date||selDate, status:"Scheduled", priority:addData.priority||"Medium", category:addData.category||"Other", notes:"", user_id:userId, property_id:propertyId };
     const { data, error } = await supabase.from("tasks").insert([payload]).select();
     if (!error && data) { setTasks(p=>[data[0],...p]); toast("Task created ✓"); setShowAdd(false); setAddData({}); }
     setSaving(false);
@@ -18727,6 +19014,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
     const zone = getClimateZone(profile);
     const cp = getClimateProfile(zone, profile);
     const items = [];
+    let skippedPast = 0;
     const startMo = new Date(today.getFullYear(), today.getMonth(), 1);
     const endMo = new Date(today.getFullYear(), today.getMonth() + 12, 1); // next 12 months
     [today.getFullYear(), today.getFullYear()+1].forEach(yr => {
@@ -18734,20 +19022,25 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
         const monthStart = new Date(yr, mo, 1);
         if (monthStart < startMo || monthStart >= endMo) continue;
         getMonthTasks(cp, mo).forEach((it, i) => {
-          items.push({ id:`gen-${yr}-${mo}-${i}`, title:it.title, date:localISO(new Date(yr,mo,it.day)), category:it.category||guessCategory(it.title), priority:it.priority, notes:it.notes, season:MONTH_NAMES[mo]+" "+yr });
+          const date = localISO(new Date(yr,mo,it.day));
+          // A date that has already passed would be "overdue" the moment it's created
+          if (date < todayStr) { skippedPast++; return; }
+          items.push({ id:`gen-${yr}-${mo}-${i}`, title:it.title, date, category:it.category||guessCategory(it.title), priority:it.priority, notes:it.notes, season:MONTH_NAMES[mo]+" "+yr,
+            dup: findSimilarTask(it.title, date, tasks) });
         });
       }
     });
     const checked = {};
-    items.forEach(it => { checked[it.id] = true; });
-    setGenItems(items); setGenChecked(checked); setShowGen(true);
+    // Pre-select only what's new — anything the user already has starts unchecked
+    items.forEach(it => { checked[it.id] = !it.dup; });
+    setGenItems(items); setGenChecked(checked); setGenSkipped(skippedPast); setShowGen(true);
   };
 
   const saveSchedule = async () => {
     const selected = genItems.filter(it => genChecked[it.id]);
     if (!selected.length) return;
     setSaving(true);
-    const rows = selected.map(it => ({ title:it.title, due_date:it.date, status:"Scheduled", priority:it.priority||"Medium", category:it.category, notes:it.notes||"", user_id:userId }));
+    const rows = selected.map(it => ({ title:it.title, due_date:it.date, status:"Scheduled", priority:it.priority||"Medium", category:it.category, notes:it.notes||"", user_id:userId, property_id:propertyId }));
     const { data, error } = await supabase.from("tasks").insert(rows).select();
     if (!error && data) { setTasks(p=>[...data,...p]); toast(`${data.length} tasks scheduled ✓`); setShowGen(false); }
     setSaving(false);
@@ -19036,12 +19329,14 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
             </div>
             <div className="modal-body">
               <p className="ct-gen-intro">
-                Based on your home's climate zone, here's a full maintenance schedule. Select the tasks you'd like to add — they'll appear in your Tasks tab with the right due dates.
+                Based on your home's climate zone, here's a maintenance schedule for the next 12 months. Select the tasks you'd like to add — they'll appear in your Tasks tab with the right due dates.
+                {genItems.some(i=>i.dup) && " Tasks you already have are left unchecked."}
+                {genSkipped>0 && ` ${genSkipped} suggestion${genSkipped===1?"":"s"} from earlier this month ${genSkipped===1?"was":"were"} skipped because the date has passed.`}
               </p>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
                 <span style={{fontSize:".78rem",color:"#9E9690"}}>{Object.values(genChecked).filter(Boolean).length} of {genItems.length} selected</span>
                 <div style={{display:"flex",gap:".5rem"}}>
-                  <button className="btn btn-ghost btn-sm" onClick={()=>setGenChecked(Object.fromEntries(genItems.map(i=>[i.id,true])))}>All</button>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setGenChecked(Object.fromEntries(genItems.map(i=>[i.id,!i.dup])))}>All new</button>
                   <button className="btn btn-ghost btn-sm" onClick={()=>setGenChecked(Object.fromEntries(genItems.map(i=>[i.id,false])))}>None</button>
                 </div>
               </div>
@@ -19061,7 +19356,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                             {genChecked[it.id] && <svg width="11" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </span>
                           <div className="ct-gen-info">
-                            <div className="ct-gen-title">{it.title}</div>
+                            <div className="ct-gen-title">{it.title}{it.dup && <span className="ct-gen-dup" title={`Similar to "${it.dup.title}"`}>Already have this</span>}</div>
                             <div className="ct-gen-sub">{new Date(it.date+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})} · {it.category}</div>
                           </div>
                         </div>
@@ -19446,7 +19741,8 @@ class AppErrorBoundary extends Component {
 // really the same physical item as a full asset (formally linked via asset_id,
 // or sharing an exact item name with an asset that already has its own expiry),
 // otherwise the same item would show up twice.
-function getWarrantyBuckets(list = []) {
+function getWarrantyBuckets(rawList = []) {
+  const list = (rawList || []).filter(w => !w.retired_at);   // retired assets no longer count
   const assetW = list.filter(w => !w.warranty_only && w.expiry_date);
   const assetNames = new Set(assetW.map(w => (w.item||"").trim().toLowerCase()).filter(Boolean));
   const only = list.filter(w =>
@@ -19744,6 +20040,9 @@ export default function App() {
   const [showDocs, setShowDocs] = useState(false);
   const [docLightbox, setDocLightbox] = useState(null);
   const [showContractors, setShowContractors] = useState(false);
+  // The window scroll position is shared by every (always-mounted) tab, so a screen used to open
+  // wherever the previous one was scrolled to. Every top-level screen now opens at the top.
+  useEffect(() => { window.scrollTo({top:0,left:0,behavior:"instant"}); }, [tab, showDocs, showContractors, showWarrantyModule]);
   const [contractors, setContractors] = useState([]);
   const [projects,    setProjects]    = useState([]);
   const [autoOpenSetup, setAutoOpenSetup] = useState(false);
@@ -20214,9 +20513,9 @@ export default function App() {
              the address is confirmed bad, not just unconfirmed. No self-service email-change UI
              exists yet, so this points to support rather than a dead-end "update email" button. */}
         {session?.user?.app_metadata?.email_bounced === true && !verifyBannerDismissed && (
-          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#F8DEDA",borderBottom:"1px solid rgba(185,66,44,.35)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
-            <span style={{flex:1,minWidth:200}}>
-              <strong>{session.user.email}</strong> couldn't be delivered to — you're likely missing maintenance reminders right now.{" "}
+          <div className="vb-bar" style={{background:"#F8DEDA",borderBottom:"1px solid rgba(185,66,44,.35)"}}>
+            <span className="vb-msg">
+              <strong style={{overflowWrap:"anywhere"}}>{session.user.email}</strong> couldn't be delivered to — you're likely missing maintenance reminders right now.{" "}
               <a href="mailto:hello@trysteadwell.app" style={{color:"#B9422C",fontWeight:600}}>Email us to fix it</a>
             </span>
             <button onClick={() => setVerifyBannerDismissed(true)}
@@ -20226,15 +20525,16 @@ export default function App() {
 
         {/* ── Email verification banner — only shows when app_metadata.email_verified is explicitly false */}
         {session?.user?.app_metadata?.email_verified === false && session?.user?.app_metadata?.email_bounced !== true && !verifyBannerDismissed && (
-          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",background:"#FBF0DD",borderBottom:"1px solid rgba(193,97,64,.25)",padding:".65rem 1.25rem",fontSize:".85rem",color:"#5E574F"}}>
-            <span style={{flex:1,minWidth:200}}>
-              Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.
+          <div className="vb-bar" style={{background:"#FBF0DD",borderBottom:"1px solid rgba(193,97,64,.25)"}}>
+            <span className="vb-msg">
+              <span className="vb-full">Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.</span>
+              <span className="vb-short">Verify your email to get reminders.</span>
             </span>
             {verifyResendState === "sent" ? (
               <span style={{color:"#234A3D",fontWeight:600}}>Email sent — check your inbox</span>
             ) : (
               <button onClick={handleResendVerification} disabled={verifyResendState === "sending"}
-                style={{background:"none",border:"none",color:"#C16140",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",padding:0}}>
+                style={{background:"none",border:"none",color:"#C16140",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",padding:0,whiteSpace:"nowrap"}}>
                 {verifyResendState === "sending" ? "Sending…" : "Resend email"}
               </button>
             )}
@@ -20263,13 +20563,8 @@ export default function App() {
           {showDocs ? (
             /* Documents Center */
             <div style={{display:"flex",flexDirection:"column",height:"100%",background:"var(--linen)"}}>
-              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".9rem 1.1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-                <button className="btn btn-ghost btn-sm" onClick={()=>setShowDocs(false)} style={{padding:".3rem .75rem",fontSize:".82rem",fontWeight:600}}>← Back</button>
-                <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,textAlign:"center"}}>Documents</span>
-                <div style={{width:60}}/>
-              </div>
               <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)}/>
+                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onBack={()=>setShowDocs(false)}/>
               </div>
               {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
             </div>
@@ -23474,7 +23769,7 @@ function EmailCapturePage() {
           <LPSectionHead h2="How it works" sub="Set up once. Works forever."/>
           <LPGrid gap={16}>
             {[
-              {num:"01",title:"Get your capture address",text:"Every Steadwell account gets a unique email address like robert-a1b2c3@in.trysteadwell.app. Find it in your home toolbox under Email Inbox."},
+              {num:"01",title:"Get your capture address",text:"Every Steadwell account gets a unique email address like robert-7f3a91c2b8d04e65a1c9@in.trysteadwell.app. Find it in your home toolbox under Email Inbox."},
               {num:"02",title:"Forward anything home-related",text:"Get a receipt from Home Depot? Forward it. Contractor sends an invoice? Forward it. Warranty registration? Forward it. Takes 3 seconds."},
               {num:"03",title:"AI extracts the details",text:"Claude reads the email and any attachments, extracts the relevant fields, and determines whether it's a warranty, expense, or document."},
               {num:"04",title:"Review in your Email Inbox",text:"Every capture lands in your Email Inbox as pending. Review the pre-filled details, edit if needed, and save to your records with one tap."},
@@ -24735,7 +25030,7 @@ function PrivacyPage() {
     {t:"5. How We Share Your Information",b:"We share your data with the following service providers strictly to operate the Service: Supabase (database, authentication, and file storage — SOC 2 Type II certified, row-level security enforced); Stripe (payment processing); Resend (email delivery and inbound email processing); Anthropic (AI feature processing via Claude API); APIllow / Zillow (property data lookups — your address only); Google Places API (address autocomplete); Sentry (error monitoring and session replay — Sentry may receive page interaction data and a replay of your browser session, either for a random sample of about 5% of all sessions or for any session in which an error occurs; personally identifiable information is masked in all cases and Sentry does not receive your documents or uploaded files); Google Analytics 4 (anonymous usage analytics — GA4 receives anonymized page views and feature usage patterns; no personally identifiable information is shared). We do not sell, rent, broker, or share your personal information with any other third party. The only exception is the optional Contractor Insights program described in Section 6, which is off by default and requires your explicit opt-in."},
     {t:"6. Agent Gift Referrals",b:"If a participating real estate agent gifts you a Steadwell trial, we receive your name and email address from that agent solely to send you the gift invitation. We do not use this information for any other purpose unless and until you claim the gift and create an account. If the gift is not claimed within 12 months, we delete this referral information. Email privacy@trysteadwell.app if you'd like it removed sooner."},
     {t:"7. Optional: Contractor Insights Program",b:"If you choose to opt in from Settings → Privacy, we may share de-identified, aggregated, non-personal trends — such as regional data about home system ages or common maintenance needs — with local contractor partners. This program never includes your name, address, contact information, property details, service history, uploaded documents, or any data that could identify you. We do not sell your information under this program. You can opt in or out at any time from Settings, and this choice has no effect on your access to any Steadwell feature."},
-    {t:"8. Your Unique Email Capture Address",b:"Each property in Steadwell gets a unique inbound email address (e.g., robert-abc123@in.trysteadwell.app). Emails forwarded to this address — including receipts, invoices, and home documents — are processed by our email capture system and Anthropic's Claude API to extract relevant details. The original email content and any attachments are stored in your account. You can review, edit, save, or dismiss every captured email from your Email Inbox in the app."},
+    {t:"8. Your Unique Email Capture Address",b:"Each property in Steadwell gets a unique inbound email address (e.g., robert-7f3a91c2b8d04e65a1c9@in.trysteadwell.app). Emails forwarded to this address — including receipts, invoices, and home documents — are processed by our email capture system and Anthropic's Claude API to extract relevant details. The original email content and any attachments are stored in your account. You can review, edit, save, or dismiss every captured email from your Email Inbox in the app."},
     {t:"9. Digital Product Purchases",b:"When you purchase a homebuyer guide or other Digital Product from our Guides store, your payment is processed by Stripe. We receive confirmation of your purchase (email address, product purchased, and amount) but never your card details. We store a record of your purchase to enable delivery and to handle any support requests. Purchase records are retained for 7 years for tax and accounting compliance. Purchased guide files are delivered via a secure, time-limited signed URL and are not stored permanently on our servers after delivery. We do not share your purchase history with third parties except as required by law or to process your payment through Stripe. Our homebuyer guides are created with the assistance of AI tools including Claude by Anthropic. No personal data from Steadwell users is used in the creation of these guides."},
     {t:"10. Data Retention",b:"Your data is retained for as long as your account is active. If you delete your account, we begin permanent deletion of your personal data within 30 days. Encrypted backups may retain data for up to 90 additional days before purge. We retain limited transaction records as required by law for tax and financial compliance purposes."},
     {t:"11. Security and Data Breach Notification",b:"We take security seriously. All data is encrypted in transit using TLS 1.2 or higher and encrypted at rest. Passwords are hashed using industry-standard algorithms and never stored in plain text. Row-level security in our database ensures that users cannot access each other's data. We maintain multi-factor authentication on all administrative accounts. No system is 100% secure — if you believe your account has been compromised, contact hello@trysteadwell.app immediately. In the event of a security breach affecting your personal information, we will notify affected users as required under Florida's Information Protection Act (§ 501.171, Fla. Stat.) and any other applicable law. Notifications will be sent to your registered email address."},
@@ -25460,10 +25755,10 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
   // so it counts fully; one ending within 30 days counts half. Warranties the
   // owner has chosen to exclude (exclude_warranty_from_score) are left out of
   // both the numerator and the denominator.
-  const allWarrantyItems = (warranties || []).filter(a => !a.retired_at && a.expiry_date && !a.exclude_warranty_from_score);
-  const soonCutoff = localISO(new Date(now.getTime() + 30*86400000));
-  const expiredCount = allWarrantyItems.filter(a => a.expiry_date < today).length;
-  const soonCount    = allWarrantyItems.filter(a => a.expiry_date >= today && a.expiry_date < soonCutoff).length;
+  // Uses the shared bucket helper so a warranty-only record for the same item isn't counted twice.
+  const allWarrantyItems = getWarrantyBuckets(warranties).all.filter(x => x.d !== null && !x.w.exclude_warranty_from_score);
+  const expiredCount = allWarrantyItems.filter(x => x.d < 0).length;
+  const soonCount    = allWarrantyItems.filter(x => x.d >= 0 && x.d < 30).length;
   const warrantyScore = allWarrantyItems.length === 0 ? 60
     : Math.max(0, 100 - ((expiredCount + soonCount * 0.5) / allWarrantyItems.length) * 60);
 
