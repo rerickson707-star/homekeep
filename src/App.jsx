@@ -1,4 +1,4 @@
-// Steadwell v293 — 2026-09-30
+// Steadwell v294 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3632,6 +3632,36 @@ img,.lp-root img{max-width:100%;height:auto}
   @keyframes askUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
   .ask-msg,.ask-srcs,.ask-act{max-width:100%}
 }
+/* ── Condition assessment ── */
+.asm-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);overflow:hidden;margin-bottom:1rem}
+.asm-card-hdr{display:flex;align-items:center;gap:.55rem;padding:.95rem 1rem;border-bottom:1px solid var(--cream2)}
+.asm-tag{font-size:.64rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--pine);background:rgba(35,74,61,.08);border-radius:8px;padding:2px 8px}
+.asm-fine{font-size:.7rem;color:#A8A09A;padding:0 1rem .8rem}
+.asm-note{background:#F4EFE6;border:1px solid var(--stone);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;line-height:1.45;color:#5A534B}
+.asm-sev{flex-shrink:0;font-size:.62rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:6px;padding:2px 7px;margin-top:2px}
+.asm-link{background:none;border:none;color:var(--pine);font-weight:700;font-size:.8rem;cursor:pointer;padding:.25rem 0;font-family:inherit}
+.asm-thumbs{display:flex;gap:.45rem;margin-top:.8rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.asm-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--stone)}
+.asm-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+@media(min-width:520px){.asm-slots{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.asm-slot{position:relative;display:flex;flex-direction:column;min-width:0}
+.asm-slot-add,.asm-slot-img{width:100%;aspect-ratio:4/3;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.asm-slot-add{background:var(--cream2);border:2px dashed var(--mid);cursor:pointer;color:var(--pine)}
+.asm-slot-img{object-fit:cover;border:2px solid var(--pine);cursor:pointer}
+.asm-x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(38,33,28,.75);color:#fff;font-size:.72rem;cursor:pointer;line-height:1}
+.asm-slot-label{font-size:.78rem;font-weight:700;margin-top:.35rem;color:var(--dark)}
+.asm-slot-label em{font-style:normal;font-weight:600;color:#B8861E}
+.asm-slot-hint{font-size:.7rem;color:#8A8178;line-height:1.3}
+.asm-sec{font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8178;margin:1.1rem 0 .45rem}
+.asm-pills{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.4rem}
+.asm-pill{display:flex;flex-direction:column;align-items:center;gap:1px;padding:.5rem .15rem;border-radius:12px;border:1.5px solid;cursor:pointer;font-family:inherit;min-width:0}
+.asm-pill b{font-size:1.05rem;line-height:1.1}
+.asm-pill span{font-size:.62rem;font-weight:700;letter-spacing:.01em}
+.asm-check{display:flex;gap:.6rem;align-items:flex-start;padding:.45rem 0;font-size:.84rem;font-weight:400;letter-spacing:0;text-transform:none;line-height:1.4;cursor:pointer;color:#4A443E}
+.asm-check b{font-weight:700}
+.asm-check input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;margin:2px 0 0;padding:0;width:18px;height:18px;min-width:18px;flex:0 0 18px;border-radius:4px;accent-color:var(--pine)}
+.asm-spin{width:38px;height:38px;border-radius:50%;border:4px solid var(--stone);border-top-color:var(--pine);margin:0 auto;animation:asmspin .9s linear infinite}
+@keyframes asmspin{to{transform:rotate(360deg)}}
 /* ══ END SAFE RESPONSIVE FIXES ══ */
 `;
 
@@ -6962,7 +6992,81 @@ const HEALTH_STATES = {
   estimated: { key:"estimated", label:"Age unknown",     color:"#8A8178", bg:"#EFEBE4", ring:"#D8D2C7" },
 };
 
+// ─── CONDITION ASSESSMENTS (AI proposes, the person confirms) ────────────────
+// A confirmed assessment is an immutable row in asset_assessments. App keeps the newest confirmed row
+// per asset in this index on every render, so getAssetHealth / the cost forecast can read it without
+// threading it through every call site (same pattern as the owner-name cache).
+const ASSESS_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/asset-assessment";
+const ASSESS_SCALE = {
+  5: { label: "Excellent", color: "#2F7A55", bg: "#E4F1E9" },
+  4: { label: "Good",      color: "#3E7D5A", bg: "#E9F1EA" },
+  3: { label: "Fair",      color: "#B8861E", bg: "#FBF3DE" },
+  2: { label: "Poor",      color: "#C16140", bg: "#F7E0DA" },
+  1: { label: "Failing",   color: "#B0432B", bg: "#F8DEDA" },
+};
+const ASSESS_STALE_YEARS = 2;      // after this an assessment stops steering health and the forecast
+const ASSESS_REASSESS_MONTHS = 12; // after this we suggest doing it again
+let _assessIdx = {};
+const setAssessmentIndex = (rows) => {
+  const m = {};
+  (rows || []).forEach(r => {
+    if (r.status !== "confirmed") return;
+    const cur = m[r.asset_id];
+    if (!cur || String(r.created_at) > String(cur.created_at)) m[r.asset_id] = r;
+  });
+  _assessIdx = m;
+};
+const yearsSince = (iso) => (Date.now() - new Date(iso).getTime()) / (365.25 * 86400000);
+// Newest confirmed assessment that still counts: recent enough, and not older than a later install date
+// (a replaced unit isn't the one that was assessed).
+const freshAssessment = (asset) => {
+  const a = asset && _assessIdx[asset.id];
+  if (!a || !(a.final_score >= 1 && a.final_score <= 5)) return null;
+  if (yearsSince(a.created_at) > ASSESS_STALE_YEARS) return null;
+  const inst = asset.install_date || asset.purchase_date;
+  if (inst && String(inst).slice(0, 10) > String(a.created_at).slice(0, 10)) return null;
+  return a;
+};
+const assessRemainingYears = (a) => {
+  if (!a) return null;
+  if (a.final_score <= 1 && a.final_remaining_years == null) return 0;
+  return a.final_remaining_years != null ? Math.max(0, Number(a.final_remaining_years) - yearsSince(a.created_at)) : null;
+};
+const conditionFromScore = (n) => n >= 4 ? "Good" : n === 3 ? "Fair" : n === 2 ? "Needs Attention" : "Failed";
+const assessClassOf = (asset) => {
+  const t = `${asset?.item || ""} ${asset?.category || ""}`.toLowerCase();
+  if (/roof|shingle|gutter/.test(t)) return "roof";
+  if (/water\s*heater|hot\s*water|tankless/.test(t)) return "water_heater";
+  if (/hvac|air handler|furnace|condens|heat pump|a\/c|\bac\b|air.?condition|mini.?split|\bhandler\b/.test(t)) return "hvac";
+  if (/electrical panel|breaker|fuse box|service panel|\bpanel\b/.test(t)) return "electrical_panel";
+  if (/window|door|slider|sliding|garage/.test(t)) return "windows_doors";
+  if (/plumb|pipe|sewer|main shut|supply line|water softener|sump/.test(t)) return "plumbing";
+  if (/refrigerator|fridge|dishwasher|washer|dryer|oven|range|stove|cooktop|microwave|freezer|disposal|appliance/.test(t)) return "appliance";
+  return "general";
+};
+async function assessCall(body) {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) return { status: 401, json: { ok: false, code: "unauthorized" } };
+  const resp = await fetch(ASSESS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: ANON_KEY },
+    body: JSON.stringify(body),
+  });
+  let json = null;
+  try { json = await resp.json(); } catch { /* non-JSON error page */ }
+  return { status: resp.status, json: json || { ok: false, code: "bad_response" } };
+}
+
+// getAssetHealth = the core verdict + (when a fresh confirmed assessment exists) the assessment details for display.
 function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
+  const h = getAssetHealthCore(asset, serviceLogs, tasks, opts);
+  const a = freshAssessment(asset);
+  if (!a) return h;
+  return { ...h, assessed: { score: a.final_score, label: ASSESS_SCALE[a.final_score]?.label, date: String(a.created_at).slice(0, 10), remaining: assessRemainingYears(a), overridden: !!a.score_overridden } };
+}
+
+function getAssetHealthCore(asset, serviceLogs = [], tasks = [], opts = {}) {
   const { hasOpenRecall = false, fallbackAgeYears = null } = opts;
   const cat = CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other";
   const installDate = asset.install_date || asset.purchase_date;
@@ -6971,10 +7075,16 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   // silently treating age as unknown -- an asset with no install date was
   // otherwise skipping every age-based check below and defaulting to
   // "Healthy" regardless of how old it actually is.
-  const ageYears = installDate
+  const asmt = freshAssessment(asset);
+  let ageYears = installDate
     ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000)
     : (fallbackAgeYears !== null && fallbackAgeYears !== undefined && fallbackAgeYears >= 1 ? fallbackAgeYears : null); // a <1yr "home age" (missing/new build year) is noise, not an age
-  const lifespan = Number(asset.lifespan_years) || getDefaultLifespan(asset);
+  // A confirmed photo assessment knows more than the home's build year: use its age estimate when no date is recorded,
+  // and let its remaining-life estimate set the lifespan so the bar and the aging checks reflect what was actually seen.
+  if (asmt && !installDate && asmt.ai_age_years != null) ageYears = Number(asmt.ai_age_years) + yearsSince(asmt.created_at);
+  let lifespan = Number(asset.lifespan_years) || getDefaultLifespan(asset);
+  const asmtRemaining = asmt ? assessRemainingYears(asmt) : null;
+  if (asmtRemaining !== null && ageYears !== null) lifespan = Math.max(1, Math.round((ageYears + asmtRemaining) * 10) / 10);
   // A future install date (typo, or a warranty/PO date entered by mistake)
   // makes ageYears negative -- clamp the displayed percentage to 0 instead
   // of letting a negative number flow into the "% of lifespan used" bar,
@@ -6992,6 +7102,12 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   const overdue = assetTasks.some(t => { const d = t.due_date ? daysTo(t.due_date) : null; return d !== null && d < 0; });
   if (overdue) return { ...HEALTH_STATES.bad, reason:"Service overdue", lifePct, ageYears, lifespan };
 
+  // What was actually seen in photos (and confirmed by the owner) outranks age-based guesses.
+  if (asmt) {
+    if (asmt.final_score <= 1) return { ...HEALTH_STATES.bad, reason:"Assessed as failing", lifePct, ageYears, lifespan };
+    if (asmt.final_score === 2) return { ...HEALTH_STATES.due, reason:"Assessed as poor — plan replacement", lifePct, ageYears, lifespan };
+  }
+
   // A REAL install date makes lifePct a fact worth flagging red/orange over.
   // A home-age fallback estimate (no install date) makes it only a guess --
   // an old house doesn't mean this specific item is actually old, so an
@@ -7000,7 +7116,7 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   // the real age; recalls, overdue tasks and marked-Failed/Fair above still
   // flag normally regardless of whether the age itself is known.
   if (lifePct !== null && lifePct >= 100) {
-    if (!installDate) return { ...HEALTH_STATES.estimated, reason:"Age estimated from home's build year — add install date for an accurate reading", lifePct, ageYears, lifespan };
+    if (!installDate && !asmt) return { ...HEALTH_STATES.estimated, reason:"Age estimated from home's build year — add install date for an accurate reading", lifePct, ageYears, lifespan };
     return { ...HEALTH_STATES.bad, reason:"Past expected lifespan", lifePct, ageYears, lifespan };
   }
 
@@ -7008,7 +7124,7 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   if (taskDueSoon) return { ...HEALTH_STATES.due, reason:"Task due soon", lifePct, ageYears, lifespan };
 
   if (lifePct !== null && lifePct >= 75) {
-    if (!installDate) return { ...HEALTH_STATES.estimated, reason:"Age estimated from home's build year — add install date for an accurate reading", lifePct, ageYears, lifespan };
+    if (!installDate && !asmt) return { ...HEALTH_STATES.estimated, reason:"Age estimated from home's build year — add install date for an accurate reading", lifePct, ageYears, lifespan };
     return { ...HEALTH_STATES.due, reason:"Aging — service recommended", lifePct, ageYears, lifespan };
   }
 
@@ -7017,14 +7133,14 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   if (typeof pm === "string") { try { pm = JSON.parse(pm); } catch { pm = []; } }
   const hasPM = Array.isArray(pm) && pm.length > 0;
   if (hasPM && logs.length === 0) return { ...HEALTH_STATES.heads, reason:"Maintenance recommended", lifePct, ageYears, lifespan };
-  if (asset.condition === "Fair") return { ...HEALTH_STATES.heads, reason:"Fair condition", lifePct, ageYears, lifespan };
+  if (asset.condition === "Fair" || asmt?.final_score === 3) return { ...HEALTH_STATES.heads, reason: asmt ? "Assessed as fair" : "Fair condition", lifePct, ageYears, lifespan };
 
   // No install/purchase date: nothing above flagged a problem, but "Healthy" would be a claim
   // we can't back up (the age is only the home's build year, or missing entirely — a pool then
   // read "0 yrs old · Healthy"). Say plainly that the age is unknown, on every screen.
-  if (!installDate) return { ...HEALTH_STATES.estimated, reason:"Age unknown — add install date for an accurate reading", lifePct, ageYears, lifespan };
+  if (!installDate && !asmt) return { ...HEALTH_STATES.estimated, reason:"Age unknown — add install date for an accurate reading", lifePct, ageYears, lifespan };
 
-  return { ...HEALTH_STATES.ok, reason:"In good shape", lifePct, ageYears, lifespan };
+  return { ...HEALTH_STATES.ok, reason: asmt ? "Assessed in good shape" : "In good shape", lifePct, ageYears, lifespan };
 }
 
 const ASSET_INTEL_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/asset-intelligence";
@@ -8160,6 +8276,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
         "Home health score + factor breakdown",
         "5-year cost forecasting",
         "AI receipt, nameplate & policy scanning",
+        "AI condition assessments from photos — 5 a month",
         "Smart Fill model lookup",
         "Home history report (PDF)",
         "Daily task & warranty reminders",
@@ -8174,6 +8291,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
       features: [
         "Everything in Plus",
         "Ask Steadwell AI assistant — 150 questions a month",
+        "AI condition assessments from photos — 25 a month",
         "Up to 3 properties",
         "Full home document vault",
         "Shared home access — invite spouse/partner",
@@ -12362,7 +12480,578 @@ class AssetDetailErrorBoundary extends Component {
   }
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, onNavigate, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0 }) {
+// ─── CONDITION ASSESSMENT UI ─────────────────────────────────────────────────
+// Photos -> AI proposes a 1-5 grade, findings, remaining life, nameplate details and tasks ->
+// the owner reviews, can change anything, and confirms. See asset-assessment edge function.
+const SEV_STYLE = {
+  info:     { c: "#6E665D", bg: "#EFEBE4", l: "Note" },
+  minor:    { c: "#8A6D1E", bg: "#FBF3DE", l: "Minor" },
+  moderate: { c: "#B8561E", bg: "#FBE9DC", l: "Moderate" },
+  major:    { c: "#B0432B", bg: "#F8DEDA", l: "Major" },
+  safety:   { c: "#FFFFFF", bg: "#B0432B", l: "Safety" },
+};
+const ASSESS_FALLBACK_GUIDE = [
+  { key: "whole", label: "Whole item", hint: "The full item in its setting", required: true },
+  { key: "nameplate", label: "Label or data plate", hint: "Brand, model and serial if there is one", required: false },
+  { key: "problem", label: "Any problem spot", hint: "Close-up of wear, rust, leaks or damage", required: false },
+];
+const ASSESS_MAX_PHOTOS = 6;
+const ASSESS_FILES_URL = "https://hjkyameroqufaojuerns.supabase.co/storage/v1/object/public/expense-files/";
+
+function compressPhoto(file, max = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > max || height > max) {
+        if (width > height) { height = Math.round(height * max / width); width = max; }
+        else { width = Math.round(width * max / height); height = max; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(objectUrl);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("Couldn't process that photo")), "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("That photo format isn't supported. Try a JPEG or PNG.")); };
+    img.src = objectUrl;
+  });
+}
+
+function ScoreDots({ score, size = 9 }) {
+  const sc = ASSESS_SCALE[score] || ASSESS_SCALE[3];
+  return (
+    <span style={{ display: "inline-flex", gap: 3, alignItems: "center" }} aria-label={`${score} of 5`}>
+      {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ width: size, height: size, borderRadius: "50%", background: i <= score ? sc.color : "var(--stone)" }} />)}
+    </span>
+  );
+}
+
+function ConditionCard({ asset, rows, canAssess, onAssess, onUpgrade }) {
+  const [showAllFindings, setShowAllFindings] = useState(false);
+  const [showHist, setShowHist] = useState(false);
+  const list = (rows || []).filter(r => r.asset_id === asset.id && r.status === "confirmed")
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const latest = list[0];
+  const sc = latest ? (ASSESS_SCALE[latest.final_score] || ASSESS_SCALE[3]) : null;
+  const monthsOld = latest ? Math.floor(yearsSince(latest.created_at) * 12) : 0;
+  const stale = latest && monthsOld >= ASSESS_REASSESS_MONTHS;
+  const remaining = latest ? assessRemainingYears(latest) : null;
+  const findings = Array.isArray(latest?.ai_findings) ? latest.ai_findings : [];
+  const shownFindings = showAllFindings ? findings : findings.slice(0, 3);
+  const photos = (latest?.photo_paths || []).slice(0, ASSESS_MAX_PHOTOS);
+  const btn = { fontSize: ".82rem", fontWeight: 700, padding: ".5rem .95rem", borderRadius: 10, cursor: "pointer", fontFamily: "inherit" };
+
+  return (
+    <div className="asm-card" data-testid="condition-card">
+      <div className="asm-card-hdr">
+        <span style={{ fontSize: "1.1rem" }}>🩺</span>
+        <span style={{ fontSize: "1rem", fontWeight: 700, flex: 1 }}>Condition</span>
+        <span className="asm-tag">AI-assisted</span>
+      </div>
+
+      {!latest && (
+        <div style={{ padding: "1rem" }}>
+          <div style={{ fontSize: ".9rem", color: "#5A534B", lineHeight: 1.5 }}>
+            Take a few photos and Steadwell grades this item 1 to 5, estimates how long it has left, reads the label, and suggests what to do next. You review and confirm everything before it's saved.
+          </div>
+          <button onClick={canAssess ? onAssess : onUpgrade} style={{ ...btn, marginTop: ".8rem", background: "var(--pine)", color: "#fff", border: "none" }}>
+            {canAssess ? "Assess condition" : "Unlock with Plus"}
+          </button>
+          {!canAssess && <div style={{ fontSize: ".75rem", color: "#8A8178", marginTop: ".5rem" }}>Condition assessments are included with Plus and Pro.</div>}
+        </div>
+      )}
+
+      {latest && (
+        <div style={{ padding: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: ".85rem", flexWrap: "wrap" }}>
+            <div style={{ background: sc.bg, color: sc.color, borderRadius: 14, padding: ".5rem .9rem", textAlign: "center", minWidth: 78 }}>
+              <div style={{ fontFamily: "'Fraunces',serif", fontSize: "1.7rem", fontWeight: 700, lineHeight: 1 }}>{latest.final_score}<span style={{ fontSize: ".95rem", opacity: .7 }}>/5</span></div>
+              <div style={{ fontSize: ".74rem", fontWeight: 700, marginTop: 2 }}>{sc.label}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <ScoreDots score={latest.final_score} />
+              <div style={{ fontSize: ".8rem", color: "#6E665D", marginTop: ".35rem" }}>
+                Assessed {fmtD(String(latest.created_at).slice(0, 10))}
+                {remaining !== null && <> · about {remaining < 1 ? "under a year" : `${Math.round(remaining)} yr${Math.round(remaining) === 1 ? "" : "s"}`} left</>}
+              </div>
+              {latest.score_overridden && <div style={{ fontSize: ".74rem", color: "#8A8178", marginTop: 2 }}>AI suggested {latest.ai_score}/5 · you set {latest.final_score}/5</div>}
+            </div>
+          </div>
+
+          {stale && (
+            <div className="asm-note" style={{ marginTop: ".8rem" }}>
+              Last assessed {monthsOld} months ago. Condition changes, so it's worth taking fresh photos.
+            </div>
+          )}
+
+          {latest.ai_summary && <div style={{ fontSize: ".88rem", color: "#4A443E", lineHeight: 1.5, marginTop: ".85rem" }}>{latest.ai_summary}</div>}
+
+          {shownFindings.length > 0 && (
+            <div style={{ marginTop: ".8rem" }}>
+              {shownFindings.map((f, i) => {
+                const sv = SEV_STYLE[f.severity] || SEV_STYLE.info;
+                return (
+                  <div key={i} style={{ display: "flex", gap: ".55rem", alignItems: "flex-start", padding: ".4rem 0", borderTop: i ? "1px solid var(--cream2)" : "none" }}>
+                    <span className="asm-sev" style={{ background: sv.bg, color: sv.c }}>{sv.l}</span>
+                    <span style={{ fontSize: ".84rem", color: "#4A443E", lineHeight: 1.4 }}><b>{f.area}.</b> {f.observation}</span>
+                  </div>
+                );
+              })}
+              {findings.length > 3 && (
+                <button className="asm-link" onClick={() => setShowAllFindings(v => !v)}>{showAllFindings ? "Show fewer" : `Show all ${findings.length} findings`}</button>
+              )}
+            </div>
+          )}
+
+          {photos.length > 0 && (
+            <div className="asm-thumbs">
+              {photos.map(p => <SImg key={p} src={ASSESS_FILES_URL + p} alt="Assessment photo" className="asm-thumb" />)}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: ".6rem", marginTop: ".9rem", flexWrap: "wrap", alignItems: "center" }}>
+            <button onClick={canAssess ? onAssess : onUpgrade} style={{ ...btn, background: stale ? "var(--pine)" : "var(--white)", color: stale ? "#fff" : "var(--pine)", border: "1.5px solid var(--pine)" }}>
+              {canAssess ? "Re-assess" : "Unlock re-assessing"}
+            </button>
+            {list.length > 1 && <button className="asm-link" onClick={() => setShowHist(v => !v)}>{showHist ? "Hide history" : `History (${list.length})`}</button>}
+          </div>
+
+          {showHist && (
+            <div style={{ marginTop: ".7rem", borderTop: "1px solid var(--cream2)" }}>
+              {list.map(r => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: ".6rem", padding: ".5rem 0", borderBottom: "1px solid var(--cream2)", fontSize: ".82rem" }}>
+                  <span style={{ width: 84, color: "#6E665D" }}>{fmtD(String(r.created_at).slice(0, 10))}</span>
+                  <ScoreDots score={r.final_score} size={8} />
+                  <span style={{ fontWeight: 700, color: (ASSESS_SCALE[r.final_score] || {}).color }}>{r.final_score}/5</span>
+                  {r.score_overridden && <span style={{ fontSize: ".7rem", color: "#8A8178" }}>edited from {r.ai_score}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="asm-fine">AI estimates from photos are not a professional inspection.</div>
+    </div>
+  );
+}
+
+function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClose, onUpgrade, onDone, toast }) {
+  const cls = assessClassOf(asset);
+  const [step, setStep] = useState("capture");            // capture | working | review | error | done
+  const [rubric, setRubric] = useState(null);
+  const [photos, setPhotos] = useState([]);                // { id, key, label, blob, url }
+  const [notes, setNotes] = useState("");
+  const [usage, setUsage] = useState(null);
+  const [phase, setPhase] = useState("");
+  const [err, setErr] = useState(null);                    // { message, tips? }
+  const [prop, setProp] = useState(null);
+  const [score, setScore] = useState(3);
+  const [remaining, setRemaining] = useState("");
+  const [reason, setReason] = useState("");
+  const [pick, setPick] = useState({});
+  const [taskPick, setTaskPick] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRefs = useRef({});
+  const aliveRef = useRef(true);
+  const photosRef = useRef([]);
+  photosRef.current = photos;
+  useEffect(() => () => { aliveRef.current = false; photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); }, []);
+
+  // rubric (photo guide) comes from the database so it can change without an app release
+  useEffect(() => {
+    let off = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from("condition_rubrics").select("*").in("asset_class", [cls, "general"]).eq("active", true).is("org_id", null);
+        const mine = (data || []).filter(r => r.asset_class === cls).sort((a, b) => b.version - a.version)[0]
+          || (data || []).filter(r => r.asset_class === "general").sort((a, b) => b.version - a.version)[0];
+        if (!off && mine) setRubric(mine);
+      } catch { /* the built-in guide is used */ }
+    })();
+    assessCall({ action: "usage" }).then(({ json }) => { if (!off && json?.usage) setUsage(json.usage); }).catch(() => {});
+    return () => { off = true; };
+  }, [cls]);
+
+  const guide = Array.isArray(rubric?.photo_guide) && rubric.photo_guide.length ? rubric.photo_guide : ASSESS_FALLBACK_GUIDE;
+  const busy = step === "working" || saving;
+  const closeIfIdle = () => { if (!busy) onClose(); };
+
+  const addPhoto = async (key, label, file) => {
+    if (!file) return;
+    if (photosRef.current.length >= ASSESS_MAX_PHOTOS && !photosRef.current.find(p => p.key === key)) { toast(`Up to ${ASSESS_MAX_PHOTOS} photos`, "error"); return; }
+    setPhotoBusy(true);
+    try {
+      const blob = await compressPhoto(file);
+      const url = URL.createObjectURL(blob);
+      setPhotos(ps => {
+        const old = ps.find(p => p.key === key);
+        if (old) URL.revokeObjectURL(old.url);
+        return [...ps.filter(p => p.key !== key), { id: `${key}-${Date.now()}`, key, label, blob, url }];
+      });
+    } catch (e) { toast(e.message || "Couldn't use that photo", "error"); }
+    setPhotoBusy(false);
+  };
+  const removePhoto = (key) => setPhotos(ps => { const old = ps.find(p => p.key === key); if (old) URL.revokeObjectURL(old.url); return ps.filter(p => p.key !== key); });
+
+  const analyze = async () => {
+    if (!photos.length) return;
+    setStep("working"); setErr(null); setPhase("Uploading photos…");
+    const stamp = Date.now();
+    const ordered = [...photos].sort((a, b) => guide.findIndex(g => g.key === a.key) - guide.findIndex(g => g.key === b.key));
+    const paths = [];
+    try {
+      for (let i = 0; i < ordered.length; i++) {
+        const path = `${userId}/assessments/${asset.id}/${stamp}-${i}.jpg`;
+        const { error } = await supabase.storage.from("expense-files").upload(path, ordered[i].blob, { contentType: "image/jpeg", upsert: true });
+        if (error) throw new Error("upload");
+        paths.push(path);
+      }
+    } catch {
+      if (!aliveRef.current) return;
+      setErr({ message: "Couldn't upload your photos. Check your connection and try again." }); setStep("error"); return;
+    }
+    if (!aliveRef.current) return;
+    setPhase("Looking closely at your photos… this takes about 20 seconds");
+    try {
+      const { status, json } = await assessCall({
+        action: "assess", asset_id: asset.id, photo_paths: paths, photo_labels: ordered.map(p => p.label),
+        notes: notes.trim(), asset_class: cls, today: localISO(),
+      });
+      if (!aliveRef.current) return;
+      if (json?.ok && json.proposal) {
+        const p = json.proposal, d = p.detected || {};
+        if (json.usage) setUsage(json.usage);
+        setProp(p); setScore(p.score);
+        setRemaining(p.remaining_mid != null ? String(p.remaining_mid) : "");
+        setReason("");
+        // nameplate details: pre-tick only where nothing is recorded yet
+        const rows = buildAttrRows(asset, d);
+        setPick(Object.fromEntries(rows.map(r => [r.key, r.defaultOn])));
+        const open = (tasks || []).filter(t => t.asset_id === asset.id && t.status !== "Completed").map(t => String(t.title || "").trim().toLowerCase());
+        setTaskPick((p.tasks || []).map(t => !open.includes(String(t.title || "").trim().toLowerCase())));
+        setStep("review");
+      } else if (json?.code === "unclear_photos") {
+        setErr({ message: json.error, tips: json.missing_views || [] }); setStep("error");
+      } else if (json?.code === "limit_reached") {
+        if (json.usage) setUsage(json.usage);
+        setErr({ message: `You've used all ${json.usage?.limit ?? ""} assessments for this month${json.usage?.resets ? ` (resets ${fmtD(json.usage.resets)})` : ""}.`, limit: true }); setStep("error");
+      } else if (json?.code === "plan_required") {
+        setErr({ message: "Condition assessments are included with Plus and Pro.", upgrade: true }); setStep("error");
+      } else if (status === 404 && json?.code !== "no_asset") {
+        setErr({ message: "Condition assessments aren't available on your account yet. Please check back soon." }); setStep("error");
+      } else if (status === 401) {
+        setErr({ message: "Your session expired. Please refresh the page and sign in again." }); setStep("error");
+      } else {
+        setErr({ message: json?.error || "Something went wrong. Your assessment wasn't counted; please try again." }); setStep("error");
+      }
+    } catch {
+      if (!aliveRef.current) return;
+      setErr({ message: "Couldn't reach Steadwell. Check your connection and try again." }); setStep("error");
+    }
+  };
+
+  const attrRows = prop ? buildAttrRows(asset, prop.detected || {}) : [];
+  const finalRemaining = remaining === "" ? null : Math.max(0, Math.min(80, Number(remaining)));
+  const overridden = prop ? score !== prop.score : false;
+
+  const confirm = async () => {
+    if (!prop || saving) return;
+    setSaving(true);
+    const chosenTasks = (prop.tasks || []).filter((_, i) => taskPick[i]);
+    const chosenAttrs = attrRows.filter(r => pick[r.key]);
+    try {
+      const { json } = await assessCall({
+        action: "confirm", proposal_id: prop.id, final_score: score,
+        final_remaining_years: finalRemaining !== null && Number.isFinite(finalRemaining) ? finalRemaining : null,
+        override_reason: overridden ? reason.trim() : "",
+        applied_attributes: Object.fromEntries(chosenAttrs.map(r => [r.label, r.shown])),
+        tasks_added: chosenTasks.length,
+      });
+      if (!json?.ok || !json.assessment) {
+        setSaving(false);
+        toast(json?.error || "Couldn't save the assessment. Please try again.", "error");
+        return;
+      }
+      const row = json.assessment;
+      // asset: condition from the grade + any nameplate details the owner ticked
+      const updates = { condition: conditionFromScore(score) };
+      chosenAttrs.forEach(r => { updates[r.col] = r.value; });
+      let assetUpdate = null, problems = 0;
+      const { data: au, error: aErr } = await supabase.from("warranties").update(updates).eq("id", asset.id).select();
+      if (aErr) problems++; else assetUpdate = { ...asset, ...((au && au[0] && au[0].id === asset.id) ? au[0] : {}), ...updates };
+      // tasks the owner ticked
+      const newTasks = [];
+      for (const t of chosenTasks) {
+        const payload = { title: t.title, due_date: t.due_date, status: "Scheduled", priority: t.priority || "Medium", category: t.category || "Other", notes: t.notes || "", user_id: userId, property_id: propertyId, asset_id: asset.id };
+        let { data, error } = await supabase.from("tasks").insert([payload]).select();
+        if (error) { delete payload.asset_id; ({ data, error } = await supabase.from("tasks").insert([payload]).select()); }
+        if (!error && data && data[0]) newTasks.push(data[0]); else problems++;
+      }
+      onDone({ row, asset: assetUpdate, tasks: newTasks });
+      toast(problems ? "Assessment saved, but some changes couldn't be applied" : "Assessment saved ✓", problems ? "error" : undefined);
+      if (aliveRef.current) { setSaving(false); onClose(); }
+    } catch {
+      if (aliveRef.current) setSaving(false);
+      toast("Couldn't save the assessment. Please try again.", "error");
+    }
+  };
+
+  const remainingLeft = usage ? usage.remaining : null;
+  const pill = (n) => {
+    const sc = ASSESS_SCALE[n]; const on = score === n;
+    return (
+      <button key={n} type="button" onClick={() => setScore(n)} className="asm-pill"
+        style={{ background: on ? sc.color : "var(--white)", color: on ? "#fff" : sc.color, borderColor: sc.color }} aria-pressed={on}>
+        <b>{n}</b><span>{sc.label}</span>
+      </button>
+    );
+  };
+
+  let footer = null, body = null;
+  if (step === "capture") {
+    const canGo = photos.length > 0 && !photoBusy && !(remainingLeft === 0);
+    body = (
+      <div>
+        <div style={{ fontSize: ".88rem", color: "#5A534B", lineHeight: 1.5, marginBottom: ".9rem" }}>
+          Add up to {ASSESS_MAX_PHOTOS} photos of <b>{asset.item}</b>. Good light and a clear view of the label help most.
+        </div>
+        <div className="asm-slots">
+          {guide.map(g => {
+            const ph = photos.find(p => p.key === g.key);
+            return (
+              <div key={g.key} className={"asm-slot" + (ph ? " has" : "")}>
+                <input ref={el => { fileRefs.current[g.key] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                  onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; addPhoto(g.key, g.label, f); }} />
+                {ph ? (
+                  <>
+                    <img src={ph.url} alt={g.label} className="asm-slot-img" onClick={() => fileRefs.current[g.key]?.click()} />
+                    <button type="button" className="asm-x" aria-label={`Remove ${g.label} photo`} onClick={() => removePhoto(g.key)}>✕</button>
+                  </>
+                ) : (
+                  <button type="button" className="asm-slot-add" onClick={() => fileRefs.current[g.key]?.click()}>
+                    <span style={{ fontSize: "1.4rem" }}>📷</span>
+                  </button>
+                )}
+                <div className="asm-slot-label">{g.label}{g.required && !ph && <em> · recommended</em>}</div>
+                <div className="asm-slot-hint">{g.hint}</div>
+              </div>
+            );
+          })}
+          {(() => {
+            const extras = photos.filter(p => p.key.startsWith("extra-"));
+            const free = photos.length < ASSESS_MAX_PHOTOS;
+            const nextKey = `extra-${extras.length + 1}`;
+            return (
+              <>
+                {extras.map(ph => (
+                  <div key={ph.key} className="asm-slot has">
+                    <img src={ph.url} alt="Extra photo" className="asm-slot-img" />
+                    <button type="button" className="asm-x" aria-label="Remove photo" onClick={() => removePhoto(ph.key)}>✕</button>
+                    <div className="asm-slot-label">Extra photo</div>
+                  </div>
+                ))}
+                {free && (
+                  <div className="asm-slot">
+                    <input ref={el => { fileRefs.current[nextKey] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; addPhoto(nextKey, "Extra photo", f); }} />
+                    <button type="button" className="asm-slot-add" onClick={() => fileRefs.current[nextKey]?.click()}><span style={{ fontSize: "1.4rem" }}>＋</span></button>
+                    <div className="asm-slot-label">Add another</div>
+                    <div className="asm-slot-hint">Anything else worth a look</div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+        <div className="field" style={{ marginTop: ".9rem" }}>
+          <label>Anything the AI should know? <span style={{ color: "#A8A09A", fontWeight: 500 }}>(optional)</span></label>
+          <textarea value={notes} maxLength={300} onChange={e => setNotes(e.target.value)} placeholder="e.g. There was a leak last spring, or it makes a rattling noise" style={{ minHeight: 60 }} />
+        </div>
+        <div className="asm-note" style={{ marginTop: ".6rem" }}>
+          Your photos are saved privately in your account and sent securely to Claude, Anthropic's AI, to produce the assessment. Steadwell doesn't use them to train AI. AI estimates from photos are not a professional inspection.
+        </div>
+        {usage && <div style={{ fontSize: ".78rem", color: remainingLeft === 0 ? "#B0432B" : "#8A8178", marginTop: ".6rem" }}>
+          {remainingLeft === 0 ? `You've used all ${usage.limit} assessments this month (resets ${fmtD(usage.resets)}).` : `${remainingLeft} of ${usage.limit} assessments left this month. Only successful assessments count.`}
+        </div>}
+      </div>
+    );
+    footer = (
+      <div className="modal-footer">
+        <button className="btn btn-ghost" onClick={closeIfIdle}>Cancel</button>
+        <button className="btn btn-primary" disabled={!canGo} style={!canGo ? { opacity: .5, cursor: "not-allowed" } : undefined} onClick={analyze}>
+          {photoBusy ? "Preparing photo…" : "Analyze photos"}
+        </button>
+      </div>
+    );
+  } else if (step === "working") {
+    body = (
+      <div style={{ textAlign: "center", padding: "2.2rem 1rem" }}>
+        <div className="asm-spin" aria-hidden="true" />
+        <div style={{ fontWeight: 700, marginTop: "1rem" }}>{phase}</div>
+        <div style={{ fontSize: ".8rem", color: "#8A8178", marginTop: ".4rem" }}>Please keep this window open.</div>
+      </div>
+    );
+    footer = <div className="modal-footer"><button className="btn btn-ghost" disabled>Working…</button></div>;
+  } else if (step === "error") {
+    body = (
+      <div style={{ padding: ".5rem 0" }}>
+        <div className="asm-note" style={{ background: "#FBEDE8", borderColor: "#EBC5B8", color: "#7A2E1C" }}>{err?.message}</div>
+        {err?.tips?.length > 0 && (
+          <div style={{ marginTop: ".8rem", fontSize: ".86rem" }}>
+            <b>Try adding:</b>
+            <ul style={{ margin: ".3rem 0 0 1.1rem", padding: 0 }}>{err.tips.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          </div>
+        )}
+      </div>
+    );
+    footer = (
+      <div className="modal-footer">
+        <button className="btn btn-ghost" onClick={onClose}>Close</button>
+        {err?.upgrade ? <button className="btn btn-primary" onClick={() => { onClose(); onUpgrade(); }}>See plans</button>
+          : err?.limit ? null
+          : <button className="btn btn-primary" onClick={() => { setErr(null); setStep("capture"); }}>Back to photos</button>}
+      </div>
+    );
+  } else if (step === "review" && prop) {
+    const sc = ASSESS_SCALE[prop.score];
+    body = (
+      <div>
+        <div style={{ display: "flex", gap: ".85rem", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ background: sc.bg, color: sc.color, borderRadius: 14, padding: ".5rem .9rem", textAlign: "center", minWidth: 84 }}>
+            <div style={{ fontSize: ".66rem", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }}>AI suggests</div>
+            <div style={{ fontFamily: "'Fraunces',serif", fontSize: "1.7rem", fontWeight: 700, lineHeight: 1.1 }}>{prop.score}<span style={{ fontSize: ".95rem", opacity: .7 }}>/5</span></div>
+            <div style={{ fontSize: ".74rem", fontWeight: 700 }}>{sc.label}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 160, fontSize: ".86rem", color: "#4A443E", lineHeight: 1.5 }}>
+            {prop.summary}
+            <div style={{ fontSize: ".74rem", color: "#8A8178", marginTop: ".3rem" }}>
+              Confidence: {prop.confidence}{prop.photo_quality !== "good" ? ` · photos: ${prop.photo_quality}` : ""}
+            </div>
+          </div>
+        </div>
+
+        {prop.needs_professional && (
+          <div className="asm-note" style={{ background: "#FBEDE8", borderColor: "#EBC5B8", color: "#7A2E1C", marginTop: ".8rem" }}>
+            <b>Have a licensed professional take a look.</b> {prop.professional_reason}
+          </div>
+        )}
+
+        <div className="asm-sec">Your call</div>
+        <div className="asm-pills">{[1, 2, 3, 4, 5].map(pill)}</div>
+        {overridden && (
+          <div className="field" style={{ marginTop: ".6rem" }}>
+            <label>Why the change? <span style={{ color: "#A8A09A", fontWeight: 500 }}>(optional)</span></label>
+            <input value={reason} maxLength={300} onChange={e => setReason(e.target.value)} placeholder="e.g. I can see a leak the photos missed" />
+          </div>
+        )}
+        <div className="field" style={{ marginTop: ".7rem" }}>
+          <label>Years of life left</label>
+          <input type="number" min="0" max="80" step="0.5" value={remaining} onChange={e => setRemaining(e.target.value)} placeholder="Unknown" />
+          <div style={{ fontSize: ".74rem", color: "#8A8178", marginTop: 3 }}>
+            {prop.remaining_low != null ? `AI estimate: ${prop.remaining_low === prop.remaining_high ? prop.remaining_low : `${prop.remaining_low} to ${prop.remaining_high}`} years.` : "The AI couldn't estimate this."}
+            {" "}Used for your health score and 5-year forecast.
+          </div>
+        </div>
+
+        {prop.findings.length > 0 && (
+          <>
+            <div className="asm-sec">What it saw</div>
+            {prop.findings.map((f, i) => {
+              const sv = SEV_STYLE[f.severity] || SEV_STYLE.info;
+              return (
+                <div key={i} style={{ display: "flex", gap: ".55rem", alignItems: "flex-start", padding: ".4rem 0", borderTop: i ? "1px solid var(--cream2)" : "none" }}>
+                  <span className="asm-sev" style={{ background: sv.bg, color: sv.c }}>{sv.l}</span>
+                  <span style={{ fontSize: ".84rem", color: "#4A443E", lineHeight: 1.4 }}><b>{f.area}.</b> {f.observation}{f.photo ? <span style={{ color: "#A8A09A" }}> (photo {f.photo})</span> : null}</span>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {prop.missing_views?.length > 0 && (
+          <div style={{ fontSize: ".8rem", color: "#6E665D", marginTop: ".6rem" }}>
+            <b>To sharpen this next time:</b> {prop.missing_views.join("; ")}.
+          </div>
+        )}
+
+        {(attrRows.length > 0 || (!asset.install_date && !asset.purchase_date && prop.age_years != null)) && (
+          <>
+            <div className="asm-sec">Details it read from the photos</div>
+            {attrRows.map(r => (
+              <label key={r.key} className="asm-check">
+                <input type="checkbox" checked={!!pick[r.key]} onChange={e => setPick(p => ({ ...p, [r.key]: e.target.checked }))} />
+                <span>
+                  <b>{r.label}:</b> {r.shown}
+                  {r.current ? <span style={{ color: "#A8A09A" }}> (now: {r.current}; tick to replace)</span> : <span style={{ color: "#A8A09A" }}> (not filled in yet)</span>}
+                  {r.note && <span style={{ display: "block", fontSize: ".72rem", color: "#8A8178" }}>{r.note}</span>}
+                </span>
+              </label>
+            ))}
+            {!asset.install_date && !asset.purchase_date && prop.age_years != null && (
+              <div style={{ fontSize: ".78rem", color: "#6E665D", marginTop: ".3rem" }}>
+                No install date is recorded, so Steadwell will use the AI's age estimate (about {Math.round(prop.age_years)} years) until you add one.
+              </div>
+            )}
+          </>
+        )}
+
+        {prop.tasks.length > 0 && (
+          <>
+            <div className="asm-sec">Suggested tasks</div>
+            {prop.tasks.map((t, i) => (
+              <label key={i} className="asm-check">
+                <input type="checkbox" checked={!!taskPick[i]} onChange={e => setTaskPick(tp => tp.map((v, j) => j === i ? e.target.checked : v))} />
+                <span>
+                  <b>{t.title}</b>
+                  <span style={{ display: "block", fontSize: ".74rem", color: "#8A8178" }}>{t.priority} priority · due {fmtD(t.due_date)}{t.notes ? ` · ${t.notes}` : ""}</span>
+                </span>
+              </label>
+            ))}
+          </>
+        )}
+      </div>
+    );
+    footer = (
+      <div className="modal-footer">
+        <button className="btn btn-ghost" disabled={saving} onClick={closeIfIdle}>Discard</button>
+        <button className="btn btn-primary" disabled={saving} onClick={confirm}>{saving ? "Saving…" : "Confirm & save"}</button>
+      </div>
+    );
+  }
+
+  return (
+    <Modal title={`Assess: ${asset.item}`} onClose={closeIfIdle} onSave={() => {}} footer={footer}>
+      {body}
+    </Modal>
+  );
+}
+
+// Which details the AI read that are worth offering to fill in (never silently overwrites).
+function buildAttrRows(asset, d) {
+  const rows = [];
+  const same = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  const add = (key, label, detected, current, col) => {
+    if (!detected || same(detected, current)) return;
+    rows.push({ key, label, shown: detected, value: detected, current: current || "", col, defaultOn: !current });
+  };
+  add("brand", "Brand", d.brand, asset.brand, "brand");
+  add("model", "Model", d.model, asset.model, "model");
+  add("serial", "Serial number", d.serial, asset.serial_number, "serial_number");
+  if (d.manufacture_year && !asset.install_date && !asset.purchase_date) {
+    rows.push({
+      key: "year", label: "Install date (estimate)", shown: `about ${d.manufacture_year}`, value: `${d.manufacture_year}-01-01`, current: "", col: "install_date", defaultOn: true,
+      note: `Uses the manufacture year (${d.year_source === "decoded from serial" ? "decoded from the serial number" : "printed on the label"}); edit it later if you know the real install date.`,
+    });
+  }
+  return rows;
+}
+
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, onNavigate, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0, assessments=[], onAssessed }) {
   // Recall-aware health: Dashboard already runs this same hook (it shares
   // the "sw_recall_cache" localStorage cache, so this normally reads that
   // cache rather than re-hitting the CPSC endpoint). Previously an asset's
@@ -12412,6 +13101,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [serviceAssetId, setServiceAssetId] = useState(null);
   const [serviceConfirm, setServiceConfirm] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [assessOpen, setAssessOpen] = useState(false);
+  useEffect(() => { setAssessOpen(false); }, [selectedAsset]);
   // An asset's detail page starts at the top, not wherever the list was scrolled
   useEffect(() => {
     window.scrollTo({top:0,left:0,behavior:"instant"});
@@ -13110,7 +13801,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               {[
                 {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
                 {label:"Replace",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
-                {label:"Age",val:ageYears!==null&&!ageIsEstimate?(ageYears<1?"<1 yr":`${ageYears} yr${ageYears===1?"":"s"}`):"Unknown"},
+                {label:"Age",val:ageYears!==null&&(!ageIsEstimate||health.assessed)?(ageYears<1&&!ageIsEstimate?"<1 yr":`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"}`):"Unknown"},
               ].map(s=>(
                 <div key={s.label} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:".7rem .5rem",textAlign:"center"}}>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700}}>{s.val}</div>
@@ -13169,6 +13860,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             {/* ── Recall banner ── */}
             {asset.brand && (
               <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} installDate={asset.install_date||asset.purchase_date} />
+            )}
+
+            {/* ── Condition assessment ── */}
+            {!asset.retired_at && !asset.warranty_only && (
+              <ConditionCard asset={asset} rows={assessments} canAssess={!!planData?.aiScan} onAssess={()=>setAssessOpen(true)} onUpgrade={onUpgrade} />
             )}
 
             {/* ── Warranty banner ── */}
@@ -13555,6 +14251,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         {serviceModal && <Modal title={serviceEditId?"Edit Service Log":"Log Service"} onClose={()=>setServiceModal(false)} onSave={saveService}><ServiceLogForm data={serviceEditData} onChange={setServiceEditData} planData={planData} onUpgrade={onUpgrade} userId={userId} contractors={contractors}/></Modal>}
         {serviceConfirm && <Confirm message="This service log entry will be permanently deleted." onConfirm={confirmDelService} onCancel={()=>setServiceConfirm(null)}/>}
         {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
+        {assessOpen && (
+          <AssessFlow asset={asset} userId={userId} propertyId={propertyId} profile={profile} tasks={tasks} planData={planData}
+            onClose={()=>setAssessOpen(false)} onUpgrade={onUpgrade} toast={toast}
+            onDone={({row, asset: updated, tasks: made})=>{
+              onAssessed && onAssessed(row);
+              if (updated) setAssets(prev => prev.map(a => a.id === updated.id ? { ...a, ...updated } : a));
+              if (made && made.length) setTasks(prev => [...made, ...prev]);
+            }}/>
+        )}
         {/* Inline task edit modal */}
         {newTaskData && (
           <Modal title="Schedule Task" onClose={()=>setNewTaskData(null)} onSave={saveNewTask}>
@@ -13919,8 +14624,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                       {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
                       <div className="ac-name" style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
                       <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                        {[a.brand, a.model, ageYears!==null&&!ageIsEstimate?(ageYears<1?"<1 yr old":`${ageYears} yr${ageYears===1?"":"s"} old`):(!isRetired?"Age unknown":null)].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
+                        {[a.brand, a.model, ageYears!==null&&(!ageIsEstimate||health.assessed)?(ageYears<1&&!ageIsEstimate?"<1 yr old":`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old${ageIsEstimate?" (from photos)":""}`):(!isRetired?"Age unknown":null)].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
                       </div>
+                      {health.assessed && !isRetired && (
+                        <div style={{fontSize:".74rem",fontWeight:700,marginTop:2,color:(ASSESS_SCALE[health.assessed.score]||{}).color}}>
+                          Assessed {health.assessed.label} · {health.assessed.score}/5 · {fmtD(health.assessed.date)}
+                        </div>
+                      )}
                       {ageIsEstimate && !isRetired && (
                         <div onClick={e=>{e.stopPropagation();openEdit(a);}}
                           style={{fontSize:".68rem",color:"#A8A09A",marginTop:"1px",cursor:"pointer"}}
@@ -17553,7 +18263,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       ageIsEstimate = !installDate;
       detail = installDate
         ? `${linkedAsset.item} · installed ${fmtD(installDate)} · ${ageYears}yr old`
-        : `${linkedAsset.item} · ~${ageYears}yr old (estimated from home age)`;
+        : `${linkedAsset.item} · ~${ageYears}yr old (${health.assessed ? "estimated from your photo assessment" : "estimated from home age"})`;
     } else {
       // Not tracked as an asset: the home's build year is only a rough hint, never a verdict
       // (an "Electrical Panel" the person hasn't added used to show a red "Needs attention"
@@ -21161,6 +21871,15 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [warranties, setWarranties] = useState([]);
+  const [assessments, setAssessments] = useState([]);   // confirmed condition assessments for the active home
+  const loadAssessments = async (pid) => {
+    if (!pid) { setAssessments([]); return; }
+    try {
+      const { data, error } = await supabase.from("asset_assessments").select("*").eq("property_id", pid).eq("status", "confirmed").order("created_at", { ascending: false }).limit(1000);
+      setAssessments(error ? [] : (data || []));   // table not created yet -> simply no assessments
+    } catch { setAssessments([]); }
+  };
+  setAssessmentIndex(assessments);   // read by getAssetHealth / forecast during this render
   const [expenses, setExpenses] = useState([]);
   const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
@@ -21256,7 +21975,7 @@ export default function App() {
   // ── Load data when user logs in
   useEffect(() => {
     if (!session?.user) {
-      setTasks([]); setWarranties([]); setExpenses([]); setProfile(null);
+      setTasks([]); setWarranties([]); setExpenses([]); setProfile(null); setAssessments([]);
       setAllProfiles([]); setServiceLogs([]);
       setDataLoading(true);
       return;
@@ -21316,6 +22035,7 @@ export default function App() {
       if (!activePid) {
         setTasks([]);
         setWarranties([]);
+        setAssessments([]);
         setExpenses([]);
         setServiceLogs([]);
         setContractors([]);
@@ -21345,6 +22065,7 @@ export default function App() {
       if(e.data) setExpenses(e.data);
       if(sl.data) setServiceLogs(sl.data);
       if(c.data) setContractors(c.data);
+      loadAssessments(activePid);
       setDataLoading(false);
     }
     loadData();
@@ -21415,6 +22136,7 @@ export default function App() {
     setExpenses(e.data    || []);
     setServiceLogs(sl.data || []);
     setProjects(proj.data || []);
+    loadAssessments(propertyId);
     // Note: utilities and bills are managed inside Expenses component
     // and reload automatically via key={activePropertyId} remount
     setDataLoading(false);
@@ -21704,7 +22426,7 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
@@ -26160,7 +26882,7 @@ function PrivacyPage() {
     {t:"1. Who We Are",b:"Steadwell is a home management platform operated by Steadwell, LLC, a Florida limited liability company. This Privacy Policy explains what information we collect, how we use it, and your rights regarding it. By using Steadwell, you agree to the practices described here. Questions? Email privacy@trysteadwell.app."},
     {t:"2. Information We Collect",b:"Information you provide: your email address and name when you create an account; your home address and property details; maintenance records, expenses, warranties, and insurance details you enter; documents, photos, and files you upload; and emails you forward to your unique Steadwell capture address. Information provided by others: if a participating real estate agent gifts you a Steadwell trial, the agent provides us your name and email address so we can send the gift invitation — see Section 5 for how that's handled. Information we retrieve on your behalf: property data from Zillow (via APIllow) when you look up your address; address suggestions from Google Places API as you type. Technical and analytics data: log files, device type, browser type, and IP address for security monitoring and service improvement; anonymized usage analytics via Google Analytics 4 (page views and feature interactions, not linked to your identity); and error monitoring data via Sentry, which may include a replay of your browser session for a random sample of about 5% of sessions, plus 100% of sessions in which an error occurs (personally identifiable information such as form fields is masked in all cases). We do not collect payment card details — those go directly to Stripe."},
     {t:"3. How We Use Your Information",b:"To provide and operate the Service — storing your home data, generating reminders, processing emails you forward to your capture address, and running AI-powered features. To improve the Service — understanding how features are used (never tied to your personal identity). To communicate with you — sending warranty expiry alerts, maintenance reminders, weekly digests, and transactional emails like receipts and account confirmations. To process payments — through Stripe, which handles all payment data directly. To maintain security — detecting and preventing fraud, unauthorized access, and abuse. To comply with law — responding to valid legal requests. We do not use your data to serve third-party advertisements. Ever."},
-    {t:"4. AI Processing",b:"When you use AI-powered features — including email receipt capture, document scanning, and appliance nameplate recognition — your content is sent to Anthropic's Claude API for processing. Anthropic processes this data solely to return results to you and does not use it to train AI models under their standard API terms. Extracted data is returned to Steadwell and stored in your account for your review. You can review, edit, or delete any AI-extracted record at any time. Ask Steadwell (the in-app home assistant): when you ask it a question, it looks up the relevant records in your account — such as your assets, tasks, expenses, service history, contractor names, and document names and summaries, but not your email address, phone number, street address, or account numbers — and sends them with your question to Anthropic's Claude API to write an answer. Unless you turn it off in Settings → Privacy, we also keep the text of your questions, with emails, phone numbers, and addresses automatically removed, under a pseudonymous identifier that is stored separately from your account, to understand what homeowners need and to improve the Service. We do not sell this information, use it for advertising, or share it with anyone other than the service providers in Section 5. If you turn the setting off, we stop saving your questions and delete the ones already saved; we still keep a count of questions (for plan limits) and a generic topic label, such as \"roof replacement,\" that is not linked to you. Saved question text is deleted after 13 months or when you delete your account. AI answers can be wrong, so check important details and consult a licensed professional for safety, legal, insurance, or financial decisions."},
+    {t:"4. AI Processing",b:"When you use AI-powered features — including email receipt capture, document scanning, and appliance nameplate recognition — your content is sent to Anthropic's Claude API for processing. Anthropic processes this data solely to return results to you and does not use it to train AI models under their standard API terms. Extracted data is returned to Steadwell and stored in your account for your review. You can review, edit, or delete any AI-extracted record at any time. Condition assessments: when you run an AI condition assessment on an asset, the photos you add (stored privately in your account) and basic details of that asset are sent to Anthropic\'s Claude API, which proposes a condition grade, findings, and suggested tasks. Nothing is saved to your asset until you review and confirm it. We keep each confirmed assessment, including the AI\'s proposal and your final decision, in your account as an assessment history. Ask Steadwell (the in-app home assistant): when you ask it a question, it looks up the relevant records in your account — such as your assets, tasks, expenses, service history, contractor names, and document names and summaries, but not your email address, phone number, street address, or account numbers — and sends them with your question to Anthropic's Claude API to write an answer. Unless you turn it off in Settings → Privacy, we also keep the text of your questions, with emails, phone numbers, and addresses automatically removed, under a pseudonymous identifier that is stored separately from your account, to understand what homeowners need and to improve the Service. We do not sell this information, use it for advertising, or share it with anyone other than the service providers in Section 5. If you turn the setting off, we stop saving your questions and delete the ones already saved; we still keep a count of questions (for plan limits) and a generic topic label, such as \"roof replacement,\" that is not linked to you. Saved question text is deleted after 13 months or when you delete your account. AI answers can be wrong, so check important details and consult a licensed professional for safety, legal, insurance, or financial decisions."},
     {t:"5. How We Share Your Information",b:"We share your data with the following service providers strictly to operate the Service: Supabase (database, authentication, and file storage — SOC 2 Type II certified, row-level security enforced); Stripe (payment processing); Resend (email delivery and inbound email processing); Anthropic (AI feature processing via Claude API); APIllow / Zillow (property data lookups — your address only); Google Places API (address autocomplete); Sentry (error monitoring and session replay — Sentry may receive page interaction data and a replay of your browser session, either for a random sample of about 5% of all sessions or for any session in which an error occurs; personally identifiable information is masked in all cases and Sentry does not receive your documents or uploaded files); Google Analytics 4 (anonymous usage analytics — GA4 receives anonymized page views and feature usage patterns; no personally identifiable information is shared). We do not sell, rent, broker, or share your personal information with any other third party. The only exception is the optional Contractor Insights program described in Section 6, which is off by default and requires your explicit opt-in."},
     {t:"6. Agent Gift Referrals",b:"If a participating real estate agent gifts you a Steadwell trial, we receive your name and email address from that agent solely to send you the gift invitation. We do not use this information for any other purpose unless and until you claim the gift and create an account. If the gift is not claimed within 12 months, we delete this referral information. Email privacy@trysteadwell.app if you'd like it removed sooner."},
     {t:"7. Optional: Contractor Insights Program",b:"If you choose to opt in from Settings → Privacy, we may share de-identified, aggregated, non-personal trends — such as regional data about home system ages or common maintenance needs — with local contractor partners. This program never includes your name, address, contact information, property details, service history, uploaded documents, or any data that could identify you. We do not sell your information under this program. You can opt in or out at any time from Settings, and this choice has no effect on your access to any Steadwell feature."},
@@ -26188,7 +26910,7 @@ function PrivacyPage() {
       <main id="privacy-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Privacy Policy</h1>
-        <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last updated: September 30, 2026</p>
+        <p style={S.meta}>Effective date: July 9, 2026 &nbsp;&middot;&nbsp; Last updated: October 1, 2026</p>
         <div style={S.notice}><strong style={{color:"#C16140"}}>Plain-English summary:</strong> We store your home data to run the Service — we never sell it, never show you ads, and never share it without your consent. AI features (scanning, email capture) send content to Anthropic's Claude API, which does not train on your data. There's an optional, off-by-default program to share anonymized regional trends with local contractors — your personal data is never included. You own your data, can export it anytime, and can permanently delete your account from Settings.</div>
         {sections.map(({t,b})=><div key={t}><h2 style={S.h2}>{t}</h2><p style={S.p}>{b}</p></div>)}
         <div style={S.cta}>
@@ -26954,7 +27676,11 @@ function computeCostForecast(warranties, years=5) {
 
     const installDate = asset.install_date || asset.purchase_date;
     const ageYears = installDate ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000) : lifespan * 0.3;
-    const remainingLife = Math.max(0, lifespan - ageYears);
+    let remainingLife = Math.max(0, lifespan - ageYears);
+    // A confirmed photo assessment replaces the age-based guess with what was actually seen.
+    const asmt = freshAssessment(asset);
+    const asmtLife = assessRemainingYears(asmt);
+    if (asmtLife !== null) remainingLife = asmtLife;
 
     if (remainingLife < years) {
       const replaceInYear = thisYear + Math.max(0, Math.round(remainingLife));
