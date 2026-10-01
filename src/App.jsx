@@ -1,4 +1,4 @@
-// Steadwell v295 — 2026-10-01
+// Steadwell v296 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -13013,7 +13013,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
       });
       if (!aliveRef.current) return;
       if (json?.ok && json.proposal) {
-        const p = json.proposal, d = p.detected || {};
+        const p = { ...json.proposal, tasks: (json.proposal.tasks || []).filter(t => !isRecordFixTask(t)) }, d = p.detected || {};
         if (json.usage) setUsage(json.usage);
         setProp(p); setScore(p.score);
         setRemaining(p.remaining_mid != null ? String(p.remaining_mid) : "");
@@ -13084,7 +13084,8 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
         if (!error && data && data[0]) newTasks.push(data[0]); else problems++;
       }
       onDone({ row, asset: assetUpdate, tasks: newTasks });
-      toast(problems ? "Assessment saved, but some changes couldn't be applied" : "Assessment saved ✓", problems ? "error" : undefined);
+      const updatedNames = chosenAttrs.map(r => r.label.replace(/ \(.*\)$/, "").toLowerCase());
+      toast(problems ? "Assessment saved, but some changes couldn't be applied" : `Assessment saved ✓${updatedNames.length ? " · updated " + updatedNames.join(", ") : ""}`, problems ? "error" : undefined);
       if (aliveRef.current) { setSaving(false); onClose(); }
     } catch {
       if (aliveRef.current) setSaving(false);
@@ -13325,13 +13326,14 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
 
         {(attrRows.length > 0 || (!asset.install_date && !asset.purchase_date && prop.age_years != null)) && (
           <>
-            <div className="asm-sec">Details it read from the photos</div>
+            <div className="asm-sec">{attrRows.some(r => r.current) ? "Fix your records" : "Details it read from the photos"}</div>
+            {attrRows.length > 0 && <div style={{ fontSize: ".76rem", color: "#8A8178", marginBottom: ".2rem" }}>Ticked items are saved to this asset when you confirm. Untick anything that looks wrong.</div>}
             {attrRows.map(r => (
               <label key={r.key} className="asm-check">
                 <input type="checkbox" checked={!!pick[r.key]} onChange={e => setPick(p => ({ ...p, [r.key]: e.target.checked }))} />
                 <span>
                   <b>{r.label}:</b> {r.shown}
-                  {r.current ? <span style={{ color: "#A8A09A" }}> (now: {r.current}; tick to replace)</span> : <span style={{ color: "#A8A09A" }}> (not filled in yet)</span>}
+                  {r.current ? <span style={{ color: "#A8A09A" }}> (was: {r.current})</span> : <span style={{ color: "#A8A09A" }}> (not filled in yet)</span>}
                   {r.note && <span style={{ display: "block", fontSize: ".72rem", color: "#8A8178" }}>{r.note}</span>}
                 </span>
               </label>
@@ -13376,20 +13378,37 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
 }
 
 // Which details the AI read that are worth offering to fill in (never silently overwrites).
+// Tasks that only ask the owner to fix the record by hand (the review screen updates those fields itself).
+const isRecordFixTask = (t) => {
+  const x = String(t?.title || "");
+  return /\b(update|correct|fix|verify|confirm|record|enter|add|check|log|document|note|photograph|capture|fill)\b/i.test(x)
+    && /\b(model|serial|brand|install(ation)?\s*date|date installed|manufacture\s*date|nameplate|data plate|asset record|records?)\b/i.test(x);
+};
+
 function buildAttrRows(asset, d) {
   const rows = [];
-  const same = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const add = (key, label, detected, current, col) => {
-    if (!detected || same(detected, current)) return;
-    rows.push({ key, label, shown: detected, value: detected, current: current || "", col, defaultOn: !current });
+    if (!detected || norm(detected) === norm(current)) return;
+    // read from the label and different from what is recorded: offered as a correction, ticked, applied on confirm
+    rows.push({ key, label, shown: detected, value: detected, current: current || "", col, defaultOn: true });
   };
   add("brand", "Brand", d.brand, asset.brand, "brand");
   add("model", "Model", d.model, asset.model, "model");
   add("serial", "Serial number", d.serial, asset.serial_number, "serial_number");
-  if (d.manufacture_year && !asset.install_date && !asset.purchase_date) {
+  const recorded = asset.install_date || asset.purchase_date;
+  const mfr = Number(d.manufacture_year);
+  const src = d.year_source === "decoded from serial" ? "decoded from the serial number" : "printed on the label";
+  if (mfr && !recorded) {
     rows.push({
-      key: "year", label: "Install date (estimate)", shown: `about ${d.manufacture_year}`, value: `${d.manufacture_year}-01-01`, current: "", col: "install_date", defaultOn: true,
-      note: `Uses the manufacture year (${d.year_source === "decoded from serial" ? "decoded from the serial number" : "printed on the label"}); edit it later if you know the real install date.`,
+      key: "year", label: "Install date (estimate)", shown: `about ${mfr}`, value: `${mfr}-01-01`, current: "", col: "install_date", defaultOn: true,
+      note: `Uses the manufacture year (${src}); edit it later if you know the real install date.`,
+    });
+  } else if (mfr && recorded && Number(String(recorded).slice(0, 4)) < mfr) {
+    // a unit cannot be installed before it was made, so the recorded date must be wrong
+    rows.push({
+      key: "year_fix", label: "Install date (fix)", shown: `about ${mfr}`, value: `${mfr}-01-01`, current: fmtD(String(recorded).slice(0, 10)), col: "install_date", defaultOn: true,
+      note: `The label says this unit was made in ${mfr} (${src}), so it can't have been installed in ${String(recorded).slice(0, 4)}. Uses the manufacture year as the earliest possible date; edit it later if you know the real one.`,
     });
   }
   return rows;
