@@ -1,4 +1,4 @@
-// Steadwell v292 — 2026-09-30
+// Steadwell v293 — 2026-09-30
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3642,6 +3642,16 @@ const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:0
 // Local-timezone YYYY-MM-DD (avoids UTC off-by-one from toISOString in evening hours)
 const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
+// One definition of "overdue" for the whole app: not finished AND (flagged Overdue OR due date
+// is before today). Status alone goes stale (nothing flips Scheduled -> Overdue overnight), which
+// made the dashboard tile and the Action-needed list disagree.
+const isTaskOverdue = (t, today = localISO()) => {
+  if (!t) return false;
+  const s = t.status;
+  if (s === "Completed" || s === "Done" || s === "Cancelled") return false;
+  if (s === "Overdue") return true;
+  return !!t.due_date && String(t.due_date).slice(0, 10) < today;
+};
 
 // ─── PRIVATE FILE STORAGE (signed URLs) ──────────────────────────────────────
 // The "expense-files" bucket is PRIVATE. Rows keep storing the original object URL
@@ -3859,6 +3869,13 @@ const accountName = (profile, user) => {
   const m = user?.user_metadata || {};
   return (m.full_name || m.name || m.first_name || profile?.name || "").trim();
 };
+
+// Reports and invites label the home's owner with the person's own name (never the
+// home nickname in profiles.name). App sets this each render; shared homes keep
+// whatever name their own profile carries because the viewer isn't their owner.
+let _ownerNameCache = "";
+const setOwnerNameCache = (n) => { _ownerNameCache = n || ""; };
+const ownerLabel = (profile) => (profile?._shared ? (profile?.name || "") : (_ownerNameCache || profile?.name || ""));
 
 // ─── TOAST HOOK ──────────────────────────────────────────────────────────────
 function useToast() {
@@ -5816,13 +5833,10 @@ function NameAndPasswordSection({ profile, setProfile, userId, user, toast, part
     const trimmed = name.trim();
     if (!trimmed || trimmed === shownName) return;
     setSavingName(true);
-    // The name lives on the auth user (so it never gets mistaken for the home
-    // nickname); profiles.name is kept in step for owner labels in reports.
+    // The person's name lives ONLY on the auth user. profiles.name is the home's
+    // nickname ("My Home", "Lake House") and must never be written from here.
     const { error: authErr } = await supabase.auth.updateUser({ data: { full_name: trimmed } });
-    const { error } = profile?.id
-      ? await supabase.from("profiles").update({ name: trimmed }).eq("id", profile.id).eq("user_id", userId)
-      : { error: null };
-    if (!error || !authErr) { if (!error) setProfile(p => ({ ...p, name: trimmed })); toast("Name updated ✓"); }
+    if (!authErr) { setOwnerNameCache(trimmed); toast("Name updated ✓"); }
     else toast("Could not update name — try again", "error");
     setSavingName(false);
   };
@@ -6959,7 +6973,7 @@ function getAssetHealth(asset, serviceLogs = [], tasks = [], opts = {}) {
   // "Healthy" regardless of how old it actually is.
   const ageYears = installDate
     ? (Date.now() - new Date(installDate + "T00:00:00")) / (365.25 * 86400000)
-    : fallbackAgeYears;
+    : (fallbackAgeYears !== null && fallbackAgeYears !== undefined && fallbackAgeYears >= 1 ? fallbackAgeYears : null); // a <1yr "home age" (missing/new build year) is noise, not an age
   const lifespan = Number(asset.lifespan_years) || getDefaultLifespan(asset);
   // A future install date (typo, or a warranty/PO date entered by mistake)
   // makes ageYears negative -- clamp the displayed percentage to 0 instead
@@ -9994,7 +10008,7 @@ function AskSteadwell({ session, propertyId, profile, planData, warranties = [],
     if (has(/roof/i)) assetQs.push("When should I replace my roof?");
     if (has(/hvac|air handler|furnace|condens|a\/c|ac unit/i)) assetQs.push("How old is my HVAC, and what should I plan for?");
     if (has(/water heater/i)) assetQs.push("Is my water heater near the end of its life?");
-    const overdue = tasks.filter(t => t.status === "Overdue").length;
+    const overdue = tasks.filter(t => isTaskOverdue(t)).length;
     const s = assetQs.slice(0, 2);
     if (overdue) s.push(`I have ${overdue} overdue task${overdue > 1 ? "s" : ""}. What should I do first?`);
     if (/\bFL\b|florida/i.test(profile?.address || "")) s.push("Am I ready for hurricane season?");
@@ -10264,8 +10278,8 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
             id:     t.id,
             icon:   CAT_ICONS[t.category] || "🔧",
             label:  t.title,
-            sub:    t.due_date ? (d === 0 ? "Today" : d === 1 ? "Tomorrow" : d < 0 ? `${Math.abs(d)}d overdue` : `Due ${fmtD(t.due_date)}`) : t.status,
-            badge:  t.status === "Overdue" ? "Overdue" : null,
+            sub:    t.due_date ? (t.status === "Completed" ? `Done · ${fmtD(t.due_date)}` : d === 0 ? "Today" : d === 1 ? "Tomorrow" : isTaskOverdue(t) ? `${Math.abs(d)}d overdue` : `Due ${fmtD(t.due_date)}`) : t.status,
+            badge:  isTaskOverdue(t) ? "Overdue" : null,
             action: () => { onNavigate("tasks"); },
           };
         }),
@@ -10522,7 +10536,7 @@ function Calendar({ tasks, mini = false, onDayClick }) {
           const isToday = cell.date === todayStr;
           const isOther = cell.month !== "cur";
           const hasTasks = cell.tasks?.length > 0;
-          const hasOverdue = cell.tasks?.some(t => t.status === "Overdue" || (t.status !== "Completed" && cell.date < todayStr));
+          const hasOverdue = cell.tasks?.some(t => isTaskOverdue(t, todayStr));
           return (
             <div
               key={i}
@@ -11243,8 +11257,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   // focused on "what needs doing today" (urgency, below); this is only a
   // pointer to the single canonical score and its factor breakdown.
   const { score: homeHealthScore, grade: homeHealthGrade, color: homeHealthColor, factors: homeHealthFactors } = computeHealthScore(tasks, warranties, profile, serviceLogs, recalls);
-  const overdue  = tasks.filter(t => t.status==="Overdue").length;
-  const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"; }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
+  const overdue  = tasks.filter(t => isTaskOverdue(t)).length;
+  const upcoming = tasks.filter(t => { const d=daysTo(t.due_date); return d!==null&&d>=0&&d<=30&&t.status!=="Completed"&&!isTaskOverdue(t); }).sort((a,b)=>daysTo(a.due_date)-daysTo(b.due_date));
   const yr = new Date().getFullYear();
   const serviceAllTime = serviceLogs.reduce((s,l)=>s+Number(l.cost||0),0);
   const serviceThisYr  = serviceLogs.filter(l=>l.service_date?.startsWith(String(yr))).reduce((s,l)=>s+Number(l.cost||0),0);
@@ -11340,7 +11354,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   });
 
   // 2. Overdue tasks
-  tasks.filter(t => t.status === "Overdue").forEach(t => {
+  tasks.filter(t => isTaskOverdue(t)).forEach(t => {
     const d = daysTo(t.due_date);
     allFeedItems.push({
       id:     `overdue-${t.id}`,
@@ -11406,7 +11420,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     });
 
   // 5. Upcoming tasks (next 7 days, after overdue)
-  upcoming.filter(t => t.status !== "Overdue").slice(0, 5).forEach(t => {
+  upcoming.filter(t => !isTaskOverdue(t)).slice(0, 5).forEach(t => {
     const d = daysTo(t.due_date);
     allFeedItems.push({
       id:     `upcoming-${t.id}`,
@@ -11524,7 +11538,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
            computeHealthScore, same as My Home, so they never disagree) ── */}
       {!isNewUser && (() => {
         const scoreOn = !!planData.healthScore;
-        const overdueN = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
+        const overdueN = tasks.filter(t => isTaskOverdue(t)).length;
         const scoreRing = homeHealthScore >= 90 ? "#7DCBA1" : homeHealthScore >= 75 ? "#A9D8B5" : homeHealthScore >= 60 ? "#F0CE7A" : "#F0A57F";
         const R = 40, C = 2 * Math.PI * R;
         const stats = [
@@ -11981,14 +11995,14 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     setModal(true);
   };
 
-  const overdueCount = tasks.filter(t => t.status !== "Completed" && t.due_date && daysTo(t.due_date) < 0).length;
+  const overdueCount = tasks.filter(t => isTaskOverdue(t)).length;
 
   // Which time bucket a task falls in — drives the summary tiles, the
   // due-date filter and the grouped list headings.
   const bucketOf = (t) => {
     if (t.status === "Completed") return "done";
     const d = daysTo(t.due_date);
-    if (t.status === "Overdue" || (d !== null && d < 0)) return "overdue";
+    if (isTaskOverdue(t)) return "overdue";
     if (d === null) return "none";
     return d <= 7 ? "week" : "later";
   };
@@ -13096,7 +13110,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               {[
                 {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
                 {label:"Replace",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
-                {label:"Age",val:ageYears!==null?`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"}`:"—"},
+                {label:"Age",val:ageYears!==null&&!ageIsEstimate?(ageYears<1?"<1 yr":`${ageYears} yr${ageYears===1?"":"s"}`):"Unknown"},
               ].map(s=>(
                 <div key={s.label} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:".7rem .5rem",textAlign:"center"}}>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700}}>{s.val}</div>
@@ -13106,7 +13120,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             </div>
 
             {/* Lifespan bar */}
-            {lifespanPct !== null && (
+            {lifespanPct !== null && !ageIsEstimate && (
               <div style={{marginTop:"1.1rem"}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"rgba(244,237,223,.7)",marginBottom:".4rem",fontWeight:600}}>
                   <span>Expected lifespan</span><span style={{color:"#E8A87C",fontWeight:700}}>{ageYears} of {lifespanYears} years</span>
@@ -13114,11 +13128,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 <div style={{height:8,background:"rgba(255,255,255,.14)",borderRadius:5,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.key==="ok"?"#6EE7B7":health.key==="estimated"?"rgba(244,237,223,.4)":"#E8825F"}}/>
                 </div>
-                {ageIsEstimate && (
-                  <div onClick={()=>openEdit(asset)} style={{fontSize:".72rem",color:"rgba(244,237,223,.55)",marginTop:".45rem",cursor:"pointer"}}>
-                    Age is estimated from your home's build year · add install date →
-                  </div>
-                )}
+              </div>
+            )}
+            {ageIsEstimate && (
+              <div onClick={()=>openEdit(asset)} style={{fontSize:".78rem",color:"rgba(244,237,223,.7)",marginTop:"1rem",cursor:"pointer"}}>
+                No install date yet · add it for an accurate reading →
               </div>
             )}
           </div>
@@ -13905,14 +13919,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                       {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
                       <div className="ac-name" style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
                       <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                        {[a.brand, a.model, ageYears!==null?`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old${ageIsEstimate?" (est.)":""}`:null].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
+                        {[a.brand, a.model, ageYears!==null&&!ageIsEstimate?(ageYears<1?"<1 yr old":`${ageYears} yr${ageYears===1?"":"s"} old`):(!isRetired?"Age unknown":null)].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
                       </div>
                       {ageIsEstimate && !isRetired && (
                         <div onClick={e=>{e.stopPropagation();openEdit(a);}}
                           style={{fontSize:".68rem",color:"#A8A09A",marginTop:"1px",cursor:"pointer"}}
                           onMouseEnter={e=>e.currentTarget.style.color="var(--pine)"}
                           onMouseLeave={e=>e.currentTarget.style.color="#A8A09A"}>
-                          Age is estimated from your home's build year · add install date →
+                          No install date yet · add it for an accurate reading →
                         </div>
                       )}
                     </div>
@@ -13922,7 +13936,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   </div>
 
                   {/* Health bar — age vs lifespan */}
-                  {lifespanPct !== null && !isRetired && (
+                  {lifespanPct !== null && !isRetired && !ageIsEstimate && (
                     <div style={{marginTop:".9rem"}}>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"#8A8178",marginBottom:".35rem",fontWeight:600}}>
                         <span>Age vs. lifespan</span><span>{ageYears} / {lifespanYears} yrs</span>
@@ -14428,7 +14442,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   // Every dollar lands in a bucket — an expense with no category goes to "Uncategorized"
   // (it used to be dropped, so the shares summed to less than 100%).
   const UNCAT = "Uncategorized";
-  allExpenseItems.forEach(e=>{ const c = e.category || UNCAT; bycat[c]=(bycat[c]||{total:0,count:0}); bycat[c].total+=Number(e.amount||0); bycat[c].count+=1; });
+  // A cost that belongs to a project but has no category of its own is "Projects", not "Uncategorized".
+  const catOf = e => e.category || (e.project_id ? "Projects" : UNCAT);
+  allExpenseItems.forEach(e=>{ const c = catOf(e); bycat[c]=(bycat[c]||{total:0,count:0}); bycat[c].total+=Number(e.amount||0); bycat[c].count+=1; });
   const catData = Object.entries(bycat).sort((a,b)=>b[1].total-a[1].total);
   // Whole-number shares that add up to exactly 100 (largest-remainder rounding)
   const catShareMap = (() => {
@@ -14449,7 +14465,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     service: { label:"Service", color:"var(--rust)", bg:"var(--rust-light)" },
     bill:    { label:"Bill",    color:"#B8861E",     bg:"#FBF3DE" },
   };
-  const catFiltered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>(e.category||UNCAT)===catF);
+  const catFiltered = catF==="All" ? allExpenseItems : allExpenseItems.filter(e=>catOf(e)===catF);
   const typeCounts = catFiltered.reduce((acc,e)=>{ const t=typeOf(e); acc[t]=(acc[t]||0)+1; return acc; },{});
   const typeTabs = ["expense","project","service","bill"].filter(t => typeCounts[t] > 0 || typeF===t);
   const filtered = typeF==="All" ? catFiltered : catFiltered.filter(e => typeOf(e)===typeF);
@@ -16186,7 +16202,7 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
   }
   const photoOf = a => (signedPhoto[a.id] !== undefined ? signedPhoto[a.id] : a.asset_photo_url) || "";
   const addr     = profile?.address || "Your Home";
-  const owner    = profile?.name    || "";
+  const owner    = ownerLabel(profile);
   const today    = new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
   const year     = profile?.year        ? `Built ${profile.year}` : "";
   const sqft     = profile?.sqft        ? `${Number(profile.sqft).toLocaleString()} sqft` : "";
@@ -16524,7 +16540,7 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY_SA}` },
         body: JSON.stringify({
-          ownerName:       profile.name,
+          ownerName:       ownerLabel(profile),
           ownerEmail:      userEmail,
           memberEmail:     inviteEmail.trim().toLowerCase(),
           propertyAddress: profile.address,
@@ -17402,9 +17418,21 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     if (typeof payload.tax_history === "object") payload.tax_history = JSON.stringify(payload.tax_history);
     if (typeof payload.price_history === "object") payload.price_history = JSON.stringify(payload.price_history);
     if (typeof payload.schools === "object") payload.schools = JSON.stringify(payload.schools);
+    // The sale record belongs to an address. If the address changed and the person didn't touch the
+    // price themselves, the old house's "Purchased $X" must not follow them to the new one.
+    const normAddr = (a) => String(a || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const priceTouched = String(editData.last_sale_price ?? "") !== String(profile?.last_sale_price ?? "");
+    if (profile?.id && normAddr(profile.address) && normAddr(editData.address) !== normAddr(profile.address) && !priceTouched) {
+      payload.last_sale_price = "";
+      payload.last_sale_date  = "";
+    }
+    // A price typed by hand is the owner's own record: a later "Refresh data" must never wipe it.
+    if (profile?.id && priceTouched && String(editData.last_sale_price || "").trim()) {
+      try { localStorage.setItem(`sw_sale_manual_${profile.id}`, "1"); } catch {}
+    }
     if(profile?.id) {
       const {error} = await supabase.from("profiles").update(payload).eq("id",profile.id).eq("user_id",userId);
-      if(!error) { setProfile({...editData,id:profile.id}); toast("Home profile saved ✓"); }
+      if(!error) { setProfile({...editData,last_sale_price:payload.last_sale_price,last_sale_date:payload.last_sale_date,id:profile.id}); toast("Home profile saved ✓"); }
       else toast("Error saving","error");
     } else {
       const {data,error} = await supabase.from("profiles").insert([{...payload,user_id:userId}]).select();
@@ -17557,9 +17585,20 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         schools:        result.schools        ? JSON.stringify(result.schools)        : (profile.schools || ""),
       };
       // The sale record belongs to this address: take the lookup's when it has one
+      let clearedSale = null;
       if (result.last_sale_price) {
         updated.last_sale_price = result.last_sale_price;
         updated.last_sale_date  = result.last_sale_date || "";
+      } else if (Number(profile.last_sale_price) > 0) {
+        // The lookup has no sale on record for this address. A price the owner typed themselves is
+        // kept; one that came from an earlier lookup (possibly for a previous address) is stale, so clear it.
+        let manual = false;
+        try { manual = localStorage.getItem(`sw_sale_manual_${profile.id}`) === "1"; } catch {}
+        if (!manual) {
+          clearedSale = Number(profile.last_sale_price);
+          updated.last_sale_price = "";
+          updated.last_sale_date  = "";
+        }
       }
       const { error } = await supabase.from("profiles").update(updated).eq("id", profile.id);
       if (error) { toast("Could not save — try again","error"); return false; }
@@ -17572,7 +17611,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       (has(result.last_sale_price) ? got : missing).push("sale price");
       let msg = "Refreshed ✓ " + (got.length ? got.join(", ") : "nothing new");
       if (missing.length) msg += ` · none on record for this address: ${missing.join(", ")}`;
-      if (!result.last_sale_price && Number(profile.last_sale_price) > 0) msg += " · check your Purchased price (Edit home)";
+      if (clearedSale) msg += ` · removed the old purchase price ($${clearedSale.toLocaleString()}) — not on record for this address`;
+      else if (!result.last_sale_price && Number(profile.last_sale_price) > 0) msg += " · your own purchase price was kept";
       toast(msg);
       return true;
     } catch { toast("Refresh failed — try again","error"); return false; }
@@ -18653,7 +18693,7 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
         ["Steadwell Home Data Export"],
         ["Generated", new Date().toLocaleDateString("en-US", {year:"numeric",month:"long",day:"numeric"})],
         ["Home", profile?.address || ""],
-        ["Owner", profile?.name || ""],
+        ["Owner", ownerLabel(profile)],
         [],
         ["Sheet", "Records"],
         ...SHEETS.map(s => [s.name, s.count]),
@@ -21488,7 +21528,7 @@ export default function App() {
   }
 
   // ── Main app
-  const overdue = tasks.filter(t=>t.status==="Overdue").length;
+  const overdue = tasks.filter(t => isTaskOverdue(t)).length;
   const TABS = [
     {id:"dashboard", label:"Dashboard",   icon:"🏠"},
     {id:"tasks",     label:"Tasks",      icon:"✓",  badge:overdue},
@@ -21508,6 +21548,7 @@ export default function App() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const username = (session.user.email || "there").split("@")[0];
+  setOwnerNameCache(accountName(profile, session.user));
 
   return (
     <AppErrorBoundary>
@@ -26826,7 +26867,7 @@ function computeHealthScore(tasks, warranties, profile, serviceLogs=[], recalls=
   // Scheduled / upcoming tasks are good (they mean the home is being planned
   // for), so an open task with a future due date costs nothing.
   const totalTasks = tasks.length;
-  const overdue    = tasks.filter(t => t.status !== "Completed" && t.due_date && t.due_date < today).length;
+  const overdue    = tasks.filter(t => isTaskOverdue(t, today)).length;
   const taskScore  = totalTasks === 0 ? 70
     : Math.max(0, 100 - (overdue / totalTasks) * 100);
 
@@ -26962,7 +27003,7 @@ function HealthScoreWidget({ tasks, warranties, profile, planData, onUpgrade, se
   const dash = (score / 100) * C;
 
   // Contextual summary — what's the most actionable insight right now
-  const overdue   = tasks.filter(t => t.status === "Overdue").length;
+  const overdue   = tasks.filter(t => isTaskOverdue(t)).length;
   const noData    = tasks.length === 0 && warranties.length === 0;
   const summary   = noData
     ? "Add tasks and assets to get your score"
