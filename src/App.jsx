@@ -1,4 +1,4 @@
-// Steadwell v294 — 2026-10-01
+// Steadwell v295 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3660,6 +3660,26 @@ img,.lp-root img{max-width:100%;height:auto}
 .asm-check{display:flex;gap:.6rem;align-items:flex-start;padding:.45rem 0;font-size:.84rem;font-weight:400;letter-spacing:0;text-transform:none;line-height:1.4;cursor:pointer;color:#4A443E}
 .asm-check b{font-weight:700}
 .asm-check input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;margin:2px 0 0;padding:0;width:18px;height:18px;min-width:18px;flex:0 0 18px;border-radius:4px;accent-color:var(--pine)}
+.asm-type{background:#F4EFE6;border:1px solid var(--stone);border-radius:12px;padding:.7rem .8rem;margin-bottom:.9rem}
+.asm-type-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;font-size:.86rem;color:#4A443E}
+.asm-type-sel{width:100%;margin-top:.5rem;padding:.55rem .6rem;border:1.5px solid var(--stone);border-radius:10px;background:var(--white);font-family:inherit;font-size:.9rem}
+.asm-trait{margin-top:.65rem}
+.asm-trait-q{font-size:.76rem;font-weight:700;color:#6E665D;margin-bottom:.3rem}
+.asm-chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.asm-chip{min-height:36px;padding:.35rem .8rem;border-radius:999px;border:1.5px solid var(--stone);background:var(--white);color:#4A443E;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer}
+.asm-chip.on{background:var(--pine);border-color:var(--pine);color:#fff}
+.asm-checks{margin-top:.4rem}
+.asm-chk{display:flex;gap:.6rem;align-items:flex-start;padding:.4rem 0;border-top:1px solid var(--cream2)}
+.asm-chk:first-child{border-top:none}
+.asm-chk-ic{flex:0 0 22px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;margin-top:1px}
+.asm-chk-ic.ok{background:#E3F1E7;color:#2F7A4B}
+.asm-chk-ic.watch{background:#FBF3DE;color:#8A6D1E}
+.asm-chk-ic.concern{background:#F8DEDA;color:#B0432B}
+.asm-chk-ic.unseen{background:#EFEBE4;color:#8A8178}
+.asm-chk-body{min-width:0;flex:1}
+.asm-chk-name{font-size:.84rem;font-weight:700;color:#3C3731}
+.asm-chk-crit{font-weight:600;color:#B0432B;font-size:.72rem}
+.asm-chk-note{font-size:.78rem;color:#6E665D;line-height:1.4}
 .asm-spin{width:38px;height:38px;border-radius:50%;border:4px solid var(--stone);border-top-color:var(--pine);margin:0 auto;animation:asmspin .9s linear infinite}
 @keyframes asmspin{to{transform:rotate(360deg)}}
 /* ══ END SAFE RESPONSIVE FIXES ══ */
@@ -7044,6 +7064,97 @@ const assessClassOf = (asset) => {
   if (/refrigerator|fridge|dishwasher|washer|dryer|oven|range|stove|cooktop|microwave|freezer|disposal|appliance/.test(t)) return "appliance";
   return "general";
 };
+
+// ── Asset types: what kind of thing is it, so the questions fit it ──
+// The catalog (keywords, quick questions, checklists, photo guides) lives in the asset_types table so it can
+// grow without an app release. If it can't be loaded, the older class-based flow is used.
+let _assetTypesP = null;
+function loadAssetTypes() {
+  if (_assetTypesP) return _assetTypesP;
+  _assetTypesP = (async () => {
+    try {
+      const { data, error } = await supabase.from("asset_types").select("*").eq("active", true).is("org_id", null);
+      if (error || !Array.isArray(data)) throw new Error("types");
+      const best = new Map();
+      data.forEach(t => { const c = best.get(t.type_key); if (!c || t.version > c.version) best.set(t.type_key, t); });
+      return [...best.values()];
+    } catch { _assetTypesP = null; return []; }
+  })();
+  return _assetTypesP;
+}
+function routeAssetType(asset, types) {
+  const list = Array.isArray(types) ? types : [];
+  if (!list.length) return null;
+  const pick = (text, minPrio) => {
+    let best = null;
+    for (const t of list) {
+      if (!t.keywords || (t.priority ?? 0) < minPrio) continue;
+      let m = null;
+      try { m = new RegExp(t.keywords, "i").exec(text); } catch { m = null; }
+      if (!m) continue;
+      const score = [t.priority ?? 0, m[0].length];
+      if (!best || score[0] > best.s[0] || (score[0] === best.s[0] && score[1] > best.s[1])) best = { t, s: score };
+    }
+    return best?.t || null;
+  };
+  const item = String(asset?.item || "");
+  const hit = pick(item, 11) || pick(`${item} ${asset?.category || ""}`, 0);
+  if (hit) return hit.type_key;
+  const legacy = assessClassOf(asset);
+  return (list.find(t => t.type_key === legacy) || list.find(t => t.type_key === "general"))?.type_key || null;
+}
+function prefillTraits(type, asset, last) {
+  const out = {};
+  const hay = `${asset?.item || ""} ${asset?.brand || ""} ${asset?.model || ""} ${asset?.category || ""}`;
+  (type?.traits || []).forEach(tr => {
+    const prev = last && last[tr.key];
+    if (prev && (tr.options || []).some(o => o.value === prev)) { out[tr.key] = prev; return; }
+    for (const o of tr.options || []) {
+      if (!o.match) continue;
+      try { if (new RegExp(o.match, "i").test(hay)) { out[tr.key] = o.value; break; } } catch { /* skip bad pattern */ }
+    }
+  });
+  return out;
+}
+const CHECK_UI = {
+  ok:         { icon: "✓", label: "Looks fine", cls: "ok" },
+  watch:      { icon: "!", label: "Keep an eye on it", cls: "watch" },
+  concern:    { icon: "✕", label: "Concern", cls: "concern" },
+  cannot_see: { icon: "?", label: "Couldn't see", cls: "unseen" },
+};
+function checkCounts(checks) {
+  const list = (Array.isArray(checks) ? checks : []).filter(c => c && c.status !== "na");
+  const n = k => list.filter(c => c.status === k).length;
+  return { total: list.length, ok: n("ok"), watch: n("watch"), concern: n("concern"), unseen: n("cannot_see") };
+}
+function checkSummaryText(c) {
+  const bits = [`${c.ok} look fine`];
+  if (c.watch) bits.push(`${c.watch} to watch`);
+  if (c.concern) bits.push(`${c.concern} ${c.concern === 1 ? "concern" : "concerns"}`);
+  if (c.unseen) bits.push(`${c.unseen} couldn't be seen`);
+  return bits.join(" · ");
+}
+function CheckList({ checks }) {
+  const list = (Array.isArray(checks) ? checks : []).filter(c => c && c.status !== "na");
+  const order = { concern: 0, watch: 1, cannot_see: 2, ok: 3 };
+  const sorted = [...list].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+  return (
+    <div className="asm-checks" data-testid="checklist">
+      {sorted.map(c => {
+        const u = CHECK_UI[c.status] || CHECK_UI.cannot_see;
+        return (
+          <div key={c.key} className="asm-chk">
+            <span className={"asm-chk-ic " + u.cls} aria-label={u.label}>{u.icon}</span>
+            <div className="asm-chk-body">
+              <div className="asm-chk-name">{c.label}{c.critical ? <span className="asm-chk-crit"> · safety</span> : null}</div>
+              {c.note ? <div className="asm-chk-note">{c.note}</div> : c.status === "cannot_see" ? <div className="asm-chk-note">Not visible in the photos you sent.</div> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 async function assessCall(body) {
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;
@@ -7571,11 +7682,12 @@ function BarcodeScanButton({ onResult }) {
   };
 
   const handlePhoto = async (e) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
     setMode("reading"); setErr(""); setLoading(true);
     try {
+      file = await prepareImageFile(file);   // Apple HEIC -> JPEG
       // Convert to base64
       const base64 = await new Promise((res, rej) => {
         const reader = new FileReader();
@@ -7669,7 +7781,7 @@ function BarcodeScanButton({ onResult }) {
     <input
       ref={fileRef}
       type="file"
-      accept="image/*"
+      accept={IMAGE_ACCEPT}
       capture="environment"
       style={{display:"none"}}
       onChange={handlePhoto}
@@ -8467,6 +8579,105 @@ const countPdfPages = async (file) => {
   }
 };
 
+// ─── APPLE HEIC / HEIF SUPPORT ───────────────────────────────────────────────
+// iPhones save photos as HEIC. Most desktop browsers cannot display or upload
+// them, and OneDrive/Windows often hands us an empty MIME type. prepareImageFile
+// is the one place every image upload goes through: non-HEIC files pass straight
+// through untouched; HEIC/HEIF files are converted to JPEG in the browser.
+const IMAGE_ACCEPT = "image/*,.heic,.heif";
+const HEIC_FAIL_MSG = "This Apple photo (HEIC) could not be converted. On your iPhone, open Settings > Camera > Formats and choose Most Compatible, or share the photo as a JPEG, then try again.";
+const HEIC_LIB_URLS = {
+  esm: ["https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm"],
+  script: ["https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js", "https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"],
+};
+let _heicLibPromise = null;
+
+function heicByNameOrType(file) {
+  return /heic|heif/i.test(file?.type || "") || /\.(heic|heif)$/i.test(file?.name || "");
+}
+
+// ISO-BMFF sniff: bytes 4-7 are "ftyp", bytes 8-11 are the major brand.
+async function heicBySniff(file) {
+  try {
+    if (!file || typeof file.slice !== "function") return false;
+    const b = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    if (b.length < 12) return false;
+    if (String.fromCharCode(b[4], b[5], b[6], b[7]) !== "ftyp") return false;
+    const brand = String.fromCharCode(b[8], b[9], b[10], b[11]).toLowerCase();
+    return ["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs"].includes(brand);
+  } catch { return false; }
+}
+
+function loadHeicLib() {
+  if (typeof window !== "undefined" && window.__heicConverter) return Promise.resolve(window.__heicConverter);
+  if (_heicLibPromise) return _heicLibPromise;
+  _heicLibPromise = (async () => {
+    for (const url of HEIC_LIB_URLS.esm) {
+      try {
+        const mod = await import(/* @vite-ignore */ url);
+        const fn = mod?.default || mod;
+        if (typeof fn === "function") return fn;
+      } catch { /* try next source */ }
+    }
+    for (const url of HEIC_LIB_URLS.script) {
+      try {
+        if (window.heic2any) return window.heic2any;
+        await new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = url; s.async = true;
+          s.onload = resolve; s.onerror = () => reject(new Error("load"));
+          document.head.appendChild(s);
+        });
+        if (typeof window.heic2any === "function") return window.heic2any;
+      } catch { /* try next source */ }
+    }
+    throw new Error("converter unavailable");
+  })();
+  _heicLibPromise.catch(() => { _heicLibPromise = null; });
+  return _heicLibPromise;
+}
+
+// Safari (and Windows with the HEIF extension) can decode HEIC natively; try that
+// first because it needs no download.
+function heicNativeToJpeg(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        if (!c.width || !c.height) { URL.revokeObjectURL(url); reject(new Error("empty")); return; }
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        c.toBlob(b => b ? resolve(b) : reject(new Error("blob")), "image/jpeg", 0.9);
+      } catch (e) { URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
+    img.src = url;
+  });
+}
+
+async function prepareImageFile(file) {
+  if (!file) return file;
+  const isHeic = heicByNameOrType(file) || (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type || "") && await heicBySniff(file));
+  if (!isHeic) return file;
+  let blob = null;
+  try { blob = await heicNativeToJpeg(file); } catch { blob = null; }
+  if (!blob) {
+    try {
+      const convert = await loadHeicLib();
+      const out = await convert({ blob: file, toType: "image/jpeg", quality: 0.9 });
+      blob = Array.isArray(out) ? out[0] : out;
+    } catch { blob = null; }
+  }
+  if (!blob) throw new Error(HEIC_FAIL_MSG);
+  const base = (file.name || "photo").replace(/\.[^.]+$/, "") || "photo";
+  return new File([blob], base + ".jpg", { type: "image/jpeg", lastModified: Date.now() });
+}
+
 function AIScanButton({ onScanComplete, label="Scan with AI", description, scanType="receipt", planData, onUpgrade, useCamera=false, compact=false, triggerRef, highlighted=false, saveDocument=false, currentUserId }) {
   const [scanning, setScanning]   = useState(false);
   const [error, setError]         = useState("");
@@ -8481,7 +8692,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
   };
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
 
@@ -8507,6 +8718,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
 
     try {
       let base64, mimeType;
+      if (!isPdf) file = await prepareImageFile(file);   // Apple HEIC -> JPEG
 
       if (isPdf) {
         base64 = await new Promise((res, rej) => {
@@ -8643,7 +8855,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
     return (
       <div style={{flex:1,display:"flex",flexDirection:"column",gap:".3rem"}}>
         <input ref={fileRef} type="file"
-          accept={useCamera ? "image/*" : "image/*,.pdf"}
+          accept={useCamera ? IMAGE_ACCEPT : IMAGE_ACCEPT + ",.pdf"}
           {...(useCamera ? { capture:"environment" } : {})}
           style={{display:"none"}} onChange={handleFile}
         />
@@ -8672,7 +8884,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
   return (
     <div style={{marginBottom:"1rem"}}>
       <input ref={fileRef} type="file"
-        accept={useCamera ? "image/*" : "image/*,.pdf"}
+        accept={useCamera ? IMAGE_ACCEPT : IMAGE_ACCEPT + ",.pdf"}
         {...(useCamera ? { capture:"environment" } : {})}
         style={{display:"none"}} onChange={handleFile}
       />
@@ -8723,8 +8935,11 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
 
   const maxMB = planData?.maxFileMB ?? 50;
 
-  const handleFile = async (file) => {
-    if (!file) return;
+  const handleFile = async (picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setError(err.message); return; }
     const isImage = file.type.startsWith("image/");
     const isPdf = file.type === "application/pdf";
     if (!isImage && !isPdf) { setError("Please select an image or PDF."); return; }
@@ -8785,14 +9000,14 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
               onTouchEnd={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--white)";}}>
               <span style={{fontSize:"1.3rem"}}>📷</span>
               <span style={{fontSize:".72rem",fontWeight:700,color:"#8A8178"}}>Take photo</span>
-              <input type="file" accept="image/*" capture="environment" style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
+              <input type="file" accept={IMAGE_ACCEPT} capture="environment" style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
             </label>
             <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem .5rem",cursor:"pointer",background:"var(--white)",transition:"all .15s",WebkitTapHighlightColor:"transparent"}}
               onTouchStart={e=>{e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="var(--rust-light)";}}
               onTouchEnd={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--white)";}}>
               <span style={{fontSize:"1.3rem"}}>📎</span>
               <span style={{fontSize:".72rem",fontWeight:700,color:"#8A8178"}}>Choose file</span>
-              <input type="file" accept="image/*,.pdf" style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
+              <input type="file" accept={IMAGE_ACCEPT + ",.pdf"} style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
             </label>
           </div>
           <div style={{fontSize:".7rem",color:"#A8A09A",textAlign:"center",marginTop:".4rem"}}>JPG, PNG, PDF — up to {maxMB}MB</div>
@@ -9047,8 +9262,12 @@ function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUr
   const [error, setError] = useState("");
   const inputRef = useRef(null);
 
-  const handleFile = async (file) => {
-    if (!file || !file.type.startsWith("image/")) { setError("Images only"); return; }
+  const handleFile = async (picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setError("Could not read that Apple photo - try a JPEG"); return; }
+    if (!file.type.startsWith("image/")) { setError("Images only"); return; }
     if (file.size > 20 * 1024 * 1024) { setError("Max 20MB"); return; }
     setError("");
     setUploading(true);
@@ -9086,7 +9305,7 @@ function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUr
           <span style={{fontSize:".68rem",fontWeight:600,color:"#A8A09A"}}>{uploading ? "Uploading…" : "Add photo"}</span>
         </div>
       )}
-      <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+      <input ref={inputRef} type="file" accept={IMAGE_ACCEPT} capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
       {/* Label below */}
       <div style={{textAlign:"center",fontSize:".72rem",fontWeight:700,color:"#6E665D"}}>{label}</div>
       {error && <div style={{fontSize:".65rem",color:"var(--red)",textAlign:"center"}}>{error}</div>}
@@ -9299,8 +9518,11 @@ function PhotoUpload({ userId, currentUrl, onUploaded }) {
   const [preview, setPreview] = useState(currentUrl || null);
   const [error, setError] = useState("");
 
-  const handleFile = async (file) => {
-    if (!file) return;
+  const handleFile = async (picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setError(err.message); return; }
     if (!file.type.startsWith("image/")) { setError("Please select an image file."); return; }
     if (file.size > 10 * 1024 * 1024) { setError("Image must be under 10MB."); return; }
     setError("");
@@ -9362,7 +9584,7 @@ function PhotoUpload({ userId, currentUrl, onUploaded }) {
         >
           <input
             type="file"
-            accept="image/*"
+            accept={IMAGE_ACCEPT}
             onChange={e=>handleFile(e.target.files[0])}
           />
           <div className="photo-drop-icon">📷</div>
@@ -12498,7 +12720,8 @@ const ASSESS_FALLBACK_GUIDE = [
 const ASSESS_MAX_PHOTOS = 6;
 const ASSESS_FILES_URL = "https://hjkyameroqufaojuerns.supabase.co/storage/v1/object/public/expense-files/";
 
-function compressPhoto(file, max = 1600, quality = 0.85) {
+async function compressPhoto(rawFile, max = 1600, quality = 0.85) {
+  const file = await prepareImageFile(rawFile);   // Apple HEIC -> JPEG first
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -12533,6 +12756,7 @@ function ScoreDots({ score, size = 9 }) {
 function ConditionCard({ asset, rows, canAssess, onAssess, onUpgrade }) {
   const [showAllFindings, setShowAllFindings] = useState(false);
   const [showHist, setShowHist] = useState(false);
+  const [showChecks, setShowChecks] = useState(false);
   const list = (rows || []).filter(r => r.asset_id === asset.id && r.status === "confirmed")
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   const latest = list[0];
@@ -12589,6 +12813,16 @@ function ConditionCard({ asset, rows, canAssess, onAssess, onUpgrade }) {
           )}
 
           {latest.ai_summary && <div style={{ fontSize: ".88rem", color: "#4A443E", lineHeight: 1.5, marginTop: ".85rem" }}>{latest.ai_summary}</div>}
+
+          {Array.isArray(latest.ai_checks) && checkCounts(latest.ai_checks).total > 0 && (
+            <div style={{ marginTop: ".75rem" }}>
+              <div style={{ fontSize: ".8rem", color: "#4A443E" }} data-testid="card-checks">
+                <b>Checklist:</b> {checkSummaryText(checkCounts(latest.ai_checks))}
+                <button type="button" className="asm-link" style={{ marginLeft: ".5rem" }} onClick={() => setShowChecks(v => !v)}>{showChecks ? "Hide" : "Show"}</button>
+              </div>
+              {showChecks && <CheckList checks={latest.ai_checks} />}
+            </div>
+          )}
 
           {shownFindings.length > 0 && (
             <div style={{ marginTop: ".8rem" }}>
@@ -12656,28 +12890,75 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
   const [taskPick, setTaskPick] = useState([]);
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [types, setTypes] = useState([]);                  // asset types from the database
+  const [typeKey, setTypeKey] = useState(null);
+  const [traits, setTraits] = useState({});
+  const [typeChosen, setTypeChosen] = useState(false);     // the owner picked or accepted the type themselves
+  const [typePicker, setTypePicker] = useState(false);
+  const [showOk, setShowOk] = useState(false);
+  const uploadRef = useRef(null);                          // photos already uploaded for this set, so a re-run doesn't upload twice
   const fileRefs = useRef({});
   const aliveRef = useRef(true);
   const photosRef = useRef([]);
   photosRef.current = photos;
   useEffect(() => () => { aliveRef.current = false; photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); }, []);
 
-  // rubric (photo guide) comes from the database so it can change without an app release
+  // what kind of asset this is (so the questions and photo guide fit it) comes from the database
+  useEffect(() => {
+    let off = false;
+    loadAssetTypes().then(list => {
+      if (off || !list.length) return;
+      const key = routeAssetType(asset, list);
+      const t = list.find(x => x.type_key === key);
+      if (!t) return;
+      const last = _assessIdx[asset.id];
+      setTypes(list); setTypeKey(key);
+      setTraits(prefillTraits(t, asset, last && last.asset_type === key ? last.traits : null));
+    });
+    assessCall({ action: "usage" }).then(({ json }) => { if (!off && json?.usage) setUsage(json.usage); }).catch(() => {});
+    return () => { off = true; };
+  }, []);
+  const curType = types.find(t => t.type_key === typeKey) || null;
+  const parentCls = curType?.parent_class || cls;
+
+  // rubric (scale descriptions and a fallback photo guide) also comes from the database
   useEffect(() => {
     let off = false;
     (async () => {
       try {
-        const { data } = await supabase.from("condition_rubrics").select("*").in("asset_class", [cls, "general"]).eq("active", true).is("org_id", null);
-        const mine = (data || []).filter(r => r.asset_class === cls).sort((a, b) => b.version - a.version)[0]
+        const { data } = await supabase.from("condition_rubrics").select("*").in("asset_class", [parentCls, "general"]).eq("active", true).is("org_id", null);
+        const mine = (data || []).filter(r => r.asset_class === parentCls).sort((a, b) => b.version - a.version)[0]
           || (data || []).filter(r => r.asset_class === "general").sort((a, b) => b.version - a.version)[0];
         if (!off && mine) setRubric(mine);
       } catch { /* the built-in guide is used */ }
     })();
-    assessCall({ action: "usage" }).then(({ json }) => { if (!off && json?.usage) setUsage(json.usage); }).catch(() => {});
     return () => { off = true; };
-  }, [cls]);
+  }, [parentCls]);
 
-  const guide = Array.isArray(rubric?.photo_guide) && rubric.photo_guide.length ? rubric.photo_guide : ASSESS_FALLBACK_GUIDE;
+  const guide = Array.isArray(curType?.photo_guide) && curType.photo_guide.length ? curType.photo_guide
+    : Array.isArray(rubric?.photo_guide) && rubric.photo_guide.length ? rubric.photo_guide : ASSESS_FALLBACK_GUIDE;
+
+  // switch to another type: new traits, and photos that no longer have a slot become extra photos
+  const applyType = (t) => {
+    const tr = prefillTraits(t, asset, null);
+    setTypeKey(t.type_key); setTraits(tr);
+    if (Array.isArray(t.photo_guide) && t.photo_guide.length) {
+      setPhotos(ps => {
+        const keys = new Set(t.photo_guide.map(g => g.key));
+        let n = ps.filter(p => p.key.startsWith("extra-")).length;
+        return ps.map(p => p.key.startsWith("extra-") ? p
+          : keys.has(p.key) ? { ...p, label: t.photo_guide.find(g => g.key === p.key).label }
+          : { ...p, key: `extra-${++n}`, label: "Extra photo" });
+      });
+    }
+    return tr;
+  };
+  const changeType = (key) => {
+    const t = types.find(x => x.type_key === key);
+    if (!t || t.type_key === typeKey) { setTypePicker(false); return; }
+    applyType(t); setTypeChosen(true); setTypePicker(false);
+  };
+  const setTrait = (k, v) => setTraits(t => { const n = { ...t }; if (n[k] === v) delete n[k]; else n[k] = v; return n; });
   const busy = step === "working" || saving;
   const closeIfIdle = () => { if (!busy) onClose(); };
 
@@ -12698,18 +12979,25 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
   };
   const removePhoto = (key) => setPhotos(ps => { const old = ps.find(p => p.key === key); if (old) URL.revokeObjectURL(old.url); return ps.filter(p => p.key !== key); });
 
-  const analyze = async () => {
+  const analyze = async (opts = {}) => {
     if (!photos.length) return;
     setStep("working"); setErr(null); setPhase("Uploading photos…");
+    const useType = opts.typeKey || typeKey;
+    const useTraits = opts.traits || traits;
     const stamp = Date.now();
     const ordered = [...photos].sort((a, b) => guide.findIndex(g => g.key === a.key) - guide.findIndex(g => g.key === b.key));
-    const paths = [];
+    const sig = ordered.map(p => p.id).join("|");
+    let paths = [];
     try {
-      for (let i = 0; i < ordered.length; i++) {
-        const path = `${userId}/assessments/${asset.id}/${stamp}-${i}.jpg`;
-        const { error } = await supabase.storage.from("expense-files").upload(path, ordered[i].blob, { contentType: "image/jpeg", upsert: true });
-        if (error) throw new Error("upload");
-        paths.push(path);
+      if (uploadRef.current && uploadRef.current.sig === sig) paths = uploadRef.current.paths;
+      else {
+        for (let i = 0; i < ordered.length; i++) {
+          const path = `${userId}/assessments/${asset.id}/${stamp}-${i}.jpg`;
+          const { error } = await supabase.storage.from("expense-files").upload(path, ordered[i].blob, { contentType: "image/jpeg", upsert: true });
+          if (error) throw new Error("upload");
+          paths.push(path);
+        }
+        uploadRef.current = { sig, paths };
       }
     } catch {
       if (!aliveRef.current) return;
@@ -12720,7 +13008,8 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
     try {
       const { status, json } = await assessCall({
         action: "assess", asset_id: asset.id, photo_paths: paths, photo_labels: ordered.map(p => p.label),
-        notes: notes.trim(), asset_class: cls, today: localISO(),
+        notes: notes.trim(), asset_class: parentCls, today: localISO(),
+        ...(useType ? { asset_type: useType, traits: useTraits, type_confirmed: !!(typeChosen || opts.confirmed) } : {}),
       });
       if (!aliveRef.current) return;
       if (json?.ok && json.proposal) {
@@ -12735,6 +13024,8 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
         const open = (tasks || []).filter(t => t.asset_id === asset.id && t.status !== "Completed").map(t => String(t.title || "").trim().toLowerCase());
         setTaskPick((p.tasks || []).map(t => !open.includes(String(t.title || "").trim().toLowerCase())));
         setStep("review");
+      } else if (json?.code === "type_mismatch" && json.seen?.key) {
+        setErr({ message: json.error, mismatch: json.seen, kind: json.kind }); setStep("error");
       } else if (json?.code === "unclear_photos") {
         setErr({ message: json.error, tips: json.missing_views || [] }); setStep("error");
       } else if (json?.code === "limit_reached") {
@@ -12747,7 +13038,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
       } else if (status === 401) {
         setErr({ message: "Your session expired. Please refresh the page and sign in again." }); setStep("error");
       } else {
-        setErr({ message: json?.error || "Something went wrong. Your assessment wasn't counted; please try again." }); setStep("error");
+        setErr({ message: json?.error || "Something went wrong. Your assessment wasn't counted; please try again.", detail: json?.detail || null }); setStep("error");
       }
     } catch {
       if (!aliveRef.current) return;
@@ -12820,12 +13111,37 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
         <div style={{ fontSize: ".88rem", color: "#5A534B", lineHeight: 1.5, marginBottom: ".9rem" }}>
           Add up to {ASSESS_MAX_PHOTOS} photos of <b>{asset.item}</b>. Good light and a clear view of the label help most.
         </div>
+        {curType && (
+          <div className="asm-type" data-testid="type-confirm">
+            <div className="asm-type-row">
+              <span>Assessing this as: <b>{curType.label}</b></span>
+              <button type="button" className="asm-link" onClick={() => setTypePicker(v => !v)}>{typePicker ? "Done" : "Not right? Change"}</button>
+            </div>
+            {typePicker && (
+              <select className="asm-type-sel" aria-label="What kind of item is this?" value={typeKey || ""} onChange={e => changeType(e.target.value)}>
+                {[...types].sort((a, b) => ((a.priority ?? 0) <= 10 ? 1 : 0) - ((b.priority ?? 0) <= 10 ? 1 : 0) || String(a.label).localeCompare(String(b.label)))
+                  .map(t => <option key={t.type_key} value={t.type_key}>{t.label}</option>)}
+              </select>
+            )}
+            {(curType.traits || []).map(tr => (
+              <div key={tr.key} className="asm-trait">
+                <div className="asm-trait-q">{tr.label}</div>
+                <div className="asm-chips">
+                  {(tr.options || []).map(o => (
+                    <button key={o.value} type="button" className={"asm-chip" + (traits[tr.key] === o.value ? " on" : "")} aria-pressed={traits[tr.key] === o.value}
+                      onClick={() => setTrait(tr.key, o.value)}>{o.label}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="asm-slots">
           {guide.map(g => {
             const ph = photos.find(p => p.key === g.key);
             return (
               <div key={g.key} className={"asm-slot" + (ph ? " has" : "")}>
-                <input ref={el => { fileRefs.current[g.key] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                <input ref={el => { fileRefs.current[g.key] = el; }} type="file" accept={IMAGE_ACCEPT} style={{ display: "none" }}
                   onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; addPhoto(g.key, g.label, f); }} />
                 {ph ? (
                   <>
@@ -12845,7 +13161,8 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
           {(() => {
             const extras = photos.filter(p => p.key.startsWith("extra-"));
             const free = photos.length < ASSESS_MAX_PHOTOS;
-            const nextKey = `extra-${extras.length + 1}`;
+            let nextN = 1; while (photos.some(p => p.key === `extra-${nextN}`)) nextN++;
+            const nextKey = `extra-${nextN}`;
             return (
               <>
                 {extras.map(ph => (
@@ -12857,7 +13174,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
                 ))}
                 {free && (
                   <div className="asm-slot">
-                    <input ref={el => { fileRefs.current[nextKey] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                    <input ref={el => { fileRefs.current[nextKey] = el; }} type="file" accept={IMAGE_ACCEPT} style={{ display: "none" }}
                       onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; addPhoto(nextKey, "Extra photo", f); }} />
                     <button type="button" className="asm-slot-add" onClick={() => fileRefs.current[nextKey]?.click()}><span style={{ fontSize: "1.4rem" }}>＋</span></button>
                     <div className="asm-slot-label">Add another</div>
@@ -12883,7 +13200,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
     footer = (
       <div className="modal-footer">
         <button className="btn btn-ghost" onClick={closeIfIdle}>Cancel</button>
-        <button className="btn btn-primary" disabled={!canGo} style={!canGo ? { opacity: .5, cursor: "not-allowed" } : undefined} onClick={analyze}>
+        <button className="btn btn-primary" disabled={!canGo} style={!canGo ? { opacity: .5, cursor: "not-allowed" } : undefined} onClick={() => analyze()}>
           {photoBusy ? "Preparing photo…" : "Analyze photos"}
         </button>
       </div>
@@ -12901,6 +13218,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
     body = (
       <div style={{ padding: ".5rem 0" }}>
         <div className="asm-note" style={{ background: "#FBEDE8", borderColor: "#EBC5B8", color: "#7A2E1C" }}>{err?.message}</div>
+        {err?.detail && <div style={{ fontSize: ".7rem", color: "#A8A09A", marginTop: ".5rem", wordBreak: "break-word" }}>Technical detail: {err.detail}</div>}
         {err?.tips?.length > 0 && (
           <div style={{ marginTop: ".8rem", fontSize: ".86rem" }}>
             <b>Try adding:</b>
@@ -12914,6 +13232,17 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
         <button className="btn btn-ghost" onClick={onClose}>Close</button>
         {err?.upgrade ? <button className="btn btn-primary" onClick={() => { onClose(); onUpgrade(); }}>See plans</button>
           : err?.limit ? null
+          : err?.mismatch ? (
+            <>
+              <button className="btn btn-ghost" onClick={() => { setErr(null); setStep("capture"); }}>Back to photos</button>
+              <button className="btn btn-primary" onClick={() => {
+                const t = types.find(x => x.type_key === err.mismatch.key);
+                const tr = t ? applyType(t) : {};
+                setTypeChosen(true);
+                analyze({ typeKey: err.mismatch.key, traits: tr, confirmed: true });
+              }}>Assess as {err.mismatch.label || "that"}</button>
+            </>
+          )
           : <button className="btn btn-primary" onClick={() => { setErr(null); setStep("capture"); }}>Back to photos</button>}
       </div>
     );
@@ -12940,6 +13269,21 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
             <b>Have a licensed professional take a look.</b> {prop.professional_reason}
           </div>
         )}
+
+        {Array.isArray(prop.checks) && prop.checks.length > 0 && (() => {
+          const cc = checkCounts(prop.checks);
+          const list = prop.checks.filter(c => c.status !== "na");
+          const okList = list.filter(c => c.status === "ok");
+          return (
+            <>
+              <div className="asm-sec">{prop.type?.label ? `${prop.type.label} checklist` : "Checklist"}</div>
+              <div style={{ fontSize: ".82rem", color: "#4A443E", fontWeight: 600 }} data-testid="checklist-summary">{checkSummaryText(cc)}</div>
+              <CheckList checks={showOk ? list : list.filter(c => c.status !== "ok")} />
+              {okList.length > 0 && <button type="button" className="asm-link" onClick={() => setShowOk(v => !v)}>{showOk ? "Hide the ones that look fine" : `Show the ${okList.length} that look fine`}</button>}
+              {prop.score_note && <div style={{ fontSize: ".76rem", color: "#8A8178", marginTop: ".35rem" }}>{prop.score_note}</div>}
+            </>
+          );
+        })()}
 
         <div className="asm-sec">Your call</div>
         <div className="asm-pills">{[1, 2, 3, 4, 5].map(pill)}</div>
@@ -16200,8 +16544,11 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
   const canScan = planData?.aiScan;
 
   // ── Unified: upload file + AI scan in parallel ──────────────────────────────
-  const handleScanAndUpload = async (file) => {
-    if (!file) return;
+  const handleScanAndUpload = async (picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setUploadError(err.message); return; }
     if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
     setUploadError(""); setScanning(true); setScanSuccess(false);
 
@@ -16261,8 +16608,11 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
   };
 
   // ── Upload only (no AI scan) ─────────────────────────────────────────────────
-  const handleFile = async (file) => {
-    if (!file) return;
+  const handleFile = async (picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setUploadError(err.message); return; }
     if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
     setUploadError("");
     if (!data.file_url) {
@@ -16285,7 +16635,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
       {/* ── AI Scan + Upload — primary action ── */}
       {!data.file_url && (
         <div style={{gridColumn:"1 / -1"}}>
-          <input ref={scanRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx"
+          <input ref={scanRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.doc,.docx"
             style={{display:"none"}} onChange={e=>handleScanAndUpload(e.target.files[0])}/>
           <button type="button" className="scan-btn scan-btn-bg"
             onClick={()=>{ if(!canScan){onUpgrade?.();return;} scanRef.current?.click(); }}
@@ -16329,7 +16679,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
             onDragLeave={()=>setDragging(false)}
             onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0]);}}
           >
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" onChange={e=>handleFile(e.target.files[0])}/>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.doc,.docx" onChange={e=>handleFile(e.target.files[0])}/>
             <div className="doc-upload-icon">↑</div>
             <div className="doc-upload-text"><strong>Click to upload</strong> or drag & drop<br/>PDF, JPG, PNG, HEIC, DOC — up to {maxMB}MB</div>
             <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:".35rem"}}>Tip: crop or redact full Social Security numbers or account numbers before uploading if the document shows them.</div>
@@ -18046,8 +18396,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const checkinDone = CHECKIN_TASKS.filter(t => thisYearCheckin[t.key]?.url).length;
   const lastCheckinYear = Object.keys(checkinData).filter(k=>k.startsWith("year_")).map(k=>parseInt(k.replace("year_",""))).filter(y=>y<checkinYear).sort((a,b)=>b-a)[0];
 
-  const uploadCheckinPhoto = async (taskKey, file) => {
-    if (!file || !file.type.startsWith("image/")) { toast("Images only","error"); return; }
+  const uploadCheckinPhoto = async (taskKey, picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { toast("Could not read that Apple photo - try a JPEG","error"); return; }
+    if (!file.type.startsWith("image/")) { toast("Images only","error"); return; }
     setCheckinUploading(u => ({...u, [taskKey]:true}));
     const ext  = file.name.split(".").pop();
     const path = `${userId}/checkin-${checkinYear}-${taskKey}.${ext}`;
@@ -18833,7 +19187,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                             {uploading?"⏳":"📷"}
                           </div>
                         )}
-                        <input ref={el=>checkinInputRefs.current[task.key]=el} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>uploadCheckinPhoto(task.key, e.target.files[0])}/>
+                        <input ref={el=>checkinInputRefs.current[task.key]=el} type="file" accept={IMAGE_ACCEPT} capture="environment" style={{display:"none"}} onChange={e=>uploadCheckinPhoto(task.key, e.target.files[0])}/>
                       </div>
                     );
                   })}
@@ -23440,8 +23794,11 @@ function AgentSetupPage() {
       .catch(() => setNotFound(true));
   }, [token]);
 
-  const handleFile = (type, file) => {
-    if (!file) return;
+  const handleFile = async (type, picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setErr(err.message); return; }
     if (file.size > 5 * 1024 * 1024) { setErr("File must be under 5MB."); return; }
     if (!["image/jpeg","image/jpg","image/png","image/webp"].includes(file.type)) { setErr("Please upload a JPG, PNG, or WebP image."); return; }
     const preview = URL.createObjectURL(file);
@@ -23609,14 +23966,14 @@ function AgentSetupPage() {
         {/* Headshot upload */}
         <label style={labelStyle}>Headshot *<span style={labelHint}>Square preferred · JPG or PNG · under 5MB</span></label>
         <div style={dropStyle(headshotPreview)} onClick={() => document.getElementById("hs-input").click()}>
-          <input id="hs-input" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile("headshot", e.target.files[0])} />
+          <input id="hs-input" type="file" accept={IMAGE_ACCEPT} style={{ display: "none" }} onChange={e => handleFile("headshot", e.target.files[0])} />
           {headshotPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Headshot ready — tap to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>📷</div><div style={{ fontSize: 14, color: "#7A7370" }}>Tap to upload your headshot</div><div style={{ fontSize: 12, color: "#A8A09A", marginTop: 4 }}>Your listing photo works great</div></div>}
         </div>
 
         {/* Logo upload */}
         <label style={labelStyle}>Brokerage logo<span style={labelHint}>Optional · PNG with transparent background ideal</span></label>
         <div style={dropStyle(logoPreview)} onClick={() => document.getElementById("logo-input").click()}>
-          <input id="logo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile("logo", e.target.files[0])} />
+          <input id="logo-input" type="file" accept={IMAGE_ACCEPT} style={{ display: "none" }} onChange={e => handleFile("logo", e.target.files[0])} />
           {logoPreview ? <div style={{ fontSize: 14, fontWeight: 700, color: "#234A3D" }}>✓ Logo ready — tap to change</div> : <div><div style={{ fontSize: 24, marginBottom: 8 }}>🏢</div><div style={{ fontSize: 14, color: "#7A7370" }}>Tap to upload your brokerage logo</div></div>}
         </div>
 
@@ -23809,8 +24166,11 @@ function AgentPortalPage() {
   useEffect(() => { if (session) loadAll(); else setLoading(false); }, [session]);
 
   // ── File handling ────────────────────────────────────────────────────────────
-  const handleFile = (type, file) => {
-    if (!file) return;
+  const handleFile = async (type, picked) => {
+    if (!picked) return;
+    let file = picked;
+    try { file = await prepareImageFile(picked); }
+    catch (err) { setSaveMsg(err.message); return; }
     if (file.size > 5 * 1024 * 1024) { setSaveMsg("File must be under 5MB."); return; }
     if (!["image/jpeg","image/jpg","image/png","image/webp"].includes(file.type)) { setSaveMsg("Please upload a JPG, PNG, or WebP image."); return; }
     const preview = URL.createObjectURL(file);
@@ -24336,7 +24696,7 @@ function AgentPortalPage() {
                         ? <img src={headshotPreview} alt="Headshot" style={{width:72, height:72, borderRadius:"50%", objectFit:"cover", margin:"0 auto", display:"block"}}/>
                         : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload headshot</div>
                       }
-                      <input id="portal-headshot" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("headshot",e.target.files[0])}/>
+                      <input id="portal-headshot" type="file" accept={IMAGE_ACCEPT} style={{display:"none"}} onChange={e=>handleFile("headshot",e.target.files[0])}/>
                     </div>
 
                     {/* Logo */}
@@ -24346,7 +24706,7 @@ function AgentPortalPage() {
                         ? <img src={logoPreview} alt="Logo" style={{height:48, maxWidth:140, objectFit:"contain", margin:"0 auto", display:"block"}}/>
                         : <div style={{fontSize:13, color:"#A8A09A"}}>Click to upload logo</div>
                       }
-                      <input id="portal-logo" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile("logo",e.target.files[0])}/>
+                      <input id="portal-logo" type="file" accept={IMAGE_ACCEPT} style={{display:"none"}} onChange={e=>handleFile("logo",e.target.files[0])}/>
                     </div>
 
                     <label style={S.label}>Name as clients should see it</label>
