@@ -1,4 +1,4 @@
-// Steadwell v299 — 2026-10-01
+// Steadwell v300 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2535,7 +2535,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .band .stmt em{font-style:italic;color:var(--terracotta)}
 
 /* ---------- FEATURES BENTO ---------- */
-.lp-root .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+.lp-root .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .lp-root .feat{position:relative;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px;overflow:hidden;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}
 .lp-root .feat::after{content:"";position:absolute;inset:0;border-radius:22px;opacity:0;transition:opacity .35s;background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(193,97,64,.08),transparent 45%);pointer-events:none}
 .lp-root .feat:hover{transform:translateY(-4px);box-shadow:0 28px 60px -34px rgba(23,48,38,.4);border-color:rgba(35,74,61,.16)}
@@ -25815,7 +25815,7 @@ function LPFooter() {
   );
 }
 
-function LPHero({ eyebrow, h1, h1em, sub, stats=[], badge }) {
+function LPHero({ eyebrow, h1, h1em, sub, stats=[], badge, cta }) {
   return (
     <section style={{background:"#234A3D",padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)",textAlign:"center"}}>
       <div style={{maxWidth:700,margin:"0 auto"}}>
@@ -25824,6 +25824,7 @@ function LPHero({ eyebrow, h1, h1em, sub, stats=[], badge }) {
           {h1}{h1em && <><br/><em style={{fontStyle:"italic",color:"#D2876A"}}>{h1em}</em></>}
         </h1>
         {sub && <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.65)",maxWidth:"38rem",margin:"0 auto 32px",lineHeight:1.6}}>{sub}</p>}
+        {cta && <div style={{margin:"0 0 22px"}}><a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{cta} →</a></div>}
         {badge && <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".78rem",color:"rgba(244,237,223,.8)",fontWeight:500,marginBottom:stats.length?24:0}}>{badge}</div>}
         {stats.length>0 && (
           <div style={{display:"flex",gap:32,justifyContent:"center",flexWrap:"wrap"}}>
@@ -25890,7 +25891,7 @@ function LPCTA({ h2, sub, btnLabel="Try it free →", note="Free to start · No 
       <div style={{maxWidth:580,margin:"0 auto"}}>
         <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.8rem,4vw,2.8rem)",color:"#F4EDDF",marginBottom:16,letterSpacing:"-.02em"}}>{h2}</h2>
         <p style={{fontSize:"1rem",color:"rgba(244,237,223,.65)",maxWidth:"32rem",margin:"0 auto 32px",lineHeight:1.6}}>{sub}</p>
-        <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>{btnLabel}</a>
+        <a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>{btnLabel}</a>
         <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>{note}</div>
       </div>
     </section>
@@ -26034,7 +26035,7 @@ function UtilityBillTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Utility & Bill Tracking" h1="Know what your home" h1em="costs to run." sub="Keep your electric, gas, water, internet and trash bills in one place. Scan a bill or forward it by email, and Steadwell shows the trend and flags the month something spikes." badge="Tracking is free · AI bill scan on Plus & Pro" stats={[{num:"7",lbl:"Utility types"},{num:"Free",lbl:"Bill tracking"},{num:"6-mo",lbl:"Average & spike alerts"}]}/>
+      <LPHero eyebrow="Utility & Bill Tracking" cta="Start tracking free" h1="Know what your home" h1em="costs to run." sub="Keep your electric, gas, water, internet and trash bills in one place. Scan a bill or forward it by email, and Steadwell shows the trend and flags the month something spikes." badge="Tracking is free · AI bill scan on Plus & Pro" stats={[{num:"7",lbl:"Utility types"},{num:"Free",lbl:"Bill tracking"},{num:"6-mo",lbl:"Average & spike alerts"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every utility, every bill, one timeline" sub="Utilities are the one home cost that arrives every month and almost never gets reviewed. Steadwell makes the pattern visible."/>
@@ -26146,7 +26147,7 @@ function ConditionAssessmentPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Condition Assessment" h1="Know what shape" h1em="your home is in." sub="Take a few photos of any appliance or system. Steadwell grades it 1 to 5, estimates how many years it has left, reads the label, and suggests what to do next. You confirm everything before it is saved." badge="AI-assisted · Plus & Pro" stats={[{num:"1–5",lbl:"Condition score"},{num:"30+",lbl:"Item types"},{num:"Up to 6",lbl:"Photos per assessment"}]}/>
+      <LPHero eyebrow="Condition Assessment" cta="Get started free" h1="Know what shape" h1em="your home is in." sub="Take a few photos of any appliance or system. Steadwell grades it 1 to 5, estimates how many years it has left, reads the label, and suggests what to do next. You confirm everything before it is saved." badge="AI-assisted · Plus & Pro" stats={[{num:"1–5",lbl:"Condition score"},{num:"30+",lbl:"Item types"},{num:"Up to 6",lbl:"Photos per assessment"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you get from one assessment" sub="More than a number: a checklist, a timeline and a to-do list."/>
@@ -26223,17 +26224,18 @@ function ConditionAssessmentPage() {
 // ─── ASK STEADWELL PAGE ───────────────────────────────────────────────────────
 const ASK_FAQ = [
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. You ask a question in plain English and it answers using the records you have saved for your home: your assets, warranties, tasks, service history, expenses and documents."],
-  ["Can it change my records?","No. Ask Steadwell cannot edit or delete anything. When it suggests a task, you see it as a card and it is saved only if you tap Add."],
-  ["Where do I find it?","Type a question into the search bar at the top of Steadwell and choose Ask Steadwell. It opens as a chat panel on top of whatever you were doing."],
+  ["Where do I find it?","Type a question into the search bar at the top of Steadwell and choose Ask Steadwell. It opens as a chat panel over whatever you were working on."],
+  ["Can it make changes to my records?","It can suggest tasks, and anything it suggests is shown to you first. A suggested task appears as a card and is added to your tasks only when you tap Add."],
+  ["Does it show where an answer came from?","Yes. Answers list the records they drew on, such as an asset, a task or an expense, and you can tap one to open it."],
   ["How many questions do I get?","Free accounts get 3 questions to try it. Plus includes 30 questions a month and Pro includes 150."],
   ["How accurate are the answers?","It answers from the information in your account, so it is only as complete as your records, and like any AI assistant it can be wrong. Use it as a planning aid, double-check anything important, and call a licensed professional for safety, electrical, gas or structural questions."],
-  ["Are my questions saved?","By default Steadwell saves the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads. You can turn this off at any time in your account settings, and turning it off also deletes questions already saved."],
+  ["Are my questions saved?","By default Steadwell saves the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads. You can turn this off at any time, and turning it off also deletes questions already saved."],
   ["Does it work for each of my homes?","Yes. Each home has its own conversation, and Ask Steadwell answers using the home you are viewing."],
 ];
 
 function AskSteadwellPage() {
   const path = "/ask-steadwell";
-  const description = "An AI home assistant that answers questions from your own records: warranties, tasks, repairs, spending and documents. 3 free questions to try.";
+  const description = "Ask Steadwell is an AI assistant for your home. Ask in plain English and get answers from your own warranties, tasks, repairs and spending. 3 free questions.";
   useSEO({
     title:"AI Home Assistant — Ask Questions About Your Home",
     description,
@@ -26241,29 +26243,59 @@ function AskSteadwellPage() {
     jsonLd: lpJsonLd({
       name:"Ask Steadwell",
       path, description,
-      features:["AI assistant that answers from your own home records","Reads assets, warranties, tasks, service history, expenses and documents","Suggests tasks you approve before they are saved","Separate conversation for each home","Optional question history you can turn off and delete"],
+      features:["AI assistant that answers from your own home records","Answers show the records they came from","Suggested tasks you add with one tap","Separate conversation for each home","Optional question history you can turn off and delete"],
       faq: ASK_FAQ,
       offers:[{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
     }),
   });
   const TRY = ["When should I replace my roof?","How old is my HVAC, and what should I plan for?","Is my water heater near the end of its life?","I have 3 overdue tasks. What should I do first?","Am I ready for hurricane season?","What’s expiring soon?","What did I spend on repairs this year?","What should I budget for over the next 5 years?"];
+  const bubble = {borderRadius:14,padding:"10px 14px",fontSize:".85rem",lineHeight:1.5,maxWidth:"92%"};
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="AI Home Assistant" h1="Ask your home" h1em="anything." sub="Ask Steadwell is an AI assistant that reads your home’s records and answers in plain English: what is expiring, what you spent, what to do first. It suggests tasks, and you choose which ones to add." badge="Plus & Pro · 3 free questions to try" stats={[{num:"3",lbl:"Free to try"},{num:"30",lbl:"Questions a month on Plus"},{num:"150",lbl:"Questions a month on Pro"}]}/>
+      <LPHero eyebrow="Ask Steadwell · AI Assistant" h1="Your home has a lot of records." h1em="Now you can just ask." sub="Ask Steadwell is an AI assistant for your home. Ask a question in plain English and get an answer based on your own assets, warranties, tasks, repairs, spending and documents, with the sources shown and tasks you can add in one tap." cta="Try Ask Steadwell free" badge="3 free questions · 30 a month on Plus · 150 on Pro"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
-          <LPSectionHead h2="An assistant that knows your home" sub="Generic advice is easy to find. Ask Steadwell answers from what you have actually saved."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
-            <LPFieldCard icon="🗂️" title="What it reads" badge="Your records" fields={["Assets and warranties","Maintenance tasks and schedules","Service history","Expenses and spending","Documents"]}/>
-            <LPFieldCard icon="💬" title="What you can ask" badge="Plain English" fields={["When something is expiring or due","How old a system is and what to plan for","What you have spent and what to budget","What to tackle first","Seasonal prep for where you live"]}/>
-            <LPFieldCard icon="✋" title="You stay in control" badge="Read-only" fields={["It cannot edit or delete your records","Suggested tasks appear as cards","Nothing is saved until you tap Add","Each home keeps its own conversation"]}/>
-          </LPGrid>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
+            <div>
+              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 14px"}}>Answers from your home, not a guess</h2>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.2rem"}}>Steadwell already knows what you own, when it was installed, what it cost and what you have done to it. Ask Steadwell puts that to work, so the answer starts from your home instead of generic advice.</p>
+              {[
+                ["It reads your records","Assets, warranties, tasks, service history, expenses and documents."],
+                ["It shows its sources","Each answer lists the records it used. Tap one to open it."],
+                ["It suggests, you decide","Suggested tasks appear as cards and are added only when you tap Add."],
+              ].map(([t,d],i)=>(
+                <div key={i} style={{display:"flex",gap:12,marginBottom:14}}>
+                  <span style={{color:"#234A3D",fontWeight:700,marginTop:2}} aria-hidden="true">✓</span>
+                  <div><div style={{fontWeight:700,color:"#234A3D",fontSize:".95rem"}}>{t}</div><div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.55}}>{d}</div></div>
+                </div>
+              ))}
+            </div>
+            <div aria-hidden="true" style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:20,padding:18,boxShadow:"0 24px 60px -34px rgba(23,48,38,.35)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,fontWeight:700,fontSize:".9rem",color:"#234A3D"}}>
+                <span>✨ Ask Steadwell</span>
+                <span style={{fontSize:".62rem",letterSpacing:".06em",textTransform:"uppercase",color:"#7A7370",background:"rgba(35,74,61,.08)",padding:"2px 8px",borderRadius:20}}>Example</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+                <div style={{...bubble,background:"#234A3D",color:"#F4EDDF"}}>Is my water heater near the end of its life?</div>
+              </div>
+              <div style={{...bubble,background:"#F4EFE6",color:"#2A2723",marginBottom:10}}>
+                Your water heater is about 11 years old. Tank models often last 8 to 12 years, so it is worth planning for a replacement soon. Your last service was 14 months ago.
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+                {["🔧 Water heater","⚙️ Service log"].map(s=><span key={s} style={{fontSize:".72rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.08)",padding:"4px 10px",borderRadius:20}}>{s}</span>)}
+              </div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",borderRadius:12,padding:"10px 12px"}}>
+                <div style={{fontSize:".82rem",color:"#2A2723"}}><div style={{fontWeight:700}}>Flush the water heater tank</div><div style={{color:"#7A7370",fontSize:".74rem"}}>Suggested task · due Nov 15</div></div>
+                <span style={{background:"#C16140",color:"#fff",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:10}}>Add</span>
+              </div>
+            </div>
+          </div>
         </LPSection>
 
         <LPSection alt>
-          <LPSectionHead h2="Try asking" sub="A few of the questions Ask Steadwell suggests, depending on what is in your home."/>
+          <LPSectionHead h2="Try asking" sub="Ask Steadwell suggests questions based on what is in your home. Here are a few."/>
           <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
             {TRY.map((q,i)=>(
               <span key={i} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:20,padding:"9px 16px",fontSize:".88rem",color:"#234A3D",fontWeight:500}}>{q}</span>
@@ -26272,21 +26304,20 @@ function AskSteadwellPage() {
         </LPSection>
 
         <LPSection>
-          <LPSectionHead h2="How it works" sub="From question to a plan in a few seconds."/>
-          <LPGrid gap={16}>
+          <LPSectionHead h2="How it works" sub="Three steps, a few seconds."/>
+          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={16}>
             {[
-              {num:"01",title:"Type a question",text:"Use the search bar at the top of Steadwell and choose Ask Steadwell, or tap one of the suggested questions."},
-              {num:"02",title:"It reads your records",text:"For the home you are viewing, it looks through your assets, warranties, tasks, service history, expenses and documents."},
-              {num:"03",title:"Get an answer and next steps",text:"You get a plain-English answer, and where it makes sense, suggested tasks shown as cards."},
-              {num:"04",title:"Add only what you want",text:"Tap Add on a suggested task to save it. If you do nothing, nothing changes."},
+              {num:"01",title:"Ask",text:"Type a question into the search bar at the top of Steadwell and choose Ask Steadwell, or tap one of the suggestions."},
+              {num:"02",title:"Get an answer with sources",text:"Ask Steadwell looks through the records for the home you are viewing and answers in plain English, listing what it used."},
+              {num:"03",title:"Add what helps",text:"If it suggests a task, tap Add to put it on your list. If you do nothing, nothing changes."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
 
         <LPSection alt narrow>
-          <LPSectionHead h2="Your questions, your choice" sub="Steadwell is open about how questions are handled."/>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads. Switch it off in your account settings at any time and any saved questions are deleted. Read the details in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Ask Steadwell is an AI assistant and can make mistakes. It is a planning aid, not a substitute for a licensed professional.</p>
+          <LPSectionHead h2="You stay in control" sub="Ask Steadwell is a planning aid. It works best alongside your own judgment."/>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>It answers from the information in your account, so the more you add to Steadwell, the better it gets. Like any AI assistant it can make mistakes, so double-check anything important and call a licensed professional for safety, electrical, gas or structural questions.</p>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads, and you can turn it off at any time, which also deletes questions already saved. Details are in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
         </LPSection>
 
         <LPSection narrow>
@@ -26304,7 +26335,7 @@ function AskSteadwellPage() {
         </LPSection>
 
         <LPRelated hrefs={["/home-health-score","/home-condition-assessment","/home-expense-tracker","/home-maintenance-tracker"]}/>
-        <LPCTA h2="Stop digging through folders." sub="Ask a question and get an answer from your own home records." btnLabel="Try Ask Steadwell →" note="3 free questions · More on Plus and Pro"/>
+        <LPCTA h2="Ask your home a question." sub="Create a free account, add what you own, and try Ask Steadwell with 3 free questions." btnLabel="Get started free →" note="Free to start · More questions on Plus and Pro"/>
       </main>
       <LPFooter/>
     </div>
@@ -26316,7 +26347,7 @@ const CAL_FAQ = [
   ["Is calendar sync free?","Yes. Calendar sync is included on every plan, including Free."],
   ["Which calendar apps work?","Google Calendar, Apple Calendar and Outlook, plus any calendar app that can subscribe to an iCal (.ics) link."],
   ["What shows up in my calendar?","Your Steadwell maintenance tasks and the dates your warranties expire."],
-  ["How quickly do changes appear?","Steadwell updates the feed as soon as you add or change something. Your calendar app decides how often it refreshes a subscribed calendar, which is usually within a few hours and sometimes up to a day."],
+  ["How quickly do changes appear?","Your calendar shows your current tasks and warranty dates each time it refreshes the subscription. Calendar apps decide how often that happens, usually within a few hours and sometimes up to a day."],
   ["Does it work both ways?","No. It is a subscription, so changes in Steadwell appear in your calendar, but editing an event in your calendar app does not change Steadwell. Mark tasks done in Steadwell."],
   ["Is my calendar link private?","The link contains a private key that is unique to your account. Anyone who has it can see your task titles and dates, so treat it like a password and do not post it publicly."],
   ["Do I still get email reminders?","Yes. Calendar sync is in addition to Steadwell’s email reminders for upcoming tasks and warranty expiries."],
@@ -26341,14 +26372,14 @@ function CalendarSyncPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Calendar Sync" h1="Your home, on the" h1em="calendar you already use." sub="Subscribe once and your Steadwell maintenance tasks and warranty expiry dates appear in Google Calendar, Apple Calendar or Outlook, and stay current as things change." badge="Free on every plan" stats={[{num:"3",lbl:"Calendar apps"},{num:"1 link",lbl:"To subscribe"},{num:"Free",lbl:"On all plans"}]}/>
+      <LPHero eyebrow="Calendar Sync" cta="Get started free" h1="Your home, on the" h1em="calendar you already use." sub="Subscribe once and your Steadwell maintenance tasks and warranty expiry dates appear in Google Calendar, Apple Calendar or Outlook, and stay current as things change." badge="Free on every plan" stats={[{num:"3",lbl:"Calendar apps"},{num:"1 link",lbl:"To subscribe"},{num:"Free",lbl:"On all plans"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What lands on your calendar" sub="The dates that are easy to forget, in the place you already look."/>
           <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
-            <LPFieldCard icon="🔧" title="Maintenance tasks" badge="All plans" fields={["Task names and due dates","Seasonal and recurring upkeep","Updates when you add or change a task"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
+            <LPFieldCard icon="🔧" title="Maintenance tasks" badge="All plans" fields={["Task names and due dates","Your whole maintenance list in one view","Stays in step as you add or change tasks"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
             <LPFieldCard icon="🛡️" title="Warranty expiries" badge="All plans" fields={["The date each warranty ends","Time to claim or renew before coverage lapses","Updates when you add or edit a warranty"]} link={{href:"/warranty-tracker",label:"About warranty tracking"}}/>
-            <LPFieldCard icon="🔄" title="Always current" badge="Automatic" fields={["Subscribe once, no re-exporting","Your calendar app refreshes it on its own","Works on every device signed in to that calendar"]}/>
+            <LPFieldCard icon="🔄" title="Always current" badge="Automatic" fields={["Subscribe once, no re-exporting","Your calendar app refreshes it on its own","Shows up on every device using that calendar"]}/>
           </LPGrid>
         </LPSection>
 
@@ -26419,7 +26450,7 @@ function HomeHealthScorePage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Health Score" h1="One number for how" h1em="well your home is kept." sub="Steadwell turns your assets, tasks, warranties and home profile into a single score, then shows you the factors behind it so you know what to fix first." badge="Overall score on every plan · Breakdown on Plus & Pro" stats={[{num:"0–100",lbl:"Score"},{num:"4",lbl:"Factors"},{num:"Live",lbl:"Updates as you go"}]}/>
+      <LPHero eyebrow="Home Health Score" cta="See my home’s score" h1="One number for how" h1em="well your home is kept." sub="Steadwell turns your assets, tasks, warranties and home profile into a single score, then shows you the factors behind it so you know what to fix first." badge="Overall score on every plan · Breakdown on Plus & Pro" stats={[{num:"0–100",lbl:"Score"},{num:"4",lbl:"Factors"},{num:"Live",lbl:"Updates as you go"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Four things go into your score" sub="Asset condition counts the most, followed by tasks, warranties and your profile."/>
@@ -26497,7 +26528,7 @@ function SharedHouseholdAccessPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Shared Household Access" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner or household member by email. They see the same tasks, assets, expenses and documents, so nobody has to ask who has the warranty or the plumber’s number." badge="Included with Pro" stats={[{num:"Email",lbl:"Invite"},{num:"3",lbl:"Properties on Pro"},{num:"Anytime",lbl:"Remove access"}]}/>
+      <LPHero eyebrow="Shared Household Access" cta="Get started" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner or household member by email. They see the same tasks, assets, expenses and documents, so nobody has to ask who has the warranty or the plumber’s number." badge="Included with Pro" stats={[{num:"Email",lbl:"Invite"},{num:"3",lbl:"Properties on Pro"},{num:"Anytime",lbl:"Remove access"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Run the house together" sub="Most homes have more than one person keeping them running. Your records should too."/>
@@ -26753,7 +26784,7 @@ function AIScanPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="AI-Powered Scanning" h1="Point. Scan." h1em="Done." sub="Take a photo of any receipt, appliance nameplate, utility bill, or insurance declaration page and Steadwell fills in all the details automatically. No typing, no searching, no manual entry." badge="Plus & Pro feature"/>
+      <LPHero eyebrow="AI-Powered Scanning" cta="Get started free" h1="Point. Scan." h1em="Done." sub="Take a photo of any receipt, appliance nameplate, utility bill, or insurance declaration page and Steadwell fills in all the details automatically. No typing, no searching, no manual entry." badge="Plus & Pro feature"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Four scans. Every home record covered." sub="Each scan type is trained to extract exactly what you need from that document."/>
@@ -26827,7 +26858,7 @@ function EmailCapturePage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Email Capture" h1="Forward an email." h1em="We do the rest." sub="Every user gets a unique Steadwell email address. Forward any receipt, invoice, warranty card, or home document and we automatically extract the details and add them to your records." badge="Free for all plans"/>
+      <LPHero eyebrow="Email Capture" cta="Get started free" h1="Forward an email." h1em="We do the rest." sub="Every user gets a unique Steadwell email address. Forward any receipt, invoice, warranty card, or home document and we automatically extract the details and add them to your records." badge="Free for all plans"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you can forward" sub="Anything home-related. Our AI figures out what it is and files it correctly."/>
@@ -26928,7 +26959,7 @@ function MaintenanceTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Maintenance Tracker" h1="Nothing falls through" h1em="the cracks." sub="Set recurring maintenance tasks tuned to your home's age and systems. Get email reminders 3 days before anything is due. Build a complete service history automatically." stats={[{num:"Free",lbl:"Always"},{num:"3 days",lbl:"Advance notice"},{num:"∞",lbl:"Task history"}]}/>
+      <LPHero eyebrow="Home Maintenance Tracker" cta="Get started free" h1="Nothing falls through" h1em="the cracks." sub="Set recurring maintenance tasks tuned to your home's age and systems. Get email reminders 3 days before anything is due. Build a complete service history automatically." stats={[{num:"Free",lbl:"Always"},{num:"3 days",lbl:"Advance notice"},{num:"∞",lbl:"Task history"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every maintenance category covered" sub="From HVAC filters to roof inspections — every recurring task your home needs."/>
@@ -26988,7 +27019,7 @@ function ContractorTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Contractor Tracker" h1="Your trusted pros," h1em="always at hand." sub="Save the plumber who didn't upsell you, the HVAC tech who showed up on time, and every contractor who earned your trust. Log every visit, track every dollar spent." badge="Free for all plans"/>
+      <LPHero eyebrow="Contractor Tracker" cta="Get started free" h1="Your trusted pros," h1em="always at hand." sub="Save the plumber who didn't upsell you, the HVAC tech who showed up on time, and every contractor who earned your trust. Log every visit, track every dollar spent." badge="Free for all plans"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Everything you track for each contractor" sub="A complete record of every pro who has worked on your home."/>
@@ -27051,7 +27082,7 @@ function InsuranceTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Insurance Organizer" h1="Everything ready" h1em="before you need it." sub="Store your policies, log claims, track coverage amounts, and get reminded when it is time to renew. When something goes wrong, the last thing you want to be doing is searching for your policy number." badge="Free for all plans"/>
+      <LPHero eyebrow="Home Insurance Organizer" cta="Get started free" h1="Everything ready" h1em="before you need it." sub="Store your policies, log claims, track coverage amounts, and get reminded when it is time to renew. When something goes wrong, the last thing you want to be doing is searching for your policy number." badge="Free for all plans"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What Steadwell tracks for your insurance" sub="Scan your declarations page and we fill in everything automatically."/>
@@ -27114,7 +27145,7 @@ function HomeExpenseTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Expense Tracker" h1="See every dollar." h1em="Plan for what&#39;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." stats={[{num:"Free",lbl:"Expense tracking"},{num:"5 years",lbl:"Cost forecast"},{num:"100%",lbl:"Your data"}]}/>
+      <LPHero eyebrow="Home Expense Tracker" cta="Get started free" h1="See every dollar." h1em="Plan for what&#39;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." stats={[{num:"Free",lbl:"Expense tracking"},{num:"5 years",lbl:"Cost forecast"},{num:"100%",lbl:"Your data"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you track and what we forecast" sub="Historical spending plus a forward-looking view of what&#39;s coming."/>
@@ -27182,7 +27213,7 @@ function HomeProjectsPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Projects & ROI" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator shows exactly what each project adds to your home's resale value using industry Cost vs. Value data." badge="Projects free · ROI calculator on Plus"/>
+      <LPHero eyebrow="Home Projects & ROI" cta="Get started free" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator shows exactly what each project adds to your home's resale value using industry Cost vs. Value data." badge="Projects free · ROI calculator on Plus"/>
       <div style={{background:"#F4EDDF",padding:"0 1.5rem 3rem",display:"flex",justifyContent:"center"}}>
         <div style={{maxWidth:720,width:"100%"}}>
           <img src="/screenshots/steadwell-roi.png" alt="Steadwell project ROI calculator showing a kitchen remodel with 113% return and $29,400 value added" style={{width:"100%",borderRadius:16,boxShadow:"0 20px 60px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
@@ -27319,7 +27350,7 @@ function DocumentVaultPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Document Vault" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="Essential storage free · Expanded on Plus · Full vault on Pro"/>
+      <LPHero eyebrow="Home Document Vault" cta="Get started free" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="Essential storage free · Expanded on Plus · Full vault on Pro"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every type of home document" sub="If it matters to your home, it belongs in your vault."/>
