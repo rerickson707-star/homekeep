@@ -1,4 +1,4 @@
-// Steadwell v297 — 2026-10-01
+// Steadwell v299 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2535,7 +2535,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .band .stmt em{font-style:italic;color:var(--terracotta)}
 
 /* ---------- FEATURES BENTO ---------- */
-.lp-root .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.lp-root .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
 .lp-root .feat{position:relative;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px;overflow:hidden;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}
 .lp-root .feat::after{content:"";position:absolute;inset:0;border-radius:22px;opacity:0;transition:opacity .35s;background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(193,97,64,.08),transparent 45%);pointer-events:none}
 .lp-root .feat:hover{transform:translateY(-4px);box-shadow:0 28px 60px -34px rgba(23,48,38,.4);border-color:rgba(35,74,61,.16)}
@@ -2567,8 +2567,14 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .feat-drawer-cta{display:block;margin-top:.55rem;font-size:.78rem;font-weight:700;color:var(--terracotta)}
 .lp-root .feat-more{background:none;border:none;cursor:pointer;font-family:var(--body);font-size:.78rem;font-weight:700;color:var(--pine);padding:0;margin-top:.7rem;display:flex;align-items:center;gap:4px;transition:opacity .15s}
 .lp-root .feat-more:hover{opacity:.7}
-.lp-root .feat-more-chevron{display:inline-block;transition:transform .2s;font-size:.7rem}
-.lp-root .feat-more.open .feat-more-chevron{transform:rotate(180deg)}
+.lp-root .feat-more-chevron{display:inline-block;transition:transform .2s;font-size:.95rem;line-height:1;margin-top:-2px}
+.lp-root .feat-more.open .feat-more-chevron{transform:rotate(-90deg)}
+.lp-root .feat-more.stretch::after{content:"";position:absolute;inset:0;border-radius:22px}
+.lp-root .feat-more.stretch:focus-visible{outline:none}
+.lp-root .feat-more.stretch:focus-visible::after{outline:2px solid var(--terracotta);outline-offset:-3px}
+.lp-root .feat:hover .feat-more-chevron{transform:translateX(3px)}
+.lp-root .feat:hover .feat-more.open .feat-more-chevron{transform:rotate(-90deg)}
+.lp-root .feat.spot .feat-more{color:#F4EDDF;margin-top:1rem}
 /* spotlight: utilities + condition assessment */
 .lp-root .duo{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .lp-root .duo-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:30px;display:flex;flex-direction:column;gap:16px}
@@ -4275,7 +4281,8 @@ const LANDING_FAQ = [
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
   ["Can I share Steadwell with my spouse or partner?","Yes. The Pro plan includes shared household access and up to three properties."],
-  ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by Claude, Anthropic's AI, and Steadwell does not use your photos to train AI. See the Privacy Policy for details."],
+  ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by a third-party AI provider, and Steadwell does not use your photos to train AI. The Privacy Policy explains exactly what is shared and why."],
+  ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
 
 function LandingPage({ onSignIn, onSignUp }) {
@@ -4400,15 +4407,13 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg>,
-      title: "Ask Steadwell", desc: "Ask questions about your own home in plain English and get answers from your records.", tag: "Plus",
-      drawer: "Ask things like “When does my dishwasher warranty expire?” or “What did I spend on repairs this year?” Steadwell reads your assets, warranties, tasks, service history, expenses and documents, then helps you plan what’s next. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150.",
-      drawerCta: "Plus and Pro · 3 free to try →",
+      title: "Ask Steadwell", desc: "An AI assistant that answers questions about your home from your own records.", tag: "Plus",
+      href: "/ask-steadwell",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
       title: "Calendar sync", desc: "Maintenance tasks and warranty expiries in Apple, Google or Outlook Calendar.", tag: "Free",
-      drawer: "Subscribe once and your Steadwell maintenance tasks and warranty expiry dates appear in the calendar you already use — Apple Calendar, Google Calendar or Outlook — and stay up to date automatically.",
-      drawerCta: "Free on all plans →",
+      href: "/calendar-sync",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3.5v5c0 4-3 6.5-7 8.5-4-2-7-4.5-7-8.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>,
@@ -4469,21 +4474,19 @@ function LandingPage({ onSignIn, onSignUp }) {
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
       title: "AI receipt, nameplate & bill scan", desc: "Point your camera at a receipt, appliance label or utility bill — we fill in the rest.", tag: "Plus",
-      drawer: "Scan a receipt and Claude extracts the item, price, model number, and warranty period automatically. Scan an appliance nameplate and Smart Fill looks up the full spec sheet. Scan a utility bill and the amount, date and usage are filled in. No typing, no searching, no manual entry.",
+      drawer: "Scan a receipt and AI extracts the item, price, model number, and warranty period automatically. Scan an appliance nameplate and Smart Fill looks up the full spec sheet. Scan a utility bill and the amount, date and usage are filled in. No typing, no searching, no manual entry.",
       drawerCta: "Available on Plus and Pro →",
       href: "/ai-scan",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>,
       title: "Home health score", desc: "One score for your home, with a breakdown of what to fix first.", tag: "Plus",
-      drawer: "Steadwell turns your overdue tasks, expiring warranties, recalls and service history into a single home health score, with a factor-by-factor breakdown so you know where to start. Condition assessments feed it too.",
-      drawerCta: "Available on Plus and Pro →",
+      href: "/home-health-score",
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       title: "Shared household access", desc: "Invite a spouse or partner so everyone sees the same home records.", tag: "Pro",
-      drawer: "Invite a spouse or partner to your home so you both see the same tasks, assets, documents and contractors, and nobody has to ask who has the warranty or the plumber’s number. Pro also covers up to three properties.",
-      drawerCta: "Available on Pro →",
+      href: "/shared-household-access",
     },
   ];
 
@@ -4629,6 +4632,7 @@ function LandingPage({ onSignIn, onSignUp }) {
                 <h3>Forward an email. We do the rest.</h3>
                 <p>Send any receipt, invoice, or warranty card to your unique Steadwell address. We extract the details automatically and add them to your home records — no typing required.</p>
                 <span className="tag" style={{color:"var(--terracotta-soft)",background:"rgba(255,255,255,.1)"}}>Free for all plans</span>
+                <a href="/email-capture" className="feat-more stretch" style={{textDecoration:"none"}}>Learn more <span className="feat-more-chevron" aria-hidden="true">→</span></a>
               </div>
               <div className="spot-vis" aria-hidden="true">
                 <div className="addr">
@@ -4650,11 +4654,11 @@ function LandingPage({ onSignIn, onSignUp }) {
                 <p>{f.desc}</p>
                 <span className="tag">{f.tag}</span>
                 {f.href ? (
-                  <a href={f.href} className="feat-more" style={{textDecoration:"none"}} onClick={e=>e.stopPropagation()}>Learn more <span className="feat-more-chevron">▶</span></a>
+                  <a href={f.href} className="feat-more stretch" style={{textDecoration:"none"}} onClick={e=>e.stopPropagation()}>Learn more <span className="feat-more-chevron" aria-hidden="true">→</span></a>
                 ) : (
                   <>
                     <button className={"feat-more"+(openFeat===i?" open":"")} aria-expanded={openFeat===i}>
-                      {openFeat===i?"Show less":"Learn more"} <span className="feat-more-chevron">{openFeat===i?"▲":"▼"}</span>
+                      {openFeat===i?"Show less":"Learn more"} <span className="feat-more-chevron" aria-hidden="true">→</span>
                     </button>
                     <div className={"feat-drawer"+(openFeat===i?" open":"")}>
                       {f.drawer}
@@ -22319,6 +22323,10 @@ export default function App() {
   if (_path === "/home-document-vault" || _path === "/home-document-vault/") return <DocumentVaultPage />;
   if (_path === "/utility-bill-tracker" || _path === "/utility-bill-tracker/") return <UtilityBillTrackerPage />;
   if (_path === "/home-condition-assessment" || _path === "/home-condition-assessment/") return <ConditionAssessmentPage />;
+  if (_path === "/ask-steadwell" || _path === "/ask-steadwell/") return <AskSteadwellPage />;
+  if (_path === "/home-health-score" || _path === "/home-health-score/") return <HomeHealthScorePage />;
+  if (_path === "/calendar-sync" || _path === "/calendar-sync/") return <CalendarSyncPage />;
+  if (_path === "/shared-household-access" || _path === "/shared-household-access/") return <SharedHouseholdAccessPage />;
   if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
   const [session, setSession] = useState(null);
@@ -25905,6 +25913,10 @@ const LP_FEATURE_PAGES = [
   { href:"/home-insurance-tracker",    label:"Insurance Tracker",       icon:"🏠", desc:"Policies, claims and yearly coverage check-ins." },
   { href:"/home-projects",             label:"Home Projects & ROI",     icon:"🏗️", desc:"Renovation budgets and resale-value ROI." },
   { href:"/home-document-vault",       label:"Document Vault",          icon:"📁", desc:"Deeds, permits, manuals and reports, searchable." },
+  { href:"/ask-steadwell",             label:"Ask Steadwell",           icon:"💬", desc:"An AI assistant that answers from your home's records." },
+  { href:"/home-health-score",         label:"Home Health Score",       icon:"❤️", desc:"One score for how well your home is kept." },
+  { href:"/calendar-sync",             label:"Calendar Sync",           icon:"📅", desc:"Tasks and warranty dates in the calendar you use." },
+  { href:"/shared-household-access",   label:"Shared Access",           icon:"👥", desc:"Invite a partner to manage the home together." },
 ];
 
 // Default top-nav for feature pages (the hamburger shows the same list on phones).
@@ -26085,7 +26097,7 @@ function UtilityBillTrackerPage() {
           <LPFAQ items={UTILITY_FAQ}/>
         </LPSection>
 
-        <LPRelated hrefs={["/home-expense-tracker","/email-capture","/ai-scan","/home-condition-assessment"]}/>
+        <LPRelated hrefs={["/home-expense-tracker","/email-capture","/ai-scan","/ask-steadwell"]}/>
         <LPCTA h2="See what your home really costs to run." sub="Add your first utility in under a minute. Tracking is free, and you can add AI bill scanning any time." btnLabel="Start tracking free →"/>
       </main>
       <LPFooter/>
@@ -26101,7 +26113,7 @@ const ASSESS_FAQ = [
   ["Does it change my records automatically?","No. You review every result first. If the label in your photos shows a different model, serial number or install date than your record, Steadwell offers the correction as a ticked suggestion and saves it only when you confirm. Suggested tasks work the same way: you choose which ones to add."],
   ["Can I override the score?","Yes. If you disagree with the AI’s grade you can change it, add a reason, and Steadwell keeps both numbers in the history."],
   ["How many assessments do I get?","Plus includes 5 assessments a month and Pro includes 25. Only successful assessments count; if something fails, the photos are unclear, or the item turns out to be a different type than you picked, it is not counted against your limit."],
-  ["What happens to my photos?","Your photos are stored privately in your account and sent securely to Claude, Anthropic’s AI, to produce the assessment. Steadwell does not use them to train AI."],
+  ["What happens to my photos?","Your photos are stored privately in your account and sent securely to a third-party AI service to produce the assessment, as described in our Privacy Policy. Steadwell does not use them to train AI."],
   ["How often should I reassess something?","About once a year, or after a storm, a repair or a change you notice. Steadwell keeps the full history for each item and suggests a fresh assessment after twelve months."],
   ["Is condition assessment available on the free plan?","Condition assessments are included with Plus and Pro. The free plan still tracks every item, its warranty, recalls and maintenance."],
 ];
@@ -26146,11 +26158,11 @@ function ConditionAssessmentPage() {
         </LPSection>
 
         <LPSection alt>
-          <LPSectionHead h2="How it works" sub="Powered by Claude, Anthropic’s AI model."/>
+          <LPSectionHead h2="How it works" sub="You review every result before it is saved."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Pick an item and add photos",text:"Open any asset and choose Assess condition. A short guide shows which shots help for that item type, such as the data label, an overall view and any problem area."},
-              {num:"02",title:"Claude checks it against a checklist",text:"Each item type has its own checks. The AI marks what it can see, says so when it can’t see something, and notes anything that needs attention."},
+              {num:"02",title:"AI checks it against a checklist",text:"Each item type has its own checks. The AI marks what it can see, says so when it can’t see something, and notes anything that needs attention."},
               {num:"03",title:"You review and adjust",text:"See the score, findings and suggested tasks. Change the grade if you disagree, untick anything that looks wrong, and confirm."},
               {num:"04",title:"It is saved to the item’s history",text:"The Condition card on the asset keeps every assessment, and Steadwell suggests reassessing after a year."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
@@ -26200,8 +26212,328 @@ function ConditionAssessmentPage() {
           <LPFAQ items={ASSESS_FAQ}/>
         </LPSection>
 
-        <LPRelated hrefs={["/warranty-tracker","/home-maintenance-tracker","/utility-bill-tracker","/recall-alerts"]}/>
+        <LPRelated hrefs={["/home-health-score","/home-maintenance-tracker","/utility-bill-tracker","/warranty-tracker"]}/>
         <LPCTA h2="Find out what your home is telling you." sub="Add an appliance, take a few photos, and get a condition grade, a years-left estimate and next steps." btnLabel="Get started free →" note="Free to start · Condition assessments on Plus and Pro"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── ASK STEADWELL PAGE ───────────────────────────────────────────────────────
+const ASK_FAQ = [
+  ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. You ask a question in plain English and it answers using the records you have saved for your home: your assets, warranties, tasks, service history, expenses and documents."],
+  ["Can it change my records?","No. Ask Steadwell cannot edit or delete anything. When it suggests a task, you see it as a card and it is saved only if you tap Add."],
+  ["Where do I find it?","Type a question into the search bar at the top of Steadwell and choose Ask Steadwell. It opens as a chat panel on top of whatever you were doing."],
+  ["How many questions do I get?","Free accounts get 3 questions to try it. Plus includes 30 questions a month and Pro includes 150."],
+  ["How accurate are the answers?","It answers from the information in your account, so it is only as complete as your records, and like any AI assistant it can be wrong. Use it as a planning aid, double-check anything important, and call a licensed professional for safety, electrical, gas or structural questions."],
+  ["Are my questions saved?","By default Steadwell saves the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads. You can turn this off at any time in your account settings, and turning it off also deletes questions already saved."],
+  ["Does it work for each of my homes?","Yes. Each home has its own conversation, and Ask Steadwell answers using the home you are viewing."],
+];
+
+function AskSteadwellPage() {
+  const path = "/ask-steadwell";
+  const description = "An AI home assistant that answers questions from your own records: warranties, tasks, repairs, spending and documents. 3 free questions to try.";
+  useSEO({
+    title:"AI Home Assistant — Ask Questions About Your Home",
+    description,
+    canonical:`https://www.trysteadwell.app${path}`,
+    jsonLd: lpJsonLd({
+      name:"Ask Steadwell",
+      path, description,
+      features:["AI assistant that answers from your own home records","Reads assets, warranties, tasks, service history, expenses and documents","Suggests tasks you approve before they are saved","Separate conversation for each home","Optional question history you can turn off and delete"],
+      faq: ASK_FAQ,
+      offers:[{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
+  });
+  const TRY = ["When should I replace my roof?","How old is my HVAC, and what should I plan for?","Is my water heater near the end of its life?","I have 3 overdue tasks. What should I do first?","Am I ready for hurricane season?","What’s expiring soon?","What did I spend on repairs this year?","What should I budget for over the next 5 years?"];
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero eyebrow="AI Home Assistant" h1="Ask your home" h1em="anything." sub="Ask Steadwell is an AI assistant that reads your home’s records and answers in plain English: what is expiring, what you spent, what to do first. It suggests tasks, and you choose which ones to add." badge="Plus & Pro · 3 free questions to try" stats={[{num:"3",lbl:"Free to try"},{num:"30",lbl:"Questions a month on Plus"},{num:"150",lbl:"Questions a month on Pro"}]}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="An assistant that knows your home" sub="Generic advice is easy to find. Ask Steadwell answers from what you have actually saved."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            <LPFieldCard icon="🗂️" title="What it reads" badge="Your records" fields={["Assets and warranties","Maintenance tasks and schedules","Service history","Expenses and spending","Documents"]}/>
+            <LPFieldCard icon="💬" title="What you can ask" badge="Plain English" fields={["When something is expiring or due","How old a system is and what to plan for","What you have spent and what to budget","What to tackle first","Seasonal prep for where you live"]}/>
+            <LPFieldCard icon="✋" title="You stay in control" badge="Read-only" fields={["It cannot edit or delete your records","Suggested tasks appear as cards","Nothing is saved until you tap Add","Each home keeps its own conversation"]}/>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="Try asking" sub="A few of the questions Ask Steadwell suggests, depending on what is in your home."/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {TRY.map((q,i)=>(
+              <span key={i} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:20,padding:"9px 16px",fontSize:".88rem",color:"#234A3D",fontWeight:500}}>{q}</span>
+            ))}
+          </div>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="How it works" sub="From question to a plan in a few seconds."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Type a question",text:"Use the search bar at the top of Steadwell and choose Ask Steadwell, or tap one of the suggested questions."},
+              {num:"02",title:"It reads your records",text:"For the home you are viewing, it looks through your assets, warranties, tasks, service history, expenses and documents."},
+              {num:"03",title:"Get an answer and next steps",text:"You get a plain-English answer, and where it makes sense, suggested tasks shown as cards."},
+              {num:"04",title:"Add only what you want",text:"Tap Add on a suggested task to save it. If you do nothing, nothing changes."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Your questions, your choice" sub="Steadwell is open about how questions are handled."/>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads. Switch it off in your account settings at any time and any saved questions are deleted. Read the details in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Ask Steadwell is an AI assistant and can make mistakes. It is a planning aid, not a substitute for a licensed professional.</p>
+        </LPSection>
+
+        <LPSection narrow>
+          <LPSectionHead h2="Plans" sub="Try it free, then upgrade for everyday use."/>
+          <LPGrid cols="repeat(auto-fit,minmax(200px,1fr))" gap={14}>
+            <LPFieldCard icon="🌱" title="Free" fields={["3 questions to try"]}/>
+            <LPFieldCard icon="✨" title="Plus · $7.99/mo" fields={["30 questions a month"]}/>
+            <LPFieldCard icon="🏡" title="Pro · $14.99/mo" fields={["150 questions a month"]}/>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={ASK_FAQ}/>
+        </LPSection>
+
+        <LPRelated hrefs={["/home-health-score","/home-condition-assessment","/home-expense-tracker","/home-maintenance-tracker"]}/>
+        <LPCTA h2="Stop digging through folders." sub="Ask a question and get an answer from your own home records." btnLabel="Try Ask Steadwell →" note="3 free questions · More on Plus and Pro"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── CALENDAR SYNC PAGE ───────────────────────────────────────────────────────
+const CAL_FAQ = [
+  ["Is calendar sync free?","Yes. Calendar sync is included on every plan, including Free."],
+  ["Which calendar apps work?","Google Calendar, Apple Calendar and Outlook, plus any calendar app that can subscribe to an iCal (.ics) link."],
+  ["What shows up in my calendar?","Your Steadwell maintenance tasks and the dates your warranties expire."],
+  ["How quickly do changes appear?","Steadwell updates the feed as soon as you add or change something. Your calendar app decides how often it refreshes a subscribed calendar, which is usually within a few hours and sometimes up to a day."],
+  ["Does it work both ways?","No. It is a subscription, so changes in Steadwell appear in your calendar, but editing an event in your calendar app does not change Steadwell. Mark tasks done in Steadwell."],
+  ["Is my calendar link private?","The link contains a private key that is unique to your account. Anyone who has it can see your task titles and dates, so treat it like a password and do not post it publicly."],
+  ["Do I still get email reminders?","Yes. Calendar sync is in addition to Steadwell’s email reminders for upcoming tasks and warranty expiries."],
+];
+
+function CalendarSyncPage() {
+  const path = "/calendar-sync";
+  const description = "Subscribe to your home maintenance tasks and warranty expiry dates in Google Calendar, Apple Calendar or Outlook. Updates automatically. Free on every plan.";
+  useSEO({
+    title:"Home Maintenance Calendar Sync — Google, Apple, Outlook",
+    description,
+    canonical:`https://www.trysteadwell.app${path}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Calendar Sync",
+      path, description,
+      features:["Subscribe in Google Calendar, Apple Calendar or Outlook","Maintenance tasks on your calendar","Warranty expiry dates on your calendar","Automatic updates","Free on every plan"],
+      faq: CAL_FAQ,
+      offers:[{name:"Free",price:"0"}],
+    }),
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero eyebrow="Calendar Sync" h1="Your home, on the" h1em="calendar you already use." sub="Subscribe once and your Steadwell maintenance tasks and warranty expiry dates appear in Google Calendar, Apple Calendar or Outlook, and stay current as things change." badge="Free on every plan" stats={[{num:"3",lbl:"Calendar apps"},{num:"1 link",lbl:"To subscribe"},{num:"Free",lbl:"On all plans"}]}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="What lands on your calendar" sub="The dates that are easy to forget, in the place you already look."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            <LPFieldCard icon="🔧" title="Maintenance tasks" badge="All plans" fields={["Task names and due dates","Seasonal and recurring upkeep","Updates when you add or change a task"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
+            <LPFieldCard icon="🛡️" title="Warranty expiries" badge="All plans" fields={["The date each warranty ends","Time to claim or renew before coverage lapses","Updates when you add or edit a warranty"]} link={{href:"/warranty-tracker",label:"About warranty tracking"}}/>
+            <LPFieldCard icon="🔄" title="Always current" badge="Automatic" fields={["Subscribe once, no re-exporting","Your calendar app refreshes it on its own","Works on every device signed in to that calendar"]}/>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="Set it up in a minute" sub="Find it in your account settings under Calendar sync."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Open Calendar sync",text:"In Steadwell, open your account settings and find the Calendar sync card."},
+              {num:"02",title:"Pick your calendar",text:"Choose Google Calendar to open it with one click, or Apple Calendar to copy your link. For Outlook or other apps, copy the link and add it as a calendar subscribed from the web."},
+              {num:"03",title:"Confirm in your calendar app",text:"Your calendar app asks you to confirm the subscription. Accept it and your Steadwell dates appear."},
+              {num:"04",title:"Forget about it",text:"New tasks and warranties flow in automatically as your calendar app refreshes."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection narrow>
+          <LPSectionHead h2="A few things worth knowing"/>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Calendar sync is a one-way subscription. Changes in Steadwell show up in your calendar; editing an event in your calendar does not change Steadwell, so mark tasks done inside Steadwell.</p>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Your link includes a private key. Keep it to yourself, and share the home with a partner through <a href="/shared-household-access" style={{color:"#C16140",fontWeight:600}}>shared household access</a> instead.</p>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={CAL_FAQ}/>
+        </LPSection>
+
+        <LPRelated hrefs={["/home-maintenance-tracker","/warranty-tracker","/shared-household-access","/ask-steadwell"]}/>
+        <LPCTA h2="Put your home on your calendar." sub="Create a free account, subscribe once, and never miss a filter change or a warranty date." btnLabel="Get started free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── HOME HEALTH SCORE PAGE ───────────────────────────────────────────────────
+const HEALTH_FAQ = [
+  ["What is the home health score?","A single score from 0 to 100 that shows how well your home is being kept up, based on the information in your Steadwell account. It comes with a grade of Excellent, Good, Fair or At risk."],
+  ["What goes into the score?","Four things: the condition of your assets (age against expected lifespan, overdue maintenance and open recalls), how many of your tasks are overdue, how much of your warranty coverage is current, and how complete your home and insurance profile is. Asset condition counts the most."],
+  ["Do I need a paid plan?","Every account can see the overall score. Plus and Pro unlock the factor-by-factor breakdown so you can see exactly what is pulling the score down."],
+  ["Why did my score drop?","The usual causes are a task going overdue, a warranty expiring or ending within 30 days, a new recall on something you own, or an asset reaching the end of its expected life. The breakdown shows which factor moved."],
+  ["Do upcoming tasks hurt my score?","No. Only tasks that are past due count against you. A task scheduled for the future is a good sign that the home is being planned for."],
+  ["Can condition assessments change my score?","Yes. A recent condition assessment gives Steadwell a better read on an item than its age alone, and that feeds the asset factor."],
+  ["Is it an appraisal or an inspection?","No. The score reflects the records you keep in Steadwell. It is a way to see where to focus, not a professional evaluation of your home."],
+];
+
+function HomeHealthScorePage() {
+  const path = "/home-health-score";
+  const description = "One 0 to 100 score for how well your home is kept, built from asset condition, overdue tasks, warranty coverage and profile, with a breakdown of what to fix first.";
+  useSEO({
+    title:"Home Health Score — How Well Is Your Home Kept?",
+    description,
+    canonical:`https://www.trysteadwell.app${path}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Home Health Score",
+      path, description,
+      features:["Single 0 to 100 home score with a grade","Asset condition, tasks, warranties and profile factors","Breakdown of what is pulling the score down","Updates as your records change"],
+      faq: HEALTH_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"}],
+    }),
+  });
+  const BANDS = [
+    {g:"Excellent",r:"90 and up",c:"#2A9D6A"},
+    {g:"Good",r:"75 to 89",c:"#234A3D"},
+    {g:"Fair",r:"60 to 74",c:"#B8861E"},
+    {g:"At risk",r:"Below 60",c:"#C16140"},
+  ];
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero eyebrow="Home Health Score" h1="One number for how" h1em="well your home is kept." sub="Steadwell turns your assets, tasks, warranties and home profile into a single score, then shows you the factors behind it so you know what to fix first." badge="Overall score on every plan · Breakdown on Plus & Pro" stats={[{num:"0–100",lbl:"Score"},{num:"4",lbl:"Factors"},{num:"Live",lbl:"Updates as you go"}]}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Four things go into your score" sub="Asset condition counts the most, followed by tasks, warranties and your profile."/>
+          <LPGrid cols="repeat(auto-fit,minmax(250px,1fr))" gap={16}>
+            <LPFieldCard icon="🔧" title="Assets" badge="Weighs most" fields={["Age against expected lifespan","Overdue maintenance on the item","Open product recalls","Condition assessments, when you have one"]} link={{href:"/home-condition-assessment",label:"About condition assessment"}}/>
+            <LPFieldCard icon="✓" title="Tasks" fields={["Share of your tasks that are past due","Upcoming tasks do not count against you","Recurring maintenance keeps it high"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
+            <LPFieldCard icon="🛡️" title="Warranties" fields={["Expired warranties count in full","Warranties ending within 30 days count partly","You can leave items out of the score"]} link={{href:"/warranty-tracker",label:"About warranty tracking"}}/>
+            <LPFieldCard icon="🏡" title="Profile" fields={["Address, type, year built and size","Bedrooms and bathrooms","Insurance company and renewal date"]}/>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="What your score means"/>
+          <LPGrid cols="repeat(auto-fit,minmax(200px,1fr))" gap={14}>
+            {BANDS.map(b=>(
+              <LPCard key={b.g}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:600,color:b.c,marginBottom:4}}>{b.g}</div>
+                <div style={{fontSize:".85rem",color:"#7A7370"}}>{b.r}</div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="How to raise it" sub="Most of the points are a few minutes away."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Clear overdue tasks",text:"Finish or reschedule anything past due. Scheduled-ahead tasks cost you nothing."},
+              {num:"02",title:"Add install dates",text:"Real install dates give Steadwell a true read on each asset instead of a home-age estimate."},
+              {num:"03",title:"Stay ahead of warranties",text:"Renew or replace coverage before it lapses, and let alerts remind you."},
+              {num:"04",title:"Finish your profile",text:"Fill in the home details and your insurance renewal date."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={HEALTH_FAQ}/>
+        </LPSection>
+
+        <LPRelated hrefs={["/home-condition-assessment","/home-expense-tracker","/ask-steadwell","/recall-alerts"]}/>
+        <LPCTA h2="See how well your home is kept." sub="Create a free account and watch your score as your records come together." btnLabel="Get started free →" note="Overall score free · Breakdown on Plus and Pro"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── SHARED HOUSEHOLD ACCESS PAGE ─────────────────────────────────────────────
+const SHARED_FAQ = [
+  ["What is shared household access?","It lets you invite a spouse, partner or household member to a property in Steadwell so they see and manage the same tasks, assets, expenses and documents you do."],
+  ["Which plan includes it?","Shared household access is included with the Pro plan, which also covers up to three properties."],
+  ["What can the people I invite see?","They see the tasks, assets, expenses and documents for the property you invited them to."],
+  ["How do I invite someone?","Open the Shared Access card for your property, enter their email address and tap Invite. They receive an email, and you can see whether the invite is pending or active."],
+  ["Can I remove someone later?","Yes. You can remove access at any time from the same card."],
+  ["Do I invite people separately for each property?","Yes. Invitations are per property, so you decide who sees each home."],
+];
+
+function SharedHouseholdAccessPage() {
+  const path = "/shared-household-access";
+  const description = "Invite a spouse or partner to your home's Steadwell records so you both see the same tasks, assets, expenses and documents. Included with Pro.";
+  useSEO({
+    title:"Shared Home Access — Manage Your Home Together",
+    description,
+    canonical:`https://www.trysteadwell.app${path}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Shared Household Access",
+      path, description,
+      features:["Invite a spouse, partner or household member by email","Shared tasks, assets, expenses and documents","See pending and active invites","Remove access at any time","Up to three properties on Pro"],
+      faq: SHARED_FAQ,
+      offers:[{name:"Pro",price:"14.99"}],
+    }),
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero eyebrow="Shared Household Access" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner or household member by email. They see the same tasks, assets, expenses and documents, so nobody has to ask who has the warranty or the plumber’s number." badge="Included with Pro" stats={[{num:"Email",lbl:"Invite"},{num:"3",lbl:"Properties on Pro"},{num:"Anytime",lbl:"Remove access"}]}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Run the house together" sub="Most homes have more than one person keeping them running. Your records should too."/>
+          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+            <LPFieldCard icon="👥" title="What they can see" badge="Per property" fields={["Maintenance tasks","Assets and warranties","Expenses","Documents"]}/>
+            <LPFieldCard icon="✉️" title="How you invite" badge="Pro" fields={["Enter an email address and tap Invite","They get an emailed invitation","See whether it is pending or active"]}/>
+            <LPFieldCard icon="🔒" title="You stay in charge" badge="Always" fields={["Remove access at any time","Invitations are per property","You choose who sees which home"]}/>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="How it works"/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Open Shared Access",text:"Find the Shared Access card for your property in Steadwell."},
+              {num:"02",title:"Invite by email",text:"Enter your partner’s email address and tap Invite."},
+              {num:"03",title:"They accept",text:"They receive an email invitation. Until they accept, the invite shows as pending."},
+              {num:"04",title:"Manage together",text:"Once active, you both work from the same tasks, assets, expenses and documents."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection narrow>
+          <LPSectionHead h2="Pro plan" sub="Shared access comes with the plan built for more than one home and more than one person."/>
+          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
+            <LPFieldCard icon="🏡" title="Pro · $14.99/mo" fields={["Shared household access","Up to 3 properties","Full document vault","25 condition assessments and 150 Ask Steadwell questions a month","Priority support"]}/>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={SHARED_FAQ}/>
+        </LPSection>
+
+        <LPRelated hrefs={["/home-document-vault","/contractor-tracker","/calendar-sync","/home-maintenance-tracker"]}/>
+        <LPCTA h2="Give your household one source of truth." sub="Upgrade to Pro and invite your partner in under a minute." btnLabel="Get started →" note="Free to start · Shared access on Pro"/>
       </main>
       <LPFooter/>
     </div>
@@ -26454,11 +26786,11 @@ function AIScanPage() {
           </LPGrid>
         </LPSection>
         <LPSection alt>
-          <LPSectionHead h2="How it works" sub="Powered by Claude — Anthropic's AI model."/>
+          <LPSectionHead h2="How it works" sub="From photo to finished record in four steps."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Take a photo or upload a file",text:"Use your phone camera directly in the app, or upload an image or PDF. Receipts, nameplates, labels, and insurance declaration pages all work."},
-              {num:"02",title:"Claude reads the document",text:"Our AI model analyzes the image and extracts every relevant field — brand, model, serial number, price, dates, coverage amounts, and more."},
+              {num:"02",title:"AI reads the document",text:"Our AI model analyzes the image and extracts every relevant field — brand, model, serial number, price, dates, coverage amounts, and more."},
               {num:"03",title:"Review and confirm",text:"The extracted fields are pre-filled in the form for you to review. Edit anything that needs correcting, then save with one tap."},
               {num:"04",title:"Record created automatically",text:"A warranty record, asset entry, utility bill, or insurance profile is created with all the details. The original document is saved to your vault."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
@@ -26534,7 +26866,7 @@ function EmailCapturePage() {
             {[
               {num:"01",title:"Get your capture address",text:"Every Steadwell account gets a unique email address like robert-7f3a91c2b8d04e65a1c9@in.trysteadwell.app. Find it in your home toolbox under Email Inbox."},
               {num:"02",title:"Forward anything home-related",text:"Get a receipt from Home Depot? Forward it. Contractor sends an invoice? Forward it. Warranty registration? Forward it. Takes 3 seconds."},
-              {num:"03",title:"AI extracts the details",text:"Claude reads the email and any attachments, extracts the relevant fields, and determines whether it's a warranty, expense, or document."},
+              {num:"03",title:"AI extracts the details",text:"AI reads the email and any attachments, extracts the relevant fields, and determines whether it's a warranty, expense, or document."},
               {num:"04",title:"Review in your Email Inbox",text:"Every capture lands in your Email Inbox as pending. Review the pre-filled details, edit if needed, and save to your records with one tap."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
@@ -26568,7 +26900,7 @@ function EmailCapturePage() {
             ["Does every property get its own address?","Yes — each property you track in Steadwell gets its own unique capture address. Forwarded emails are automatically routed to the correct property."],
             ["What happens after I forward an email?","The email lands in your Email Inbox as a pending capture. You receive a confirmation email, then review the AI-extracted details in the app before saving."],
             ["Is the email capture secure?","Yes. Your capture address is uniquely generated and not guessable. Only emails forwarded to your specific address are processed."],
-            ["What if Claude can't parse the email?","Every email appears in your inbox regardless of parse confidence. Low-confidence captures are flagged so you can review and correct the details manually."],
+            ["What if the AI can't parse the email?","Every email appears in your inbox regardless of parse confidence. Low-confidence captures are flagged so you can review and correct the details manually."],
           ]}/>
         </LPSection>
         <LPRelated hrefs={["/utility-bill-tracker","/ai-scan","/home-expense-tracker","/warranty-tracker"]}/>
@@ -26637,7 +26969,7 @@ function MaintenanceTrackerPage() {
             ["Can I track tasks across multiple properties?","Yes — Pro users can track maintenance for up to 3 properties, each with their own task list and history."],
           ]}/>
         </LPSection>
-        <LPRelated hrefs={["/home-condition-assessment","/warranty-tracker","/utility-bill-tracker","/contractor-tracker"]}/>
+        <LPRelated hrefs={["/home-condition-assessment","/warranty-tracker","/utility-bill-tracker","/calendar-sync"]}/>
         <LPCTA h2="Your home won&#39;t maintain itself." sub="Start tracking maintenance tasks today and build a complete service history for your home." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
@@ -26700,7 +27032,7 @@ function ContractorTrackerPage() {
             ["How is this different from keeping contacts in my phone?","Steadwell links each contractor to your home's service history, tracks total spending per trade, and keeps work notes and receipts alongside contact info."],
           ]}/>
         </LPSection>
-        <LPRelated hrefs={["/home-maintenance-tracker","/home-condition-assessment","/home-expense-tracker","/home-document-vault"]}/>
+        <LPRelated hrefs={["/home-maintenance-tracker","/home-condition-assessment","/home-expense-tracker","/shared-household-access"]}/>
         <LPCTA h2="Never lose a good contractor again." sub="Save your trusted pros and build a complete service history for your home." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
@@ -27023,7 +27355,7 @@ function DocumentVaultPage() {
             ["Can I share documents with a contractor?","You can download any document and share it directly. Contractors do not have direct access to your vault."],
           ]}/>
         </LPSection>
-        <LPRelated hrefs={["/email-capture","/warranty-tracker","/home-insurance-tracker","/utility-bill-tracker"]}/>
+        <LPRelated hrefs={["/email-capture","/warranty-tracker","/home-insurance-tracker","/shared-household-access"]}/>
         <LPCTA h2="Stop losing important documents." sub="Store every home document in one secure, searchable vault — always accessible when you need it." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
