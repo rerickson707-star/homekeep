@@ -1,4 +1,4 @@
-// Steadwell v302 — 2026-10-01
+// Steadwell v304 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4280,7 +4280,7 @@ const LANDING_FAQ = [
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
-  ["Can I share Steadwell with my spouse, partner or a helper?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or helper to a home and assign tasks to the people you invite. Pro also covers up to three properties."],
+  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties."],
   ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by a third-party AI provider, and Steadwell does not use your photos to train AI. The Privacy Policy explains exactly what is shared and why."],
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
@@ -4485,7 +4485,7 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-      title: "Shared access & task assignment", desc: "Invite a spouse, partner, property manager or helper, then assign tasks so everyone knows who is doing what.", tag: "Pro",
+      title: "Shared access & task assignment", desc: "Invite a spouse, partner, property manager or team member, then assign tasks so everyone knows who is doing what.", tag: "Pro",
       href: "/shared-household-access",
     },
   ];
@@ -12532,7 +12532,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           if (nextId) await supabase.from("tasks").delete().eq("id",nextId).eq("property_id",propertyId);
           setTasks(ts => ts.filter(x=>x.id!==nextId).map(x=>x.id===t.id?{...x,status:prevStatus}:x));
           if (logId) {
-            await supabase.from("asset_service_log").delete().eq("id",logId).eq("user_id",userId);
+            await supabase.from("asset_service_log").delete().eq("id",logId);
             await supabase.from("warranties").update({last_serviced: prevServiced}).eq("id",t.asset_id).eq("property_id",propertyId);
             const {data: sl2} = await supabase.from("asset_service_log").select("*").eq("property_id",propertyId).order("service_date",{ascending:false});
             if (sl2) setServiceLogs(sl2);
@@ -13742,7 +13742,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     if (stale.length === 0) return;
     (async () => {
       for (const a of stale) {
-        const { data } = await supabase.from("warranties").update({ lifespan_years: null }).eq("id", a.id).eq("user_id", userId).select("id");
+        const { data } = await supabase.from("warranties").update({ lifespan_years: null }).eq("id", a.id).select("id");
         if (data?.length) setAssets(prev => prev.map(x => x.id === a.id ? { ...x, lifespan_years: null } : x));
       }
     })();
@@ -13791,7 +13791,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const linkedAsset = warrantyData.asset_id ? assets.find(a => a.id === warrantyData.asset_id) : null;
 
     if (warrantyEditId) {
-      const { error } = await supabase.from("warranties").update(payload).eq("id", warrantyEditId).eq("user_id", userId);
+      const { error } = await supabase.from("warranties").update(payload).eq("id", warrantyEditId);
       if (!error) {
         setAssets(assets.map(a => a.id === warrantyEditId ? {...payload, id:warrantyEditId} : a));
         // When linked to an asset, the backfill block below shows its own
@@ -13832,8 +13832,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       if (Object.keys(updates).length > 0) {
         const { error: assetErr } = await supabase.from("warranties")
           .update(updates)
-          .eq("id", linkedAsset.id)
-          .eq("user_id", userId);
+          .eq("id", linkedAsset.id);
         if (!assetErr) {
           setAssets(assets.map(a => a.id === linkedAsset.id ? {...a, ...updates} : a));
           toast(`Warranty saved & ${Object.keys(updates).length} field${Object.keys(updates).length>1?"s":""} added to ${linkedAsset.item} ✓`);
@@ -13966,7 +13965,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         enriched.notes = [assetData.notes, `Support: ${d.support_url}`].filter(Boolean).join("\n");
       if (Object.keys(enriched).length === 0) return;
 
-      const { error } = await supabase.from("warranties").update(enriched).eq("id", assetId).eq("user_id", userId);
+      const { error } = await supabase.from("warranties").update(enriched).eq("id", assetId);
       if (!error) {
         const stateEnriched = {...enriched};
         if (pmArray.length > 0) stateEnriched.pm_schedule = pmArray;
@@ -14027,7 +14026,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
 
     if(editId) {
-      const {error} = await supabase.from("warranties").update(payload).eq("id",editId).eq("user_id",userId);
+      const {error} = await supabase.from("warranties").update(payload).eq("id",editId);
       if(!error) {
         setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a));
         if (hasBrandModel && isPlus) {
@@ -14086,7 +14085,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     // Checking that a row actually came back catches that case for real.
     const { data, error } = await supabase.from("warranties")
       .update({ retired_at: today })
-      .eq("id", id).eq("user_id", userId)
+      .eq("id", id)
       .select("id");
     if (!error && data?.length) {
       setAssets(assets.map(a => a.id === id ? {...a, retired_at: today} : a));
@@ -14102,7 +14101,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Hard delete — only reachable after user explicitly declines the retire offer
   const confirmDel = async () => {
     const id = retireConfirm || confirm;
-    const { error } = await supabase.from("warranties").delete().eq("id", id).eq("user_id", userId);
+    const { error } = await supabase.from("warranties").delete().eq("id", id);
     if (!error) {
       setAssets(assets.filter(a => a.id !== id));
       toast("Asset permanently deleted","error");
@@ -14127,7 +14126,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
 
   const reloadServiceLogs = async () => {
-    const {data} = await supabase.from("asset_service_log").select("*").eq("user_id",userId).eq("property_id",propertyId).order("service_date",{ascending:false});
+    const {data} = await supabase.from("asset_service_log").select("*").eq("property_id",propertyId).order("service_date",{ascending:false});
     if(data) setServiceLogs(data);
   };
 
@@ -14142,10 +14141,10 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       vendor:       serviceEditData.vendor||"",
     };
     if(serviceEditId) {
-      const {error} = await supabase.from("asset_service_log").update(payload).eq("id",serviceEditId).eq("user_id",userId);
+      const {error} = await supabase.from("asset_service_log").update(payload).eq("id",serviceEditId);
       if(!error) {
         await reloadServiceLogs();
-        await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id).eq("user_id",userId);
+        await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id);
         setAssets(assets.map(a=>a.id===payload.asset_id?{...a,last_serviced:payload.service_date}:a));
         toast("Service log updated ✓");
       } else { console.error("Service update error:", error); toast("Error saving: "+error.message,"error"); }
@@ -14153,7 +14152,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       const {error} = await supabase.from("asset_service_log").insert([{...payload,user_id:userId,property_id:propertyId}]);
       if(!error) {
         await reloadServiceLogs();
-        await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id).eq("user_id",userId);
+        await supabase.from("warranties").update({last_serviced:payload.service_date}).eq("id",payload.asset_id);
         setAssets(assets.map(a=>a.id===payload.asset_id?{...a,last_serviced:payload.service_date}:a));
 
         // Auto-create a Completed task for this service entry
@@ -14185,7 +14184,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   };
 
   const confirmDelService = async () => {
-    const {error} = await supabase.from("asset_service_log").delete().eq("id",serviceConfirm).eq("user_id",userId);
+    const {error} = await supabase.from("asset_service_log").delete().eq("id",serviceConfirm);
     if(!error) { setServiceLogs(serviceLogs.filter(s=>s.id!==serviceConfirm)); toast("Service log deleted","error"); }
     setServiceConfirm(null);
   };
@@ -14358,7 +14357,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               </div>
             </div>
             <button onClick={async()=>{
-                const{data,error}=await supabase.from("warranties").update({retired_at:null,retired_reason:""}).eq("id",asset.id).eq("user_id",userId).select("id");
+                const{data,error}=await supabase.from("warranties").update({retired_at:null,retired_reason:""}).eq("id",asset.id).select("id");
                 if(!error && data?.length){setAssets(assets.map(a=>a.id===asset.id?{...a,retired_at:null,retired_reason:""}:a));setShowRetired(false);toast("Asset restored ✓");}
                 else toast("Error restoring","error");
               }}
@@ -14483,7 +14482,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   {warrantyExpired && (
                     <button onClick={async()=>{
                       const next = !asset.exclude_warranty_from_score;
-                      const {error} = await supabase.from("warranties").update({exclude_warranty_from_score:next}).eq("id",asset.id).eq("user_id",userId);
+                      const {error} = await supabase.from("warranties").update({exclude_warranty_from_score:next}).eq("id",asset.id);
                       if(!error){ setAssets(assets.map(a=>a.id===asset.id?{...a,exclude_warranty_from_score:next}:a)); toast(next?"Excluded from Home Health score":"Counting toward Home Health score"); }
                       else toast("Couldn't update — try again","error");
                     }} style={{marginTop:".5rem",fontSize:".76rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".3rem .7rem",cursor:"pointer",fontFamily:"inherit"}}>
@@ -14576,7 +14575,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   pm_schedule: updated.pm_schedule ? JSON.stringify(updated.pm_schedule) : "[]",
                   maintenance_tip: updated.maintenance_tip||"",
                 };
-                const {error} = await supabase.from("warranties").update(payload).eq("id", asset.id).eq("user_id", userId);
+                const {error} = await supabase.from("warranties").update(payload).eq("id", asset.id);
                 if (!error) {
                   setAssets(prev => prev.map(a => a.id===asset.id ? {...a,...updated,...payload} : a));
                   toast("Smart Fill applied ✓");
@@ -15511,7 +15510,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   // Load projects, utilities, bills — scoped to current property
   useEffect(() => {
     if(!userId || !propertyId) return;
-    supabase.from("projects").select("*").eq("user_id", userId).eq("property_id", propertyId)
+    supabase.from("projects").select("*").eq("property_id", propertyId)
       .then(({data, error}) => { if(error) console.error("Projects load error:", error.message, error.code); if(data) setProjects(data); });
     supabase.from("utilities").select("*").eq("user_id", userId).eq("property_id", propertyId)
       .then(({data, error}) => {
@@ -15563,7 +15562,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     if(!payload.project_id) payload.project_id = null;
     if(payload.amount!=="" && payload.amount!=null) payload.amount = Number(payload.amount);
     if(editId) {
-      const {error} = await supabase.from("expenses").update(payload).eq("id",editId).eq("user_id",userId);
+      const {error} = await supabase.from("expenses").update(payload).eq("id",editId);
       if(!error) { setExpenses(expenses.map(e=>e.id===editId?{...payload,id:editId,user_id:userId}:e)); toast("Expense updated ✓"); }
       else toast("Error saving — "+error.message,"error");
     } else {
@@ -15575,7 +15574,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const confirmDel = async () => {
-    const {error} = await supabase.from("expenses").delete().eq("id",confirm).eq("user_id",userId);
+    const {error} = await supabase.from("expenses").delete().eq("id",confirm);
     if(!error) { setExpenses(expenses.filter(e=>e.id!==confirm)); toast("Expense deleted","error"); }
     setConfirm(null);
   };
@@ -15594,7 +15593,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     }
     const payload = pickProject(projectEditData);
     if(projectEditId) {
-      const {error} = await supabase.from("projects").update(payload).eq("id",projectEditId).eq("user_id",userId);
+      const {error} = await supabase.from("projects").update(payload).eq("id",projectEditId);
       if(!error) { setProjects(projects.map(p=>p.id===projectEditId?{...payload,id:projectEditId,user_id:userId}:p)); toast("Project updated ✓"); }
       else { toast("Error saving — "+error.message,"error"); return; }
     } else {
@@ -15606,7 +15605,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const confirmDelProject = async () => {
-    const {error} = await supabase.from("projects").delete().eq("id",projectConfirm).eq("user_id",userId);
+    const {error} = await supabase.from("projects").delete().eq("id",projectConfirm);
     if(!error) { setProjects(projects.filter(p=>p.id!==projectConfirm)); toast("Project deleted","error"); }
     setProjectConfirm(null);
   };
@@ -17833,32 +17832,44 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
 const SHARED_ACCESS_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/shared-access";
 const ANON_KEY_SA = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk";
 
+// Access levels for invited people. Only an explicit "full" sees expenses and projects;
+// any other stored value (including older invites) is the restricted level.
+const ACCESS_LEVELS = [
+  { key:"full",    label:"Full access",    desc:"Tasks, assets, service history, contractors, expenses and projects. For a spouse, partner, co-owner or property manager." },
+  { key:"limited", label:"Tasks & assets", desc:"Tasks, assets, service history and contractors. Expenses and projects stay private. For a maintenance person or caretaker." },
+];
+const accessKey = (role) => role === "full" ? "full" : "limited";
+const accessLabel = (role) => ACCESS_LEVELS.find(l => l.key === accessKey(role)).label;
+
 function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, toast }) {
   const [members, setMembers]       = useState([]);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLevel, setInviteLevel] = useState("limited"); // least privilege unless the owner picks Full
   const [sending, setSending]       = useState(false);
   const [loading, setLoading]       = useState(true);
   const isPro = planData?.plan === "pro";
+  const isGuest = !!profile?._shared; // viewing someone else's home through an invite
 
   useEffect(() => {
-    if (!profile?.id) return;
+    if (!profile?.id || isGuest) { setLoading(false); return; }
     supabase.from("home_members").select("*").eq("property_id", profile.id)
       .then(({ data, error }) => { setMembers(error ? [] : (data || [])); setLoading(false); })
       .catch(() => { setMembers([]); setLoading(false); });
-  }, [profile?.id]);
+  }, [profile?.id, isGuest]);
 
   const sendInvite = async () => {
     if (!inviteEmail.trim() || !inviteEmail.includes("@")) { toast("Enter a valid email", "error"); return; }
     if (inviteEmail.toLowerCase() === userEmail.toLowerCase()) { toast("You can't invite yourself", "error"); return; }
     setSending(true);
     try {
+      const memberEmail = inviteEmail.trim().toLowerCase();
       const resp = await fetch(SHARED_ACCESS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY_SA}` },
         body: JSON.stringify({
           ownerName:       ownerLabel(profile),
           ownerEmail:      userEmail,
-          memberEmail:     inviteEmail.trim().toLowerCase(),
+          memberEmail,
           propertyAddress: profile.address,
           propertyId:      profile.id,
           ownerId:         userId,
@@ -17867,7 +17878,12 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
       const data = await resp.json();
       if (!data.ok) { toast(data.error || "Invite failed", "error"); }
       else {
-        toast("Invite sent ✓");
+        // Record the chosen access level on the new invite.
+        const { error: roleErr } = await supabase.from("home_members")
+          .update({ role: inviteLevel })
+          .eq("property_id", profile.id).eq("member_email", memberEmail).eq("owner_id", userId);
+        if (roleErr && inviteLevel === "full") toast("Invite sent, but Full access could not be saved. They have Tasks & assets access for now.", "error");
+        else toast("Invite sent ✓");
         setInviteEmail("");
         // Refresh members list
         const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id);
@@ -17875,6 +17891,13 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
       }
     } catch { toast("Could not send invite", "error"); }
     setSending(false);
+  };
+
+  const changeLevel = async (m, level) => {
+    const { error } = await supabase.from("home_members").update({ role: level }).eq("id", m.id).eq("owner_id", userId);
+    if (error) { toast("Could not change access", "error"); return; }
+    setMembers(list => list.map(x => x.id === m.id ? { ...x, role: level } : x));
+    toast(`${m.member_email.split("@")[0]} now has ${accessLabel(level)}`);
   };
 
   const revoke = async (memberId) => {
@@ -17885,12 +17908,23 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
     }
   };
 
+  if (isGuest) {
+    return (
+      <div className="panel" style={{marginBottom:".85rem"}}>
+        <div className="panel-title">Shared Access</div>
+        <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55}}>
+          You are viewing this home through an invite. Your access: <strong style={{color:"var(--dark)"}}>{accessLabel(profile._role)}</strong>. Only the owner can invite people or change access.
+        </div>
+      </div>
+    );
+  }
+
   if (!isPro) {
     return (
       <div className="panel" style={{marginBottom:".85rem"}}>
         <div className="panel-title">Shared Access</div>
         <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,marginBottom:".85rem"}}>
-          Invite a spouse, partner, property manager or helper to work on this property with you, and assign tasks to the people you invite.
+          Invite a spouse, partner, property manager or team member to work on this property with you, choose what each person can see, and assign tasks to them.
         </div>
         <button className="btn btn-primary" style={{width:"100%"}} onClick={onUpgrade}>
           Upgrade to Pro to enable shared access
@@ -17899,29 +17933,33 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
     );
   }
 
+  const chosen = ACCESS_LEVELS.find(l => l.key === inviteLevel);
   return (
     <div className="panel" style={{marginBottom:".85rem"}}>
       <div className="panel-title">Shared Access</div>
       <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.5,marginBottom:"1rem"}}>
-        Invite a spouse, partner, property manager, co-owner or helper. Once they accept, you can assign tasks to them and filter the task list by person.
-      </div>
-      <div style={{fontSize:".74rem",color:"#8A6D1E",background:"#FBF3DE",border:"1px solid #F0E0B0",borderRadius:10,padding:".5rem .7rem",lineHeight:1.5,marginBottom:"1rem"}}>
-        Everyone you invite can see and edit all tasks, assets, expenses and documents for this property. Only invite people you trust with that.
+        Invite a spouse, partner, property manager, co-owner or team member. Choose what each person can see. Once they accept, you can assign tasks to them and filter the task list by person.
       </div>
 
       {/* Invite input */}
-      <div style={{display:"flex",gap:".5rem",marginBottom:"1rem"}}>
+      <div style={{display:"flex",gap:".5rem",marginBottom:".6rem"}}>
         <input
           type="email"
           value={inviteEmail}
           onChange={e => setInviteEmail(e.target.value)}
           onKeyDown={e => e.key === "Enter" && sendInvite()}
           placeholder="name@email.com"
-          style={{flex:1}}
+          style={{flex:1,minWidth:0}}
         />
         <button className="btn btn-primary" disabled={sending} onClick={sendInvite} style={{flexShrink:0}}>
           {sending ? "Sending…" : "Invite"}
         </button>
+      </div>
+      <select value={inviteLevel} onChange={e => setInviteLevel(e.target.value)} aria-label="Access level for the new invite" style={{width:"100%",marginBottom:".4rem"}}>
+        {ACCESS_LEVELS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
+      </select>
+      <div style={{fontSize:".74rem",color:"#8A6D1E",background:"#FBF3DE",border:"1px solid #F0E0B0",borderRadius:10,padding:".5rem .7rem",lineHeight:1.5,marginBottom:"1rem"}}>
+        <strong>{chosen.label}:</strong> {chosen.desc} Documents and receipt files are not shared.
       </div>
 
       {/* Members list */}
@@ -17929,16 +17967,16 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
         <div style={{fontSize:".8rem",color:"#9E9690"}}>Loading…</div>
       ) : members.length === 0 ? (
         <div style={{fontSize:".8rem",color:"#9E9690",textAlign:"center",padding:".75rem",background:"var(--cream)",borderRadius:10}}>
-          No one invited yet — share access with your household
+          No one invited yet. Share access with your household or team.
         </div>
       ) : (
         <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
           {members.map(m => (
-            <div key={m.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:12,border:"1px solid var(--stone)"}}>
+            <div key={m.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:12,border:"1px solid var(--stone)",flexWrap:"wrap"}}>
               <div style={{width:34,height:34,borderRadius:"50%",background:"var(--pine)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontWeight:700,fontSize:".85rem",flexShrink:0}}>
                 {m.member_email[0].toUpperCase()}
               </div>
-              <div style={{flex:1,minWidth:0}}>
+              <div style={{flex:1,minWidth:140}}>
                 <div style={{fontSize:".85rem",fontWeight:500,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.member_email}</div>
                 <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1,display:"flex",alignItems:"center",gap:5}}>
                   <span style={{
@@ -17950,6 +17988,9 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
                   {m.status === "pending" && " — hasn't accepted yet"}
                 </div>
               </div>
+              <select value={accessKey(m.role)} onChange={e => changeLevel(m, e.target.value)} aria-label={`Access level for ${m.member_email}`} style={{fontSize:".78rem",padding:".3rem 1.8rem .3rem .6rem",width:"auto",flexShrink:0}}>
+                {ACCESS_LEVELS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
+              </select>
               <button
                 onClick={() => revoke(m.id)}
                 className="btn btn-sm btn-danger"
@@ -22668,16 +22709,11 @@ export default function App() {
       const [t, w, e, sl, c] = await Promise.all([
         // Tasks are scoped to the home, not the person, so tasks added by a teammate show up too.
         supabase.from("tasks").select("*").eq("property_id", activePid).order("created_at", { ascending: false }),
-        activeIsShared
-          ? supabase.from("warranties").select("*").eq("property_id", activePid).order("expiry_date", { ascending: true })
-          : supabase.from("warranties").select("*").eq("user_id", uid).eq("property_id", activePid).order("expiry_date", { ascending: true }),
-        activeIsShared
-          ? supabase.from("expenses").select("*").eq("property_id", activePid).order("date", { ascending: false })
-          : supabase.from("expenses").select("*").eq("user_id", uid).eq("property_id", activePid).order("date", { ascending: false }),
-        activeIsShared
-          ? supabase.from("asset_service_log").select("*").eq("property_id", activePid).order("service_date", { ascending: false })
-          : supabase.from("asset_service_log").select("*").eq("user_id", uid).eq("property_id", activePid).order("service_date", { ascending: false }),
-        supabase.from("contractors").select("*").eq("user_id", uid).order("name", { ascending: true }),
+        supabase.from("warranties").select("*").eq("property_id", activePid).order("expiry_date", { ascending: true }),
+        supabase.from("expenses").select("*").eq("property_id", activePid).order("date", { ascending: false }),
+        supabase.from("asset_service_log").select("*").eq("property_id", activePid).order("service_date", { ascending: false }),
+        // A shared home uses its owner's contractor list (read only for invited people).
+        supabase.from("contractors").select("*").eq("user_id", activeIsShared ? (activeP?.user_id || uid) : uid).order("name", { ascending: true }),
       ]);
       if(t.data) setTasks(t.data);
       if(w.data) setWarranties(w.data);
@@ -22761,6 +22797,12 @@ export default function App() {
     return () => { cancelled = true; };
   }, [profile?.id, profile?.user_id, session?.user?.id]);
 
+  // ── What this person may see on the active home. The database enforces it; this hides
+  // screens that would only come back empty. Only an explicit "full" invite sees money.
+  const accessLevel = profile?._shared ? (profile._role === "full" ? "full" : "limited") : "owner";
+  const canSeeMoney = accessLevel !== "limited";
+  useEffect(() => { if (!canSeeMoney && tab === "expenses") setTab("dashboard"); }, [canSeeMoney, tab]);
+
   // ── Switch active property and reload all scoped data
   const switchProperty = async (propertyId) => {
     const uid = session.user.id;
@@ -22769,17 +22811,18 @@ export default function App() {
     if (newProfile) setProfile(newProfile);
     setDataLoading(true);
 
-    // Shared homes are read by property (the member's own user id owns none of the rows).
+    // Everything is read by property: what each person may see is decided by the database,
+    // so a shared home and an owned home use the same queries.
     const isShared = !!newProfile?._shared;
-    const own = (q) => isShared ? q : q.eq("user_id", uid);
 
     // Fetch everything in parallel, then set state all at once
-    const [t, w, e, sl, proj] = await Promise.all([
+    const [t, w, e, sl, proj, con] = await Promise.all([
       supabase.from("tasks").select("*").eq("property_id", propertyId).order("created_at", { ascending: false }),
-      own(supabase.from("warranties").select("*")).eq("property_id", propertyId).order("expiry_date", { ascending: true }),
-      own(supabase.from("expenses").select("*")).eq("property_id", propertyId).order("date", { ascending: false }),
-      own(supabase.from("asset_service_log").select("*")).eq("property_id", propertyId).order("service_date", { ascending: false }),
-      own(supabase.from("projects").select("*")).eq("property_id", propertyId),
+      supabase.from("warranties").select("*").eq("property_id", propertyId).order("expiry_date", { ascending: true }),
+      supabase.from("expenses").select("*").eq("property_id", propertyId).order("date", { ascending: false }),
+      supabase.from("asset_service_log").select("*").eq("property_id", propertyId).order("service_date", { ascending: false }),
+      supabase.from("projects").select("*").eq("property_id", propertyId),
+      supabase.from("contractors").select("*").eq("user_id", isShared ? (newProfile?.user_id || uid) : uid).order("name", { ascending: true }),
     ]);
 
     // Set all state at once so components mount with complete data
@@ -22788,6 +22831,7 @@ export default function App() {
     setExpenses(e.data    || []);
     setServiceLogs(sl.data || []);
     setProjects(proj.data || []);
+    if (con.data) setContractors(con.data);
     loadAssessments(propertyId);
     // Note: utilities and bills are managed inside Expenses component
     // and reload automatically via key={activePropertyId} remount
@@ -22909,7 +22953,7 @@ export default function App() {
     {id:"warranties",label:"Assets",     icon:"🔧", badge: (() => { const n = warranties.filter(w=>w.condition==="Needs Attention"||w.condition==="Failed").length; return n>0?n:0; })()},
     {id:"expenses",  label:"Money",     icon:"💲"},
     {id:"profile",   label:"My Home",    icon:"🏡"},
-  ];
+  ].filter(t => canSeeMoney || t.id !== "expenses");
   const uid = session.user.id;
   const warrantyUrgent = getWarrantyBuckets(warranties).urgent;
   const emailUnverified = session?.user?.app_metadata?.email_verified === false;
@@ -25999,7 +26043,7 @@ const LP_FEATURE_PAGES = [
   { href:"/ask-steadwell",             label:"Ask Steadwell",           icon:"💬", desc:"An AI assistant that answers from your home's records." },
   { href:"/home-health-score",         label:"Home Health Score",       icon:"❤️", desc:"One score for how well your home is kept." },
   { href:"/calendar-sync",             label:"Calendar Sync",           icon:"📅", desc:"Tasks and warranty dates in the calendar you use." },
-  { href:"/shared-household-access",   label:"Shared Access",           icon:"👥", desc:"Invite a partner or helper and assign tasks." },
+  { href:"/shared-household-access",   label:"Shared Access",           icon:"👥", desc:"Invite a partner or team member and assign tasks." },
 ];
 
 // Default top-nav for feature pages (the hamburger shows the same list on phones).
@@ -26510,7 +26554,7 @@ function CalendarSyncPage() {
         <LPSection narrow>
           <LPSectionHead h2="A few things worth knowing"/>
           <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Calendar sync is a one-way subscription. Changes in Steadwell show up in your calendar; editing an event in your calendar does not change Steadwell, so mark tasks done inside Steadwell.</p>
-          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Your link includes a private key. Keep it to yourself, and share the home with a partner or helper through <a href="/shared-household-access" style={{color:"#C16140",fontWeight:600}}>shared household access</a> instead.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Your link includes a private key. Keep it to yourself, and share the home with a partner or team member through <a href="/shared-household-access" style={{color:"#C16140",fontWeight:600}}>shared household access</a> instead.</p>
         </LPSection>
 
         <LPSection alt narrow>
@@ -26613,11 +26657,11 @@ function HomeHealthScorePage() {
 
 // ─── SHARED HOUSEHOLD ACCESS PAGE ─────────────────────────────────────────────
 const SHARED_FAQ = [
-  ["What is shared access?","It lets you invite other people to a property in Steadwell: a spouse or partner, a co-owner, a property manager or a helper. Everyone you invite works from the same tasks, assets, expenses and documents, and you can assign tasks to them."],
+  ["What is shared access?","It lets you invite other people to a property in Steadwell: a spouse or partner, a co-owner, a property manager or a team member. Everyone you invite works from the same tasks and assets, and you can assign tasks to them."],
   ["Which plan includes it?","Shared access is included with the Pro plan, which also covers up to three properties."],
   ["Can I assign tasks to the people I invite?","Yes. Once someone accepts your invite, they appear in the Assigned to menu when you add or edit a task. You can filter the task list by Assigned to me, Unassigned or by person, and the person you assigned can mark the task done."],
   ["Does it work for a rental property?","Yes, for the upkeep side of a rental. Invite your co-owner, property manager or handyman and give them tasks like the HVAC filter or the annual inspection, while warranties, service history and expenses stay in one place. Steadwell is home maintenance software, not tenant, lease or rent-collection software."],
-  ["What can the people I invite see and do?","They can see and edit the tasks, assets, expenses and documents for the property you invited them to. Everyone you invite has the same access, so only invite people you trust with those records."],
+  ["What can the people I invite see and do?","You choose a level for each person. Full access (a spouse, partner, co-owner or property manager) covers tasks, assets and warranties, service history, contractors, expenses and projects. Tasks & assets (a maintenance person or caretaker) covers tasks, assets and warranties, service history and contractors, and keeps your expenses and projects private. Documents and receipt files stay in your own account. You can change someone’s level or remove them at any time."],
   ["How do I invite someone?","Open the Shared Access card for your property, enter their email address and tap Invite. They receive an email, and you can see whether the invite is pending or active."],
   ["Can I remove someone later?","Yes. You can remove access at any time from the same card."],
   ["Do I invite people separately for each property?","Yes. Invitations are per property, so you decide who sees each home."],
@@ -26625,7 +26669,7 @@ const SHARED_FAQ = [
 
 function SharedHouseholdAccessPage() {
   const path = "/shared-household-access";
-  const description = "Invite a spouse, partner, property manager or helper to your home's Steadwell records, assign tasks to them, and keep everyone on the same page. Included with Pro.";
+  const description = "Invite a spouse, partner, property manager or team member to your home's Steadwell records, assign tasks to them, and keep everyone on the same page. Included with Pro.";
   useSEO({
     title:"Shared Access & Task Assignment for Your Home",
     description,
@@ -26633,7 +26677,7 @@ function SharedHouseholdAccessPage() {
     jsonLd: lpJsonLd({
       name:"Steadwell Shared Access",
       path, description,
-      features:["Invite a spouse, partner, property manager or helper by email","Assign tasks to the people you invite","Filter tasks by person","Shared tasks, assets, expenses and documents","See pending and active invites","Remove access at any time","Up to three properties on Pro"],
+      features:["Invite a spouse, partner, property manager or team member by email","Choose Full access or Tasks & assets access for each person","Assign tasks to the people you invite","Filter tasks by person","Shared tasks, assets and service history","See pending and active invites","Remove access at any time","Up to three properties on Pro"],
       faq: SHARED_FAQ,
       offers:[{name:"Pro",price:"14.99"}],
     }),
@@ -26642,14 +26686,14 @@ function SharedHouseholdAccessPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Shared Access & Task Assignment" cta="Get started" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner, property manager or helper by email. They work from the same tasks, assets, expenses and documents, and you can assign tasks so everyone knows who is doing what." badge="Included with Pro" stats={[{num:"Email",lbl:"Invite"},{num:"Assign",lbl:"Tasks to people"},{num:"3",lbl:"Properties on Pro"}]}/>
+      <LPHero eyebrow="Shared Access & Task Assignment" cta="Get started" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner, property manager or team member by email. Choose what each person can see, and assign tasks so everyone knows who is doing what." badge="Included with Pro" stats={[{num:"Email",lbl:"Invite"},{num:"Assign",lbl:"Tasks to people"},{num:"3",lbl:"Properties on Pro"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Made for more than one person" sub="Whether it is a family home or a rental you look after, the work rarely falls on one person."/>
           <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
-            <LPFieldCard icon="🏡" title="Households" badge="Spouse or partner" fields={["Both of you see the same records","Split the to-do list instead of texting reminders","Nobody has to ask who has the warranty"]}/>
-            <LPFieldCard icon="🔑" title="Landlords & rentals" badge="Co-owner or manager" fields={["Invite a property manager or co-owner","Assign repairs and seasonal upkeep to a handyman","Keep warranties, service history and costs in one place"]} link={{href:"/home-expense-tracker",label:"About expense tracking"}}/>
-            <LPFieldCard icon="🤝" title="Anyone who helps" badge="Family or caretaker" fields={["An adult child helping with a parent’s home","A relative or caretaker with a task list","Remove their access whenever you like"]}/>
+            <LPFieldCard icon="🏡" title="Households" badge="Spouse or partner" fields={["Both of you see the same tasks, assets and costs","Split the to-do list instead of texting reminders","Nobody has to ask who has the warranty"]}/>
+            <LPFieldCard icon="🔑" title="Landlords & rentals" badge="Co-owner or manager" fields={["Invite a property manager or co-owner with Full access","Give a handyman Tasks & assets access, without your expenses","Keep warranties, service history and costs in one place"]} link={{href:"/home-expense-tracker",label:"About expense tracking"}}/>
+            <LPFieldCard icon="🤝" title="Family & caretakers" badge="Relatives or caretakers" fields={["An adult child helping with a parent’s home","A relative or caretaker with a task list","Remove their access whenever you like"]}/>
           </LPGrid>
         </LPSection>
 
@@ -26667,7 +26711,7 @@ function SharedHouseholdAccessPage() {
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Open Shared Access",text:"Find the Shared Access card for your property in Steadwell."},
-              {num:"02",title:"Invite by email",text:"Enter their email address and tap Invite."},
+              {num:"02",title:"Invite and choose access",text:"Enter their email address, pick Full access or Tasks & assets, and tap Invite."},
               {num:"03",title:"They accept",text:"They receive an email invitation. Until they accept, the invite shows as pending."},
               {num:"04",title:"Assign and manage together",text:"Once active, choose them in the Assigned to menu on any task, and filter the list by person."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
@@ -26678,8 +26722,8 @@ function SharedHouseholdAccessPage() {
           <LPSectionHead h2="Know what you are sharing" sub="Shared access is simple on purpose."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
             {[
-              {t:"Everyone sees the same home",d:"People you invite can see and edit the tasks, assets, expenses and documents for that property. There are no limited roles yet, so invite people you trust with those records."},
-              {t:"You decide who and where",d:"Invitations are per property, and you can remove someone at any time from the same card."},
+              {t:"You choose what each person sees",d:"Full access covers tasks, assets, service history, contractors, expenses and projects. Tasks & assets keeps your expenses and projects private. You can change it any time."},
+              {t:"You decide who and where",d:"Invitations are per property, and you can remove someone at any time from the same card. Documents and receipt files stay in your own account."},
               {t:"Maintenance, not tenant management",d:"Steadwell keeps the home’s upkeep, warranties, documents and costs organized. It does not handle leases, rent or tenant screening."},
             ].map((s,i)=>(
               <LPCard key={i}>
@@ -27191,7 +27235,7 @@ function ContractorTrackerPage() {
               {num:"01",title:"Save a contractor",text:"Add any pro — plumber, HVAC tech, roofer, electrician, handyman. Store their contact info, specialty, and any license details."},
               {num:"02",title:"Log each service visit",text:"After every job, log the date, work done, and cost. Attach an invoice or scan it with AI to fill in the details automatically."},
               {num:"03",title:"Build a service history",text:"Every logged visit becomes part of your home's permanent service record — useful when selling, for insurance claims, or when hiring the same pro again."},
-              {num:"04",title:"Share with your household",text:"Pro users can share the home with a spouse, partner or helper, so everyone always knows who to call."},
+              {num:"04",title:"Share with your household",text:"Pro users can share the home with a spouse, partner or team member, so everyone always knows who to call."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
@@ -27200,7 +27244,7 @@ function ContractorTrackerPage() {
           <LPFAQ items={[
             ["Is contractor tracking free?","Yes, completely free on all Steadwell plans."],
             ["Can I log contractor invoices automatically?","Yes — forward any invoice to your Steadwell capture address and it will be automatically linked as a service log entry."],
-            ["Can I share my contractor list?","Pro users can invite a spouse, partner or helper to the home with shared access. Invited people work from the same home records, and you can assign tasks to them."],
+            ["Can I share my contractor list?","Pro users can invite a spouse, partner or team member to the home with shared access. Invited people work from the same home records, and you can assign tasks to them."],
             ["How is this different from keeping contacts in my phone?","Steadwell links each contractor to your home's service history, tracks total spending per trade, and keeps work notes and receipts alongside contact info."],
           ]}/>
         </LPSection>
@@ -27514,7 +27558,7 @@ function DocumentVaultPage() {
               {num:"01",title:"Upload any document",text:"Upload PDFs, images, or scan physical documents with your camera. Supported formats include PDF, JPG, PNG, HEIC, and Word documents."},
               {num:"02",title:"Categorize and tag",text:"Assign a category, link to an asset or room, add a description and expiry date. Find anything instantly with search."},
               {num:"03",title:"Access from anywhere",text:"Your documents are available from any device — phone, tablet, or computer. No more digging through filing cabinets."},
-              {num:"04",title:"Share with your household",text:"Pro users can invite a spouse, partner or helper to the home, so everyone has the deed, not just whoever filed it."},
+              {num:"04",title:"Keep it private",text:"Your documents are stored privately in your own account, and other Steadwell users can never see them."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
@@ -27522,7 +27566,7 @@ function DocumentVaultPage() {
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={[
             ["What file types can I upload?","PDF, JPG, PNG, HEIC, DOC, and DOCX files up to 50MB per file."],
-            ["Is the document vault secure?","Yes. Documents are stored in Supabase Storage with row-level security, so other Steadwell users can never see them — only you and any household members you invite have access. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
+            ["Is the document vault secure?","Yes. Documents are stored in Supabase Storage with row-level security, so other Steadwell users can never see them. Documents belong to your account and are not shared with people you invite to a home. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
             ["What's the difference between the storage tiers?","Free includes essential storage for core documents. Plus gets an expanded vault for receipts, warranties, and home records. Pro gets the full vault for multiple properties."],
             ["Can I share documents with a contractor?","You can download any document and share it directly. Contractors do not have direct access to your vault."],
           ]}/>
@@ -29428,7 +29472,7 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
         if (dup && res === "skip") { skippedAssetKeys.add(_key); continue; }
         if (dup && res === "update") {
           const notes = [dup.notes, enriched.notes].filter(Boolean).join(" · ");
-          const { error: updErr } = await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id).eq("user_id",userId);
+          const { error: updErr } = await supabase.from("warranties").update({...enriched, notes}).eq("id",dup.id);
           if (updErr) {
             console.error(`Asset update error (${enriched.item}):`, updErr.message);
             failedAssets.push(enriched.item);
