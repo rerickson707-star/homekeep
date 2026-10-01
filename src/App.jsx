@@ -1,4 +1,4 @@
-// Steadwell v300 — 2026-10-01
+// Steadwell v301 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -25878,7 +25878,7 @@ function LPHowStep({ num, title, text }) {
 
 function LPFAQ({ items }) {
   return items.map(([q,a],i)=>(
-    <div key={i} style={{borderBottom:"1px solid #E6DECF",padding:"20px 0"}}>
+    <div key={i} style={{borderBottom:"1px solid #E6DECF",padding:"20px 0",textAlign:"left"}}>
       <div style={{fontWeight:600,fontSize:".95rem",color:"#2A2723",marginBottom:8}}>{q}</div>
       <div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.6}}>{a}</div>
     </div>
@@ -25980,6 +25980,35 @@ function LPFieldCard({ icon, title, badge, desc, fields = [], link }) {
       ))}
       {link && <a href={link.href} style={{display:"inline-block",marginTop:6,fontSize:".82rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>{link.label} →</a>}
     </LPCard>
+  );
+}
+
+// Plan tiles (same look as the pricing tiles on the Warranty Tracker page) with an
+// included-features list. plans: [{plan, price, period, annual, desc, features, cta, popular}]
+function LPPlanTiles({ plans = [], maxWidth }) {
+  return (
+    <>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,230px),1fr))",gap:16,maxWidth:maxWidth||"none",margin:"0 auto"}}>
+        {plans.map((p,i)=>(
+          <LPCard key={i} style={{display:"flex",flexDirection:"column",padding:"22px 22px 20px",border:p.popular?"2px solid #C16140":"1px solid #E6DECF"}}>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8,minHeight:12,visibility:p.popular?"visible":"hidden"}}>Most popular</div>
+            <h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:"0 0 4px"}}>{p.plan}</h3>
+            <div style={{fontSize:"1.6rem",fontWeight:700,marginBottom:2,color:"#2A2723"}}>{p.price}<span style={{fontSize:".78rem",fontWeight:500,color:"#7A7370"}}>{p.period}</span></div>
+            <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:10,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "placeholder"}</div>
+            {p.desc && <div style={{fontSize:".84rem",color:"#5E574F",lineHeight:1.5,marginBottom:14,paddingBottom:14,borderBottom:"1px solid #E6DECF"}}>{p.desc}</div>}
+            <div style={{flex:1,marginBottom:18}}>
+              {(p.features||[]).map((f,j)=>(
+                <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,fontSize:".84rem",color:"#2A2723",lineHeight:1.45,textAlign:"left"}}>
+                  <span style={{color:"#2E7050",fontWeight:700,fontSize:".72rem",flexShrink:0,marginTop:3}} aria-hidden="true">✓</span><span style={{flex:1}}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <a href="/?action=signup" style={{display:"block",textAlign:"center",background:p.popular?"#C16140":"transparent",color:p.popular?"#fff":"#234A3D",border:p.popular?"2px solid #C16140":"1.5px solid #234A3D",textDecoration:"none",padding:".62rem 1rem",borderRadius:9,fontWeight:700,fontSize:".85rem"}}>{p.cta}</a>
+          </LPCard>
+        ))}
+      </div>
+      <p style={{fontSize:".78rem",color:"#A8A09A",marginTop:16}}>Paid plans auto-renew until cancelled. See our <a href="/terms" style={{color:"#C16140"}}>Terms of Service</a> for full billing details.</p>
+    </>
   );
 }
 
@@ -26089,8 +26118,8 @@ function UtilityBillTrackerPage() {
 
         <LPSection narrow>
           <LPSectionHead h2="Your true cost to run the house" sub="Utility bills are part of the full picture, not a separate spreadsheet."/>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Every bill you log appears under Utilities next to your repairs, projects and service visits, and counts toward your yearly and all-time home spend. That is how you see what your home actually costs month to month, not only when something breaks.</p>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Pair it with the <a href="/home-expense-tracker" style={{color:"#C16140",fontWeight:600}}>expense tracker and 5-year cost forecast</a> to plan for the big replacements as well as the monthly bills.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Every bill you log appears under Utilities next to your repairs, projects and service visits, and counts toward your yearly and all-time home spend. That is how you see what your home actually costs month to month, not only when something breaks.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Pair it with the <a href="/home-expense-tracker" style={{color:"#C16140",fontWeight:600}}>expense tracker and 5-year cost forecast</a> to plan for the big replacements as well as the monthly bills.</p>
         </LPSection>
 
         <LPSection alt narrow>
@@ -26200,12 +26229,13 @@ function ConditionAssessmentPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection narrow>
-          <LPSectionHead h2="Plans" sub="Condition assessments are included with Plus and Pro."/>
-          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
-            <LPFieldCard icon="✨" title="Plus · $7.99/mo" fields={["5 condition assessments a month","Ask Steadwell, health score and cost forecast","AI scanning for receipts, nameplates, bills and policies"]}/>
-            <LPFieldCard icon="🏡" title="Pro · $14.99/mo" fields={["25 condition assessments a month","Up to 3 properties","Shared household access"]}/>
-          </LPGrid>
+        <LPSection>
+          <LPSectionHead h2="Plans and pricing" sub="Condition assessments are included with Plus and Pro."/>
+          <LPPlanTiles plans={[
+            {plan:"Free",price:"$0",period:"",annual:"",desc:"Track your home, no assessments.",features:["Assets, tasks and warranties","Overall home health score","Condition assessments need Plus or Pro"],cta:"Start free",popular:false},
+            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"Assess the items that matter most.",features:["5 condition assessments a month","Ask Steadwell, health score and cost forecast","AI scanning for receipts, nameplates, bills and policies"],cta:"Start Plus",popular:true},
+            {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"Assess every system in every home.",features:["25 condition assessments a month","Everything in Plus","Up to 3 properties","Shared household access"],cta:"Start Pro",popular:false},
+          ]}/>
         </LPSection>
 
         <LPSection alt narrow>
@@ -26258,21 +26288,21 @@ function AskSteadwellPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
-            <div>
-              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 14px"}}>Answers from your home, not a guess</h2>
-              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.2rem"}}>Steadwell already knows what you own, when it was installed, what it cost and what you have done to it. Ask Steadwell puts that to work, so the answer starts from your home instead of generic advice.</p>
+            <div style={{textAlign:"left"}}>
+              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",lineHeight:1.15,color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 14px",textWrap:"balance"}}>Answers from your home, not a guess</h2>
+              <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.2rem"}}>Steadwell already knows what you own, when it was installed, what it cost and what you have done to it. Ask Steadwell puts that to work, so the answer starts from your home instead of generic advice.</p>
               {[
                 ["It reads your records","Assets, warranties, tasks, service history, expenses and documents."],
                 ["It shows its sources","Each answer lists the records it used. Tap one to open it."],
                 ["It suggests, you decide","Suggested tasks appear as cards and are added only when you tap Add."],
               ].map(([t,d],i)=>(
-                <div key={i} style={{display:"flex",gap:12,marginBottom:14}}>
-                  <span style={{color:"#234A3D",fontWeight:700,marginTop:2}} aria-hidden="true">✓</span>
-                  <div><div style={{fontWeight:700,color:"#234A3D",fontSize:".95rem"}}>{t}</div><div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.55}}>{d}</div></div>
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16,textAlign:"left"}}>
+                  <span style={{color:"#2E7050",fontWeight:700,fontSize:".9rem",lineHeight:"1.3rem",flexShrink:0,width:16}} aria-hidden="true">✓</span>
+                  <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,color:"#234A3D",fontSize:".95rem",lineHeight:"1.3rem"}}>{t}</div><div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.55,marginTop:2}}>{d}</div></div>
                 </div>
               ))}
             </div>
-            <div aria-hidden="true" style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:20,padding:18,boxShadow:"0 24px 60px -34px rgba(23,48,38,.35)"}}>
+            <div aria-hidden="true" style={{textAlign:"left",background:"#fff",border:"1px solid #E6DECF",borderRadius:20,padding:18,boxShadow:"0 24px 60px -34px rgba(23,48,38,.35)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,fontWeight:700,fontSize:".9rem",color:"#234A3D"}}>
                 <span>✨ Ask Steadwell</span>
                 <span style={{fontSize:".62rem",letterSpacing:".06em",textTransform:"uppercase",color:"#7A7370",background:"rgba(35,74,61,.08)",padding:"2px 8px",borderRadius:20}}>Example</span>
@@ -26316,17 +26346,17 @@ function AskSteadwellPage() {
 
         <LPSection alt narrow>
           <LPSectionHead h2="You stay in control" sub="Ask Steadwell is a planning aid. It works best alongside your own judgment."/>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>It answers from the information in your account, so the more you add to Steadwell, the better it gets. Like any AI assistant it can make mistakes, so double-check anything important and call a licensed professional for safety, electrical, gas or structural questions.</p>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads, and you can turn it off at any time, which also deletes questions already saved. Details are in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>It answers from the information in your account, so the more you add to Steadwell, the better it gets. Like any AI assistant it can make mistakes, so double-check anything important and call a licensed professional for safety, electrical, gas or structural questions.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads, and you can turn it off at any time, which also deletes questions already saved. Details are in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
         </LPSection>
 
-        <LPSection narrow>
-          <LPSectionHead h2="Plans" sub="Try it free, then upgrade for everyday use."/>
-          <LPGrid cols="repeat(auto-fit,minmax(200px,1fr))" gap={14}>
-            <LPFieldCard icon="🌱" title="Free" fields={["3 questions to try"]}/>
-            <LPFieldCard icon="✨" title="Plus · $7.99/mo" fields={["30 questions a month"]}/>
-            <LPFieldCard icon="🏡" title="Pro · $14.99/mo" fields={["150 questions a month"]}/>
-          </LPGrid>
+        <LPSection>
+          <LPSectionHead h2="Plans and pricing" sub="Try Ask Steadwell free, then upgrade for everyday use."/>
+          <LPPlanTiles plans={[
+            {plan:"Free",price:"$0",period:"",annual:"",desc:"Try Ask Steadwell on your own home.",features:["3 Ask Steadwell questions to try","Overall home health score","Calendar sync","Unlimited warranty tracking, one property"],cta:"Start free",popular:false},
+            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"Ask Steadwell for everyday use.",features:["30 Ask Steadwell questions a month","Home health score with breakdown","5-year cost forecast","AI scanning for receipts, nameplates, bills and policies","5 condition assessments a month"],cta:"Start Plus",popular:true},
+            {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"For bigger households and more than one home.",features:["150 Ask Steadwell questions a month","Everything in Plus","Up to 3 properties","Shared household access","25 condition assessments a month"],cta:"Start Pro",popular:false},
+          ]}/>
         </LPSection>
 
         <LPSection alt narrow>
@@ -26397,8 +26427,8 @@ function CalendarSyncPage() {
 
         <LPSection narrow>
           <LPSectionHead h2="A few things worth knowing"/>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Calendar sync is a one-way subscription. Changes in Steadwell show up in your calendar; editing an event in your calendar does not change Steadwell, so mark tasks done inside Steadwell.</p>
-          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Your link includes a private key. Keep it to yourself, and share the home with a partner through <a href="/shared-household-access" style={{color:"#C16140",fontWeight:600}}>shared household access</a> instead.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Calendar sync is a one-way subscription. Changes in Steadwell show up in your calendar; editing an event in your calendar does not change Steadwell, so mark tasks done inside Steadwell.</p>
+          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Your link includes a private key. Keep it to yourself, and share the home with a partner through <a href="/shared-household-access" style={{color:"#C16140",fontWeight:600}}>shared household access</a> instead.</p>
         </LPSection>
 
         <LPSection alt narrow>
@@ -26551,11 +26581,13 @@ function SharedHouseholdAccessPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection narrow>
-          <LPSectionHead h2="Pro plan" sub="Shared access comes with the plan built for more than one home and more than one person."/>
-          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
-            <LPFieldCard icon="🏡" title="Pro · $14.99/mo" fields={["Shared household access","Up to 3 properties","Full document vault","25 condition assessments and 150 Ask Steadwell questions a month","Priority support"]}/>
-          </LPGrid>
+        <LPSection>
+          <LPSectionHead h2="Plans and pricing" sub="Shared access comes with Pro, the plan built for more than one home and more than one person."/>
+          <LPPlanTiles plans={[
+            {plan:"Free",price:"$0",period:"",annual:"",desc:"Track your own home.",features:["One property","Unlimited warranty tracking","Shared access needs Pro"],cta:"Start free",popular:false},
+            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"More automation for your own account.",features:["AI scanning and maintenance schedules","Home health score with breakdown","5-year cost forecast","Shared access needs Pro"],cta:"Start Plus",popular:false},
+            {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"Run the home together.",features:["Shared household access","Up to 3 properties","Everything in Plus","Priority support"],cta:"Start Pro",popular:true},
+          ]}/>
         </LPSection>
 
         <LPSection alt narrow>
