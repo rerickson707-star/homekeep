@@ -1,4 +1,4 @@
-// Steadwell v310 — 2026-10-02
+// Steadwell v311 — 2026-10-02
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -16957,7 +16957,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                                 strokeDasharray={dashArr} strokeDashoffset="24" strokeLinecap="round"/>
                             </svg>
                             <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:pct!=null&&pct>=100?"1rem":"1.15rem",fontWeight:700,color:ringColor,letterSpacing:"-.02em",lineHeight:1}}>{pct!=null?pct+"%":"—"}</div>
                               <div style={{fontSize:".58rem",color:"#6E665D",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
                             </div>
                           </div>
@@ -17102,11 +17102,11 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
                           {[
                             {val:fmt$(totalSpent),lbl:"Spent"},
-                            {val:fmt$(Math.max(remaining,0)),lbl:"Remaining",green:remaining>=0},
+                            {val:fmt$(Math.abs(remaining)),lbl:remaining<0?"Over budget":"Remaining",green:remaining>=0,warn:remaining<0},
                             {val:projects.length,lbl:"Projects"},
                           ].map((s,i)=>(
                             <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
-                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
+                              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.green?"#7DCBA1":s.warn?"#FCA38A":"#fff"}}>{s.val}</div>
                               <div style={{fontSize:".72rem",color:"rgba(244,237,223,.78)",marginTop:".2rem",fontWeight:600}}>{s.lbl}</div>
                             </div>
                           ))}
@@ -17192,12 +17192,12 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         {budget>0&&(
                           <div style={{display:"flex",alignItems:"center",gap:"1rem",padding:".9rem 1rem",borderTop:"1px solid var(--cream2)"}}>
                             <div style={{position:"relative",flexShrink:0}}>
-                              <svg width="72" height="72" viewBox="0 0 80 80">
+                              <svg width="80" height="80" viewBox="0 0 80 80">
                                 <circle cx="40" cy="40" r="32" fill="none" stroke="var(--cream2)" strokeWidth="8"/>
                                 <circle cx="40" cy="40" r="32" fill="none" stroke={ringColor} strokeWidth="8" strokeDasharray={dashArr} strokeDashoffset="24" strokeLinecap="round"/>
                               </svg>
                               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
-                                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:700,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
+                                <div style={{fontFamily:"'Fraunces',serif",fontSize:pct!=null&&pct>=100?".82rem":"1rem",fontWeight:700,color:ringColor,letterSpacing:"-.02em",lineHeight:1}}>{pct!=null?pct+"%":"—"}</div>
                                 <div style={{fontSize:".52rem",color:"#6E665D",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
                               </div>
                             </div>
