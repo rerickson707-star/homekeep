@@ -1,4 +1,4 @@
-// Steadwell v309 — 2026-10-01
+// Steadwell v310 — 2026-10-02
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8,7 +8,7 @@ const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliance","Roofing","Landsc
 const STATUS_OPTIONS = ["Scheduled","In Progress","Completed","Overdue"];
 const PRIORITY = ["Low","Medium","High","Urgent"];
 const HOME_TYPES = ["Single Family","Townhouse","Condo","Mobile Home","Multi-Family","Other"];
-const CAT_ICONS = { HVAC:"🌡️", Plumbing:"🛿", Electrical:"⚡", Appliances:"🍳", Roofing:"🏚️", Landscaping:"🌿", Structural:"🧱", Safety:"🔒", Other:"🔧" };
+const CAT_ICONS = { HVAC:"🌡️", Plumbing:"🚰", Electrical:"⚡", Appliance:"🍳", Appliances:"🍳", Roofing:"🏚️", Landscaping:"🌿", Structure:"🧱", Structural:"🧱", Safety:"🔒", Maintenance:"🔧", Utilities:"💡", Projects:"🔨", Uncategorized:"🏷️", Other:"🔧" };
 const STATUS_STYLE = {
   "Scheduled":   { bg:"#EBF5FF", text:"#1A6FA0", border:"#93C5E8" },
   "In Progress": { bg:"#FFF8E6", text:"#92610A", border:"#F5CC76" },
@@ -1946,7 +1946,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .photo-uploading{display:flex;align-items:center;gap:.55rem;padding:.75rem .9rem;background:var(--rust-light);border-radius:var(--r-sm);font-size:.8rem;color:var(--rust);margin-top:.45rem}
 
 /* ══ EMPTY STATES ══ */
-.empty{text-align:center;padding:3rem 1.5rem;color:#A8A09A}
+.empty{text-align:center;padding:3rem 1.5rem;color:#6E665D}
 .empty .ei{font-size:2.8rem;margin-bottom:.75rem;display:block}
 .empty strong{display:block;font-family:'Fraunces',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.3rem}
 .empty p{font-size:.84rem;line-height:1.55;max-width:280px;margin:0 auto .9rem}
@@ -3236,7 +3236,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .money-body.no-side{grid-template-columns:minmax(0,1fr)}
   .money-side{display:block;position:sticky;top:calc(var(--hdr,64px) + 1rem)}
   .money-side-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:1rem}
-  .money-side-title{font-size:.78rem;font-weight:700;color:#A8A09A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem}
+  .money-side-title{font-size:.78rem;font-weight:700;color:#6E665D;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem}
   .money-cat{display:block;width:100%;text-align:left;background:none;border:1.5px solid transparent;border-radius:10px;padding:.55rem .6rem;margin-bottom:.15rem;cursor:pointer;font-family:inherit;color:var(--dark)}
   .money-cat:hover{background:var(--cream)}
   .money-cat.on{background:rgba(35,74,61,.06);border-color:var(--pine)}
@@ -3244,7 +3244,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .money-cat-row strong{font-family:'Fraunces',serif;color:var(--pine)}
   .money-cat-bar{display:block;height:5px;border-radius:3px;background:var(--cream2);margin:.4rem 0 .25rem;overflow:hidden}
   .money-cat-bar>span{display:block;height:100%;border-radius:3px}
-  .money-cat-meta{display:block;font-size:.7rem;color:var(--mid)}
+  .money-cat-meta{display:block;font-size:.74rem;color:#6E665D}
   .proj-grid,.util-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.25rem;align-items:start}
   .proj-grid>*,.util-grid>*{margin:0!important}
   .pd-bar{border:1.5px solid var(--stone);border-radius:var(--r-sm) var(--r-sm) 0 0}
@@ -3510,6 +3510,30 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
   .ut-head{font-size:1.4rem}
 }
 @media(prefers-reduced-motion:reduce){.ut-chev{transition:none}}
+
+/* ── Money v310 ── */
+.ms-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:1rem 1.1rem .95rem;height:100%;box-sizing:border-box}
+.uc.sm{--uch:120px}
+@media(max-width:480px){.uc.sm{--uch:112px}}
+.ue{max-width:46rem;margin:1.25rem 0 2.5rem;padding:0 1rem}
+@media(min-width:1024px){.ue{padding:0}.money-hero{display:flex;flex-direction:column;justify-content:center}}
+.ue-h{font-family:'Fraunces',Georgia,serif;font-size:1.6rem;font-weight:500;line-height:1.2;letter-spacing:-.012em;color:var(--dark);margin:0 0 .5rem}
+.ue-sub{font-size:.95rem;line-height:1.55;color:#4A443E;margin:0 0 1.4rem;max-width:38rem}
+.ue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}
+@media(min-width:640px){.ue-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ue-tile{display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;text-align:left;padding:.9rem .95rem;background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);cursor:pointer;font-family:inherit;color:var(--dark);transition:border-color .15s,background .15s}
+.ue-tile:hover{border-color:var(--pine);background:rgba(35,74,61,.04)}
+.ue-tile:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.ue-ico{width:40px;height:40px;border-radius:12px;background:rgba(35,74,61,.09);color:var(--pine);display:flex;align-items:center;justify-content:center;margin-bottom:.55rem}
+.ue-name{font-weight:700;font-size:.95rem}
+.ue-hint{font-size:.78rem;color:#6E665D;line-height:1.35}
+.ue-note{margin:1.2rem 0 0;font-size:.86rem;line-height:1.5;color:#6E665D}
+.util-type-grid{grid-template-columns:repeat(auto-fill,minmax(5.4rem,1fr))!important}
+.util-type-btn{color:#6E665D;min-height:4.1rem}
+.util-type-btn.selected{color:var(--rust)}
+.util-type-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.util-type-icon{display:flex!important;justify-content:center;margin-bottom:5px!important}
+.util-type-label{font-size:.74rem!important;color:var(--dark)!important}
 
 
 /* ── Asset detail hero (v308): class-driven so no global rule can override it ── */
@@ -15607,15 +15631,21 @@ function UtilityForm({ data, onChange }) {
       {/* Type selector */}
       <div className="field s2" style={{gridColumn:"span 2",marginBottom:".85rem"}}>
         <label>Utility Type</label>
-        <div className="util-type-grid" style={{marginTop:"6px"}}>
+        <div className="util-type-grid" role="group" aria-label="Utility type" style={{marginTop:"6px"}}>
           {Object.entries(UTIL_TYPES).map(([key,t])=>(
             <button
               key={key}
               type="button"
+              aria-pressed={data.type===key}
               className={`util-type-btn ${data.type===key?"selected":""}`}
-              onClick={()=>f("type",key)}
+              onClick={()=>{
+                // Keep the name in step with the type until the person has typed their own.
+                const cur = String(data.name||"").trim();
+                const isDefault = !cur || Object.values(UTIL_TYPES).some(x=>x.label===cur);
+                onChange({...data, type:key, ...(isDefault?{name:t.label}:{})});
+              }}
             >
-              <span className="util-type-icon">{t.icon}</span>
+              <span className="util-type-icon"><UtilIcon type={key} size={22}/></span>
               <span className="util-type-label">{t.label}</span>
             </button>
           ))}
@@ -15666,15 +15696,36 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
       <div className="field"><label>Bill Date *</label><input type="date" value={data.bill_date||""} onChange={e=>f("bill_date",e.target.value)} /></div>
       <div className="field"><label>Amount ($) *</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0.00" step="0.01" /></div>
       {ut.unit && (
-        <>
-          <div className="field"><label>Usage ({ut.unit})</label><input type="number" value={data.usage||""} onChange={e=>f("usage",e.target.value)} placeholder="0" /></div>
-          <div className="field"><label>Usage Unit</label><input value={data.usage_unit||ut.unit} onChange={e=>f("usage_unit",e.target.value)} placeholder={ut.unit} /></div>
-        </>
+        <div className="field s2"><label>Usage ({data.usage_unit||ut.unit}, optional)</label><input type="number" min="0" inputMode="decimal" value={data.usage||""} onChange={e=>f("usage",e.target.value)} placeholder={`From the bill, in ${data.usage_unit||ut.unit}`} /></div>
       )}
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Billing period, account notes…" /></div>
       {onDelete && (
         <div className="field s2"><button type="button" className="btn btn-ghost btn-sm" style={{color:"var(--red)",alignSelf:"flex-start"}} onClick={onDelete}>Delete this bill</button></div>
       )}
+    </div>
+  );
+}
+
+// First-run screen: pick what to track and the form opens already set to that type.
+const UTIL_HINTS = {
+  electric: "Cost and kWh", gas: "Cost and therms", water: "Cost and gallons", internet: "Monthly cost",
+  trash: "Monthly cost", sewer: "Cost and CCF", other: "Anything else you pay monthly",
+};
+function UtilitiesEmpty({ onPick }) {
+  return (
+    <div className="ue">
+      <h2 className="ue-h">See what your home really costs to run</h2>
+      <p className="ue-sub">Add the utilities you pay for and log a bill each month. Steadwell works out your typical month, flags bills that jump, and compares this season with the same one last year.</p>
+      <div className="ue-grid" role="group" aria-label="Choose a utility to add">
+        {Object.entries(UTIL_TYPES).map(([key, t]) => (
+          <button key={key} type="button" className="ue-tile" onClick={() => onPick(key)}>
+            <span className="ue-ico"><UtilIcon type={key} size={22} /></span>
+            <span className="ue-name">{t.label}</span>
+            <span className="ue-hint">{UTIL_HINTS[key]}</span>
+          </button>
+        ))}
+      </div>
+      <p className="ue-note">Have a paper or PDF bill? Add the utility first, then scan the bill to fill in the amount, date and usage.</p>
     </div>
   );
 }
@@ -16024,6 +16075,101 @@ function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
+// ─── MONTHLY SPEND CHART (v310) ───────────────────────────────────────────────
+// One column per month of the year, stacked by where the money went. The four colours are the
+// first four of the checked utilities palette, so colour-blind separation and 3:1 contrast hold.
+const SPEND_SERIES = [
+  { id:"expense", name:"Expenses", color:"#1F7F55" },
+  { id:"bill",    name:"Bills",    color:"#C48100" },
+  { id:"project", name:"Projects", color:"#3A7CC0" },
+  { id:"service", name:"Service",  color:"#C65A3A" },
+];
+function MonthlySpend({ months, yr }) {
+  const [table, setTable] = useState(false);
+  const maxTotal = Math.max(0, ...months.map(m => m.total));
+  const step = maxTotal > 0 ? utilNiceStep(maxTotal) : 1;
+  const axisMax = maxTotal > 0 ? step * Math.ceil(maxTotal / step) : 1;
+  const ticks = []; for (let t = 0; t <= axisMax + 1e-9; t += step) ticks.push(t);
+  const maxIdx = maxTotal > 0 ? months.findIndex(m => m.total === maxTotal) : -1;
+  const curIdx = months.findIndex(m => m.cur);
+  const series = SPEND_SERIES.filter(s => months.some(m => m.segments.some(g => g.id === s.id)));
+  const yearTotal = months.reduce((s, m) => s + m.total, 0);
+  const showCur = curIdx >= 0 && months[curIdx].total > 0 && curIdx !== maxIdx
+    && !(Math.abs(curIdx - maxIdx) === 1 && Math.abs(months[curIdx].total - maxTotal) / axisMax < 0.2);
+  const tipAlign = i => (i <= 2 ? "l" : i >= 9 ? "r" : "c");
+  return (
+    <section className="ms-card" aria-labelledby="ms-t">
+      <div className="ut-card-h">
+        <h3 id="ms-t" className="ut-card-t">{yr} by month</h3>
+        {yearTotal > 0 && <button type="button" className="asm-link" onClick={() => setTable(t => !t)}>{table ? "Show chart" : "View as table"}</button>}
+      </div>
+      {table ? (
+        <div className="ut-tbl-wrap">
+          <table className="ut-tbl">
+            <caption style={{position:"absolute",left:-9999}}>Spending by month for {yr}</caption>
+            <thead><tr><th scope="col">Month</th><th scope="col">Total</th>{series.map(s => <th scope="col" key={s.id}>{s.name}</th>)}</tr></thead>
+            <tbody>
+              {months.map(m => (
+                <tr key={m.key}>
+                  <th scope="row">{m.full}</th>
+                  <td><b>{m.total > 0 ? fmt$(m.total) : "None"}</b></td>
+                  {series.map(s => { const g = m.segments.find(x => x.id === s.id); return g ? <td key={s.id}>{fmt$(g.v)}</td> : <td key={s.id} className="n">None</td>; })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <>
+          <div className="uc sm">
+            <div className="uc-y" aria-hidden="true">
+              {ticks.map(t => <span key={t} className="uc-yl" style={{ bottom: (t / axisMax * 100) + "%" }}>{utilAxisLabel(t)}</span>)}
+            </div>
+            <div className="uc-plot" role="group" aria-label={`Spending by month for ${yr}. Total ${fmt$(yearTotal)}.`}>
+              {ticks.map(t => <span key={t} className="uc-grid" style={{ bottom: (t / axisMax * 100) + "%" }} />)}
+              <div className="uc-cols">
+                {months.map((m, i) => {
+                  const pct = m.total / axisMax * 100;
+                  return (
+                    <div key={m.key} className="uc-col" tabIndex={0} role="img"
+                      aria-label={m.total > 0 ? `${m.full}: ${fmt$(m.total)}. ${m.segments.map(g => `${g.name} ${fmt$(g.v)}`).join(", ")}.` : `${m.full}: nothing logged`}>
+                      {m.total > 0 && (
+                        <div className="uc-bar" style={{ height: pct + "%" }}>
+                          {m.segments.map((g, gi) => <span key={g.id} className={"uc-seg" + (gi === m.segments.length - 1 ? " top" : "")} style={{ flex: `${g.v} 1 0%`, background: g.color }} />)}
+                        </div>
+                      )}
+                      {m.total > 0 && (i === maxIdx || (showCur && i === curIdx)) && <span className="uc-val" style={{ bottom: `calc(${pct}% + 4px)` }}>{fmt$(m.total)}</span>}
+                      <div className={"uc-tip " + tipAlign(i)}>
+                        <div className="uc-tip-m">{m.full}</div>
+                        {m.total > 0 ? (
+                          <>
+                            <div className="uc-tip-t">{fmt$(m.total)} <span>total</span></div>
+                            {m.segments.map(g => (
+                              <div key={g.id} className="uc-tip-r"><i style={{ background: g.color }} /><span>{g.name}</span><b>{fmt$(g.v)}</b></div>
+                            ))}
+                          </>
+                        ) : <div className="uc-tip-n">Nothing logged</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="uc-xrow" aria-hidden="true">
+              {months.map((m, i) => <span key={m.key} className={"uc-x" + (m.cur ? " now" : "")}>{m.short}</span>)}
+            </div>
+          </div>
+          {series.length > 1 && (
+            <div className="uc-leg">
+              {series.map(s => <span key={s.id}><i style={{ background: s.color }} />{s.name}</span>)}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress, pendingSelectedExpense=null, onClearPendingSelectedExpense }) {
   const { roiData } = useProjectROIData();
   const [view, setView] = useState("expenses");
@@ -16206,6 +16352,10 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     if(!billEditData.amount || !billEditData.bill_date) { toast("Amount and bill date are required","error"); return; }
     if(Number(billEditData.amount) < 0) { toast("Amount can't be negative","error"); return; }
     const payload = {...billEditData, amount: Number(billEditData.amount)};
+    // An emptied usage box arrives as "" and a number column rejects that; the unit follows the utility type.
+    const usageNum = billEditData.usage === "" || billEditData.usage == null ? null : Number(billEditData.usage);
+    payload.usage = Number.isFinite(usageNum) ? usageNum : null;
+    payload.usage_unit = payload.usage != null ? (String(billEditData.usage_unit||"").trim() || UTIL_TYPES[activeUtil?.type]?.unit || null) : null;
     if(billEditId) {
       const {error} = await supabase.from("utility_bills").update(payload).eq("id",billEditId).eq("user_id",userId);
       if(!error) { setBills(bills.map(b=>b.id===billEditId?{...payload,id:billEditId}:b)); toast("Bill updated ✓"); }
@@ -16267,6 +16417,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       notes: b.notes || "",
       _isBill: true,
       _billId: b.id,
+      _utype: utype || "other",
     };
   });
 
@@ -16288,12 +16439,16 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   // bills.filter(...) again here was double-counting every bill into the
   // month it fell in — same mistake as the totals below, just missed here.
   const curMonth = new Date().getMonth();
+  const multiYear = lastYrTotal>0 || (allTotal - thisYrTotalWithService) > 0.5;
+  const spendTypeOf = e => e._isBill ? "bill" : e._isServiceLog ? "service" : e.project_id ? "project" : "expense";
+  const MONTH_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const monthlyData = Array.from({length:12},(_,i)=>{
     const m = String(i+1).padStart(2,"0");
-    const total = allExpenseItems.filter(e=>e.date?.startsWith(`${yr}-${m}`)).reduce((s,e)=>s+Number(e.amount||0),0);
-    return {month:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i], total, isCur: i===curMonth};
+    const sums = {};
+    allExpenseItems.forEach(e => { if (e.date?.startsWith(`${yr}-${m}`)) { const k = spendTypeOf(e); sums[k] = (sums[k]||0) + Number(e.amount||0); } });
+    const segments = SPEND_SERIES.map(s => ({...s, v: sums[s.id]||0})).filter(s => s.v > 0);
+    return { key:`${yr}-${m}`, short:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i], full:`${MONTH_LONG[i]} ${yr}`, segments, total: segments.reduce((t,g)=>t+g.v,0), cur: i===curMonth };
   });
-  const maxMonth = Math.max(...monthlyData.map(m=>m.total), 1);
 
   // Category breakdown — include service as "Maintenance"
   const bycat = {};
@@ -16407,7 +16562,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     const showCat = !!e.category && !isBill && !isServiceLog;
     return (
       <div key={e.id} className={"xr"+(dest?" xr-link":"")} onClick={dest?dest.action:undefined} title={dest?dest.title:undefined}>
-        <div className="xr-icon" style={{background:isServiceLog?"var(--rust-light)":isBill?"rgba(35,74,61,.08)":catColor+"22"}}>{isServiceLog?"⚙️":isBill?"⚡":CAT_ICONS[e.category]||"🔧"}</div>
+        <div className="xr-icon" style={{background:isServiceLog?"var(--rust-light)":isBill?"rgba(35,74,61,.08)":catColor+"22"}}>{isServiceLog?"⚙️":isBill?<span style={{color:"var(--pine)",display:"flex"}}><UtilIcon type={e._utype} size={20}/></span>:CAT_ICONS[e.category]||"🔧"}</div>
         <div className="xr-main">
           <div className="xr-title">{e.description}</div>
           <div className="xr-meta">
@@ -16460,12 +16615,12 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           <button key={t.id} onClick={()=>{setView(t.id);if(t.id!=="projects")setSelectedProject(null);}} style={{
             flex:1,padding:".75rem 0",border:"none",background:"none",
             fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".88rem",fontWeight:600,
-            color:view===t.id?"var(--dark)":"#A8A09A",cursor:"pointer",
+            color:view===t.id?"var(--dark)":"#6E665D",cursor:"pointer",
             borderBottom:view===t.id?"2.5px solid var(--pine)":"2.5px solid transparent",
             marginBottom:"-2px",transition:"color .15s",
           }}>
             {t.label}
-            {t.count>0&&<span style={{fontSize:".65rem",background:view===t.id?"rgba(35,74,61,.1)":"var(--cream2)",color:view===t.id?"var(--pine)":"var(--mid)",padding:"1px 6px",borderRadius:10,fontWeight:700,marginLeft:4}}>{t.count}</span>}
+            {t.count>0&&<span style={{fontSize:".65rem",background:view===t.id?"rgba(35,74,61,.1)":"var(--cream2)",color:view===t.id?"var(--pine)":"#6E665D",padding:"1px 6px",borderRadius:10,fontWeight:700,marginLeft:4}}>{t.count}</span>}
           </button>
         ))}
       </div>
@@ -16477,66 +16632,33 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
         <div>
           {/* Hero */}
           <div className="money-top">
-          <div className="mflat" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+          <div className="mflat money-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
-            <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>All-time home spend</div>
+            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.78)",fontWeight:600,marginBottom:".3rem"}}>{multiYear ? "All-time home spend" : `${yr} home spend`}</div>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:"2.4rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(allTotal)}</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
-              {[
-                {val:fmt$(thisYrTotalWithService), lbl:String(yr), extra:trend!==null?<div style={{fontSize:".72rem",fontWeight:600,marginTop:".2rem",color:Number(trend)>0?"#FCA38A":"#7DCBA1"}}>{Number(trend)>0?"↑":"↓"}{Math.abs(Number(trend))}% vs {yr-1}</div>:null},
+              {(multiYear ? [
+                {val:fmt$(thisYrTotalWithService), lbl:String(yr), extra:trend!==null?<div style={{fontSize:".74rem",fontWeight:600,marginTop:".2rem",color:Number(trend)>0?"#FCA38A":"#7DCBA1"}}>{Number(trend)>0?"↑":"↓"}{Math.abs(Number(trend))}% vs {yr-1}</div>:null},
                 {val:fmt$(lastYrTotal), lbl:String(yr-1)},
                 {val:fmt$(thisMonthTotal), lbl:"This month"},
-              ].map((s,i)=>(
+              ] : [
+                {val:fmt$(thisMonthTotal), lbl:"This month"},
+                {val:fmt$(thisYrTotalWithService/(curMonth+1)), lbl:"Avg per month"},
+                {val:String(allExpenseItems.length), lbl:allExpenseItems.length===1?"Item logged":"Items logged"},
+              ]).map((s,i)=>(
                 <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700}}>{s.val}</div>
-                  <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                  <div style={{fontSize:".72rem",color:"rgba(244,237,223,.78)",marginTop:".2rem",fontWeight:600}}>{s.lbl}</div>
                   {s.extra}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Monthly bar chart */}
-          {thisYear.length > 0 && (()=>{
-            const CHART_H=90, PAD_TOP=22, PAD_BOT=24, LABEL_W=42, PAD_R=8;
-            const SVG_W=700, SVG_H=PAD_TOP+CHART_H+PAD_BOT;
-            const barAreaW=SVG_W-LABEL_W-PAD_R;
-            const slotW=barAreaW/12;
-            const barW=Math.max(slotW*0.62,14);
-            const mag=Math.pow(10,Math.floor(Math.log10(maxMonth)));
-            // Minimum of 4 keeps the 4 quarter-gridlines (0/25/50/75/100%) from
-            // rounding to duplicate dollar labels when spending is tiny or zero
-            // (e.g. maxMonth=1 used to produce "$1,$1,$1,$0,$0").
-            const niceMax=Math.max(Math.ceil(maxMonth/(mag/2))*(mag/2)||1, 4);
-            const fmtY=v=>v===0?"$0":v>=1000?`$${(v/1000)%1===0?(v/1000):(v/1000).toFixed(1)}k`:`$${v}`;
-            const font="'Hanken Grotesk',Arial,sans-serif";
-            return (
-              <div className="mflat money-chart" style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1.1rem",padding:"1rem 1rem .7rem"}}>
-                <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".85rem"}}>{yr} monthly spending</div>
-                <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{width:"100%",height:"auto",display:"block"}}>
-                  {[0,.25,.5,.75,1].map(pct=>{
-                    const gy=PAD_TOP+CHART_H*(1-pct);
-                    return <g key={pct}>
-                      <line x1={LABEL_W} y1={gy} x2={SVG_W-PAD_R} y2={gy} stroke={pct===0?"#C2B8AE":"#EDE8E1"} strokeWidth={pct===0?1.5:1}/>
-                      <text x={LABEL_W-5} y={gy+4} textAnchor="end" fontSize="10" fill="#A8A09A" fontFamily={font}>{fmtY(Math.round(niceMax*pct))}</text>
-                    </g>;
-                  })}
-                  {monthlyData.map((m,i)=>{
-                    const barH=Math.max((m.total/niceMax)*CHART_H,m.total>0?4:0);
-                    const bx=LABEL_W+i*slotW+(slotW-barW)/2;
-                    const by=PAD_TOP+CHART_H-barH;
-                    const amtLabel=m.total>=1000?`$${(m.total/1000)%1===0?(m.total/1000):(m.total/1000).toFixed(1)}k`:m.total>0?`$${Math.round(m.total)}`:"";
-                    const color=m.isCur?"#C16140":"#234A3D";
-                    return <g key={i}>
-                      <rect x={bx} y={by} width={barW} height={Math.max(barH,0)} rx="3" fill={m.total>0?color:"#E8E2D9"}/>
-                      {m.total>0&&<text x={bx+barW/2} y={by-4} textAnchor="middle" fontSize="9" fill={color} fontWeight="700" fontFamily={font}>{amtLabel}</text>}
-                      <text x={bx+barW/2} y={PAD_TOP+CHART_H+16} textAnchor="middle" fontSize="9.5" fill={m.isCur?color:"#A8A09A"} fontWeight={m.isCur?"700":"500"} fontFamily={font}>{m.month}</text>
-                    </g>;
-                  })}
-                </svg>
-              </div>
-            );
-          })()}
+          {/* Monthly spend chart */}
+          {thisYear.length > 0 && (
+            <div className="money-chart-wrap mflat" style={{margin:"0 1rem 1.1rem"}}><MonthlySpend months={monthlyData} yr={yr}/></div>
+          )}
           </div>
 
           {/* Category chips */}
@@ -16546,14 +16668,14 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                 <div className="mc-ico" style={{fontSize:"1.1rem",marginBottom:".2rem"}}>🏠</div>
                 <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)"}}>All</div>
                 <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(allTotal)}</div>
-                <div className="mc-count" style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{allExpenseItems.length} item{allExpenseItems.length!==1?"s":""}</div>
+                <div className="mc-count" style={{fontSize:".65rem",color:"#6E665D",marginTop:".1rem"}}>{allExpenseItems.length} item{allExpenseItems.length!==1?"s":""}</div>
               </div>
               {catData.map(([cat,{total,count}],i)=>(
                 <div key={cat} className="mc-chip" onClick={()=>setCatF(catF===cat?"All":cat)} style={{flexShrink:0,background:catF===cat?"rgba(35,74,61,.05)":"var(--white)",border:`1.5px solid ${catF===cat?"var(--pine)":"var(--stone)"}`,borderRadius:12,padding:".55rem .85rem",cursor:"pointer",textAlign:"center",minWidth:90}}>
                   <div className="mc-ico" style={{fontSize:"1.1rem",marginBottom:".2rem"}}>{CAT_ICONS[cat]||"🔧"}</div>
                   <div style={{fontSize:".72rem",fontWeight:700,color:"var(--dark)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:90}}>{cat}</div>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>{fmt$(total)}</div>
-                  <div className="mc-count" style={{fontSize:".65rem",color:"var(--mid)",marginTop:".1rem"}}>{count} item{count!==1?"s":""}</div>
+                  <div className="mc-count" style={{fontSize:".65rem",color:"#6E665D",marginTop:".1rem"}}>{count} item{count!==1?"s":""}</div>
                 </div>
               ))}
             </div>
@@ -16584,7 +16706,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           ) : (
             <div>
               <div className="mpad" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1rem",marginBottom:".6rem",gap:".75rem"}}>
-                <span style={{fontSize:".8rem",color:"#A8A09A",fontWeight:600}}>
+                <span style={{fontSize:".8rem",color:"#6E665D",fontWeight:600}}>
                   {filtered.length} item{filtered.length!==1?"s":""}{catF!=="All"?` · ${catF}`:""} · {fmt$(filteredTotal)}
                   {groupByMonth && !monthForceOpen && monthGroups.length>1 && (
                     <button type="button" className="ag-toggle-all" style={{marginLeft:".75rem"}} onClick={()=>setAllMonths(!allMonthsOpen)}>{allMonthsOpen?"Collapse all":"Expand all"}</button>
@@ -16710,7 +16832,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       ].map((s,i)=>(
                         <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
                           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.alert?"#FCA38A":s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
-                          <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                          <div style={{fontSize:".72rem",color:"rgba(244,237,223,.78)",marginTop:".2rem",fontWeight:600}}>{s.lbl}</div>
                         </div>
                       ))}
                     </div>
@@ -16736,7 +16858,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
                           <span style={{fontSize:"1rem"}}>📸</span>
                           <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Project photos</span>
-                          <span style={{fontSize:".78rem",color:"var(--mid)",fontWeight:600}}>{photos.length} of 3</span>
+                          <span style={{fontSize:".78rem",color:"#6E665D",fontWeight:600}}>{photos.length} of 3</span>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(photos.length,3)},1fr)`,gap:2}}>
                           {photos.map((ph,i) => (
@@ -16826,7 +16948,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     {/* Budget donut — only if budget set */}
                     {budget > 0 && (
                       <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",marginBottom:"1rem"}}>
-                        <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".9rem"}}>Budget breakdown</div>
+                        <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".9rem"}}>Budget breakdown</div>
                         <div style={{display:"flex",alignItems:"center",gap:"1.25rem"}}>
                           <div style={{position:"relative",flexShrink:0}}>
                             <svg width="96" height="96" viewBox="0 0 80 80">
@@ -16836,7 +16958,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                             </svg>
                             <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
                               <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
-                              <div style={{fontSize:".58rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
+                              <div style={{fontSize:".58rem",color:"#6E665D",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
                             </div>
                           </div>
                           <div style={{flex:1,display:"flex",flexDirection:"column",gap:".6rem"}}>
@@ -16858,7 +16980,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         {/* Category breakdown */}
                         {catBreakdown.length > 0 && (
                           <div style={{marginTop:"1rem",paddingTop:"1rem",borderTop:"1px solid var(--cream2)"}}>
-                            <div style={{fontSize:".78rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>By category</div>
+                            <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>By category</div>
                             {catBreakdown.map(([cat,amt])=>(
                               <div key={cat} style={{display:"flex",alignItems:"center",gap:".75rem",marginBottom:".5rem"}}>
                                 <span style={{fontSize:".85rem",width:20,textAlign:"center",flexShrink:0}}>{CAT_ICONS[cat]||"🔧"}</span>
@@ -16882,9 +17004,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                           <span style={{fontSize:"1rem",fontWeight:700}}>Details</span>
                         </div>
                         <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:".75rem"}}>
-                          {p.contractor_name&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Contractor</div><div style={{fontSize:".95rem",fontWeight:600}}>{p.contractor_name}</div></div>}
-                          {p.description&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Description</div><div style={{fontSize:".9rem",lineHeight:1.5,color:"#5A534B"}}>{p.description}</div></div>}
-                          {p.notes&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Notes</div><div style={{fontSize:".9rem",lineHeight:1.5,color:"#5A534B",whiteSpace:"pre-wrap"}}>{p.notes}</div></div>}
+                          {p.contractor_name&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#6E665D",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Contractor</div><div style={{fontSize:".95rem",fontWeight:600}}>{p.contractor_name}</div></div>}
+                          {p.description&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#6E665D",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Description</div><div style={{fontSize:".9rem",lineHeight:1.5,color:"#5A534B"}}>{p.description}</div></div>}
+                          {p.notes&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#6E665D",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".25rem"}}>Notes</div><div style={{fontSize:".9rem",lineHeight:1.5,color:"#5A534B",whiteSpace:"pre-wrap"}}>{p.notes}</div></div>}
                         </div>
                       </div>
                     )}
@@ -16894,10 +17016,10 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                       <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
                         <span style={{fontSize:"1rem"}}>💸</span>
                         <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Expenses</span>
-                        <span style={{fontSize:".82rem",color:"var(--mid)",fontWeight:600}}>{projExpenses.length} items · {fmt$(spent)}</span>
+                        <span style={{fontSize:".82rem",color:"#6E665D",fontWeight:600}}>{projExpenses.length} items · {fmt$(spent)}</span>
                       </div>
                       {projExpenses.length === 0 ? (
-                        <div style={{padding:"1.5rem",textAlign:"center",color:"#A8A09A",fontSize:".88rem"}}>No expenses logged yet</div>
+                        <div style={{padding:"1.5rem",textAlign:"center",color:"#6E665D",fontSize:".88rem"}}>No expenses logged yet</div>
                       ) : projExpenses.map((e,idx) => {
                         const isImage = e.file_url?.match(/\.(jpg|jpeg|png|webp|heic)/i);
                         const isPdf   = e.file_url?.match(/\.pdf/i);
@@ -16923,7 +17045,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".3rem",flexShrink:0}}>
                                 <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:700}}>{fmt$(e.amount)}</div>
                                 <div style={{display:"flex",gap:3}}>
-                                  <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                                  <button onClick={()=>openEdit(e)} style={{fontSize:".75rem",fontWeight:600,color:"#6E665D",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
                                   <button onClick={()=>setConfirm(e.id)} style={{fontSize:".75rem",fontWeight:600,color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
                                 </div>
                               </div>
@@ -16973,9 +17095,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     const totalSpent=projects.reduce((s,p)=>s+expenses.filter(e=>e.project_id===p.id).reduce((a,e)=>a+Number(e.amount||0),0),0);
                     const remaining=totalBudget-totalSpent;
                     return (
-                      <div className="mflat" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
+                      <div className="mflat money-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
                         <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
-                        <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Total project budget</div>
+                        <div style={{fontSize:".78rem",color:"rgba(244,237,223,.78)",fontWeight:600,marginBottom:".3rem"}}>Total project budget</div>
                         <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(totalBudget)}</div>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
                           {[
@@ -16985,7 +17107,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                           ].map((s,i)=>(
                             <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
                               <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.green?"#7DCBA1":"#fff"}}>{s.val}</div>
-                              <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
+                              <div style={{fontSize:".72rem",color:"rgba(244,237,223,.78)",marginTop:".2rem",fontWeight:600}}>{s.lbl}</div>
                             </div>
                           ))}
                         </div>
@@ -17076,7 +17198,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                               </svg>
                               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
                                 <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:700,color:ringColor}}>{pct!=null?pct+"%":"—"}</div>
-                                <div style={{fontSize:".52rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
+                                <div style={{fontSize:".52rem",color:"#6E665D",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginTop:1}}>used</div>
                               </div>
                             </div>
                             <div style={{flex:1,display:"flex",flexDirection:"column",gap:".45rem"}}>
@@ -17095,7 +17217,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                           </div>
                         )}
                         {budget===0&&(
-                          <div style={{padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".85rem",color:"#A8A09A"}}>
+                          <div style={{padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".85rem",color:"#6E665D"}}>
                             {fmt$(spent)} spent · {projExpenses.length} expense{projExpenses.length!==1?"s":""}
                           </div>
                         )}
@@ -17121,24 +17243,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {view==="utilities" && (
         <div>
           {utilities.length===0 ? (
-            <div>
-              <div className="empty">
-                <span className="ei">⚡</span>
-                <strong>No utilities set up yet</strong>
-                <p>Track your electric, gas, water, and other monthly bills. See trends, spot spikes, and understand your true home running cost.</p>
-                <button className="btn btn-primary" onClick={openNewUtil}>＋ Add your first utility</button>
-              </div>
-              <div style={{marginTop:"1rem"}}>
-                <div style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",marginBottom:".65rem",fontWeight:600,letterSpacing:".5px",textTransform:"uppercase"}}>Quick add</div>
-                <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",justifyContent:"center"}}>
-                  {Object.entries(UTIL_TYPES).slice(0,4).map(([key,t])=>(
-                    <button key={key} className="btn btn-ghost" style={{gap:".4rem"}} onClick={()=>{setUtilEditData({type:key,name:t.label});setUtilEditId(null);setUtilModal(true);}}>
-                      {t.icon} {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <UtilitiesEmpty onPick={key=>{setUtilEditData({type:key,name:UTIL_TYPES[key].label});setUtilEditId(null);setUtilModal(true);}}/>
           ) : (
             <UtilitiesView
               utilities={utilities}
