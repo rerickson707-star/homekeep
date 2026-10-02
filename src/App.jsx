@@ -1,4 +1,4 @@
-// Steadwell v306 — 2026-10-01
+// Steadwell v307 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3329,8 +3329,9 @@ img,.lp-root img{max-width:100%;height:auto}
 .as-filters .chip.on{color:var(--rust)}
 .as-filters .ag-toggle-all{flex-shrink:0;white-space:nowrap}
 .as-cols{display:block}
-@media(min-width:1180px){.as-cols{column-count:2;column-gap:1.5rem}}
-.as-group{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin-bottom:1.35rem}
+.as-cols.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 1.5rem;align-items:start}
+.as-col{min-width:0}
+.as-group{margin-bottom:1.35rem}
 .as-group .ag-head{border-bottom:none;padding:.2rem .15rem .15rem}
 .as-panel{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden}
 .ar{display:flex;align-items:center;gap:.85rem;width:100%;padding:.8rem 1rem;background:var(--white);border:none;border-top:1px solid var(--cream2);text-align:left;font-family:inherit;color:inherit;cursor:pointer;transition:background .12s}
@@ -13794,6 +13795,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [assessOpen, setAssessOpen] = useState(false);
   const [detailTab, setDetailTab] = useState("overview");
+  const [wideList, setWideList] = useState(() => typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(min-width:1180px)").matches);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia("(min-width:1180px)");
+    const on = () => setWideList(mq.matches);
+    on();
+    if (mq.addEventListener) mq.addEventListener("change", on); else mq.addListener(on);
+    return () => { if (mq.removeEventListener) mq.removeEventListener("change", on); else mq.removeListener(on); };
+  }, []);
   useEffect(() => { setAssessOpen(false); setDetailTab("overview"); }, [selectedAsset]);
   // An asset's detail page starts at the top, not wherever the list was scrolled
   useEffect(() => {
@@ -15212,8 +15222,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       )}
 
       {/* Grouped list: one panel per category, one row per asset */}
-      <div className="as-cols">
-      {displayGroups.map((g, gi) => {
+      <div className={"as-cols"+(wideList?" two":"")}>
+      {(() => { const groupNodes = displayGroups.map((g, gi) => {
         const cat = g.key;
         const catAssets = g.items;
         const catLabel = g.label;
@@ -15309,7 +15319,14 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             )}
           </section>
         );
-      })}
+      });
+      if (!wideList) return groupNodes;
+      // Two stable columns: a group's column depends only on how many assets it holds,
+      // never on whether it is open, so expanding one group can't shuffle the others.
+      const cols = [[], []], load = [0, 0];
+      displayGroups.forEach((g, gi) => { const c = load[0] <= load[1] ? 0 : 1; cols[c].push(groupNodes[gi]); load[c] += g.items.length + 1.5; });
+      return <><div className="as-col">{cols[0]}</div><div className="as-col">{cols[1]}</div></>;
+      })()}
       </div>
 
       {/* Retired assets discovery prompt, at the bottom of the active list */}
