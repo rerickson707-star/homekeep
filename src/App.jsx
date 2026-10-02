@@ -1,4 +1,4 @@
-// Steadwell v308 — 2026-10-01
+// Steadwell v309 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3401,6 +3401,116 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ad-dl-v{color:var(--dark);font-weight:600;overflow-wrap:anywhere}
 @media(max-width:480px){.ad-dl{grid-template-columns:7.5rem minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.ar,.ad-row{transition:none}}
+
+/* ── Utilities v309 ── */
+.ut-wrap{margin:0 1rem 2rem}
+@media(min-width:1024px){.ut-wrap{margin:0 0 2rem}}
+.ut-sum{margin:0 0 1.15rem}
+.ut-head{font-family:'Fraunces',Georgia,serif;font-size:1.55rem;font-weight:500;line-height:1.22;letter-spacing:-.012em;color:var(--dark);margin:0}
+.ut-head b{font-weight:600;color:var(--pine)}
+.ut-sub{margin:.3rem 0 0;font-size:.92rem;color:#6E665D;line-height:1.45}
+.ut-top{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;margin-bottom:1.5rem}
+.ut-top>*{min-width:0}
+@media(min-width:1024px){.ut-top{grid-template-columns:minmax(0,1fr) 20rem;align-items:start}}
+.ut-card{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:1rem 1.1rem}
+.ut-card-h{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.9rem}
+.ut-card-t{font-family:'Fraunces',Georgia,serif;font-size:1.08rem;font-weight:500;color:var(--dark);margin:0}
+.ut-quiet{margin:0;font-size:.9rem;color:#6E665D;line-height:1.5}
+.uc{--uch:168px;display:grid;grid-template-columns:2.7rem minmax(0,1fr);column-gap:.35rem}
+@media(max-width:480px){.uc{--uch:140px;grid-template-columns:2.4rem minmax(0,1fr)}}
+.uc-y{position:relative;height:var(--uch)}
+.uc-yl{position:absolute;right:0;transform:translateY(50%);font-size:.68rem;color:#6E665D;line-height:1;font-variant-numeric:tabular-nums}
+.uc-plot{position:relative;height:var(--uch)}
+.uc-grid{position:absolute;left:0;right:0;height:1px;background:var(--cream2)}
+.uc-ref{position:absolute;left:0;right:0;height:0;border-top:1.5px solid rgba(35,74,61,.55);pointer-events:none;z-index:1}
+.uc-cols{position:absolute;inset:0;display:flex;align-items:flex-end}
+.uc-col{position:relative;flex:1 1 0;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;outline:none;border-radius:6px 6px 0 0}
+.uc-col:hover,.uc-col:focus-visible{background:rgba(35,74,61,.06)}
+.uc-col:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.uc-bar{width:min(24px,70%);display:flex;flex-direction:column-reverse;gap:2px;position:relative;z-index:2}
+.uc-seg{display:block;min-height:2px}
+.uc-seg.top{border-radius:4px 4px 0 0}
+.uc-val{position:absolute;left:50%;transform:translateX(-50%);font-size:.7rem;font-weight:700;color:var(--dark);white-space:nowrap;pointer-events:none;z-index:3}
+.uc-xrow{grid-column:2;display:flex;margin-top:.4rem}
+.uc-x{flex:1 1 0;min-width:0;text-align:center;font-size:.7rem;color:#6E665D;line-height:1.2}
+.uc-x.now{color:var(--dark);font-weight:700}
+.uc-x small{display:block;font-size:.62rem}
+@media(max-width:480px){.uc-x{font-size:.62rem}.uc-val{font-size:.64rem}}
+.uc-tip{display:none;position:absolute;bottom:calc(100% + 6px);z-index:30;min-width:11.5rem;padding:.6rem .75rem;background:#1F2A25;color:#fff;border-radius:10px;font-size:.78rem;line-height:1.35;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.uc-tip.c{left:50%;transform:translateX(-50%)}
+.uc-tip.l{left:0}
+.uc-tip.r{right:0}
+.uc-col:hover .uc-tip,.uc-col:focus .uc-tip{display:block}
+.uc-tip-m{color:rgba(255,255,255,.72);font-size:.74rem}
+.uc-tip-t{font-weight:700;font-size:1.02rem;margin:.1rem 0 .35rem}
+.uc-tip-t span{font-weight:500;font-size:.74rem;color:rgba(255,255,255,.72)}
+.uc-tip-r{display:flex;align-items:center;gap:.5rem;margin-top:.15rem}
+.uc-tip-r i{width:12px;height:3px;border-radius:2px;flex-shrink:0}
+.uc-tip-r span{flex:1;color:rgba(255,255,255,.78)}
+.uc-tip-r b{font-weight:700}
+.uc-tip-n{color:rgba(255,255,255,.78)}
+.uc-leg{display:flex;flex-wrap:wrap;gap:.35rem 1.1rem;margin-top:.95rem;font-size:.82rem;color:#4A443E}
+.uc-leg span{display:inline-flex;align-items:center;gap:.4rem}
+.uc-leg i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.uc-leg i.line{width:14px;height:0;border-radius:0;border-top:1.5px solid rgba(35,74,61,.55)}
+.ut-tbl-wrap{overflow-x:auto}
+.ut-tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.ut-tbl th,.ut-tbl td{padding:.5rem .6rem;text-align:right;border-top:1px solid var(--cream2);white-space:nowrap}
+.ut-tbl th:first-child,.ut-tbl td:first-child{text-align:left;padding-left:0}
+.ut-tbl thead th{border-top:none;font-weight:700;color:#4A443E;font-size:.8rem}
+.ut-tbl tbody th{font-weight:600;color:var(--dark)}
+.ut-tbl td{font-variant-numeric:tabular-nums;color:var(--dark)}
+.ut-tbl td.n{color:#6E665D}
+.ut-ins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.9rem}
+.ut-in{display:flex;gap:.65rem;align-items:flex-start}
+.ut-in>i{width:9px;height:9px;border-radius:50%;margin-top:.42rem;flex-shrink:0}
+.ut-in-t{font-size:.9rem;line-height:1.45;color:var(--dark)}
+.ut-in .asm-link{padding:.2rem 0 0}
+.ut-list{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden}
+.ut-item+.ut-item{border-top:1px solid var(--cream2)}
+.ut-row{display:flex;align-items:center;gap:.9rem;width:100%;padding:.85rem 1rem;background:none;border:none;text-align:left;font-family:inherit;color:inherit;cursor:pointer}
+.ut-row:hover{background:var(--cream)}
+.ut-row:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.ut-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ut-main{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ut-name{font-weight:700;font-size:.98rem;line-height:1.25;color:var(--dark);overflow-wrap:anywhere}
+.ut-meta{font-size:.82rem;color:#6E665D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ut-spark{display:none;align-items:flex-end;gap:3px;height:30px;flex-shrink:0;margin-right:.5rem}
+@media(min-width:640px){.ut-spark{display:flex}}
+.ut-spark i{display:block;width:6px;border-radius:3px 3px 0 0}
+.ut-side{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;min-width:7.5rem;text-align:right}
+.ut-amt{font-family:'Fraunces',Georgia,serif;font-size:1.12rem;font-weight:600;color:var(--dark);line-height:1.15}
+.ut-st{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:700;line-height:1.25}
+.ut-st i{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ut-chev{color:#6E665D;font-size:1.1rem;transition:transform .15s;flex-shrink:0}
+.ut-chev.open{transform:rotate(90deg)}
+.ut-detail{padding:.1rem 1rem 1.1rem;border-top:1px solid var(--cream2)}
+.ut-facts{display:flex;flex-wrap:wrap;gap:.9rem 2.2rem;padding:.95rem 0}
+.ut-fact-v{font-family:'Fraunces',Georgia,serif;font-size:1.15rem;font-weight:600;color:var(--dark);line-height:1.2}
+.ut-fact-l{font-size:.78rem;color:#6E665D;margin-top:2px}
+.ut-btns{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.95rem}
+.ut-notes{font-size:.88rem;color:#4A443E;line-height:1.5;margin:0 0 .9rem;white-space:pre-wrap}
+.ut-bills{border:1px solid var(--cream2);border-radius:var(--r-sm);overflow:hidden}
+.ut-bill{display:grid;grid-template-columns:7.5rem minmax(0,1fr) auto auto;align-items:center;gap:.75rem;width:100%;padding:.7rem .9rem;background:none;border:none;border-top:1px solid var(--cream2);font-family:inherit;text-align:left;cursor:pointer;color:inherit}
+.ut-bill:first-child{border-top:none}
+.ut-bill:hover{background:var(--cream)}
+.ut-bill:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.ut-bill-d{font-size:.9rem;color:var(--dark);white-space:nowrap}
+.ut-bill-u{font-size:.84rem;color:#4A443E;min-width:0}
+.ut-bill-u em{font-style:normal;color:#6E665D;margin-left:.6rem}
+.ut-bill-f{color:#6E665D;display:inline-flex;min-width:15px}
+.ut-bill-a{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1rem;min-width:3.8rem;text-align:right;color:var(--dark)}
+.ut-more{display:block;width:100%;padding:.7rem;background:var(--cream);border:none;border-top:1px solid var(--cream2);font-family:inherit;font-size:.84rem;font-weight:700;color:var(--pine);cursor:pointer}
+.ut-add{margin-top:.9rem}
+@media(max-width:480px){
+  .ut-row{padding:.8rem .85rem;gap:.7rem}
+  .ut-side{min-width:6.2rem}
+  .ut-bill{grid-template-columns:6.2rem minmax(0,1fr) auto auto;gap:.5rem;padding:.7rem .75rem}
+  .ut-bill-u em{display:block;margin:0}
+  .ut-head{font-size:1.4rem}
+}
+@media(prefers-reduced-motion:reduce){.ut-chev{transition:none}}
+
 
 /* ── Asset detail hero (v308): class-driven so no global rule can override it ── */
 .ad-hero{background:linear-gradient(150deg,var(--pine-deep),var(--pine-soft));color:#fff;padding:1.35rem 1.25rem 1.25rem}
@@ -15521,7 +15631,7 @@ function UtilityForm({ data, onChange }) {
   );
 }
 
-function BillForm({ data, onChange, utility, userId, planData, onUpgrade }) {
+function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDelete }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const ut = UTIL_TYPES[utility?.type] || UTIL_TYPES.electric;
 
@@ -15562,6 +15672,353 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade }) {
         </>
       )}
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Billing period, account notes…" /></div>
+      {onDelete && (
+        <div className="field s2"><button type="button" className="btn btn-ghost btn-sm" style={{color:"var(--red)",alignSelf:"flex-start"}} onClick={onDelete}>Delete this bill</button></div>
+      )}
+    </div>
+  );
+}
+
+// ─── UTILITIES VIEW (v309) ────────────────────────────────────────────────────
+// Series colours: five hues checked for colour-vision separation and 3:1 contrast on the card surface.
+// A sixth and later utility folds into one grey "Other" series.
+const UTIL_SERIES = ["#1F7F55", "#C48100", "#3A7CC0", "#C65A3A", "#7B66B5"];
+const UTIL_OTHER = "#A8A09A";
+const utilSeriesColor = i => (i < UTIL_SERIES.length ? UTIL_SERIES[i] : UTIL_OTHER);
+
+function UtilIcon({ type, size = 20 }) {
+  const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  const paths = {
+    electric: <path {...p} d="M13 2.5 5 13.5h6l-1 8 8-11h-6l1-8z" />,
+    gas: <path {...p} d="M12 3c.6 3 5 5 5 10a5 5 0 0 1-10 0c0-2 .8-3.2 2-4.2 0 1.8.9 2.7 2 2.7C11.4 9.6 10.6 6 12 3z" />,
+    water: <path {...p} d="M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.3 6-10.5 6-10.5z" />,
+    internet: <><path {...p} d="M2.5 9a15 15 0 0 1 19 0M5.5 12.5a10.5 10.5 0 0 1 13 0M8.8 16a5.5 5.5 0 0 1 6.4 0" /><circle cx="12" cy="19.2" r="1.1" fill="currentColor" /></>,
+    trash: <path {...p} d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.9 12.5h9.2L17.5 7M10 11v5.5M14 11v5.5" />,
+    sewer: <path {...p} d="M3 7h10a4 4 0 0 1 4 4v9.5M3 11.5h5M14.5 20.5h5" />,
+    other: <path {...p} d="M3 11.5 12 4l9 7.5M5.5 10v10h13V10M10 20v-5h4v5" />,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">{paths[type] || paths.other}</svg>;
+}
+
+const utilDaysBetween = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+const utilMedian = arr => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const utilRate = b => { const u = Number(b.usage), a = Number(b.amount); return u > 0 && a > 0 ? a / u : null; };
+const utilFmtRate = (rate, unit) => {
+  if (rate == null) return null;
+  const un = String(unit || "").trim();
+  if (/kwh/i.test(un)) return (rate * 100).toFixed(1) + "¢ per kWh";
+  if (/gal/i.test(un)) return "$" + (rate * 1000).toFixed(2) + " per 1,000 gal";
+  return "$" + (rate >= 1 ? rate.toFixed(2) : rate.toFixed(3)) + (un ? " per " + un : " per unit");
+};
+const utilNiceStep = max => { const raw = max / 4; const mag = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / mag; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag; };
+const utilAxisLabel = v => (v >= 1000 ? "$" + (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + "k" : "$" + v);
+
+// Everything the page says about one utility, computed once from its bills.
+function analyzeUtility(u, allBills, today, yr) {
+  const list = allBills.filter(b => b.utility_id === u.id && b.bill_date).sort((a, b) => b.bill_date.localeCompare(a.bill_date));
+  const last = list[0] || null;
+  const prior = list.slice(1, 7);
+  const priorAvg = prior.length >= 2 ? prior.reduce((s, b) => s + Number(b.amount || 0), 0) / prior.length : null;
+  // Seasonal bills (gas, electric) are best compared with the same month a year earlier, when we have it.
+  let yoy = null;
+  if (last) {
+    const t = new Date(last.bill_date + "T00:00:00"); t.setFullYear(t.getFullYear() - 1);
+    const tIso = localISO(t); let gapBest = 26;
+    list.forEach(b => { const g = Math.abs(utilDaysBetween(tIso, b.bill_date)); if (g < gapBest) { gapBest = g; yoy = b; } });
+  }
+  const baseAmt = yoy ? Number(yoy.amount) : priorAvg;
+  const delta = last && baseAmt > 0 ? Number(last.amount) / baseAmt - 1 : null;
+  const gaps = [];
+  for (let i = 0; i < Math.min(list.length - 1, 6); i++) gaps.push(utilDaysBetween(list[i + 1].bill_date, list[i].bill_date));
+  const medGap = utilMedian(gaps.filter(g => g > 0));
+  const freq = medGap ? Math.min(12, Math.max(1, Math.round(medGap / 30.4))) : 1;
+  const recent = list.slice(0, 6);
+  const avgBill = recent.length ? recent.reduce((s, b) => s + Number(b.amount || 0), 0) / recent.length : 0;
+  const usual = priorAvg != null ? priorAvg : avgBill;
+  const ytd = list.filter(b => b.bill_date.startsWith(String(yr))).reduce((s, b) => s + Number(b.amount || 0), 0);
+  const unit = (last && last.usage_unit) || (UTIL_TYPES[u.type] || {}).unit || "";
+  const lastRate = last ? utilRate(last) : null;
+  const priorRates = prior.map(utilRate).filter(r => r != null);
+  const avgRate = priorRates.length >= 2 ? priorRates.reduce((s, r) => s + r, 0) / priorRates.length : null;
+  const rateDelta = lastRate != null && avgRate ? lastRate / avgRate - 1 : null;
+  const daysSince = last ? utilDaysBetween(last.bill_date, today) : null;
+  const stale = last ? daysSince > freq * 30.4 + 20 : false;
+  return { list, last, priorAvg, yoy, baseAmt, delta, freq, usual, monthly: usual / freq, ytd, unit, lastRate, avgRate, rateDelta, daysSince, stale };
+}
+
+function utilStatus(a) {
+  if (!a.last) return { label: "No bills yet", dot: "#B5ADA5", color: "#6E665D" };
+  if (a.delta == null) return { label: "Tracking", dot: "#B5ADA5", color: "#6E665D" };
+  const pct = Math.round(Math.abs(a.delta) * 100);
+  const ref = a.yoy ? "last " + new Date(a.last.bill_date + "T00:00:00").toLocaleString("en-US", { month: "short" }) : "usual";
+  if (a.delta >= 0.4) return { label: `${pct}% above ${ref}`, dot: "#B0432B", color: "#B0432B" };
+  if (a.delta >= 0.15) return { label: `${pct}% above ${ref}`, dot: "#D9A93E", color: "#8A6410" };
+  if (a.delta <= -0.15) return { label: `${pct}% below ${ref}`, dot: "#3E7D5A", color: "#2F6A49" };
+  return { label: "About usual", dot: "#3E7D5A", color: "#2F6A49" };
+}
+
+function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil, onRemoveUtil, onAddUtil }) {
+  const [open, setOpen] = useState(null);
+  const [showAll, setShowAll] = useState({});
+  const [table, setTable] = useState(false);
+  const [insAll, setInsAll] = useState(false);
+  const today = localISO();
+
+  const nb = bills.map(b => ({ ...b, bill_date: String(b.bill_date || "").slice(0, 10) })).filter(b => b.bill_date);
+  const an = {};
+  utilities.forEach(u => { an[u.id] = analyzeUtility(u, nb, today, yr); });
+  const typical = utilities.reduce((s, u) => s + (an[u.id].last ? an[u.id].monthly : 0), 0);
+
+  // ── 12-month stacked series
+  const nowD = new Date(today + "T00:00:00");
+  const monthKeys = [];
+  for (let i = 11; i >= 0; i--) { const d = new Date(nowD.getFullYear(), nowD.getMonth() - i, 1); monthKeys.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")); }
+  const seriesDefs = utilities.slice(0, UTIL_SERIES.length).map((u, i) => ({ id: u.id, name: u.name, color: UTIL_SERIES[i] }));
+  if (utilities.length > UTIL_SERIES.length) seriesDefs.push({ id: "__other", name: "Other utilities", color: UTIL_OTHER });
+  const seriesOf = id => { const i = utilities.findIndex(u => u.id === id); return i < 0 ? null : i < UTIL_SERIES.length ? id : "__other"; };
+  const months = monthKeys.map(k => {
+    const d = new Date(k + "-01T00:00:00");
+    const sums = {};
+    nb.forEach(b => { if (b.bill_date.startsWith(k)) { const sid = seriesOf(b.utility_id); if (sid) sums[sid] = (sums[sid] || 0) + Number(b.amount || 0); } });
+    const segments = seriesDefs.map(s => ({ ...s, v: sums[s.id] || 0 })).filter(s => s.v > 0);
+    return { key: k, short: d.toLocaleString("en-US", { month: "short" }), full: d.toLocaleString("en-US", { month: "long", year: "numeric" }), year: String(d.getFullYear()).slice(2), jan: d.getMonth() === 0, segments, total: segments.reduce((s, x) => s + x.v, 0) };
+  });
+  const maxTotal = Math.max(0, ...months.map(m => m.total));
+  const step = maxTotal > 0 ? utilNiceStep(maxTotal) : 1;
+  const axisMax = maxTotal > 0 ? step * Math.ceil(maxTotal / step) : 1;
+  const ticks = []; for (let t = 0; t <= axisMax + 1e-9; t += step) ticks.push(t);
+  let latestIdx = -1; months.forEach((m, i) => { if (m.total > 0) latestIdx = i; });
+  const maxIdx = maxTotal > 0 ? months.findIndex(m => m.total === maxTotal) : -1;
+  const hasChart = maxTotal > 0;
+
+  // ── Summary sentence
+  const ytdAll = nb.filter(b => b.bill_date.startsWith(String(yr))).reduce((s, b) => s + Number(b.amount || 0), 0);
+  const last12 = months.reduce((s, m) => s + m.total, 0);
+  const noBills = nb.length === 0;
+  const sub = noBills ? "Scan a bill or type it in. After a few months, trends and unusual bills show up here."
+    : ytdAll > 0
+    ? `${fmt$(ytdAll)} so far in ${yr}${utilities.length > 1 ? ` across ${utilities.length} utilities` : ""}. Based on your recent bills.`
+    : last12 > 0 ? `${fmt$(last12)} over the last 12 months. Based on your recent bills.` : "";
+
+  // ── Worth a look
+  const items = [];
+  utilities.forEach(u => {
+    const a = an[u.id];
+    if (a.last && a.daysSince <= 75 && a.delta != null) {
+      const pct = Math.round(Math.abs(a.delta) * 100);
+      const monthLong = new Date(a.last.bill_date + "T00:00:00").toLocaleString("en-US", { month: "long" });
+      const than = a.yoy ? `last ${monthLong}` : "usual";
+      const against = a.yoy ? fmt$(a.baseAmt) : `about ${fmt$(a.baseAmt)}`;
+      if (a.delta >= 0.15) items.push({ k: u.id + "-hi", dot: a.delta >= 0.4 ? "#B0432B" : "#D9A93E", text: `${u.name} was ${pct}% higher than ${than}: ${fmt$(a.last.amount)} against ${against}.` });
+      else if (a.yoy && a.delta <= -0.25) items.push({ k: u.id + "-lo", dot: "#3E7D5A", text: `${u.name} was ${pct}% lower than ${than}: ${fmt$(a.last.amount)} against ${against}.` });
+    }
+  });
+  utilities.forEach(u => {
+    const a = an[u.id];
+    if (a.rateDelta != null && Math.abs(a.rateDelta) >= 0.1) {
+      const up = a.rateDelta > 0;
+      items.push({ k: u.id + "-rate", dot: up ? "#D9A93E" : "#3E7D5A", text: `${u.name} now costs ${utilFmtRate(a.lastRate, a.unit)} all in, ${up ? "up" : "down"} ${Math.round(Math.abs(a.rateDelta) * 100)}% from your usual ${utilFmtRate(a.avgRate, a.unit)}.` });
+    }
+  });
+  utilities.forEach(u => {
+    const a = an[u.id];
+    if (!a.last) items.push({ k: u.id + "-none", dot: "#B5ADA5", text: `${u.name} has no bills yet.`, act: { label: "Add the first bill", fn: () => onAddBill(u.id) } });
+    else if (a.stale) items.push({ k: u.id + "-stale", dot: "#B5ADA5", text: `No ${u.name} bill logged since ${fmtD(a.last.bill_date)}.`, act: { label: "Add bill", fn: () => onAddBill(u.id) } });
+  });
+  const shown = insAll ? items.slice(0, 8) : items.slice(0, 3);
+
+  const tipAlign = i => (i <= 2 ? "l" : i >= 9 ? "r" : "c");
+
+  return (
+    <div className="ut-wrap">
+      <div className="ut-sum">
+        <h2 className="ut-head">
+          {typical > 0 ? <>Utilities run about <b>{fmt$(typical)}</b> a month.</> : "Log a bill to see what your home costs to run."}
+        </h2>
+        {sub && <p className="ut-sub">{sub}</p>}
+      </div>
+
+      {!noBills && (
+      <div className="ut-top">
+        <section className="ut-card" aria-labelledby="ut-chart-t">
+          <div className="ut-card-h">
+            <h3 id="ut-chart-t" className="ut-card-t">Last 12 months</h3>
+            {hasChart && <button type="button" className="asm-link" onClick={() => setTable(t => !t)}>{table ? "Show chart" : "View as table"}</button>}
+          </div>
+          {!hasChart ? (
+            <p className="ut-quiet">No bills in the last 12 months. Log one to start the chart.</p>
+          ) : table ? (
+            <div className="ut-tbl-wrap">
+              <table className="ut-tbl">
+                <caption className="sr-only" style={{position:"absolute",left:-9999}}>Utility bills by month, newest first</caption>
+                <thead><tr><th scope="col">Month</th><th scope="col">Total</th>{seriesDefs.map(s => <th scope="col" key={s.id}>{s.name}</th>)}</tr></thead>
+                <tbody>
+                  {[...months].reverse().map(m => (
+                    <tr key={m.key}>
+                      <th scope="row">{m.full}</th>
+                      <td><b>{m.total > 0 ? fmt$(m.total) : "None"}</b></td>
+                      {seriesDefs.map(s => { const seg = m.segments.find(x => x.id === s.id); return seg ? <td key={s.id}>{fmt$(seg.v)}</td> : <td key={s.id} className="n">None</td>; })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <>
+              <div className="uc">
+                <div className="uc-y" aria-hidden="true">
+                  {ticks.map(t => <span key={t} className="uc-yl" style={{ bottom: (t / axisMax * 100) + "%" }}>{utilAxisLabel(t)}</span>)}
+                </div>
+                <div className="uc-plot" role="group" aria-label={`Utility bills by month for the last 12 months. Typical month ${fmt$(typical)}.`}>
+                  {ticks.map(t => <span key={t} className="uc-grid" style={{ bottom: (t / axisMax * 100) + "%" }} />)}
+                  {typical > 0 && typical <= axisMax && <span className="uc-ref" style={{ bottom: (typical / axisMax * 100) + "%" }} />}
+                  <div className="uc-cols">
+                    {months.map((m, i) => {
+                      const pct = m.total / axisMax * 100;
+                      return (
+                        <div key={m.key} className="uc-col" tabIndex={0} role="img"
+                          aria-label={m.total > 0 ? `${m.full}: ${fmt$(m.total)} total. ${m.segments.map(s => `${s.name} ${fmt$(s.v)}`).join(", ")}.` : `${m.full}: no bills`}>
+                          {m.total > 0 && (
+                            <div className="uc-bar" style={{ height: pct + "%" }}>
+                              {m.segments.map((s, si) => <span key={s.id} className={"uc-seg" + (si === m.segments.length - 1 ? " top" : "")} style={{ flex: `${s.v} 1 0%`, background: s.color }} />)}
+                            </div>
+                          )}
+                          {m.total > 0 && (i === latestIdx || i === maxIdx) && <span className="uc-val" style={{ bottom: `calc(${pct}% + 4px)` }}>{fmt$(m.total)}</span>}
+                          <div className={"uc-tip " + tipAlign(i)}>
+                            <div className="uc-tip-m">{m.full}</div>
+                            {m.total > 0 ? (
+                              <>
+                                <div className="uc-tip-t">{fmt$(m.total)} <span>total</span></div>
+                                {m.segments.map(s => (
+                                  <div key={s.id} className="uc-tip-r"><i style={{ background: s.color }} /><span>{s.name}</span><b>{fmt$(s.v)}</b></div>
+                                ))}
+                              </>
+                            ) : <div className="uc-tip-n">No bills</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="uc-xrow" aria-hidden="true">
+                  {months.map((m, i) => (
+                    <span key={m.key} className={"uc-x" + (i === 11 ? " now" : "")}>{m.short}{(i === 0 || m.jan) && <small>{"'" + m.year}</small>}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="uc-leg">
+                {seriesDefs.map(s => <span key={s.id}><i style={{ background: s.color }} />{s.name}</span>)}
+                {typical > 0 && typical <= axisMax && <span><i className="line" />Typical month, {fmt$(typical)}</span>}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="ut-card" aria-labelledby="ut-ins-t">
+          <div className="ut-card-h"><h3 id="ut-ins-t" className="ut-card-t">Worth a look</h3></div>
+          {shown.length === 0 ? (
+            <p className="ut-quiet">{nb.length > 0 ? "Nothing unusual in your recent bills." : "Once you log a few bills, changes in cost or usage show up here."}</p>
+          ) : (
+            <ul className="ut-ins">
+              {shown.map(it => (
+                <li key={it.k} className="ut-in">
+                  <i style={{ background: it.dot }} aria-hidden="true" />
+                  <div>
+                    <div className="ut-in-t">{it.text}</div>
+                    {it.act && <button type="button" className="asm-link" onClick={it.act.fn}>{it.act.label}</button>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {items.length > 3 && (
+            <button type="button" className="asm-link" style={{ marginTop: ".7rem" }} onClick={() => setInsAll(v => !v)}>
+              {insAll ? "Show fewer" : `Show ${items.length - 3} more`}
+            </button>
+          )}
+        </section>
+      </div>
+      )}
+
+      <div className="ut-list">
+        {utilities.map((u, ui) => {
+          const a = an[u.id];
+          const ut = UTIL_TYPES[u.type] || UTIL_TYPES.other;
+          const color = utilSeriesColor(ui);
+          const st = utilStatus(a);
+          const isOpen = open === u.id;
+          const spark = a.list.slice(0, 10).reverse();
+          const sparkMax = Math.max(...spark.map(b => Number(b.amount || 0)), 1);
+          const bl = showAll[u.id] ? a.list : a.list.slice(0, 6);
+          const panelId = "ut-panel-" + u.id;
+          return (
+            <section key={u.id} className="ut-item">
+              <button type="button" className="ut-row" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setOpen(isOpen ? null : u.id)}>
+                <span className="ut-ic" style={{ background: color + "22", color }}><UtilIcon type={UTIL_TYPES[u.type] ? u.type : "other"} /></span>
+                <span className="ut-main">
+                  <span className="ut-name">{u.name}</span>
+                  <span className="ut-meta">{[u.provider, ut.label].filter((x, i, arr) => x && x.toLowerCase() !== String(u.name || "").trim().toLowerCase() && arr.indexOf(x) === i).join(", ") || ut.label}</span>
+                </span>
+                {spark.length > 1 && (
+                  <span className="ut-spark" aria-hidden="true">
+                    {spark.map((b, i) => <i key={b.id || i} style={{ height: Math.max(3, Math.round(Number(b.amount || 0) / sparkMax * 28)), background: color, opacity: i === spark.length - 1 ? 1 : 0.4 }} />)}
+                  </span>
+                )}
+                <span className="ut-side">
+                  {a.last && <span className="ut-amt">{fmt$(a.last.amount)}</span>}
+                  <span className="ut-st" style={{ color: st.color }}><i style={{ background: st.dot }} />{st.label}</span>
+                </span>
+                <span className={"ut-chev" + (isOpen ? " open" : "")} aria-hidden="true">›</span>
+              </button>
+
+              {isOpen && (
+                <div className="ut-detail" id={panelId}>
+                  <div className="ut-facts">
+                    {a.last && <div><div className="ut-fact-v">{fmt$(a.usual)}</div><div className="ut-fact-l">{a.freq === 1 ? "Usual monthly bill" : `Usual bill, every ${a.freq} months`}</div></div>}
+                    <div><div className="ut-fact-v">{a.ytd > 0 ? fmt$(a.ytd) : "None yet"}</div><div className="ut-fact-l">{yr} so far</div></div>
+                    {a.lastRate != null && <div><div className="ut-fact-v">{utilFmtRate(a.lastRate, a.unit)}</div><div className="ut-fact-l">Latest cost per unit, all in</div></div>}
+                    {u.account_number && <div><div className="ut-fact-v" style={{ fontFamily: "inherit", fontSize: ".95rem", fontWeight: 700 }}>{u.account_number}</div><div className="ut-fact-l">Account</div></div>}
+                  </div>
+                  {u.notes && <p className="ut-notes">{u.notes}</p>}
+                  <div className="ut-btns">
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => onAddBill(u.id)}>Add bill</button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => onEditUtil(u)}>Edit utility</button>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ color: "var(--red)" }} onClick={() => onRemoveUtil(u.id)}>Remove</button>
+                  </div>
+                  {a.list.length === 0 ? (
+                    <p className="ut-quiet">No bills logged for this utility yet.</p>
+                  ) : (
+                    <div className="ut-bills">
+                      {bl.map(b => {
+                        const r = utilRate(b);
+                        const unit = b.usage_unit || a.unit;
+                        return (
+                          <button type="button" key={b.id} className="ut-bill" onClick={() => onEditBill(b)} aria-label={`Edit the bill from ${fmtD(b.bill_date)}, ${fmt$(b.amount)}`}>
+                            <span className="ut-bill-d">{fmtD(b.bill_date)}</span>
+                            <span className="ut-bill-u">
+                              {Number(b.usage) > 0 ? <>{Number(b.usage).toLocaleString()} {unit}{r != null && <em>{utilFmtRate(r, unit)}</em>}</> : ""}
+                            </span>
+                            <span className="ut-bill-f" title={b.file_url ? "Bill attached" : undefined}>
+                              {b.file_url && (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="Bill attached"><path d="M21 11.5 12.5 20a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.9 1.9 0 0 1-2.6-2.6l8.3-8.3" /></svg>)}
+                            </span>
+                            <span className="ut-bill-a">{fmt$(b.amount)}</span>
+                          </button>
+                        );
+                      })}
+                      {a.list.length > 6 && (
+                        <button type="button" className="ut-more" onClick={() => setShowAll(s => ({ ...s, [u.id]: !s[u.id] }))}>
+                          {showAll[u.id] ? "Show fewer bills" : `Show all ${a.list.length} bills`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+      <button type="button" className="btn btn-ghost btn-sm ut-add" onClick={onAddUtil}>+ Add a utility</button>
     </div>
   );
 }
@@ -15599,7 +16056,6 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [billEditId, setBillEditId] = useState(null);
   const [billConfirm, setBillConfirm] = useState(null);
   const [activeUtil, setActiveUtil] = useState(null);
-  const [expandedUtil, setExpandedUtil] = useState(null);
 
   // Load projects, utilities, bills — scoped to current property
   useEffect(() => {
@@ -15821,7 +16277,6 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const lastYear = allExpenseItems.filter(e=>e.date?.startsWith(String(yr-1)));
   const thisYrTotal = thisYear.reduce((s,e)=>s+Number(e.amount||0),0);
   const lastYrTotal = lastYear.reduce((s,e)=>s+Number(e.amount||0),0);
-  const utilThisYr = bills.filter(b=>b.bill_date?.startsWith(String(yr))).reduce((s,b)=>s+Number(b.amount||0),0);
   // allExpenseItems now already includes bills, so this is the one true total —
   // no more adding bills a second time on top of it.
   const allTotal = allExpenseItems.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -16685,134 +17140,16 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
               </div>
             </div>
           ) : (
-            <div>
-              {/* Utilities hero */}
-              <div className="mflat" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",margin:"0 1rem 1.1rem",borderRadius:"var(--r)",padding:"1.25rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",right:-20,top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
-                <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.5)",fontWeight:700,marginBottom:".3rem"}}>Utilities this year</div>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:700,letterSpacing:"-.5px",lineHeight:1,marginBottom:"1rem"}}>{fmt$(utilThisYr)}</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".55rem"}}>
-                  {[
-                    {val:bills.length>0?fmt$(bills.slice(0,12).reduce((s,b)=>s+Number(b.amount||0),0)/Math.min(bills.length,12)):"—", lbl:"Avg/month"},
-                    {val:utilities.length, lbl:"Tracked"},
-                    {val:bills.length>0?fmt$(Number(bills[0]?.amount||0)):"—", lbl:"Last bill"},
-                  ].map((s,i)=>(
-                    <div key={i} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:".6rem .5rem",textAlign:"center"}}>
-                      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700}}>{s.val}</div>
-                      <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.45)",marginTop:".2rem",fontWeight:700}}>{s.lbl}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Utility cards */}
-              <div className="util-grid">
-                {utilities.map(u=>{
-                  const ut=UTIL_TYPES[u.type]||UTIL_TYPES.other;
-                  const utilBills=bills.filter(b=>b.utility_id===u.id).sort((a,b)=>new Date(b.bill_date)-new Date(a.bill_date));
-                  const lastBill=utilBills[0];
-                  const avg=utilBills.length>0?utilBills.slice(0,6).reduce((s,b)=>s+Number(b.amount||0),0)/Math.min(utilBills.length,6):0;
-                  const ytdTotal=utilBills.filter(b=>b.bill_date?.startsWith(String(yr))).reduce((s,b)=>s+Number(b.amount||0),0);
-                  const isSpike=lastBill&&avg>0&&Number(lastBill.amount)>avg*1.4;
-                  const isExpanded=expandedUtil===u.id;
-                  const chartBills=[...utilBills].slice(0,6).reverse();
-                  const maxBill=Math.max(...chartBills.map(b=>Number(b.amount||0)),1);
-                  const maxBarBill=Math.max(...utilBills.slice(0,12).map(b=>Number(b.amount||0)),1);
-                  return (
-                    <div key={u.id} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden"}}>
-                      {/* Spike banner — above card header */}
-                      {isSpike&&(
-                        <div style={{background:"#FBF3DE",borderBottom:"1px solid #EAD9A6",padding:".7rem 1rem",display:"flex",alignItems:"center",gap:".6rem",fontSize:".85rem",fontWeight:600,color:"#B8861E"}}>
-                          <span style={{flexShrink:0}}>⚠️</span>
-                          Last bill is {Math.round((Number(lastBill.amount)/avg-1)*100)}% above your 6-month average
-                        </div>
-                      )}
-
-                      {/* Header */}
-                      <div style={{display:"flex",alignItems:"center",gap:".85rem",padding:"1rem"}}>
-                        <div style={{width:48,height:48,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0,background:ut.bg}}>{ut.icon}</div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:"1rem",fontWeight:700,marginBottom:".15rem"}}>{u.name}</div>
-                          <div style={{fontSize:".82rem",color:"#8A8178"}}>{u.provider||ut.label}{u.account_number?` · ${u.account_number}`:""}</div>
-                        </div>
-                        <div style={{display:"flex",gap:4}}>
-                          <button onClick={()=>openNewBill(u.id)} style={{background:"var(--pine)",color:"#fff",border:"none",borderRadius:9,padding:".4rem .75rem",fontSize:".82rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Bill</button>
-                          <button onClick={()=>openEditUtil(u)} style={{width:34,height:34,borderRadius:9,border:"1.5px solid var(--stone)",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem"}}>✏️</button>
-                          <button onClick={()=>setUtilConfirm(u.id)} style={{width:34,height:34,borderRadius:9,border:"1.5px solid #E8C4BE",background:"var(--white)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:".85rem",color:"#B0432B"}}>✕</button>
-                        </div>
-                      </div>
-
-                      {/* Stats */}
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".5rem",padding:"0 1rem .9rem"}}>
-                        {[
-                          {val:lastBill?fmt$(lastBill.amount):"—",lbl:"Last bill",alert:isSpike},
-                          {val:avg>0?fmt$(avg):"—",lbl:"6mo avg"},
-                          {val:ytdTotal>0?fmt$(ytdTotal):"—",lbl:`${yr} total`},
-                        ].map((s,i)=>(
-                          <div key={i} style={{background:"var(--cream)",borderRadius:10,padding:".6rem .5rem",textAlign:"center"}}>
-                            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:700,color:s.alert?"#B8861E":"var(--dark)"}}>{s.val}</div>
-                            <div style={{fontSize:".65rem",color:"#A8A09A",fontWeight:600,textTransform:"uppercase",letterSpacing:".04em",marginTop:".15rem"}}>{s.lbl}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Mini sparkline chart */}
-                      {chartBills.length>1&&(
-                        <div style={{padding:"0 1rem .9rem"}}>
-                          <div style={{fontSize:".72rem",color:"#A8A09A",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:".6rem"}}>Last {chartBills.length} months</div>
-                          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:52}}>
-                            {chartBills.map((b,i)=>{
-                              const h=Math.max((Number(b.amount)/maxBill)*100,4);
-                              const isLast=i===chartBills.length-1;
-                              const isHigher=isLast&&i>0&&Number(b.amount)>Number(chartBills[i-1]?.amount||0)*1.4;
-                              const barColor=isHigher?"#B8861E":isLast?"#C16140":"#3E7D5A";
-                              const mo=new Date(b.bill_date+"T00:00:00").toLocaleString("default",{month:"short"});
-                              return (
-                                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:3,height:"100%"}}>
-                                  <div style={{width:"100%",height:Math.max(3,Math.round(h/100*34)),borderRadius:"3px 3px 0 0",background:barColor}}/>
-                                  <div style={{fontSize:".58rem",color:isLast?barColor:"#A8A09A",fontWeight:isLast?700:600}}>{mo}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Bill history */}
-                      {utilBills.length>0&&(
-                        <div style={{borderTop:"1px solid var(--cream2)"}}>
-                          {(isExpanded?utilBills.slice(0,12):utilBills.slice(0,3)).map(b=>(
-                            <div key={b.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                              <span style={{fontSize:".82rem",color:"#8A8178",width:70,flexShrink:0}}>{fmtD(b.bill_date)}</span>
-                              <div style={{flex:1,height:6,background:"var(--cream2)",borderRadius:3,overflow:"hidden"}}>
-                                <div style={{height:"100%",borderRadius:3,background:"var(--pine)",width:`${Math.round((Number(b.amount)/maxBarBill)*100)}%`}}/>
-                              </div>
-                              {b.usage&&<span style={{fontSize:".78rem",color:"#A8A09A",flexShrink:0}}>{Number(b.usage).toLocaleString()} {b.usage_unit||ut.unit}</span>}
-                              {b.file_url&&<span style={{color:"var(--rust)",fontSize:".75rem",flexShrink:0}}>📎</span>}
-                              <span style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:700,flexShrink:0,width:56,textAlign:"right"}}>{fmt$(b.amount)}</span>
-                              <button onClick={()=>openEditBill(b)} style={{fontSize:".75rem",color:"var(--mid)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Edit</button>
-                              <button onClick={()=>setBillConfirm(b.id)} style={{fontSize:".75rem",color:"#B0432B",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
-                            </div>
-                          ))}
-                          {utilBills.length>3&&(
-                            <button onClick={()=>setExpandedUtil(isExpanded?null:u.id)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".65rem 1rem",fontSize:".82rem",fontWeight:700,color:"#8A8178",cursor:"pointer",background:"var(--cream)",border:"none",width:"100%",fontFamily:"inherit"}}>
-                              {isExpanded?`Hide history ▲`:`View all ${utilBills.length} bills ▾`}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Add utility inline card */}
-                <div onClick={openNewUtil} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",padding:"1.5rem",display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer",color:"#A8A09A"}}>
-                  <div style={{fontSize:"1.8rem",marginBottom:".5rem"}}>＋</div>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"var(--dark)",marginBottom:".25rem"}}>Add a utility</div>
-                  <div style={{fontSize:".8rem"}}>Electric, gas, water, internet…</div>
-                </div>
-              </div>
-            </div>
+            <UtilitiesView
+              utilities={utilities}
+              bills={bills}
+              yr={yr}
+              onAddBill={openNewBill}
+              onEditBill={openEditBill}
+              onEditUtil={openEditUtil}
+              onRemoveUtil={id=>setUtilConfirm(id)}
+              onAddUtil={openNewUtil}
+            />
           )}
         </div>
       )}
@@ -16861,7 +17198,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {projectConfirm && <Confirm message="This project will be permanently deleted. Expenses linked to it will remain but lose the project link." onConfirm={confirmDelProject} onCancel={()=>setProjectConfirm(null)}/>}
       {utilModal && <Modal title={utilEditId?"Edit Utility":"Add Utility"} onClose={()=>setUtilModal(false)} onSave={saveUtil}><UtilityForm data={utilEditData} onChange={setUtilEditData}/></Modal>}
       {utilConfirm && <Confirm message="This utility and all its bill history will be permanently deleted." onConfirm={confirmDelUtil} onCancel={()=>setUtilConfirm(null)}/>}
-      {billModal && <Modal title={billEditId?"Edit Bill":"Log Bill"} onClose={()=>{setBillModal(false);clearBillDraft();}} onSave={saveBill}><BillForm data={billEditData} onChange={setBillEditData} utility={activeUtil} userId={userId} planData={planData} onUpgrade={onUpgrade}/></Modal>}
+      {billModal && <Modal title={billEditId?"Edit Bill":"Log Bill"} onClose={()=>{setBillModal(false);clearBillDraft();}} onSave={saveBill}><BillForm data={billEditData} onChange={setBillEditData} utility={activeUtil} userId={userId} planData={planData} onUpgrade={onUpgrade} onDelete={billEditId ? ()=>{ setBillModal(false); clearBillDraft(); setBillConfirm(billEditId); } : null}/></Modal>}
       {billConfirm && <Confirm message="This bill will be permanently deleted." onConfirm={confirmDelBill} onCancel={()=>setBillConfirm(null)}/>}
       {lightbox && <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>}
     </div>
