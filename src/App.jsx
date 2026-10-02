@@ -1,4 +1,4 @@
-// Steadwell v304 — 2026-10-01
+// Steadwell v305 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3264,9 +3264,6 @@ img,.lp-root img{max-width:100%;height:auto}
 @media(min-width:1024px){
   .ad-bar{border:1.5px solid var(--stone);border-radius:var(--r-sm) var(--r-sm) 0 0}
   .ad-hero{border-radius:0 0 var(--r-sm) var(--r-sm)}
-  .ad-body{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:1.25rem;align-items:start;padding:1.25rem 0!important}
-  .ad-main{grid-column:1;grid-row:1;min-width:0}
-  .ad-side{grid-column:2;grid-row:1;min-width:0}
 }
 
 
@@ -3311,6 +3308,99 @@ img,.lp-root img{max-width:100%;height:auto}
 .ag-badges{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:.25rem}
 .ag-badge{font-size:.72rem;font-weight:700;padding:.15rem .55rem;border-radius:20px;white-space:nowrap}
 .ag-eyebrow{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#A8A09A;margin-bottom:.15rem}
+
+/* ── Assets v2: calm list rows + tabbed detail ── */
+.as-actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.as-pip{display:inline-flex;align-items:center;justify-content:center;min-width:1.15rem;height:1.15rem;padding:0 .3rem;margin-left:.4rem;border-radius:10px;background:var(--rust);color:#fff;font-size:.68rem;font-weight:700;line-height:1}
+.as-sum{margin:0 0 1.1rem}
+.as-sum-row{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem 1rem;flex-wrap:wrap}
+.as-sum-line{font-family:'Fraunces',serif;font-size:1.4rem;line-height:1.25;font-weight:500;color:var(--dark);letter-spacing:-.01em}
+.as-sum-line b{font-weight:600;color:var(--pine)}
+.as-hh{background:none;border:none;padding:.2rem 0;font-family:inherit;font-size:.85rem;font-weight:700;color:var(--pine);cursor:pointer;white-space:nowrap}
+.as-hh:hover{text-decoration:underline}
+.as-bar{display:flex;gap:2px;height:8px;border-radius:5px;overflow:hidden;margin:.85rem 0 .6rem;background:var(--cream2)}
+.as-bar>span{display:block;height:100%;min-width:4px}
+.as-leg{display:flex;flex-wrap:wrap;gap:.25rem 1.1rem;font-size:.82rem;color:#5A534B}
+.as-leg>span{display:inline-flex;align-items:center;gap:.4rem}
+.as-leg i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.as-filters{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1.2rem}
+.as-filters .toolbar{flex:1;min-width:0;flex-wrap:nowrap}
+.as-filters .chip{color:#6E665D;font-size:.8rem;padding:.4rem .9rem}
+.as-filters .chip.on{color:var(--rust)}
+.as-filters .ag-toggle-all{flex-shrink:0;white-space:nowrap}
+.as-cols{display:block}
+@media(min-width:1180px){.as-cols{column-count:2;column-gap:1.5rem}}
+.as-group{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin-bottom:1.35rem}
+.as-group .ag-head{border-bottom:none;padding:.2rem .15rem .15rem}
+.as-panel{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden}
+.ar{display:flex;align-items:center;gap:.85rem;width:100%;padding:.8rem 1rem;background:var(--white);border:none;border-top:1px solid var(--cream2);text-align:left;font-family:inherit;color:inherit;cursor:pointer;transition:background .12s}
+.ar:first-child{border-top:none}
+.ar:hover{background:var(--cream)}
+.ar:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.ar-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ar-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ar-name{font-weight:700;font-size:.98rem;line-height:1.25;color:var(--dark);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.ar-meta{font-size:.82rem;color:#6E665D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-side{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;max-width:44%;text-align:right}
+.ar-st{display:inline-flex;align-items:center;gap:.4rem;font-size:.84rem;font-weight:700;line-height:1.25}
+.ar-st i{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.ar-sub{display:inline-flex;align-items:center;gap:.4rem;font-size:.76rem;color:#6E665D}
+.as-retired-link{display:block;margin:.5rem 0 1rem;padding:.5rem 0;background:none;border:none;font-family:inherit;font-size:.85rem;font-weight:600;color:#6E665D;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:480px){
+  .ar{padding:.75rem .85rem;gap:.7rem}
+  .ar-ic{width:38px;height:38px}
+  .as-sum-line{font-size:1.25rem}
+}
+
+.ad-facts{display:flex;margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.14)}
+.ad-fact{flex:0 1 auto;min-width:8.5rem;padding:0 1.5rem 0 .9rem;border-left:1px solid rgba(255,255,255,.14);background:none;border-top:none;border-right:none;border-bottom:none;text-align:left;font-family:inherit;color:inherit}
+.ad-fact:first-child{padding-left:0;border-left:none}
+.ad-fact-btn{cursor:pointer}
+.ad-fact-btn:hover .ad-fact-l{color:#fff;text-decoration:underline}
+.ad-fact-btn:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:6px}
+.ad-fact-v{font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;line-height:1.2}
+.ad-fact-l{font-size:.78rem;color:rgba(244,237,223,.68);margin-top:.2rem}
+@media(max-width:480px){
+  .ad-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));row-gap:.95rem}
+  .ad-fact:nth-child(odd){padding-left:0;border-left:none}
+  .ad-fact-v{font-size:1.1rem}
+}
+.ad-tabs{position:sticky;top:0;z-index:5;background:var(--linen);border-bottom:1px solid var(--stone)}
+.ad-in{max-width:880px;margin:0 auto;width:100%}
+.ad-tabs-in{display:flex;max-width:880px;margin:0 auto;padding:0 .5rem;overflow-x:auto;scrollbar-width:none}
+.ad-tabs-in::-webkit-scrollbar{display:none}
+.ad-tab{background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1px;padding:.85rem .85rem .7rem;font-family:inherit;font-size:.95rem;font-weight:600;color:#6E665D;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:.4rem}
+.ad-tab:hover{color:var(--dark)}
+.ad-tab[aria-selected="true"]{color:var(--pine);border-bottom-color:var(--pine);font-weight:700}
+.ad-tab:focus-visible{outline:2px solid var(--pine);outline-offset:-3px;border-radius:8px}
+.ad-tab-n{font-size:.72rem;font-weight:700;background:var(--rust);color:#fff;border-radius:10px;padding:0 .45rem;line-height:1.55}
+.ad-pane{max-width:880px;margin:0 auto;padding:1.1rem 1rem 2.5rem}
+@media(min-width:1024px){.ad-pane{padding:1.4rem 0 3rem}.ad-tabs-in{padding:0}}
+@media(max-width:480px){.ad-tabs-in{padding:0 .25rem}.ad-tab{padding:.85rem .55rem .7rem;font-size:.9rem}}
+.ad-actions{display:flex;gap:.6rem;margin-bottom:1rem}
+.ad-actions .btn{flex:1;justify-content:center;padding:.7rem 1rem;font-size:.92rem}
+@media(min-width:640px){.ad-actions .btn{flex:0 0 auto}}
+.ad-card{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.ad-card-h{display:flex;align-items:center;gap:.75rem;padding:.9rem 1rem .75rem}
+.ad-card-t{font-family:'Fraunces',serif;font-size:1.08rem;font-weight:500;color:var(--dark);flex:0 1 auto}
+.ad-card-h .asm-link,.ad-card-h .btn{margin-left:auto}
+.ad-card-h .ad-card-t+span{margin-left:0}
+.ad-row{display:flex;align-items:center;gap:.75rem;width:100%;padding:.8rem 1rem;background:none;border:none;border-top:1px solid var(--cream2);text-align:left;font-family:inherit;color:inherit;cursor:pointer;box-sizing:border-box}
+button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
+.ad-row:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.ad-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ad-row-t{font-size:.93rem;font-weight:600;color:var(--dark);overflow-wrap:anywhere}
+.ad-row-s{font-size:.8rem;color:#6E665D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-row-r{font-size:.85rem;font-weight:700;white-space:nowrap;flex-shrink:0}
+.ad-notice{display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;border-radius:var(--r-sm);background:var(--cream2);border:1px solid var(--stone);margin-bottom:1rem}
+.ad-notice-t{font-size:.92rem;font-weight:700;color:var(--dark)}
+.ad-notice-s{font-size:.84rem;color:#5A534B;line-height:1.45;margin-top:1px}
+.ad-clamp{font-size:.9rem;color:#4A443E;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ad-dl{display:grid;grid-template-columns:9rem minmax(0,1fr);gap:.75rem;padding:.7rem 1rem;border-top:1px solid var(--cream2);font-size:.92rem}
+.ad-dl-k{color:#6E665D}
+.ad-dl-v{color:var(--dark);font-weight:600;overflow-wrap:anywhere}
+@media(max-width:480px){.ad-dl{grid-template-columns:7.5rem minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){.ar,.ad-row{transition:none}}
 
 
 /* ── Money: grouped, simplified expense rows ── */
@@ -3689,10 +3779,10 @@ img,.lp-root img{max-width:100%;height:auto}
 /* ── Condition assessment ── */
 .asm-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);overflow:hidden;margin-bottom:1rem}
 .asm-card-hdr{display:flex;align-items:center;gap:.55rem;padding:.95rem 1rem;border-bottom:1px solid var(--cream2)}
-.asm-tag{font-size:.64rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--pine);background:rgba(35,74,61,.08);border-radius:8px;padding:2px 8px}
+.asm-tag{font-size:.72rem;font-weight:700;color:var(--pine);background:rgba(35,74,61,.08);border-radius:8px;padding:2px 8px}
 .asm-fine{font-size:.7rem;color:#A8A09A;padding:0 1rem .8rem}
 .asm-note{background:#F4EFE6;border:1px solid var(--stone);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;line-height:1.45;color:#5A534B}
-.asm-sev{flex-shrink:0;font-size:.62rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:6px;padding:2px 7px;margin-top:2px}
+.asm-sev{flex-shrink:0;font-size:.7rem;font-weight:800;border-radius:6px;padding:2px 7px;margin-top:2px}
 .asm-link{background:none;border:none;color:var(--pine);font-weight:700;font-size:.8rem;cursor:pointer;padding:.25rem 0;font-family:inherit}
 .asm-thumbs{display:flex;gap:.45rem;margin-top:.8rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .asm-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--stone)}
@@ -13009,8 +13099,7 @@ function ConditionCard({ asset, rows, canAssess, onAssess, onUpgrade }) {
   return (
     <div className="asm-card" data-testid="condition-card">
       <div className="asm-card-hdr">
-        <span style={{ fontSize: "1.1rem" }}>🩺</span>
-        <span style={{ fontSize: "1rem", fontWeight: 700, flex: 1 }}>Condition</span>
+        <span style={{ fontFamily: "'Fraunces',serif", fontSize: "1.08rem", fontWeight: 500, flex: 1 }}>Condition assessment</span>
         <span className="asm-tag">AI-assisted</span>
       </div>
 
@@ -13702,7 +13791,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [serviceConfirm, setServiceConfirm] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [assessOpen, setAssessOpen] = useState(false);
-  useEffect(() => { setAssessOpen(false); }, [selectedAsset]);
+  const [detailTab, setDetailTab] = useState("overview");
+  useEffect(() => { setAssessOpen(false); setDetailTab("overview"); }, [selectedAsset]);
   // An asset's detail page starts at the top, not wherever the list was scrolled
   useEffect(() => {
     window.scrollTo({top:0,left:0,behavior:"instant"});
@@ -14335,33 +14425,124 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       heroStatusLine = "Add install date for an accurate reading";
     }
 
+    // ── Detail view model: tabs, condition summary, notices ──
+    const canCondition = !asset.retired_at && !asset.warranty_only;
+    const scheduledTasks = assetTasks.filter(t => t.status !== "Completed").sort((a,b) => (a.due_date||"") < (b.due_date||"") ? -1 : 1);
+    const completedTasks = assetTasks.filter(t => t.status === "Completed");
+    const tabDefs = [
+      { id:"overview", label:"Overview" },
+      ...(canCondition ? [{ id:"condition", label:"Condition" }] : []),
+      { id:"maintenance", label:"Maintenance", n:scheduledTasks.length },
+      { id:"details", label:"Details" },
+    ];
+    const tab = tabDefs.some(t => t.id === detailTab) ? detailTab : "overview";
+    const onTabKey = (e) => {
+      const i = tabDefs.findIndex(t => t.id === tab);
+      let n = null;
+      if (e.key === "ArrowRight") n = (i + 1) % tabDefs.length;
+      else if (e.key === "ArrowLeft") n = (i - 1 + tabDefs.length) % tabDefs.length;
+      else if (e.key === "Home") n = 0;
+      else if (e.key === "End") n = tabDefs.length - 1;
+      if (n === null) return;
+      e.preventDefault();
+      setDetailTab(tabDefs[n].id);
+      const el = document.getElementById("ad-tab-" + tabDefs[n].id);
+      if (el) el.focus();
+    };
+    const latestRow = canCondition
+      ? (assessments||[]).filter(r => r.asset_id === asset.id && r.status === "confirmed").sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)))[0]
+      : null;
+    const latestSc = latestRow ? (ASSESS_SCALE[latestRow.final_score] || ASSESS_SCALE[3]) : null;
+    const latestRemaining = latestRow ? assessRemainingYears(latestRow) : null;
+    const missingBits = canCondition ? [(!asset.brand && !asset.model) && "brand and model", !installDate && "install date"].filter(Boolean) : [];
+    const canAssess = !!planData?.aiScan;
+    const isWarrOnly = !!asset.warranty_only;
+    const heroLabel = asset.retired_at ? "Retired"
+      : isWarrOnly ? (warrantyExpired ? "Warranty expired" : warrantySoon ? `Warranty ends in ${warrantyDays} day${warrantyDays===1?"":"s"}` : asset.expiry_date ? "Warranty active" : "Warranty only")
+      : health.label;
+    const heroDot = asset.retired_at ? "rgba(244,237,223,.5)"
+      : isWarrOnly ? (warrantyExpired ? "#F0A58E" : warrantySoon ? "#F0CE7A" : "#7DCBA1")
+      : null;
+    const showHeroSub = !asset.retired_at && !isWarrOnly && heroStatusLine && heroStatusLine !== health.label;
+    const dotColor = heroDot || (health.key==="ok"?"#7DCBA1":health.key==="heads"?"#F0CE7A":health.key==="due"?"#F0A57F":health.key==="estimated"?"rgba(244,237,223,.5)":"#F0A58E");
+    const metaBits = [asset.brand, asset.model && `Model ${asset.model}`, asset.serial_number && `S/N ${asset.serial_number}`].filter(Boolean);
+    const ageText = ageYears !== null && (!ageIsEstimate || health.assessed)
+      ? (ageYears < 1 && !ageIsEstimate ? "<1 yr" : `${ageIsEstimate ? "~" : ""}${ageYears} yr${ageYears === 1 ? "" : "s"}`)
+      : "Unknown";
+    const noteText = (asset.notes || "").replace(/Support: https?:\/\/\S+/g, "").trim();
+    const taskRow = (t) => {
+      const d = daysTo(t.due_date);
+      const isOverdue = d !== null && d < 0;
+      const dueTxt = d === 0 ? "Today" : d === 1 ? "Tomorrow" : isOverdue ? `${Math.abs(d)} days overdue` : t.due_date ? fmtD(t.due_date) : "No date";
+      const sub = [t.status === "In Progress" ? "In progress" : null, t.notes && !t.notes.startsWith("[") ? t.notes.slice(0, 60) + (t.notes.length > 60 ? "…" : "") : null].filter(Boolean).join(". ");
+      return (
+        <button type="button" key={t.id} className="ad-row" onClick={() => openTaskEdit(t)}>
+          <span className="ad-row-main">
+            <span className="ad-row-t" style={isOverdue ? { color:"var(--red)" } : null}>{t.title}</span>
+            {sub && <span className="ad-row-s">{sub}</span>}
+          </span>
+          <span className="ad-row-r" style={{ color: isOverdue ? "var(--red)" : "var(--pine)" }}>{dueTxt}</span>
+        </button>
+      );
+    };
+    const applySmartFill = async (updated) => {
+      const payload = {
+        brand: updated.brand||"", model: updated.model||"", serial_number: updated.serial_number||"",
+        category: updated.category||"", condition: updated.condition||"Good",
+        lifespan_years: updated.lifespan_years ? Number(updated.lifespan_years) : null,
+        expiry_date: updated.expiry_date||null, replacement_cost: updated.replacement_cost ? Number(updated.replacement_cost) : null,
+        contractor_cost_low: updated.contractor_cost_low ? Number(updated.contractor_cost_low) : null,
+        contractor_cost_high: updated.contractor_cost_high ? Number(updated.contractor_cost_high) : null,
+        document_ref: updated.document_ref||"", notes: updated.notes||"",
+        pm_schedule: updated.pm_schedule ? JSON.stringify(updated.pm_schedule) : "[]",
+        maintenance_tip: updated.maintenance_tip||"",
+      };
+      const {error} = await supabase.from("warranties").update(payload).eq("id", asset.id);
+      if (!error) {
+        setAssets(prev => prev.map(a => a.id===asset.id ? {...a,...updated,...payload} : a));
+        toast("Smart Fill applied ✓");
+      } else { toast("Could not save — try again","error"); }
+    };
+    const dlRows = [
+      ["Category", CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other"],
+      ["Brand", asset.brand, true],
+      ["Model", asset.model, true],
+      ["Serial number", asset.serial_number],
+      [asset.install_date ? "Installed" : asset.purchase_date ? "Purchased" : "Installed", installDate ? fmtD(installDate) : null, true],
+      ["Paid", Number(asset.cost) > 0 ? fmt$(asset.cost) : null],
+      ["Replacement cost", Number(asset.replacement_cost) > 0 ? fmt$(asset.replacement_cost) : null],
+      ["Contractor estimate", Number(asset.contractor_cost_low) > 0 || Number(asset.contractor_cost_high) > 0
+        ? [Number(asset.contractor_cost_low) > 0 ? fmt$(asset.contractor_cost_low) : null, Number(asset.contractor_cost_high) > 0 ? fmt$(asset.contractor_cost_high) : null].filter(Boolean).join(" to ") : null],
+      ["Expected lifespan", canCondition && lifespanYears ? `${lifespanYears} years` : null],
+      ["Warranty", asset.expiry_date ? (warrantyExpired ? `Ended ${fmtD(asset.expiry_date)}` : `Ends ${fmtD(asset.expiry_date)}`) : null],
+    ].filter(r => r[1] || r[2]);
+
     return (
       <AssetDetailErrorBoundary>
       <div className="ad-wrap" style={{display:"flex",flexDirection:"column",height:"100%"}}>
         {/* Top bar */}
-        <div className="ad-bar" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
-          <button onClick={()=>setSelectedAsset(null)} style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
-          <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.item}</span>
+        <div className="ad-bar" style={{padding:".7rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0}}>
+         <div className="ad-in" style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+          <button onClick={()=>setSelectedAsset(null)} aria-label="Back to assets" style={{background:"var(--cream)",border:"1.5px solid var(--stone)",borderRadius:10,width:40,height:40,fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>
+          <span style={{fontSize:".92rem",fontWeight:600,color:"#6E665D",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.retired_at ? "Retired assets" : "Assets"}</span>
           <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Edit</button>
-          {!asset.retired_at && <button onClick={()=>setRetirePrompt(asset.id)} style={{background:"none",border:"none",fontSize:"1rem",color:"var(--red)",cursor:"pointer",padding:".5rem .5rem",fontFamily:"inherit"}}>✕</button>}
+          {!asset.retired_at && <button onClick={()=>setRetirePrompt(asset.id)} style={{background:"none",border:"none",fontSize:".92rem",fontWeight:600,color:"#6E665D",cursor:"pointer",padding:".5rem .6rem",fontFamily:"inherit"}}>Retire</button>}
+         </div>
         </div>
 
         {/* Retired banner */}
         {asset.retired_at && (
           <div style={{background:"#F4F0E8",borderBottom:"1px solid var(--stone)",padding:".75rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexShrink:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
-              <span style={{fontSize:"1rem"}}>🏚️</span>
-              <div>
-                <div style={{fontSize:".82rem",fontWeight:700,color:"#7A7370"}}>Retired {fmtD(asset.retired_at)}</div>
-                <div style={{fontSize:".72rem",color:"#A8A09A"}}>History preserved — not in active list</div>
-              </div>
+            <div>
+              <div style={{fontSize:".86rem",fontWeight:700,color:"#6E665D"}}>Retired {fmtD(asset.retired_at)}</div>
+              <div style={{fontSize:".78rem",color:"#8A8178"}}>History is kept, but it's not in your active list.</div>
             </div>
             <button onClick={async()=>{
                 const{data,error}=await supabase.from("warranties").update({retired_at:null,retired_reason:""}).eq("id",asset.id).select("id");
                 if(!error && data?.length){setAssets(assets.map(a=>a.id===asset.id?{...a,retired_at:null,retired_reason:""}:a));setShowRetired(false);toast("Asset restored ✓");}
                 else toast("Error restoring","error");
               }}
-              style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".4rem .85rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+              style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".4rem .85rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
               Restore
             </button>
           </div>
@@ -14369,383 +14550,356 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
         <div className="ad-scroll" style={{flex:1,overflowY:"auto",background:"var(--linen)"}}>
 
-          {/* ── HERO ── */}
-          <div className="ad-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.5rem 1.25rem 1.35rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",right:-30,top:-40,width:170,height:170,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
-            {asset.asset_photo_url && (
-              <SImg src={asset.asset_photo_url} alt={asset.item}
-                style={{width:"100%",height:150,objectFit:"cover",borderRadius:14,marginBottom:"1rem",cursor:"pointer",border:"1.5px solid rgba(255,255,255,.12)",position:"relative"}}
-                onClick={()=>setLightbox(asset.asset_photo_url)}/>
-            )}
-            <div style={{display:"flex",alignItems:"flex-start",gap:".9rem",marginBottom:"1.1rem"}}>
-              <div style={{width:60,height:60,borderRadius:16,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff"}}>
-                <AssetIcon asset={asset} size={30}/>
-              </div>
+          {/* ── Hero: the one bold block ── */}
+          <div className="ad-hero" style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",padding:"1.35rem 1.25rem 1.25rem",color:"#fff"}}>
+           <div className="ad-in">
+            <div style={{display:"flex",alignItems:"center",gap:"1rem"}}>
+              {asset.asset_photo_url ? (
+                <button type="button" onClick={()=>setLightbox(asset.asset_photo_url)} aria-label="View photo" style={{padding:0,border:"1.5px solid rgba(255,255,255,.25)",borderRadius:16,overflow:"hidden",width:64,height:64,flexShrink:0,cursor:"pointer",background:"none",display:"block"}}>
+                  <SImg src={asset.asset_photo_url} alt={asset.item} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                </button>
+              ) : (
+                <div style={{width:64,height:64,borderRadius:16,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff"}}>
+                  <AssetIcon asset={asset} size={30}/>
+                </div>
+              )}
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,lineHeight:1.15,marginBottom:".3rem"}}>{asset.item}</div>
-                <div style={{fontSize:".9rem",color:"rgba(244,237,223,.7)",lineHeight:1.4}}>
-                  {[asset.brand, asset.model&&`Model ${asset.model}`, asset.serial_number&&`S/N ${asset.serial_number}`].filter(Boolean).join(" · ") || asset.category || "No details yet"}
+                <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"1.6rem",fontWeight:500,lineHeight:1.15,margin:0,overflowWrap:"anywhere"}}>{asset.item}</h1>
+                <div style={{display:"flex",flexWrap:"wrap",gap:".1rem 1rem",marginTop:".35rem",fontSize:".9rem",color:"rgba(244,237,223,.72)"}}>
+                  {metaBits.length ? metaBits.map(b => <span key={b}>{b}</span>) : <span>{asset.category || "No details yet"}</span>}
                 </div>
               </div>
             </div>
 
-            {/* Status line */}
-            <div style={{display:"inline-flex",alignItems:"center",gap:".5rem",padding:".5rem .9rem",borderRadius:22,fontSize:".92rem",fontWeight:700,background:"rgba(255,255,255,.14)",marginBottom:"1.1rem"}}>
-              <span style={{width:9,height:9,borderRadius:"50%",background:health.key==="ok"?"#7DCBA1":health.key==="heads"?"#F0CE7A":health.key==="due"?"#F0A57F":health.key==="estimated"?"rgba(244,237,223,.45)":"#F0A58E"}}/>
-              {health.label}{heroStatusLine && heroStatusLine!==health.label ? ` · ${heroStatusLine.toLowerCase()}` : ""}
+            <div style={{display:"flex",alignItems:"center",gap:".55rem",marginTop:"1.05rem",fontSize:".95rem",lineHeight:1.35}}>
+              <span style={{width:10,height:10,borderRadius:"50%",background:dotColor,flexShrink:0}}/>
+              <span>
+                <b style={{fontWeight:700}}>{heroLabel}</b>
+                {showHeroSub && <span style={{color:"rgba(244,237,223,.75)"}}>{`, ${heroStatusLine.charAt(0).toLowerCase()}${heroStatusLine.slice(1)}`}</span>}
+              </span>
             </div>
 
-            {/* Stats */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".6rem"}}>
-              {[
-                {label:"Paid",val:Number(asset.cost)>0?fmt$(asset.cost):"—"},
-                {label:"Replace",val:Number(asset.replacement_cost)>0?fmt$(asset.replacement_cost):"—"},
-                {label:"Age",val:ageYears!==null&&(!ageIsEstimate||health.assessed)?(ageYears<1&&!ageIsEstimate?"<1 yr":`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"}`):"Unknown"},
-              ].map(s=>(
-                <div key={s.label} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:".7rem .5rem",textAlign:"center"}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:700}}>{s.val}</div>
-                  <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".06em",color:"rgba(244,237,223,.5)",marginTop:".25rem",fontWeight:700}}>{s.label}</div>
+            {/* Facts: a single quiet row instead of stat tiles */}
+            {(ageText !== "Unknown" || Number(asset.cost)>0 || Number(asset.replacement_cost)>0 || canCondition) && (
+            <div className="ad-facts">
+              {ageText !== "Unknown" && (
+                <div className="ad-fact">
+                  <div className="ad-fact-v">{ageText}</div>
+                  <div className="ad-fact-l">Age</div>
                 </div>
-              ))}
+              )}
+              {Number(asset.cost)>0 && (
+                <div className="ad-fact">
+                  <div className="ad-fact-v">{fmt$(asset.cost)}</div>
+                  <div className="ad-fact-l">Paid</div>
+                </div>
+              )}
+              {Number(asset.replacement_cost)>0 && (
+                <div className="ad-fact">
+                  <div className="ad-fact-v">{fmt$(asset.replacement_cost)}</div>
+                  <div className="ad-fact-l">Replacement cost</div>
+                </div>
+              )}
+              {canCondition && (
+                <button type="button" className="ad-fact ad-fact-btn" onClick={()=>setDetailTab("condition")} aria-label="Open condition assessment">
+                  {latestRow ? (
+                    <div className="ad-fact-v" style={{color:{5:"#8FE0B5",4:"#8FE0B5",3:"#F0CE7A",2:"#F0A57F",1:"#F0A58E"}[latestRow.final_score]}}>{latestRow.final_score}/5 <span style={{fontSize:".85rem",fontWeight:500}}>{latestSc.label}</span></div>
+                  ) : (
+                    <div className="ad-fact-v" style={{opacity:.55,fontSize:"1rem"}}>Not yet</div>
+                  )}
+                  <div className="ad-fact-l">Condition</div>
+                </button>
+              )}
             </div>
+            )}
 
-            {/* Lifespan bar */}
-            {lifespanPct !== null && !ageIsEstimate && (
-              <div style={{marginTop:"1.1rem"}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"rgba(244,237,223,.7)",marginBottom:".4rem",fontWeight:600}}>
-                  <span>Expected lifespan</span><span style={{color:"#E8A87C",fontWeight:700}}>{ageYears} of {lifespanYears} years</span>
+            {lifespanPct !== null && !ageIsEstimate && !asset.retired_at && (
+              <div style={{marginTop:"1.05rem"}}>
+                <div style={{height:6,background:"rgba(255,255,255,.16)",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:4,background:health.key==="ok"?"#6EE7B7":health.key==="estimated"?"rgba(244,237,223,.45)":"#E8825F"}}/>
                 </div>
-                <div style={{height:8,background:"rgba(255,255,255,.14)",borderRadius:5,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.key==="ok"?"#6EE7B7":health.key==="estimated"?"rgba(244,237,223,.4)":"#E8825F"}}/>
-                </div>
+                <div style={{fontSize:".8rem",color:"rgba(244,237,223,.72)",marginTop:".4rem"}}>{ageYears} of about {lifespanYears} years of expected life</div>
               </div>
             )}
-            {ageIsEstimate && (
-              <div onClick={()=>openEdit(asset)} style={{fontSize:".78rem",color:"rgba(244,237,223,.7)",marginTop:"1rem",cursor:"pointer"}}>
-                No install date yet · add it for an accurate reading →
-              </div>
-            )}
+           </div>
           </div>
 
-          <div className="ad-body" style={{padding:"1.1rem 1rem"}}>
-
-            <div className="ad-side">
-            {/* ── Primary actions ── */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1.2rem"}}>
-              <button onClick={()=>openNewService(asset.id)}
-                style={{background:"var(--pine)",border:"1.5px solid var(--pine)",borderRadius:"var(--r-sm)",padding:".95rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".35rem",cursor:"pointer",fontFamily:"inherit"}}>
-                <span style={{fontSize:"1.3rem"}}>🧰</span>
-                <span style={{fontSize:".88rem",fontWeight:700,color:"#fff"}}>Log service</span>
-              </button>
-              <button onClick={()=>openNewTask(asset)}
-                style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".95rem .7rem",display:"flex",flexDirection:"column",alignItems:"center",gap:".35rem",cursor:"pointer",fontFamily:"inherit"}}>
-                <span style={{fontSize:"1.3rem"}}>📅</span>
-                <span style={{fontSize:".88rem",fontWeight:700,color:"var(--dark)"}}>Schedule task</span>
-              </button>
+          {/* ── Tabs ── */}
+          <div className="ad-tabs">
+            <div className="ad-tabs-in" role="tablist" aria-label="Asset sections" onKeyDown={onTabKey}>
+              {tabDefs.map(t => (
+                <button key={t.id} type="button" role="tab" id={"ad-tab-"+t.id} aria-selected={tab===t.id} aria-controls={"ad-pane-"+t.id} tabIndex={tab===t.id?0:-1}
+                  className="ad-tab" onClick={()=>setDetailTab(t.id)}>
+                  {t.label}{t.n>0 && <span className="ad-tab-n">{t.n}</span>}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* ── No brand/model prompt ── */}
-            {!asset.brand && !asset.model && (
-              <div style={{background:"#FEF9C3",border:"1px solid #FDE68A",borderRadius:"var(--r-sm)",padding:".85rem .9rem",marginBottom:"1rem",display:"flex",alignItems:"center",gap:".6rem"}}>
-                <span style={{fontSize:"1.2rem",flexShrink:0}}>💡</span>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:".88rem",fontWeight:700,color:"#92400E"}}>Add brand &amp; model for full features</div>
-                  <div style={{fontSize:".78rem",color:"#92400E",marginTop:1}}>Enables recall checks, Smart Fill, and owner's manual</div>
-                </div>
-                <button onClick={()=>openEdit(asset)} style={{fontSize:".82rem",fontWeight:700,color:"#92400E",background:"rgba(193,97,64,.1)",border:"1px solid rgba(193,97,64,.25)",borderRadius:8,padding:".4rem .75rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Edit</button>
-              </div>
-            )}
+          <div className="ad-pane" role="tabpanel" id={"ad-pane-"+tab} aria-labelledby={"ad-tab-"+tab}>
 
-            {/* ── Recall banner ── */}
-            {asset.brand && (
-              <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} installDate={asset.install_date||asset.purchase_date} />
-            )}
-
-            {/* ── Condition assessment ── */}
-            {!asset.retired_at && !asset.warranty_only && (
-              <ConditionCard asset={asset} rows={assessments} canAssess={!!planData?.aiScan} onAssess={()=>setAssessOpen(true)} onUpgrade={onUpgrade} />
-            )}
-
-            {/* ── Warranty banner ── */}
-            {asset.expiry_date && (
-              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem",borderRadius:"var(--r-sm)",marginBottom:"1rem",
-                background:warrantyExpired?"#FBEDE8":warrantySoon?"#FBF3DE":"#E9F1EA",
-                border:`1.5px solid ${warrantyExpired?"#EBC5B8":warrantySoon?"#EAD9A6":"#C5DCC9"}`}}>
-                <span style={{fontSize:"1.5rem",flexShrink:0}}>📄</span>
-                <div>
-                  <div style={{fontSize:".95rem",fontWeight:700,color:warrantyExpired?"#B0432B":warrantySoon?"#B8861E":"#3E7D5A"}}>
-                    {warrantyExpired?"Warranty expired — higher risk":warrantySoon?`Warranty expires in ${warrantyDays} days`:"Warranty active"}
-                  </div>
-                  <div style={{fontSize:".84rem",color:"#6E665D",marginTop:".1rem"}}>
-                    {warrantyExpired?`Ended ${fmtD(asset.expiry_date)} · repairs are out-of-pocket`:`Ends ${fmtD(asset.expiry_date)}`}
-                  </div>
-                  {warrantyExpired && (
-                    <button onClick={async()=>{
-                      const next = !asset.exclude_warranty_from_score;
-                      const {error} = await supabase.from("warranties").update({exclude_warranty_from_score:next}).eq("id",asset.id);
-                      if(!error){ setAssets(assets.map(a=>a.id===asset.id?{...a,exclude_warranty_from_score:next}:a)); toast(next?"Excluded from Home Health score":"Counting toward Home Health score"); }
-                      else toast("Couldn't update — try again","error");
-                    }} style={{marginTop:".5rem",fontSize:".76rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1.5px solid var(--pine)",borderRadius:8,padding:".3rem .7rem",cursor:"pointer",fontFamily:"inherit"}}>
-                      {asset.exclude_warranty_from_score ? "Excluded from score — include again" : "Exclude from Home Health score"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ── Manuals & support ── */}
-            {(hasManualLink || supportUrl) && (
-              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
-                <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                  <span style={{fontSize:"1.1rem"}}>📚</span>
-                  <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Manuals &amp; support</span>
-                </div>
-                {hasManualLink && (
-                  <a href={asset.document_ref} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",textDecoration:"none",borderBottom:supportUrl?"1px solid var(--cream2)":"none"}}>
-                    <span style={{fontSize:"1.3rem"}}>📋</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--pine)"}}>Owner's manual</div>
-                      <div style={{fontSize:".78rem",color:"#9E9690",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref.replace(/^https?:\/\//,"")}</div>
-                    </div>
-                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Open →</span>
-                  </a>
-                )}
-                {supportUrl && (
-                  <a href={supportUrl} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",textDecoration:"none"}}>
-                    <span style={{fontSize:"1.3rem"}}>🔗</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--pine)"}}>Manufacturer support</div>
-                      <div style={{fontSize:".78rem",color:"#9E9690",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supportUrl.replace(/^https?:\/\//,"")}</div>
-                    </div>
-                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>Open →</span>
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* ── Your documents ── */}
-            {(asset.asset_photo_url || hasUploadedDoc) && (
-              <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:"1rem"}}>
-                <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
-                  <span style={{fontSize:"1.1rem"}}>📎</span>
-                  <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Your documents</span>
-                  <button onClick={()=>openEdit(asset)} style={{background:"none",border:"none",fontSize:".82rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",padding:".3rem .4rem",fontFamily:"inherit"}}>+ Add</button>
-                </div>
-                {asset.asset_photo_url && (
-                  <div onClick={()=>setLightbox(asset.asset_photo_url)}
-                    style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem",cursor:"pointer",borderBottom:hasUploadedDoc?"1px solid var(--cream2)":"none"}}>
-                    <span style={{fontSize:"1.3rem"}}>🖼️</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Asset photo</div>
-                      <div style={{fontSize:".78rem",color:"#9E9690"}}>Tap to view</div>
-                    </div>
-                    <span style={{fontSize:".85rem",fontWeight:700,color:"var(--pine)",flexShrink:0}}>View →</span>
+            {/* ══ OVERVIEW ══ */}
+            {tab === "overview" && (
+              <>
+                {!asset.retired_at && (
+                  <div className="ad-actions">
+                    <button className="btn btn-primary" onClick={()=>openNewService(asset.id)}>Log service</button>
+                    <button className="btn btn-ghost" onClick={()=>openNewTask(asset)}>Schedule task</button>
                   </div>
                 )}
-                {hasUploadedDoc && (
-                  <div style={{display:"flex",alignItems:"center",gap:".8rem",padding:".9rem 1rem"}}>
-                    <span style={{fontSize:"1.3rem"}}>🧾</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Document location</div>
-                      <div style={{fontSize:".78rem",color:"#9E9690",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{asset.document_ref}</div>
-                    </div>
-                  </div>
+
+                {asset.brand && (
+                  <RecallBadge brand={asset.brand} category={asset.category} model={asset.model} serialNumber={asset.serial_number} installDate={asset.install_date||asset.purchase_date} />
                 )}
-              </div>
-            )}
 
-            </div>{/* /ad-side */}
-            <div className="ad-main">
-            {/* ── Smart Fill inline ── */}
-            <AssetSmartFillPanel
-              asset={asset}
-              planData={planData}
-              onUpgrade={onUpgrade}
-              onApply={async (updated) => {
-                const payload = {
-                  brand: updated.brand||"", model: updated.model||"", serial_number: updated.serial_number||"",
-                  category: updated.category||"", condition: updated.condition||"Good",
-                  lifespan_years: updated.lifespan_years ? Number(updated.lifespan_years) : null,
-                  expiry_date: updated.expiry_date||null, replacement_cost: updated.replacement_cost ? Number(updated.replacement_cost) : null,
-                  contractor_cost_low: updated.contractor_cost_low ? Number(updated.contractor_cost_low) : null,
-                  contractor_cost_high: updated.contractor_cost_high ? Number(updated.contractor_cost_high) : null,
-                  document_ref: updated.document_ref||"", notes: updated.notes||"",
-                  pm_schedule: updated.pm_schedule ? JSON.stringify(updated.pm_schedule) : "[]",
-                  maintenance_tip: updated.maintenance_tip||"",
-                };
-                const {error} = await supabase.from("warranties").update(payload).eq("id", asset.id);
-                if (!error) {
-                  setAssets(prev => prev.map(a => a.id===asset.id ? {...a,...updated,...payload} : a));
-                  toast("Smart Fill applied ✓");
-                } else { toast("Could not save — try again","error"); }
-              }}
-            />
-
-            {/* ── Recommended PM Schedule ── */}
-            <AssetPMSchedule
-              asset={asset}
-              onSchedule={(pm) => {
-                const due = new Date();
-                due.setMonth(due.getMonth() + 1);
-                openNewService(asset.id);
-                setTimeout(()=>{
-                  setServiceEditData(d=>({...d,
-                    description: pm.title,
-                    notes: pm.diy ? "DIY task" : "Schedule with contractor",
-                  }));
-                }, 100);
-              }}
-              onCreateTask={async (pm) => {
-                const due = new Date();
-                due.setMonth(due.getMonth() + (pm.interval_months || 3));
-                const months = Number(pm.interval_months) || 3;
-                const taskPayload = {
-                  user_id: userId, property_id: propertyId,
-                  title: pm.title || "Scheduled service", status: "Scheduled", priority: "Medium",
-                  due_date: due.toISOString().slice(0,10),
-                  category: asset.category || "Other",
-                  asset_id: asset.id,
-                  notes: `Recommended by manufacturer · Every ${months < 12 ? months + " months" : (months/12) + " year(s)"} · ${pm.diy ? "DIY" : "Hire contractor"}`,
-                };
-                const {data:td,error} = await supabase.from("tasks").insert([taskPayload]).select();
-                if (!error && td) { setTasks(prev=>[td[0],...prev]); toast(`Task scheduled: ${pm.title} ✓`); }
-                else toast("Could not create task","error");
-              }}
-            />
-
-            {/* ── Service History (includes scheduled tasks as future entries) ── */}
-            {(() => {
-              // Build unified timeline: scheduled/pending tasks as future entries + completed logs
-              const scheduledTasks = assetTasks.filter(t => t.status !== "Completed");
-              const completedTasks = assetTasks.filter(t => t.status === "Completed");
-              const totalEntries = assetLogs.length + scheduledTasks.length + completedTasks.length;
-              const hasUpcoming = scheduledTasks.length > 0;
-
-              return (
-                <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:".75rem"}}>
-                  {/* Header */}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".7rem .9rem",borderBottom:totalEntries>0?"1px solid var(--stone)":"none",background:"var(--cream)"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:".88rem",fontWeight:500,color:"var(--dark)"}}>Service History</span>
-                      {assetLogs.length>0 && <span style={{fontSize:".68rem",color:"#A8A09A"}}>{assetLogs.length} completed · {fmt$(totalServiceCost)}</span>}
-                      {hasUpcoming && <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:"rgba(35,74,61,.1)",color:"var(--pine)"}}>{scheduledTasks.length} upcoming</span>}
-                    </div>
-                    <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>+ Log</button>
-                  </div>
-
-                  {totalEntries === 0 && (
-                    <div style={{padding:"1.25rem",textAlign:"center"}}>
-                      <div style={{fontSize:".8rem",color:"#A8A09A",marginBottom:".5rem"}}>No service history yet</div>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>openNewService(asset.id)} style={{fontSize:".75rem"}}>Log first service</button>
-                    </div>
-                  )}
-
-                  {/* Upcoming scheduled tasks — shown first as future entries */}
-                  {scheduledTasks.length > 0 && (
-                    <>
-                      <div style={{padding:".4rem .9rem",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"var(--pine)",background:"rgba(35,74,61,.04)",borderBottom:"1px solid rgba(35,74,61,.08)"}}>
-                        Upcoming
+                {missingBits.length > 0 && (
+                  <div className="ad-notice">
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="ad-notice-t">Finish this record</div>
+                      <div className="ad-notice-s">
+                        {`Add the ${missingBits.join(" and ")} `}
+                        {!asset.brand && !asset.model ? "to turn on recall checks, Smart Fill and the owner's manual" : "for an accurate age and condition reading"}.
                       </div>
-                      {scheduledTasks
-                        .sort((a,b) => (a.due_date||"") < (b.due_date||"") ? -1 : 1)
-                        .map((t, i) => {
-                          const d = daysTo(t.due_date);
-                          const isOverdue = d !== null && d < 0;
-                          const dueTxt = d === 0 ? "Today" : d === 1 ? "Tomorrow" : isOverdue ? `${Math.abs(d)}d overdue` : t.due_date ? fmtD(t.due_date) : "No date";
-                          return (
-                            <div key={t.id}
-                              onClick={()=>openTaskEdit(t)}
-                              style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".7rem .9rem",
-                              borderBottom:i<scheduledTasks.length-1?"1px solid var(--stone)":"1px solid rgba(35,74,61,.08)",
-                              background:"rgba(35,74,61,.02)",cursor:"pointer",transition:"background .15s"}}
-                              onMouseEnter={e=>e.currentTarget.style.background="rgba(35,74,61,.05)"}
-                              onMouseLeave={e=>e.currentTarget.style.background="rgba(35,74,61,.02)"}>
-                              {/* Calendar icon */}
-                              <div style={{width:20,height:20,borderRadius:6,background:isOverdue?"var(--red-light)":"rgba(35,74,61,.1)",border:`1.5px solid ${isOverdue?"var(--red)":"rgba(35,74,61,.2)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,fontSize:".65rem"}}>
-                                📅
-                              </div>
-                              <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:".83rem",fontWeight:600,color:isOverdue?"var(--red)":"var(--dark)"}}>{t.title}</div>
-                                <div style={{fontSize:".7rem",marginTop:2,display:"flex",gap:".4rem",flexWrap:"wrap",alignItems:"center"}}>
-                                  <span style={{color:isOverdue?"var(--red)":"var(--pine)",fontWeight:600}}>{dueTxt}</span>
-                                  <span style={{fontSize:".62rem",padding:"1px 6px",borderRadius:6,
-                                    background:isOverdue?"var(--red-light)":t.status==="In Progress"?"#FFF8E6":"rgba(35,74,61,.08)",
-                                    color:isOverdue?"var(--red)":t.status==="In Progress"?"#92610A":"var(--pine)",
-                                    fontWeight:700}}>{t.status}</span>
-                                  {t.notes && !t.notes.startsWith("[") && <span style={{color:"#A8A09A"}}>· {t.notes.slice(0,40)}{t.notes.length>40?"…":""}</span>}
-                                </div>
-                              </div>
-                              <span style={{color:"#C2B8AE",fontSize:".8rem",flexShrink:0,marginTop:2}}>›</span>
-                            </div>
-                          );
-                        })}
-                    </>
-                  )}
+                    </div>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(asset)}>Add</button>
+                  </div>
+                )}
 
-                  {/* Completed service logs */}
-                  {assetLogs.length > 0 && (
-                    <>
-                      {scheduledTasks.length > 0 && (
-                        <div style={{padding:".4rem .9rem",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"#A8A09A",background:"var(--cream)",borderBottom:"1px solid var(--stone)"}}>
-                          Completed
-                        </div>
+                {asset.expiry_date && (
+                  <div className="ad-notice" style={{background:warrantyExpired?"#FBEDE8":warrantySoon?"#FBF3DE":"#E9F1EA",borderColor:warrantyExpired?"#EBC5B8":warrantySoon?"#EAD9A6":"#C5DCC9"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="ad-notice-t" style={{color:warrantyExpired?"#B0432B":warrantySoon?"#8A6410":"#2F6A49"}}>
+                        {warrantyExpired?"Warranty expired":warrantySoon?`Warranty ends in ${warrantyDays} day${warrantyDays===1?"":"s"}`:"Warranty active"}
+                      </div>
+                      <div className="ad-notice-s">
+                        {warrantyExpired?`Ended ${fmtD(asset.expiry_date)}. Repairs are out of pocket.`:`Ends ${fmtD(asset.expiry_date)}.`}
+                      </div>
+                      {warrantyExpired && (
+                        <button className="asm-link" style={{marginTop:".2rem"}} onClick={async()=>{
+                          const next = !asset.exclude_warranty_from_score;
+                          const {error} = await supabase.from("warranties").update({exclude_warranty_from_score:next}).eq("id",asset.id);
+                          if(!error){ setAssets(assets.map(a=>a.id===asset.id?{...a,exclude_warranty_from_score:next}:a)); toast(next?"Excluded from Home Health score":"Counting toward Home Health score"); }
+                          else toast("Couldn't update — try again","error");
+                        }}>
+                          {asset.exclude_warranty_from_score ? "Excluded from score. Include again" : "Leave out of Home Health score"}
+                        </button>
                       )}
-                      {assetLogs.map((s,i)=>(
-                        <div key={s.id}
-                          onClick={()=>openEditService(s)}
-                          style={{display:"flex",alignItems:"center",gap:".65rem",padding:".75rem .9rem",
-                            borderBottom:i<assetLogs.length-1?"1px solid var(--stone)":"none",
-                            cursor:"pointer",transition:"background .12s"}}
-                          onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
-                          onMouseLeave={e=>e.currentTarget.style.background=""}>
-                          {/* Timeline dot */}
-                          <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0}}/>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.description}</div>
-                            <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:1,display:"flex",gap:".35rem",flexWrap:"wrap"}}>
-                              <span>{fmtD(s.service_date)}</span>
-                              {s.vendor&&<><span>·</span><span>{s.vendor}</span></>}
-                              {s.notes&&!s.notes.startsWith("[")&&<><span>·</span><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{s.notes}</span></>}
-                            </div>
-                          </div>
-                          <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:".5rem"}}>
-                            <div style={{fontSize:".83rem",fontWeight:700,color:s.cost>0?"var(--dark)":"#D4CCC4",textAlign:"right"}}>
-                              {s.cost>0?fmt$(s.cost):"—"}
-                            </div>
-                            <span style={{color:"#C2B8AE",fontSize:".8rem"}}>›</span>
-                          </div>
-                        </div>
-                      ))}
-                    </>
-                  )}
+                    </div>
+                  </div>
+                )}
 
-                  {/* Completed tasks in history (dimmed) */}
-                  {completedTasks.length > 0 && assetLogs.length === 0 && (
-                    completedTasks.map((t,i) => (
-                      <div key={t.id} style={{display:"flex",alignItems:"flex-start",gap:".65rem",padding:".7rem .9rem",borderBottom:i<completedTasks.length-1?"1px solid var(--stone)":"none",opacity:.6}}>
-                        <div style={{width:7,height:7,borderRadius:"50%",background:"#C8C0B8",flexShrink:0,marginTop:6}}/>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:".83rem",fontWeight:600,color:"var(--dark)",textDecoration:"line-through"}}>{t.title}</div>
-                          <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2}}>{t.due_date?fmtD(t.due_date):""}</div>
+                {canCondition && (
+                  <div className="ad-card">
+                    <div className="ad-card-h">
+                      <span className="ad-card-t">Condition</span>
+                      {latestRow && <button className="asm-link" onClick={()=>setDetailTab("condition")}>View assessment</button>}
+                    </div>
+                    {latestRow ? (
+                      <div style={{padding:"0 1rem 1rem",display:"flex",gap:".9rem",alignItems:"flex-start"}}>
+                        <div style={{background:latestSc.bg,color:latestSc.color,borderRadius:12,padding:".45rem .7rem",textAlign:"center",minWidth:64,flexShrink:0}}>
+                          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:700,lineHeight:1}}>{latestRow.final_score}<span style={{fontSize:".8rem",opacity:.7}}>/5</span></div>
+                          <div style={{fontSize:".72rem",fontWeight:700,marginTop:2}}>{latestSc.label}</div>
                         </div>
-                        <span style={{fontSize:".65rem",padding:"1px 6px",borderRadius:6,background:"var(--cream2)",color:"#A8A09A",fontWeight:700,flexShrink:0}}>Done</span>
+                        <div style={{minWidth:0}}>
+                          {latestRow.ai_summary && <div className="ad-clamp">{latestRow.ai_summary}</div>}
+                          <div style={{fontSize:".8rem",color:"#6E665D",marginTop:latestRow.ai_summary?".35rem":0}}>
+                            Assessed {fmtD(String(latestRow.created_at).slice(0,10))}
+                            {latestRemaining !== null && `, about ${latestRemaining < 1 ? "under a year" : `${Math.round(latestRemaining)} yr${Math.round(latestRemaining)===1?"":"s"}`} left`}
+                          </div>
+                        </div>
                       </div>
-                    ))
+                    ) : (
+                      <div style={{padding:"0 1rem 1rem"}}>
+                        <div style={{fontSize:".9rem",color:"#5A534B",lineHeight:1.5}}>Take a few photos and Steadwell grades this item from 1 to 5 and estimates how long it has left.</div>
+                        <button className="btn btn-ghost btn-sm" style={{marginTop:".7rem"}} onClick={canAssess ? ()=>setAssessOpen(true) : onUpgrade}>{canAssess ? "Assess condition" : "Unlock with Plus"}</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {asset.retired_at ? (
+                  <div className="ad-card">
+                    <div className="ad-card-h">
+                      <span className="ad-card-t">Service history</span>
+                      {assetLogs.length > 0 && <button className="asm-link" onClick={()=>setDetailTab("maintenance")}>View</button>}
+                    </div>
+                    <div style={{padding:"0 1rem 1rem",fontSize:".9rem",color:"#6E665D",lineHeight:1.5}}>
+                      {assetLogs.length > 0 ? `${assetLogs.length} service record${assetLogs.length===1?"":"s"} kept, ${fmt$(totalServiceCost)} total.` : "No service was logged for this item."}
+                    </div>
+                  </div>
+                ) : (
+                <div className="ad-card">
+                  <div className="ad-card-h">
+                    <span className="ad-card-t">Coming up</span>
+                    <button className="asm-link" onClick={()=>setDetailTab("maintenance")}>{scheduledTasks.length > 3 ? `See all ${scheduledTasks.length}` : "Maintenance"}</button>
+                  </div>
+                  {scheduledTasks.length > 0 ? scheduledTasks.slice(0,3).map(taskRow) : (
+                    <div style={{padding:"0 1rem 1rem",fontSize:".9rem",color:"#6E665D",lineHeight:1.5}}>
+                      Nothing scheduled.{assetLogs[0] ? ` Last serviced ${fmtD(assetLogs[0].service_date)}.` : " No service logged yet."}
+                    </div>
                   )}
                 </div>
-              );
-            })()}
-
-            {/* ── Notes ── */}
-            {asset.notes && (
-              <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem .9rem",marginBottom:".75rem"}}>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"#A8A09A",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".35rem"}}>Notes</div>
-                <div style={{fontSize:".8rem",color:"var(--dark)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{asset.notes.replace(/Support: https?:\/\/\S+/g,"").trim()}</div>
-              </div>
+                )}
+              </>
             )}
-            </div>{/* /ad-main */}
+
+            {/* ══ CONDITION ══ */}
+            {tab === "condition" && canCondition && (
+              <ConditionCard asset={asset} rows={assessments} canAssess={canAssess} onAssess={()=>setAssessOpen(true)} onUpgrade={onUpgrade} />
+            )}
+
+            {/* ══ MAINTENANCE ══ */}
+            {tab === "maintenance" && (
+              <>
+                <div className="ad-card">
+                  <div className="ad-card-h">
+                    <span className="ad-card-t">Coming up</span>
+                    {!asset.retired_at && <button className="btn btn-ghost btn-sm" onClick={()=>openNewTask(asset)}>Schedule task</button>}
+                  </div>
+                  {scheduledTasks.length > 0 ? scheduledTasks.map(taskRow) : (
+                    <div style={{padding:"0 1rem 1rem",fontSize:".9rem",color:"#6E665D"}}>Nothing scheduled for this item.</div>
+                  )}
+                </div>
+
+                <AssetPMSchedule
+                  asset={asset}
+                  onSchedule={(pm) => {
+                    openNewService(asset.id);
+                    setTimeout(()=>{
+                      setServiceEditData(d=>({...d,
+                        description: pm.title,
+                        notes: pm.diy ? "DIY task" : "Schedule with contractor",
+                      }));
+                    }, 100);
+                  }}
+                  onCreateTask={async (pm) => {
+                    const due = new Date();
+                    due.setMonth(due.getMonth() + (pm.interval_months || 3));
+                    const months = Number(pm.interval_months) || 3;
+                    const taskPayload = {
+                      user_id: userId, property_id: propertyId,
+                      title: pm.title || "Scheduled service", status: "Scheduled", priority: "Medium",
+                      due_date: due.toISOString().slice(0,10),
+                      category: asset.category || "Other",
+                      asset_id: asset.id,
+                      notes: `Recommended by manufacturer · Every ${months < 12 ? months + " months" : (months/12) + " year(s)"} · ${pm.diy ? "DIY" : "Hire contractor"}`,
+                    };
+                    const {data:td,error} = await supabase.from("tasks").insert([taskPayload]).select();
+                    if (!error && td) { setTasks(prev=>[td[0],...prev]); toast(`Task scheduled: ${pm.title} ✓`); }
+                    else toast("Could not create task","error");
+                  }}
+                />
+
+                <div className="ad-card">
+                  <div className="ad-card-h">
+                    <span className="ad-card-t">Service log</span>
+                    {assetLogs.length > 0 && <span style={{fontSize:".8rem",color:"#6E665D",flex:1}}>{assetLogs.length} logged, {fmt$(totalServiceCost)} total</span>}
+                    <button className="btn btn-primary btn-sm" onClick={()=>openNewService(asset.id)}>+ Log</button>
+                  </div>
+                  {assetLogs.length === 0 && completedTasks.length === 0 && (
+                    <div style={{padding:"0 1rem 1rem",fontSize:".9rem",color:"#6E665D"}}>No service logged yet. Log repairs and maintenance to keep a record for resale and warranty claims.</div>
+                  )}
+                  {assetLogs.map(s => (
+                    <button type="button" key={s.id} className="ad-row" onClick={()=>openEditService(s)}>
+                      <span className="ad-row-main">
+                        <span className="ad-row-t">{s.description}</span>
+                        <span className="ad-row-s">{fmtD(s.service_date)}{s.vendor ? `, ${s.vendor}` : ""}</span>
+                      </span>
+                      <span className="ad-row-r" style={{color:s.cost>0?"var(--dark)":"#B5ADA5"}}>{s.cost>0?fmt$(s.cost):"—"}</span>
+                    </button>
+                  ))}
+                  {assetLogs.length === 0 && completedTasks.map(t => (
+                    <div key={t.id} className="ad-row" style={{cursor:"default",opacity:.7}}>
+                      <span className="ad-row-main">
+                        <span className="ad-row-t" style={{textDecoration:"line-through"}}>{t.title}</span>
+                        {t.due_date && <span className="ad-row-s">{fmtD(t.due_date)}</span>}
+                      </span>
+                      <span className="ad-row-r" style={{color:"#6E665D"}}>Done</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ══ DETAILS ══ */}
+            {tab === "details" && (
+              <>
+                <div className="ad-card">
+                  <div className="ad-card-h">
+                    <span className="ad-card-t">About this item</span>
+                    <button className="asm-link" onClick={()=>openEdit(asset)}>Edit</button>
+                  </div>
+                  {dlRows.map(([label, value, key]) => (
+                    <div key={label} className="ad-dl">
+                      <span className="ad-dl-k">{label}</span>
+                      <span className="ad-dl-v">
+                        {value || <button className="asm-link" style={{padding:0}} onClick={()=>openEdit(asset)}>Add</button>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {(hasManualLink || supportUrl) && (
+                  <div className="ad-card">
+                    <div className="ad-card-h"><span className="ad-card-t">Manuals and support</span></div>
+                    {hasManualLink && (
+                      <a href={asset.document_ref} target="_blank" rel="noopener noreferrer" className="ad-row" style={{textDecoration:"none"}}>
+                        <span className="ad-row-main">
+                          <span className="ad-row-t" style={{color:"var(--pine)"}}>Owner's manual</span>
+                          <span className="ad-row-s">{asset.document_ref.replace(/^https?:\/\//,"")}</span>
+                        </span>
+                        <span className="ad-row-r" style={{color:"var(--pine)"}}>Open</span>
+                      </a>
+                    )}
+                    {supportUrl && (
+                      <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="ad-row" style={{textDecoration:"none"}}>
+                        <span className="ad-row-main">
+                          <span className="ad-row-t" style={{color:"var(--pine)"}}>Manufacturer support</span>
+                          <span className="ad-row-s">{supportUrl.replace(/^https?:\/\//,"")}</span>
+                        </span>
+                        <span className="ad-row-r" style={{color:"var(--pine)"}}>Open</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {(asset.asset_photo_url || hasUploadedDoc) && (
+                  <div className="ad-card">
+                    <div className="ad-card-h">
+                      <span className="ad-card-t">Photo and documents</span>
+                      <button className="asm-link" onClick={()=>openEdit(asset)}>Add</button>
+                    </div>
+                    {asset.asset_photo_url && (
+                      <button type="button" onClick={()=>setLightbox(asset.asset_photo_url)} aria-label="View photo larger" style={{display:"block",width:"calc(100% - 2rem)",margin:"0 1rem 1rem",padding:0,border:"1px solid var(--stone)",borderRadius:12,overflow:"hidden",cursor:"pointer",background:"none"}}>
+                        <SImg src={asset.asset_photo_url} alt={asset.item} style={{width:"100%",maxHeight:240,objectFit:"cover",display:"block"}}/>
+                      </button>
+                    )}
+                    {hasUploadedDoc && (
+                      <div className="ad-row" style={{cursor:"default"}}>
+                        <span className="ad-row-main">
+                          <span className="ad-row-t">Document location</span>
+                          <span className="ad-row-s">{asset.document_ref}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {noteText && (
+                  <div className="ad-card">
+                    <div className="ad-card-h"><span className="ad-card-t">Notes</span></div>
+                    <div style={{padding:"0 1rem 1rem",fontSize:".9rem",color:"var(--dark)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{noteText}</div>
+                  </div>
+                )}
+
+                <AssetSmartFillPanel
+                  asset={asset}
+                  planData={planData}
+                  onUpgrade={onUpgrade}
+                  onApply={applySmartFill}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -14970,100 +15124,76 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   return (
     <div>
       <div className="sh">
-        <span className="sh-title">{showRetired ? "Retired Assets" : "Assets"}</span>
-        <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+        <span className="sh-title">{showRetired ? "Retired assets" : "Assets"}</span>
+        <div className="as-actions">
+          {!showRetired && (() => {
+            const wb = getWarrantyBuckets(assets);
+            const needs = wb.soon.length + wb.expired.length;
+            return (
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowWarrantyModule(true)} title={wb.all.length ? `${wb.covered} active warranties` : "Track warranties for items you own"}>
+                Warranties{needs > 0 && <span className="as-pip" aria-label={`${needs} need a look`}>{needs}</span>}
+              </button>
+            );
+          })()}
           {retiredAssets.length > 0 && (
-            <button className="btn btn-ghost btn-sm" onClick={()=>setShowRetired(r=>!r)}
-              style={{fontSize:".75rem",color:showRetired?"var(--pine)":"#8A8178"}}>
-              {showRetired ? "← Active" : `Retired (${retiredAssets.length})`}
+            <button className="btn btn-ghost btn-sm" onClick={()=>setShowRetired(r=>!r)}>
+              {showRetired ? "Back to active" : `Retired ${retiredAssets.length}`}
             </button>
           )}
           {!showRetired && <button className="btn btn-primary" onClick={openNew}>+ Add</button>}
         </div>
       </div>
       {showRetired && (
-        <div style={{fontSize:".82rem",color:"#8A8178",margin:"-.2rem 0 1rem",lineHeight:1.45}}>
-          {retiredAssets.length} retired asset{retiredAssets.length===1?"":"s"} — history is kept, but they don't count toward your home's health.
+        <div style={{fontSize:".88rem",color:"#6E665D",margin:"-.2rem 0 1rem",lineHeight:1.45}}>
+          {retiredAssets.length} retired asset{retiredAssets.length===1?"":"s"}. History is kept, but they don't count toward your home's health.
         </div>
       )}
 
-      {/* Home health hero — active assets only (the retired view has its own list) */}
+      {/* Summary: one headline and one bar, no hero card */}
       {!showRetired && systemAssets.length > 0 && (
-        <div style={{background:"linear-gradient(150deg,var(--pine-deep),var(--pine-soft))",borderRadius:"var(--r)",padding:"1.2rem 1.25rem",marginBottom:"1.1rem",color:"#fff",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",right:-30,top:-30,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.05)",pointerEvents:"none"}}/>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",marginBottom:".5rem"}}>
-            <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"rgba(244,237,223,.6)",fontWeight:700}}>Home health</div>
+        <div className="as-sum">
+          <div className="as-sum-row">
+            <div className="as-sum-line">
+              {attentionCount===0 && estimatedCount===0
+                ? <>All <b>{systemAssets.length}</b> systems are in good shape.</>
+                : <><b>{okCount+headsCount} of {systemAssets.length}</b> systems are in good shape.</>}
+            </div>
             {onNavigate && (
-              <button type="button" onClick={()=>onNavigate("profile")} title="See the full Home Health breakdown on My Home"
-                style={{position:"relative",zIndex:1,background:"none",border:"none",padding:".25rem 0",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"rgba(244,237,223,.85)",cursor:"pointer",whiteSpace:"nowrap"}}>
-                Home Health: {homeHealthScore} · {homeHealthGrade} →
+              <button type="button" className="as-hh" onClick={()=>onNavigate("profile")} title="See the full Home Health breakdown on My Home">
+                Home Health {homeHealthScore}, {homeHealthGrade}
               </button>
             )}
           </div>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:500,lineHeight:1.25,marginBottom:"1rem"}}>
-            {attentionCount===0 && estimatedCount===0 ? (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>All {systemAssets.length}</b> of your systems are in good shape.</>
-            ) : (
-              <><b style={{color:"var(--sage-soft)",fontWeight:700}}>{okCount+headsCount} of {systemAssets.length}</b> systems are in good shape.{dueCount>0&&<> <b style={{color:"#E8A87C",fontWeight:700}}>{dueCount}</b> need{dueCount===1?"s":""} service soon.</>}{badCount>0&&<> <b style={{color:"#F0A58E",fontWeight:700}}>{badCount}</b> need{badCount===1?"s":""} attention.</>}{estimatedCount>0&&<> <b style={{color:"rgba(244,237,223,.75)",fontWeight:700}}>{estimatedCount}</b> {estimatedCount===1?"has":"have"} an unknown age.</>}</>
-            )}
+          <div className="as-bar" role="img" aria-label={`${okCount} healthy, ${headsCount} heads up, ${dueCount} due for service, ${badCount} need attention, ${estimatedCount} unknown age`}>
+            {okCount>0        && <span style={{flex:okCount,background:"#3E7D5A"}}/>}
+            {headsCount>0     && <span style={{flex:headsCount,background:"#D9A93E"}}/>}
+            {dueCount>0       && <span style={{flex:dueCount,background:"#C16140"}}/>}
+            {badCount>0       && <span style={{flex:badCount,background:"#B0432B"}}/>}
+            {estimatedCount>0 && <span style={{flex:estimatedCount,background:"#CFC6B8"}}/>}
           </div>
-          {/* Stacked health bar */}
-          <div style={{display:"flex",height:10,borderRadius:6,overflow:"hidden",background:"rgba(255,255,255,.12)",marginBottom:".85rem"}}>
-            {okCount>0        && <span style={{width:`${(okCount/systemAssets.length)*100}%`,background:"#3E7D5A"}}/>}
-            {headsCount>0     && <span style={{width:`${(headsCount/systemAssets.length)*100}%`,background:"#D9A93E"}}/>}
-            {dueCount>0       && <span style={{width:`${(dueCount/systemAssets.length)*100}%`,background:"#C16140"}}/>}
-            {badCount>0       && <span style={{width:`${(badCount/systemAssets.length)*100}%`,background:"#B0432B"}}/>}
-            {estimatedCount>0 && <span style={{width:`${(estimatedCount/systemAssets.length)*100}%`,background:"rgba(244,237,223,.4)"}}/>}
-          </div>
-          {/* Legend */}
-          <div style={{display:"flex",gap:"1.1rem",flexWrap:"wrap"}}>
-            {okCount>0        && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#3E7D5A"}}/>{okCount} healthy</span>}
-            {headsCount>0     && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#D9A93E"}}/>{headsCount} heads up</span>}
-            {dueCount>0       && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#C16140"}}/>{dueCount} service due</span>}
-            {badCount>0       && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.92)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"#B0432B"}}/>{badCount} needs attention</span>}
-            {estimatedCount>0 && <span style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:600,color:"rgba(255,255,255,.72)"}}><span style={{width:9,height:9,borderRadius:"50%",background:"rgba(244,237,223,.4)"}}/>{estimatedCount} unknown age</span>}
+          <div className="as-leg">
+            {okCount>0        && <span><i style={{background:"#3E7D5A"}}/>{okCount} healthy</span>}
+            {headsCount>0     && <span><i style={{background:"#D9A93E"}}/>{headsCount} heads up</span>}
+            {dueCount>0       && <span><i style={{background:"#C16140"}}/>{dueCount} service due</span>}
+            {badCount>0       && <span><i style={{background:"#B0432B"}}/>{badCount} needs attention</span>}
+            {estimatedCount>0 && <span><i style={{background:"#CFC6B8"}}/>{estimatedCount} age unknown</span>}
           </div>
         </div>
       )}
 
-      {/* Filter chips — health vocabulary (active assets only) */}
+      {/* Filters */}
       {!showRetired && activeAssets.length > 0 && (
-        <div className="toolbar" style={{marginBottom:".9rem"}}>
-          {[["All",systemAssets.length],["Needs attention or service",attentionCount],["Healthy",okCount],["Warranty Active",null]].map(([f,count])=>(
-            <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>
-              {f}{count!==null && count!==undefined ? ` ${count}` : ""}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Track a warranty tile */}
-      {!showRetired && (
-        <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",marginBottom:".9rem",overflow:"hidden"}}>
-          <div onClick={()=>setShowWarrantyModule(true)}
-            style={{display:"flex",alignItems:"center",gap:".85rem",padding:".85rem 1rem",cursor:"pointer",transition:"background .1s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
-            onMouseLeave={e=>e.currentTarget.style.background="var(--white)"}>
-            <div style={{width:40,height:40,borderRadius:11,background:"var(--cream2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",flexShrink:0}}>🔖</div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Warranties</div>
-              <div style={{fontSize:".75rem",color:"#8A8178",marginTop:1}}>
-                {(()=>{
-                  const wb = getWarrantyBuckets(assets);
-                  if (wb.all.length === 0) return "Track warranties for any item you own";
-                  return `${wb.covered} active · ${wb.soon.length > 0 ? wb.soon.length + " expiring soon" : wb.expired.length > 0 ? wb.expired.length + " expired" : "all current"}`;
-                })()}
-              </div>
-            </div>
-            <span style={{fontSize:".8rem",fontWeight:700,color:"var(--pine)"}}>View all →</span>
+        <div className="as-filters">
+          <div className="toolbar" style={{marginBottom:0}}>
+            {[["All","All",systemAssets.length],["Needs attention or service","Needs a look",attentionCount],["Healthy","Healthy",okCount],["Warranty Active","Under warranty",null]].map(([f,label,count])=>(
+              <button key={f} className={`chip ${filter===f?"on":""}`} onClick={()=>setFilter(f)} aria-pressed={filter===f}>
+                {label}{count!==null && count!==undefined ? ` ${count}` : ""}
+              </button>
+            ))}
           </div>
-          <div style={{borderTop:"1px solid var(--cream2)",padding:".6rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:".75rem",color:"#A8A09A"}}>Scan a receipt · link to an asset · get expiry reminders</span>
-            <button onClick={openNewWarranty}
-              style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"1px solid var(--pine)",borderRadius:8,padding:".3rem .7rem",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
-              + Add
-            </button>
-          </div>
+          {displayGroups.length > 1 && !forceOpen && (
+            <button onClick={()=>setAllGroups(!allOpen)} className="ag-toggle-all">{allOpen ? "Collapse all" : "Expand all"}</button>
+          )}
         </div>
       )}
 
@@ -15077,12 +15207,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         </div>
       )}
 
-      {/* Grouped asset list — rich cards, collapsible */}
-      {displayGroups.length > 1 && !forceOpen && (
-        <div className="ag-controls">
-          <button onClick={()=>setAllGroups(!allOpen)} className="ag-toggle-all">{allOpen ? "Collapse all" : "Expand all"}</button>
-        </div>
-      )}
+      {/* Grouped list: one panel per category, one row per asset */}
+      <div className="as-cols">
       {displayGroups.map((g, gi) => {
         const cat = g.key;
         const catAssets = g.items;
@@ -15090,196 +15216,103 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         const open = openStates[gi];
         const sm = groupSummary(catAssets);
         return (
-          <div key={cat} style={{marginBottom:"1.4rem"}}>
-            {/* Category header — whole row toggles */}
-            <button type="button" className="ag-head" onClick={()=>{ if(!forceOpen) toggleGroup(g); }} aria-expanded={open} disabled={forceOpen} style={{marginBottom:open?".7rem":0}}>
+          <section key={cat} className="as-group">
+            <button type="button" className="ag-head" onClick={()=>{ if(!forceOpen) toggleGroup(g); }} aria-expanded={open} disabled={forceOpen} style={{marginBottom:open?".55rem":0}}>
               <span className={"ag-chev"+(open?" open":"")} aria-hidden="true">{forceOpen ? "" : "›"}</span>
-              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)"}}>{catLabel}</span>
-              <span style={{fontSize:".8rem",fontWeight:700,color:"var(--mid)",background:"var(--cream2)",borderRadius:20,padding:".1rem .6rem"}}>{catAssets.length}</span>
+              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:500,color:"var(--dark)"}}>{catLabel}</span>
+              <span style={{fontSize:".85rem",fontWeight:600,color:"#6E665D"}}>{catAssets.length}</span>
               {!open && (
                 <span className="ag-badges">
                   {sm.attn>0 && <span className="ag-badge" style={{background:"#F7E0DA",color:"#B0432B"}}>{sm.attn} need{sm.attn===1?"s":""} attention</span>}
-                  {sm.heads>0 && <span className="ag-badge" style={{background:"#FBF3DE",color:"#B8861E"}}>{sm.heads} heads up</span>}
+                  {sm.heads>0 && <span className="ag-badge" style={{background:"#FBF3DE",color:"#8A6410"}}>{sm.heads} heads up</span>}
                   {sm.unknown>0 && <span className="ag-badge" style={{background:"var(--cream2)",color:"#6E665D"}}>{sm.unknown} age unknown</span>}
-                  {sm.attn===0 && sm.heads===0 && sm.unknown===0 && <span className="ag-badge" style={{background:"#E9F1EA",color:"#3E7D5A"}}>All healthy</span>}
+                  {sm.attn===0 && sm.heads===0 && sm.unknown===0 && <span className="ag-badge" style={{background:"#E9F1EA",color:"#2F6A49"}}>All healthy</span>}
                 </span>
               )}
             </button>
 
             {open && (
-            <div className="assets-grid">
+            <div className="as-panel">
             {catAssets.map(a => {
               const catColor = CATEGORY_COLORS[CAT_NORMALIZE[a.category||"Other"]||a.category||"Other"] || CATEGORY_COLORS.Other;
-              const eyebrow = g.merged ? catLabelOf(CAT_NORMALIZE[a.category||"Other"]||a.category||"Other") : null;
-              // ── Warranty-only simplified card ──────────────────────────────
+              const catName = g.merged ? catLabelOf(CAT_NORMALIZE[a.category||"Other"]||a.category||"Other") : null;
+              const iconBox = (
+                <span className="ar-ic" style={{background:catColor.bg,border:`1px solid ${catColor.border}`,color:catColor.icon}}>
+                  <AssetIcon asset={a} size={21}/>
+                </span>
+              );
+
+              // ── Warranty-only row ──
               if (a.warranty_only) {
                 const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
                 const expired = warrantyDays !== null && warrantyDays < 0;
                 const expiringSoon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 30;
-                const statusColor = expired ? "#B0432B" : expiringSoon ? "#B8861E" : "#3E7D5A";
-                const statusBg    = expired ? "#F7E0DA" : expiringSoon ? "#FBF3DE" : "#E9F1EA";
-                const statusLabel = expired ? "Expired" : expiringSoon ? `${warrantyDays}d left` : warrantyDays !== null ? `${Math.round(warrantyDays/30)}mo left` : "Tracking";
+                const statusColor = expired ? "#B0432B" : expiringSoon ? "#8A6410" : "#2F6A49";
+                const dotC = expired ? "#B0432B" : expiringSoon ? "#D9A93E" : "#3E7D5A";
+                const statusLabel = expired ? "Expired" : expiringSoon ? `${warrantyDays} days left` : warrantyDays !== null ? `${Math.max(1,Math.round(warrantyDays/30))} mo left` : "Tracking";
+                const meta = [catName, [a.brand,a.model].filter(Boolean).join(" ") || null, a.linked_asset_name ? `linked to ${a.linked_asset_name}` : null].filter(Boolean).join(", ") || "Warranty only";
                 return (
-                  <div key={a.id}
-                    onClick={()=>setSelectedAsset(a.id)}
-                    style={{background:"var(--white)",border:`1.5px solid ${expired?"#E3B2A6":expiringSoon?"#EAD9A6":"var(--stone)"}`,borderRadius:"var(--r-sm)",padding:".85rem 1rem",marginBottom:".7rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".85rem"}}
-                    onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 2px 12px -4px rgba(42,39,35,.15)";}}
-                    onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";}}>
-                    <div style={{width:44,height:44,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`,color:catColor.icon}}>
-                      <AssetIcon asset={a} size={22}/>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
-                      <div style={{fontSize:".97rem",fontWeight:700,color:"var(--dark)",marginBottom:".15rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.item}</div>
-                      <div style={{fontSize:".78rem",color:"#8A8178"}}>
-                        {[a.brand,a.model,a.serial_number?"S/N "+a.serial_number:null].filter(Boolean).join(" · ")||"Warranty only"}
-                      </div>
-                      {a.linked_asset_name && (
-                        <div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:600,marginTop:".15rem"}}>
-                          🔗 Linked to {a.linked_asset_name}
-                        </div>
-                      )}
-                      {a.expiry_date && (
-                        <div style={{fontSize:".75rem",color:statusColor,fontWeight:600,marginTop:".15rem"}}>
-                          {expired ? "Warranty expired " : "Warranty expires "}{fmtD(a.expiry_date)}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".4rem",flexShrink:0}}>
-                      <span style={{fontSize:".72rem",fontWeight:700,padding:"3px 9px",borderRadius:20,background:statusBg,color:statusColor}}>{statusLabel}</span>
-                      <span style={{fontSize:".7rem",color:"var(--pine)",fontWeight:600,cursor:"pointer"}}
-                        onClick={e=>{e.stopPropagation();setWarrantyData({...a});setWarrantyEditId(a.id);setWarrantyModal(true);}}>
-                        Edit →
-                      </span>
-                    </div>
-                  </div>
+                  <button type="button" key={a.id} className="ar" onClick={()=>setSelectedAsset(a.id)}>
+                    {iconBox}
+                    <span className="ar-main">
+                      <span className="ar-name">{a.item}</span>
+                      <span className="ar-meta">{meta}</span>
+                    </span>
+                    <span className="ar-side">
+                      <span className="ar-st" style={{color:statusColor}}><i style={{background:dotC}}/>{statusLabel}</span>
+                      {a.expiry_date && <span className="ar-sub">{expired ? "Ended" : "Ends"} {fmtD(a.expiry_date)}</span>}
+                    </span>
+                  </button>
                 );
               }
 
-              // ── Full asset card ────────────────────────────────────────────
+              // ── Asset row: one status signal, optional condition score ──
               const health = getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: recalledAssetIds.has(a.id), fallbackAgeYears: homeAge });
               const installDate = a.install_date || a.purchase_date;
-              // No install/purchase date on file — the age shown (and the
-              // health bar behind it) is only the home's build year standing
-              // in as an estimate. Flag that inline instead of presenting it
-              // as if the asset's actual age were known.
               const ageIsEstimate = !installDate && homeAge != null;
-              // Clamped to 0 -- a future install date (typo or wrong date
-              // picked) otherwise displayed as e.g. "-4yr old".
               const ageYears = health.ageYears !== null ? Math.max(0, Math.floor(health.ageYears)) : null;
-              const lifespanYears = health.lifespan;
-              const lifespanPct = health.lifePct;
-              const assetLogs = serviceLogs.filter(s => s.asset_id === a.id).sort((x,y)=>new Date(y.service_date)-new Date(x.service_date));
-              const warrantyDays = a.expiry_date ? daysTo(a.expiry_date) : null;
-              const warrantyActive = warrantyDays !== null && warrantyDays >= 0;
-              const lastService = assetLogs[0];
-
-              // The single most useful fact line, derived from health state
-              let factText = health.reason;
-              let factIcon = "✓";
-              if (health.key === "bad") {
-                factIcon = "!";
-                if (health.reason === "Service overdue") {
-                  const od = (tasks||[]).filter(t=>t.asset_id===a.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d<0).sort((x,y)=>x-y)[0];
-                  factText = od!=null ? `Service overdue by ${Math.abs(od)} days` : "Service overdue";
-                } else if (health.reason === "Past expected lifespan") factText = `Past expected lifespan (${lifespanYears} yrs)`;
-              } else if (health.key === "due") {
-                factIcon = "•";
-                if (health.reason === "Task due soon") {
-                  const sd = (tasks||[]).filter(t=>t.asset_id===a.id&&t.status!=="Completed").map(t=>daysTo(t.due_date)).filter(d=>d!==null&&d>=0).sort((x,y)=>x-y)[0];
-                  factText = sd===0?"Service due today":sd===1?"Service due tomorrow":`Service due in ${sd} days`;
-                } else if (health.reason.includes("Aging")) factText = `${lifespanPct}% through expected lifespan`;
-              } else if (health.key === "heads") {
-                factIcon = "•";
-                factText = "Maintenance recommended";
-              } else if (health.key === "estimated") {
-                factIcon = "?";
-                factText = "Age unknown — add install date for an accurate reading";
-              } else {
-                factIcon = "✓";
-                if (warrantyActive && lastService) factText = `Serviced ${fmtD(lastService.service_date)} · warranty active`;
-                else if (warrantyActive) factText = `Warranty active${warrantyDays<=400?` · ${Math.round(warrantyDays/30)} mo left`:""}`;
-                else if (lastService) factText = `Serviced ${fmtD(lastService.service_date)}`;
-                else factText = "In good shape";
-              }
-
-              // "estimated" intentionally gets no colored edge -- it isn't a
-              // confirmed issue, just an unconfirmed guess.
-              const isRetired = !!a.retired_at;   // retired cards show "Retired", never a live health verdict
-              const edgeStyle = isRetired ? {} : health.key==="bad" ? {borderLeft:"4px solid #B0432B"} : health.key==="due" ? {borderLeft:"4px solid #C16140"} : {};
+              const isRetired = !!a.retired_at;
+              const ageText = ageYears!==null && (!ageIsEstimate||health.assessed)
+                ? (ageYears<1&&!ageIsEstimate ? "<1 yr old" : `${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old`)
+                : null;
+              const meta = isRetired
+                ? [`Retired ${fmtD(a.retired_at.slice(0,10))}`, a.retired_reason || null].filter(Boolean).join(", ")
+                : ([catName, [a.brand,a.model].filter(Boolean).join(" ") || null, ageText].filter(Boolean).join(", ") || a.category || "Tap to add details");
+              const stColor = isRetired || health.key==="estimated" ? "#6E665D" : health.color;
+              const stDot = isRetired ? "#A8A09A" : health.key==="estimated" ? "#B5ADA5" : health.color;
+              const sc = health.assessed && !isRetired ? ASSESS_SCALE[health.assessed.score] : null;
 
               return (
-                <div key={a.id}
-                  onClick={()=>setSelectedAsset(a.id)}
-                  style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem",marginBottom:".7rem",cursor:"pointer",transition:"all .15s",...edgeStyle}}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--mid)";e.currentTarget.style.boxShadow="0 4px 16px -8px rgba(42,39,35,.2)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.boxShadow="none";}}>
-                  {/* Top row: icon, name+detail, status */}
-                  <div className="ac-top" style={{display:"flex",alignItems:"flex-start",gap:".85rem"}}>
-                    <div style={{width:52,height:52,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,background:catColor.bg,border:`1px solid ${catColor.border}`,color:catColor.icon}}>
-                      <AssetIcon asset={a} size={25}/>
-                    </div>
-                    <div className="ac-body" style={{flex:1,minWidth:0}}>
-                      {eyebrow && <div className="ag-eyebrow">{eyebrow}</div>}
-                      <div className="ac-name" style={{fontSize:"1.08rem",fontWeight:700,lineHeight:1.2,marginBottom:".2rem",color:"var(--dark)"}}>{a.item}</div>
-                      <div style={{fontSize:".85rem",color:"#8A8178",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                        {[a.brand, a.model, ageYears!==null&&(!ageIsEstimate||health.assessed)?(ageYears<1&&!ageIsEstimate?"<1 yr old":`${ageIsEstimate?"~":""}${ageYears} yr${ageYears===1?"":"s"} old${ageIsEstimate?" (from photos)":""}`):(!isRetired?"Age unknown":null)].filter(Boolean).join(" · ") || a.category || "Tap to add details"}
-                      </div>
-                      {health.assessed && !isRetired && (
-                        <div style={{fontSize:".74rem",fontWeight:700,marginTop:2,color:(ASSESS_SCALE[health.assessed.score]||{}).color}}>
-                          Assessed {health.assessed.label} · {health.assessed.score}/5 · {fmtD(health.assessed.date)}
-                        </div>
-                      )}
-                      {ageIsEstimate && !isRetired && (
-                        <div onClick={e=>{e.stopPropagation();openEdit(a);}}
-                          style={{fontSize:".68rem",color:"#A8A09A",marginTop:"1px",cursor:"pointer"}}
-                          onMouseEnter={e=>e.currentTarget.style.color="var(--pine)"}
-                          onMouseLeave={e=>e.currentTarget.style.color="#A8A09A"}>
-                          No install date yet · add it for an accurate reading →
-                        </div>
-                      )}
-                    </div>
-                    <span className="ac-status" style={{display:"inline-flex",alignItems:"center",gap:".4rem",padding:".35rem .7rem",borderRadius:20,fontSize:".82rem",fontWeight:700,flexShrink:0,whiteSpace:"nowrap",background:isRetired?"#EFEBE4":health.bg,color:isRetired?"#8A8178":health.color}}>
-                      <span style={{width:8,height:8,borderRadius:"50%",background:isRetired?"#8A8178":health.color}}/>{isRetired?"Retired":health.label}
-                    </span>
-                  </div>
-
-                  {/* Health bar — age vs lifespan */}
-                  {lifespanPct !== null && !isRetired && !ageIsEstimate && (
-                    <div style={{marginTop:".9rem"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"#8A8178",marginBottom:".35rem",fontWeight:600}}>
-                        <span>Age vs. lifespan</span><span>{ageYears} / {lifespanYears} yrs</span>
-                      </div>
-                      <div style={{height:7,background:"var(--cream2)",borderRadius:5,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${lifespanPct}%`,borderRadius:5,background:health.color,transition:"width .4s"}}/>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* One useful fact line */}
-                  <div style={{marginTop:".75rem",paddingTop:".75rem",borderTop:"1px solid var(--cream2)",display:"flex",alignItems:"center",gap:".45rem",fontSize:".86rem",fontWeight:600,color:isRetired?"#8A8178":health.color}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:isRetired?"#EFEBE4":health.bg,fontSize:".7rem",flexShrink:0}}>{isRetired?"–":factIcon}</span>
-                    {isRetired ? `Retired ${fmtD(a.retired_at.slice(0,10))}${a.retired_reason?` · ${a.retired_reason}`:""}` : factText}
-                  </div>
-                </div>
+                <button type="button" key={a.id} className="ar" onClick={()=>setSelectedAsset(a.id)}>
+                  {iconBox}
+                  <span className="ar-main">
+                    <span className="ar-name">{a.item}</span>
+                    <span className="ar-meta">{meta}</span>
+                  </span>
+                  <span className="ar-side">
+                    <span className="ar-st" style={{color:stColor}}><i style={{background:stDot}}/>{isRetired ? "Retired" : health.label}</span>
+                    {sc && (
+                      <span className="ar-sub" title={`Condition: ${sc.label}, assessed ${fmtD(health.assessed.date)}`}>
+                        <ScoreDots score={health.assessed.score} size={6}/>
+                        <span style={{color:sc.color,fontWeight:700}}>{health.assessed.score}/5</span>
+                      </span>
+                    )}
+                  </span>
+                </button>
               );
             })}
             </div>
             )}
-          </div>
+          </section>
         );
       })}
+      </div>
 
-      {/* Retired assets discovery prompt — shown at bottom of active list */}
+      {/* Retired assets discovery prompt, at the bottom of the active list */}
       {!showRetired && retiredAssets.length > 0 && (
-        <div onClick={()=>setShowRetired(true)}
-          style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1.25rem",margin:"1rem 0 .5rem",cursor:"pointer",opacity:.65}}>
-          <span style={{fontSize:"1rem"}}>🏚️</span>
-          <span style={{fontSize:".82rem",color:"#8A8178",fontWeight:600}}>
-            {retiredAssets.length} retired asset{retiredAssets.length!==1?"s":""} — tap to view
-          </span>
-          <span style={{fontSize:".8rem",color:"#C2B8AE",marginLeft:"auto"}}>→</span>
-        </div>
+        <button type="button" onClick={()=>setShowRetired(true)} className="as-retired-link">
+          {retiredAssets.length} retired asset{retiredAssets.length!==1?"s":""}. View
+        </button>
       )}
 
       {modal && (
