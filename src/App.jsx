@@ -1,4 +1,4 @@
-// Steadwell v305 — 2026-10-01
+// Steadwell v306 — 2026-10-01
 import { useState, useEffect, useRef, useMemo, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3347,6 +3347,8 @@ img,.lp-root img{max-width:100%;height:auto}
 .ar-sub{display:inline-flex;align-items:center;gap:.4rem;font-size:.76rem;color:#6E665D}
 .as-retired-link{display:block;margin:.5rem 0 1rem;padding:.5rem 0;background:none;border:none;font-family:inherit;font-size:.85rem;font-weight:600;color:#6E665D;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 @media(max-width:480px){
+  .as-filters{flex-direction:column;align-items:stretch;gap:.35rem;margin-bottom:1rem}
+  .as-filters .ag-toggle-all{align-self:flex-end}
   .ar{padding:.75rem .85rem;gap:.7rem}
   .ar-ic{width:38px;height:38px}
   .as-sum-line{font-size:1.25rem}
@@ -14457,13 +14459,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const missingBits = canCondition ? [(!asset.brand && !asset.model) && "brand and model", !installDate && "install date"].filter(Boolean) : [];
     const canAssess = !!planData?.aiScan;
     const isWarrOnly = !!asset.warranty_only;
+    // "Service due" + "Service due in 10 days" read as a stutter; when the detail already starts with the label, show the detail alone.
+    const subRepeatsLabel = !!heroStatusLine && heroStatusLine.toLowerCase().startsWith(String(health.label).toLowerCase());
     const heroLabel = asset.retired_at ? "Retired"
       : isWarrOnly ? (warrantyExpired ? "Warranty expired" : warrantySoon ? `Warranty ends in ${warrantyDays} day${warrantyDays===1?"":"s"}` : asset.expiry_date ? "Warranty active" : "Warranty only")
-      : health.label;
+      : (subRepeatsLabel ? heroStatusLine : health.label);
     const heroDot = asset.retired_at ? "rgba(244,237,223,.5)"
       : isWarrOnly ? (warrantyExpired ? "#F0A58E" : warrantySoon ? "#F0CE7A" : "#7DCBA1")
       : null;
-    const showHeroSub = !asset.retired_at && !isWarrOnly && heroStatusLine && heroStatusLine !== health.label;
+    const showHeroSub = !asset.retired_at && !isWarrOnly && heroStatusLine && heroStatusLine !== health.label && !subRepeatsLabel;
     const dotColor = heroDot || (health.key==="ok"?"#7DCBA1":health.key==="heads"?"#F0CE7A":health.key==="due"?"#F0A57F":health.key==="estimated"?"rgba(244,237,223,.5)":"#F0A58E");
     const metaBits = [asset.brand, asset.model && `Model ${asset.model}`, asset.serial_number && `S/N ${asset.serial_number}`].filter(Boolean);
     const ageText = ageYears !== null && (!ageIsEstimate || health.assessed)
