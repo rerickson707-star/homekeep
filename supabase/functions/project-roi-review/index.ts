@@ -369,13 +369,13 @@ export async function handler(req: Request): Promise<Response> {
   let resp: Row;
   let tin = 0, tout = 0;
   try {
-    resp = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "tool", name: tool.name }, messages });
+    resp = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "auto" }, messages });
     tin += resp.usage?.input_tokens ?? 0; tout += resp.usage?.output_tokens ?? 0;
     if (!findTool(resp) && resp.stop_reason !== "max_tokens") {
       const prior = (Array.isArray(resp.content) ? resp.content : []).filter((b: Row) => b.type === "text" && String(b.text || "").trim());
       if (prior.length) messages.push({ role: "assistant", content: prior });
       messages.push({ role: "user", content: [{ type: "text", text: "Submit the review now by calling the submit_project_review tool. Do not reply with plain text." }] });
-      resp = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "tool", name: tool.name }, messages });
+      resp = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "auto" }, messages });
       tin += resp.usage?.input_tokens ?? 0; tout += resp.usage?.output_tokens ?? 0;
     }
   } catch (e) {
@@ -394,7 +394,7 @@ export async function handler(req: Request): Promise<Response> {
     try {
       messages.push({ role: "assistant", content: resp.content });
       messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: tu.id, is_error: true, content: "before_condition and after_condition must each be a whole number from 1 to 5 (" + CONDITION_SCALE + "). Call submit_project_review again with complete values." }] });
-      const resp2 = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "tool", name: tool.name }, messages });
+      const resp2 = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "auto" }, messages });
       tin += resp2.usage?.input_tokens ?? 0; tout += resp2.usage?.output_tokens ?? 0;
       const tu2 = findTool(resp2);
       if (tu2?.input) { tu = tu2; a = sanitize(tu2.input, scopeKeys); }

@@ -1,4 +1,4 @@
-// Steadwell v320 — 2026-10-05
+// Steadwell v321 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -16399,6 +16399,7 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
     if (json?.usage) setUsage(json.usage);
     if (status === 429 || json?.code === "limit_reached") setErr(`You've used all ${json?.usage?.limit ?? ""} reviews this month${json?.usage?.resets ? ` (resets ${fmtD(json.usage.resets)})` : ""}.`);
     else if (json?.code === "bad_response") setErr("Couldn't reach the review service. Try again in a moment.");
+    else if (json?.code === "ai_unavailable") setErr((json?.error || "The review service is busy right now.") + ` (ai_unavailable)` + (json?.detail ? ` [${json.detail}]` : ""));
     else setErr((json?.error || "The review didn't finish. Please try again.") + (json?.code === "unclear_photos" && json?.summary ? ` What the AI saw: ${json.summary}` : "") + (json?.code ? ` (${json.reason || json.code})` : "") + (json?.debug ? ` [${json.debug}]` : ""));
   };
 
