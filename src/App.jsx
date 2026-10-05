@@ -1,4 +1,4 @@
-// Steadwell v321 — 2026-10-05
+// Steadwell v323 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2636,17 +2636,6 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .step h3{font-family:var(--display);font-weight:560;font-size:1.2rem;color:#fff;margin:0 0 .4rem}
 .lp-root .step p{font-size:.92rem;line-height:1.55;color:rgba(244,237,223,.66);margin:0}
 
-/* ---------- TESTIMONIALS ---------- */
-.lp-root .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.lp-root .tcard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 28px;display:flex;flex-direction:column;transition:transform .3s,box-shadow .3s}
-.lp-root .tcard:hover{transform:translateY(-3px);box-shadow:0 26px 56px -34px rgba(23,48,38,.4)}
-.lp-root .tcard .mark{font-family:var(--display);font-size:3rem;line-height:.6;color:var(--sage-deep);height:1rem}
-.lp-root .tcard .quote{font-size:1rem;line-height:1.62;color:var(--ink);margin:1.4rem 0 1.6rem;flex:1}
-.lp-root .tcard .who{display:flex;align-items:center;gap:12px}
-.lp-root .tcard .av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.82rem;flex-shrink:0}
-.lp-root .tcard .nm{font-weight:600;font-size:.92rem;color:var(--ink)}
-.lp-root .tcard .ro{font-size:.78rem;color:var(--ink-soft)}
-
 /* ---------- PRICING ---------- */
 .lp-root .pricing{background:var(--linen-2);border-top:1px solid var(--line)}
 .lp-root .price-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1060px;margin:0 auto}
@@ -2715,7 +2704,6 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .lp-nav-links{display:none}
   .lp-root .steps{grid-template-columns:1fr 1fr;gap:30px 22px}
   .lp-root .steps::before{display:none}
-  .lp-root .proof{grid-template-columns:1fr}
 }
 @media(max-width:680px){
   .lp-root .wrap{padding:0 20px}
@@ -2756,7 +2744,6 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .pv-stats{grid-template-columns:1fr 1fr}
   .lp-root .pv-stat:nth-child(3){grid-column:span 2}
   .lp-root .pcard{padding:30px 24px}
-  .lp-root .tcard{padding:26px 24px}
   .lp-root .wrap{padding:0 18px}
   .lp-root .pv{transform:none !important}
   .lp-root .hero-vis{width:100%;max-width:100%}
@@ -4568,7 +4555,7 @@ function LandingPage({ onSignIn, onSignUp }) {
           "description": "Home management app that tracks maintenance, warranties, recalls, utility bills, expenses, insurance and documents, with AI scanning and condition assessments.",
           "applicationCategory": "HomeAndGarden",
           "operatingSystem": "Web",
-          "featureList": ["Warranty tracking and expiry alerts","Federal safety recall alerts","Maintenance schedules and reminders","Utility and bill tracking with spike alerts","AI condition assessment from photos","AI receipt, nameplate and bill scanning","Ask Steadwell AI assistant","5-year cost forecast","Document vault","Calendar sync","Contractor rolodex","Insurance and claims tracking"],
+          "featureList": ["Warranty tracking and expiry alerts","Federal safety recall alerts","Maintenance schedules and reminders","Utility and bill tracking with spike alerts","AI condition assessment from photos","AI before-and-after project review","AI receipt, nameplate and bill scanning","Ask Steadwell AI assistant","5-year cost forecast","Document vault","Calendar sync","Contractor rolodex","Insurance and claims tracking"],
           "offers": [
             { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
             { "@type": "Offer", "name": "Plus", "price": "7.99", "priceCurrency": "USD" },
@@ -4723,9 +4710,9 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17h7m-3.5-3.5v7"/></svg>,
-      title: "Projects & ROI", desc: "Track renovations and see your return on investment with Cost vs. Value data.", tag: "Free",
-      drawer: "Log any renovation project with budget, timeline, contractor, and photos. Free on all plans. On Plus and Pro, the ROI calculator uses industry Cost vs. Value report data to show exactly what each project adds to your home’s resale value.",
-      drawerCta: "Projects free · ROI calculator on Plus →",
+      title: "Projects & ROI", desc: "Track renovations and see your estimated return. When the work is done, AI reviews your before and after photos to sharpen it.", tag: "Free · AI review on Plus",
+      drawer: "Log any renovation project with budget, timeline, contractor, and photos. Free on all plans. On Plus and Pro, the ROI calculator uses industry Cost vs. Value report data to estimate what each project adds to your home’s resale value, and AI can review your before and after photos to adjust that estimate for the work you actually did.",
+      drawerCta: "Projects free · ROI calculator and AI review on Plus →",
       href: "/home-projects",
     },
     {
@@ -5007,32 +4994,6 @@ function LandingPage({ onSignIn, onSignUp }) {
                 <div className="num">{s.n}</div>
                 <h3>{s.t}</h3>
                 <p>{s.d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-            {/* ── TESTIMONIALS ── */}
-      <section className="block">
-        <div className="wrap">
-          <div className="head center rv">
-            <div className="eyebrow">Early homeowners</div>
-            <h2 className="h2">Real homes, kept well</h2>
-          </div>
-          <div className="proof">
-            {[
-              { q: "I typed my address and it instantly knew my home was built in 1987, showed me the last three sales, and pulled 5 years of property tax records. That alone is worth it.", n: "Mike R.", r: "Homeowner · Tampa, FL", i: "MR", c: "#3A7AAF" },
-              { q: "Finally somewhere to track all our warranties. Our dishwasher broke and I actually knew exactly where the warranty was. First time ever.", n: "Sarah L.", r: "First-time homeowner · Austin, TX", i: "SL", c: "#7FA088" },
-              { q: "The expense tracker showed me I've spent $14,000 on my home in 2 years. I had no idea. Now I actually have data to plan with.", n: "James T.", r: "Homeowner · Denver, CO", i: "JT", c: "#C16140" },
-            ].map((p, i) => (
-              <div key={i} className="tcard rv" style={{ transitionDelay: (i * 0.09) + "s" }}>
-                <div className="mark">&ldquo;</div>
-                <p className="quote">{p.q}</p>
-                <div className="who">
-                  <span className="av" style={{ background: p.c }}>{p.i}</span>
-                  <div><div className="nm">{p.n}</div><div className="ro">{p.r}</div></div>
-                </div>
               </div>
             ))}
           </div>
@@ -28315,14 +28276,14 @@ function HomeExpenseTrackerPage() {
 function HomeProjectsPage() {
   useSEO({
     title:"Home Renovation Tracker with ROI Calculator",
-    description:"Track every home renovation project with budgets, timelines, and a Cost vs. Value ROI calculator. See what each project adds to your home’s resale value.",
+    description:"Track every home renovation with budgets, timelines, and a Cost vs. Value ROI calculator. When the work is done, AI reviews your before and after photos to adjust the estimate.",
     canonical:"https://www.trysteadwell.app/home-projects",
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Projects & ROI" cta="Get started free" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator shows exactly what each project adds to your home's resale value using industry Cost vs. Value data." badge="Projects free · ROI calculator on Plus"/>
+      <LPHero eyebrow="Home Projects & ROI" cta="Get started free" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator estimates what each project adds to your home's resale value, then AI reviews your before and after photos to adjust it for the work you actually did." badge="Projects free · ROI calculator and AI review on Plus"/>
       <div style={{background:"#F4EDDF",padding:"0 1.5rem 3rem",display:"flex",justifyContent:"center"}}>
         <div style={{maxWidth:720,width:"100%"}}>
           <img src="/screenshots/steadwell-roi.png" alt="Steadwell project ROI calculator showing a kitchen remodel with 113% return and $29,400 value added" style={{width:"100%",borderRadius:16,boxShadow:"0 20px 60px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
@@ -28362,16 +28323,71 @@ function HomeProjectsPage() {
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
-        <LPSection narrow>
+        <LPSection>
+          <LPSectionHead h2="When the work is done, AI sharpens the estimate" sub="The Cost vs. Value estimate is an average. Add your before and after photos and AI adjusts it for the project you actually did."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={24}>
+            <div aria-hidden="true" style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:16,padding:"20px 22px",textAlign:"left",boxShadow:"0 20px 50px -30px rgba(35,74,61,.35)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:500,color:"#234A3D"}}>Kitchen remodel</div>
+                <span style={{fontSize:".65rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#C16140",background:"rgba(193,97,64,.09)",padding:"3px 9px",borderRadius:20}}>Example</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                <div style={{height:84,borderRadius:10,background:"linear-gradient(135deg,#CFC6B6,#B5AB99)",display:"flex",alignItems:"flex-end",padding:8}}><span style={{fontSize:".68rem",fontWeight:700,color:"#fff",background:"rgba(42,39,35,.55)",borderRadius:20,padding:"2px 8px"}}>Before</span></div>
+                <div style={{height:84,borderRadius:10,background:"linear-gradient(135deg,#9DB8A9,#5F8B74)",display:"flex",alignItems:"flex-end",padding:8}}><span style={{fontSize:".68rem",fontWeight:700,color:"#fff",background:"rgba(35,74,61,.7)",borderRadius:20,padding:"2px 8px"}}>After</span></div>
+              </div>
+              {[["Condition","1 of 5","5 of 5"],["Finish level","Basic","High-end"],["Matches your scope","","Yes"]].map(([k,a,b],i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:".8rem",padding:"7px 0",borderTop:"1px solid #EFE7D7",color:"#5E574F"}}>
+                  <span>{k}</span><span style={{fontWeight:600,color:"#234A3D"}}>{a && <>{a} <span style={{color:"#A8A09A"}}>→</span> </>}{b}</span>
+                </div>
+              ))}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"14px 0 12px"}}>
+                <div style={{textAlign:"center",padding:"10px 6px",background:"#F4EDDF",borderRadius:10}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:600,color:"#7A7370"}}>76%</div>
+                  <div style={{fontSize:".62rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>National estimate</div>
+                </div>
+                <div style={{textAlign:"center",padding:"10px 6px",background:"rgba(35,74,61,.09)",borderRadius:10}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:600,color:"#234A3D"}}>86%</div>
+                  <div style={{fontSize:".62rem",color:"#234A3D",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Adjusted +13%</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <span style={{flex:1,textAlign:"center",background:"#234A3D",color:"#F4EDDF",borderRadius:9,padding:"8px 6px",fontSize:".76rem",fontWeight:700}}>Apply to my estimate</span>
+                <span style={{flex:1,textAlign:"center",border:"1.5px solid #E6DECF",color:"#5E574F",borderRadius:9,padding:"8px 6px",fontSize:".76rem",fontWeight:600}}>Keep national</span>
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:14,textAlign:"left"}}>
+              {[
+                {t:"Add before and after photos",d:"Several of each, from your camera or photo library. You can run a review before the project is marked done."},
+                {t:"AI describes what changed",d:"It compares condition and finish level, checks whether the result matches the scope you logged, and flags visible workmanship problems."},
+                {t:"A fixed formula sets the adjustment",d:"The AI reports what it sees. A fixed formula turns that into a change to your estimate, limited to between −30% and +25%."},
+                {t:"You decide",d:"Apply it, or keep the national estimate. Every review and your decision are saved in your account."},
+              ].map((x,i)=>(
+                <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <span style={{flexShrink:0,width:26,height:26,borderRadius:"50%",background:"#234A3D",color:"#F4EDDF",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>{i+1}</span>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",marginBottom:3}}>{x.t}</div>
+                    <div style={{fontSize:".86rem",color:"#7A7370",lineHeight:1.6}}>{x.d}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </LPGrid>
+          <p style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.6,marginTop:24,textAlign:"left"}}>Plus includes 3 AI project reviews a month and Pro includes 15. Photos are saved privately in your account and analyzed with AI, and Steadwell doesn&apos;t use them to train AI. See our <a href="/privacy" style={{color:"#234A3D",fontWeight:600}}>Privacy Policy</a>. Reviews are estimates, not appraisals.</p>
+        </LPSection>
+        <LPSection alt narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={[
-            ["Is project tracking free?","Yes, project tracking is free on all plans. The ROI calculator requires Plus or Pro."],
+            ["Is project tracking free?","Yes, project tracking is free on all plans. The ROI calculator and the AI project review require Plus or Pro."],
             ["What is the Cost vs. Value Report?","The Cost vs. Value Report is an annual study by Remodeling Magazine that tracks the average cost and resale value of common home improvement projects across US markets."],
             ["How accurate is the ROI estimate?","ROI estimates are based on regional averages from the Cost vs. Value Report. Actual returns vary based on your specific home, neighborhood, and market conditions."],
             ["Can I track multiple projects at once?","Yes — track as many projects as you like simultaneously, each with their own budget, timeline, and contractor."],
+            ["How does the AI project review work?","You add before and after photos to a project. AI describes what changed, including condition, finish level, and whether the result matches the scope you logged. A fixed formula turns that into an adjustment to your ROI estimate, limited to between −30% and +25%. You choose whether to apply it."],
+            ["Is the AI review an appraisal?","No. It is an estimate that adjusts a national average using what the photos show. It does not replace a licensed appraiser, and actual resale value depends on your home, neighborhood, and market."],
+            ["Who sees my project photos?","Photos are saved privately in your account and analyzed with AI. Steadwell doesn’t use them to train AI. Details are in our Privacy Policy."],
+            ["How many AI project reviews do I get?","Plus includes 3 a month and Pro includes 15. A review that fails, or one where the photos are too unclear to read, doesn’t count against your total."],
           ]}/>
         </LPSection>
-        <LPSection alt narrow>
+        <LPSection narrow>
           <div style={{textAlign:"center",marginBottom:32}}>
             <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#C16140",marginBottom:12}}>Free estimate — no account required</div>
             <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>What will your project return?</h2>
