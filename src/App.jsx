@@ -1,4 +1,4 @@
-// Steadwell v314 — 2026-10-05
+// Steadwell v315 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9796,60 +9796,131 @@ const PROJECT_STATUS_STYLE = {
   "On Hold":     {bg:"var(--cream2)",      text:"#7A7370",      border:"var(--stone)"},
 };
 
-// ─── PROJECT PHOTO SLOT ───────────────────────────────────────────────────────
-// A compact upload slot for before/during/after project photos
-function ProjectPhotoSlot({ label, emoji, userId, projectId, fieldKey, currentUrl, onUploaded }) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const inputRef = useRef(null);
+// ─── PROJECT PHOTOS ───────────────────────────────────────────────────────────
+// A project keeps any number of photos per stage (before / in progress / after) in `photos`, a list of {url, kind}.
+// The old single-photo columns (photo_before, photo_progress, photo_after) are kept in step with the FIRST photo of each
+// stage, so older screens, reports and saved projects keep working. A project that has never been edited since this
+// feature has `photos` = null and is read from the old columns.
+const PROJECT_PHOTO_KINDS = [
+  { kind: "before",   legacy: "photo_before",   label: "Before",      short: "Before", emoji: "📷" },
+  { kind: "progress", legacy: "photo_progress", label: "In progress", short: "During", emoji: "🔨" },
+  { kind: "after",    legacy: "photo_after",    label: "After",       short: "After",  emoji: "✅" },
+];
+const PROJECT_PHOTO_MAX = 8;   // per stage
+function projectPhotoList(p) {
+  if (!p) return [];
+  if (Array.isArray(p.photos)) {   // grouped by stage (before, in progress, after); photos keep the order they were added within a stage
+    const ok = p.photos.filter(x => x && typeof x.url === "string" && x.url && PROJECT_PHOTO_KINDS.some(k => k.kind === x.kind));
+    return PROJECT_PHOTO_KINDS.flatMap(k => ok.filter(x => x.kind === k.kind));
+  }
+  return PROJECT_PHOTO_KINDS.map(k => ({ url: k.kind === "before" ? (p.photo_before || p.photo_url) : p[k.legacy], kind: k.kind })).filter(x => x.url);
+}
+const projectPhotosOf = (list, kind) => list.filter(x => x.kind === kind);
+function projectPhotoFields(list) {
+  const first = kind => projectPhotosOf(list, kind)[0]?.url || "";
+  return { photos: list, photo_before: first("before"), photo_progress: first("progress"), photo_after: first("after"), photo_url: "" };
+}
+const projectPhotoLabel = kind => PROJECT_PHOTO_KINDS.find(k => k.kind === kind)?.short || "";
+// A short, balanced preview: the first photo of each stage, then the rest in order.
+function projectPhotoPreview(list, max) {
+  const firsts = PROJECT_PHOTO_KINDS.map(k => projectPhotosOf(list, k.kind)[0]).filter(Boolean);
+  const rest = list.filter(x => !firsts.includes(x));
+  const shown = [...firsts, ...rest].slice(0, max);
+  const order = new Map(list.map((x, i) => [x, i]));
+  shown.sort((a, b) => PROJECT_PHOTO_KINDS.findIndex(k => k.kind === a.kind) - PROJECT_PHOTO_KINDS.findIndex(k => k.kind === b.kind) || order.get(a) - order.get(b));
+  return { shown, more: Math.max(0, list.length - shown.length) };
+}
 
-  const handleFile = async (picked) => {
-    if (!picked) return;
-    let file = picked;
-    try { file = await prepareImageFile(picked); }
-    catch (err) { setError("Could not read that Apple photo - try a JPEG"); return; }
-    if (!file.type.startsWith("image/")) { setError("Images only"); return; }
-    if (file.size > 20 * 1024 * 1024) { setError("Max 20MB"); return; }
-    setError("");
-    setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${userId}/project-${projectId||"new"}-${fieldKey}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("expense-files")
-      .upload(path, file, { upsert: true, contentType: file.type });
-    if (upErr) { setError("Upload failed"); setUploading(false); return; }
-    const { data } = supabase.storage.from("expense-files").getPublicUrl(path);
-    onUploaded(data.publicUrl + "?t=" + Date.now());
-    setUploading(false);
+// Add photos from the library or the camera, several at a time, to each stage of a project.
+function ProjectPhotosEditor({ data, onChange, userId, status }) {
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const sessionAdded = useRef(new Set());
+  const inputs = useRef({});
+  const [busyKind, setBusyKind] = useState(null);
+  const [msg, setMsg] = useState("");
+  const list = projectPhotoList(data);
+  const visible = PROJECT_PHOTO_KINDS.filter(k =>
+    projectPhotosOf(list, k.kind).length > 0 || k.kind === "before" ||
+    (k.kind === "progress" && status !== "Planning") || (k.kind === "after" && status !== "Planning" && status !== "In Progress"));
+
+  const commit = (next, removedUrl) => {
+    const cur = dataRef.current;
+    const removed = removedUrl && !sessionAdded.current.has(removedUrl) ? [...(cur._removedPhotos || []), removedUrl] : (cur._removedPhotos || []);
+    onChange({ ...cur, ...projectPhotoFields(next), _removedPhotos: removed });
   };
 
-  const handleRemove = async () => {
-    if (!currentUrl) return;
-    const path = storagePathFromUrl(currentUrl);
-    if (path) await supabase.storage.from("expense-files").remove([path]);
-    onUploaded("");
+  const addFiles = async (kind, fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const have = projectPhotosOf(projectPhotoList(dataRef.current), kind).length;
+    const room = PROJECT_PHOTO_MAX - have;
+    if (room <= 0) { setMsg(`Up to ${PROJECT_PHOTO_MAX} photos per stage.`); return; }
+    const take = files.slice(0, room);
+    setMsg("");
+    setBusyKind(kind);
+    const added = [];
+    let failure = "";
+    for (let i = 0; i < take.length; i++) {
+      try {
+        if (take[i].size > 25 * 1024 * 1024) throw new Error("A photo is over 25MB.");
+        const blob = await compressPhoto(take[i]);
+        const path = `${userId}/project-${dataRef.current.id || "new"}-${kind}-${Date.now()}-${i}.jpg`;
+        const { error: upErr } = await supabase.storage.from("expense-files").upload(path, blob, { contentType: "image/jpeg" });
+        if (upErr) throw new Error("Upload failed. Check your connection and try again.");
+        const { data: pub } = supabase.storage.from("expense-files").getPublicUrl(path);
+        const url = pub.publicUrl + "?t=" + Date.now();
+        sessionAdded.current.add(url);
+        added.push({ url, kind });
+      } catch (e) { failure = e?.message || "Couldn't add that photo."; }
+    }
+    setBusyKind(null);
+    if (added.length) commit([...projectPhotoList(dataRef.current), ...added]);
+    if (failure) setMsg(files.length > take.length ? `${failure} Up to ${PROJECT_PHOTO_MAX} photos per stage.` : failure);
+    else if (files.length > take.length) setMsg(`Added ${take.length}. Up to ${PROJECT_PHOTO_MAX} photos per stage.`);
+  };
+
+  const removeOne = async (photo) => {
+    commit(projectPhotoList(dataRef.current).filter(x => x !== photo), photo.url);
+    if (sessionAdded.current.has(photo.url)) {   // never saved, so nothing else refers to it
+      const path = storagePathFromUrl(photo.url);
+      if (path) supabase.storage.from("expense-files").remove([path]).then(() => {}, () => {});
+    }
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
-      {/* Photo preview or upload target */}
-      {currentUrl ? (
-        <div style={{position:"relative",borderRadius:10,overflow:"hidden",aspectRatio:"1",background:"var(--cream2)"}}>
-          <SImg src={currentUrl} alt={label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-          <button onClick={handleRemove} style={{position:"absolute",top:5,right:5,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:6,width:22,height:22,fontSize:".7rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>✕</button>
-        </div>
-      ) : (
-        <div onClick={()=>inputRef.current?.click()} style={{aspectRatio:"1",border:`2px dashed var(--stone)`,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"var(--cream)",gap:".3rem",transition:"border-color .15s"}}
-          onMouseEnter={e=>e.currentTarget.style.borderColor="var(--pine)"}
-          onMouseLeave={e=>e.currentTarget.style.borderColor="var(--stone)"}>
-          <span style={{fontSize:"1.4rem"}}>{uploading ? "⏳" : emoji}</span>
-          <span style={{fontSize:".68rem",fontWeight:600,color:"#A8A09A"}}>{uploading ? "Uploading…" : "Add photo"}</span>
-        </div>
-      )}
-      <input ref={inputRef} type="file" accept={IMAGE_ACCEPT} capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
-      {/* Label below */}
-      <div style={{textAlign:"center",fontSize:".72rem",fontWeight:700,color:"#6E665D"}}>{label}</div>
-      {error && <div style={{fontSize:".65rem",color:"var(--red)",textAlign:"center"}}>{error}</div>}
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: ".35rem" }}>
+      {visible.map(k => {
+        const mine = projectPhotosOf(list, k.kind);
+        const full = mine.length >= PROJECT_PHOTO_MAX;
+        return (
+          <div key={k.kind}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: ".5rem", marginBottom: ".4rem" }}>
+              <span style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--dark)" }}>{k.emoji} {k.label}</span>
+              <span style={{ fontSize: ".74rem", color: "#6E665D" }}>{mine.length === 0 ? "No photos yet" : `${mine.length} photo${mine.length === 1 ? "" : "s"}`}</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(88px,1fr))", gap: ".5rem" }}>
+              {mine.map((ph, idx) => (
+                <div key={ph.url} style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "1", background: "var(--cream2)" }}>
+                  <SImg src={ph.url} alt={`${k.label} photo ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <button type="button" onClick={() => removeOne(ph)} aria-label={`Remove ${k.label} photo ${idx + 1}`}
+                    style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 8, width: 28, height: 28, fontSize: ".75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                </div>
+              ))}
+              {!full && (
+                <button type="button" disabled={busyKind === k.kind} onClick={() => inputs.current[k.kind]?.click()}
+                  style={{ aspectRatio: "1", border: "2px dashed var(--stone)", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: ".25rem", cursor: busyKind === k.kind ? "default" : "pointer", background: "var(--cream)", fontFamily: "inherit", padding: ".4rem" }}>
+                  <span style={{ fontSize: "1.3rem" }} aria-hidden="true">{busyKind === k.kind ? "⏳" : "＋"}</span>
+                  <span style={{ fontSize: ".72rem", fontWeight: 700, color: "#6E665D", textAlign: "center", lineHeight: 1.2 }}>{busyKind === k.kind ? "Adding…" : mine.length ? "Add more" : "Add photos"}</span>
+                </button>
+              )}
+            </div>
+            <input ref={el => { inputs.current[k.kind] = el; }} type="file" accept={IMAGE_ACCEPT} multiple style={{ display: "none" }}
+              onChange={e => { const fl = e.target.files; addFiles(k.kind, fl).finally(() => { try { e.target.value = ""; } catch { /* input already gone */ } }); }} />
+          </div>
+        );
+      })}
+      {msg && <div role="status" style={{ fontSize: ".78rem", color: "#B0432B" }}>{msg}</div>}
     </div>
   );
 }
@@ -9864,12 +9935,6 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
   const hasRoiBasis = !!roiInfo && (!!activeScope || !roiInfo.scopes);   // scope chosen, or a type that has no scopes
   const regionalMult = roiData ? getRegionalMultiplier(roiData, data.roi_category, propertyAddress) : 1.0;
 
-  // Which photo slots to show based on status
-  const slots = [
-    { key:"photo_before",   label:"Before",      emoji:"📷", always:true },
-    { key:"photo_progress", label:"In progress",  emoji:"🔨", hide: status==="Planning" },
-    { key:"photo_after",    label:"After",        emoji:"✅", hide: status==="Planning" || status==="In Progress" },
-  ].filter(s => !s.hide);
 
   const fmt = n => "$"+Number(n).toLocaleString();
 
@@ -10036,24 +10101,11 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       {/* Before / During / After photo slots */}
       <div className="field s2">
         <label>Project Photos</label>
-        <div style={{display:"grid",gridTemplateColumns:`repeat(${slots.length},1fr)`,gap:".6rem",marginTop:".25rem"}}>
-          {slots.map(slot => (
-            <ProjectPhotoSlot
-              key={slot.key}
-              label={slot.label}
-              emoji={slot.emoji}
-              userId={userId}
-              projectId={data.id}
-              fieldKey={slot.key}
-              currentUrl={data[slot.key] || (slot.key === "photo_before" ? data.photo_url || "" : "")}
-              onUploaded={url => f(slot.key, url)}
-            />
-          ))}
-        </div>
-        <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:".5rem"}}>
-          {status==="Planning" ? "Add a Before photo now — come back to add progress and after shots as work proceeds." :
-           status==="In Progress" ? "Document progress as work happens. Add an After photo when complete." :
-           "Before, during, and after photos tell the full story of your project."}
+        <ProjectPhotosEditor data={data} onChange={onChange} userId={userId} status={status}/>
+        <div style={{fontSize:".72rem",color:"#6E665D",marginTop:".6rem",lineHeight:1.5}}>
+          {status==="Planning" ? "Add Before photos now. Come back to add progress and after shots as work proceeds." :
+           status==="In Progress" ? "Document progress as work happens. Add After photos when it's done." :
+           "Add several angles of each stage. Choose photos from your library or take new ones."}
         </div>
       </div>
     </div>
@@ -16285,9 +16337,12 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
-  const beforeUrl = p.photo_before || p.photo_url;
-  const afterUrl = p.photo_after;
-  const progressUrl = p.photo_progress;
+  // up to 3 angles of the before and after, and 2 of the work in progress (more photos make the comparison fairer)
+  const photoList = projectPhotoList(p);
+  const beforeUrls = projectPhotosOf(photoList, "before").slice(0, 3).map(x => x.url);
+  const afterUrls = projectPhotosOf(photoList, "after").slice(0, 3).map(x => x.url);
+  const progressUrls = projectPhotosOf(photoList, "progress").slice(0, 2).map(x => x.url);
+  const beforeUrl = beforeUrls[0], afterUrl = afterUrls[0];
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("project_ai_reviews").select("*").eq("project_id", p.id).order("created_at", { ascending: false }).limit(10);
@@ -16315,13 +16370,16 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
     const stamp = Date.now();
     const paths = {};
     try {
-      const slots = [["before", beforeUrl], ["after", afterUrl], ...(progressUrl ? [["progress", progressUrl]] : [])];
-      for (const [k, url] of slots) {
-        const blob = await grab(url);
-        const path = `${userId}/projreview/${p.id}/${k}-${stamp}.jpg`;
-        const { error } = await supabase.storage.from("expense-files").upload(path, blob, { contentType: "image/jpeg", upsert: true });
-        if (error) throw new Error("upload");
-        paths[k] = path;
+      const slots = [["before", beforeUrls], ["after", afterUrls], ...(progressUrls.length ? [["progress", progressUrls]] : [])];
+      for (const [k, urls] of slots) {
+        paths[k] = [];
+        for (let i = 0; i < urls.length; i++) {
+          const blob = await grab(urls[i]);
+          const path = `${userId}/projreview/${p.id}/${k}-${stamp}-${i + 1}.jpg`;
+          const { error } = await supabase.storage.from("expense-files").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+          if (error) throw new Error("upload");
+          paths[k].push(path);
+        }
       }
     } catch {
       if (!alive.current) return;
@@ -16475,10 +16533,10 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
       {(intro || (open && !pending)) && (
         <div style={{ padding: intro ? "0 1rem 1rem" : "0 1rem 1rem", borderTop: viewRow ? "1px solid var(--cream2)" : "none", paddingTop: viewRow ? ".9rem" : 0 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".6rem", marginBottom: ".8rem" }}>
-            {[["Before", beforeUrl], ["After", afterUrl]].map(([label, url]) => (
+            {[["Before", beforeUrl, beforeUrls.length], ["After", afterUrl, afterUrls.length]].map(([label, url, n]) => (
               <div key={label} style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", background: "var(--cream2)" }}>
                 <SImg src={url} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                <span style={{ position: "absolute", left: 6, bottom: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: ".7rem", fontWeight: 700, padding: "2px 8px", borderRadius: 5 }}>{label}</span>
+                <span style={{ position: "absolute", left: 6, bottom: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: ".7rem", fontWeight: 700, padding: "2px 8px", borderRadius: 5 }}>{label}{n > 1 ? ` · ${n} photos` : ""}</span>
               </div>
             ))}
           </div>
@@ -16606,7 +16664,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   // ── Project CRUD
-  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after","roi_category","roi_scope","roi_diy","roi_ai_multiplier","roi_ai_review_id"];
+  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after","photos","roi_category","roi_scope","roi_diy","roi_ai_multiplier","roi_ai_review_id"];
   const pickProject = (d) => Object.fromEntries(PROJECT_FIELDS.filter(f => f in d && d[f] !== undefined).map(f => [f, d[f] ?? null]));
 
   const openNewProject = () => { setProjectEditData({status:"Planning",start_date:localISO()}); setProjectEditId(null); setProjectModal(true); };
@@ -16627,6 +16685,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       if(!error&&data?.[0]) { setProjects([...projects,data[0]]); toast("Project created ✓"); }
       else { toast("Error creating — "+(error?.message||"unknown error"),"error"); return; }
     }
+    // photos the person removed from a saved project are deleted from storage only once the change is saved
+    const gone = (projectEditData._removedPhotos || []).map(storagePathFromUrl).filter(Boolean);
+    if (gone.length) supabase.storage.from("expense-files").remove(gone).then(() => {}, () => {});
     setProjectModal(false);
   };
 
@@ -17113,11 +17174,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             const CIRC   = 201;
             const dashArr = pct != null ? `${Math.round((pct/100)*CIRC)} ${CIRC - Math.round((pct/100)*CIRC)}` : `0 ${CIRC}`;
             const ringColor = isOver ? "#B0432B" : pct != null && pct > 80 ? "#D9A93E" : "#3E7D5A";
-            const photos = [
-              { url: p.photo_before || p.photo_url, label:"Before" },
-              { url: p.photo_progress, label:"During" },
-              { url: p.photo_after,    label:"After"  },
-            ].filter(ph => ph.url);
+            const photos = projectPhotoList(p).map(ph => ({ url: ph.url, label: projectPhotoLabel(ph.kind) }));
             // Category breakdown for this project
             const byCat = {};
             projExpenses.forEach(e => { if(e.category) { byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0); }});
@@ -17188,7 +17245,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         <div style={{display:"flex",alignItems:"center",gap:".55rem",padding:".9rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
                           <span style={{fontSize:"1rem"}}>📸</span>
                           <span style={{fontSize:"1rem",fontWeight:700,flex:1}}>Project photos</span>
-                          <span style={{fontSize:".78rem",color:"#6E665D",fontWeight:600}}>{photos.length} of 3</span>
+                          <span style={{fontSize:".78rem",color:"#6E665D",fontWeight:600}}>{photos.length} photo{photos.length===1?"":"s"}</span>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(photos.length,3)},1fr)`,gap:2}}>
                           {photos.map((ph,i) => (
@@ -17198,11 +17255,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                             </div>
                           ))}
                         </div>
-                        {photos.length < 3 && (
-                          <button onClick={()=>openEditProject(p)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".82rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",background:"none",border:"none",width:"100%",fontFamily:"inherit"}}>
-                            + Add {["Before","During","After"].filter(l => !photos.find(ph => ph.label===l))[0]} photo
-                          </button>
-                        )}
+                        <button onClick={()=>openEditProject(p)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:".4rem",padding:".7rem 1rem",borderTop:"1px solid var(--cream2)",fontSize:".82rem",fontWeight:700,color:"var(--pine)",cursor:"pointer",background:"none",border:"none",width:"100%",fontFamily:"inherit"}}>
+                          + Add photos
+                        </button>
                       </div>
                     )}
                     {photos.length === 0 && (
@@ -17278,7 +17333,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
 
                     {/* AI before/after review — completed projects with a type, both photos, and a paid plan */}
                     {(planData?.plan === "plus" || planData?.plan === "pro") && p.roi_category && roiData?.categories[p.roi_category]?.roi != null && spent > 0 && p.status === "Completed" && (
-                      (p.photo_before || p.photo_url) && p.photo_after ? (
+                      projectPhotosOf(projectPhotoList(p), "before").length > 0 && projectPhotosOf(projectPhotoList(p), "after").length > 0 ? (
                         <ProjectAIReview key={p.id} project={p} roiData={roiData} homeValue={homeValue} propertyAddress={propertyAddress} spent={spent} userId={userId} toast={toast}
                           onApplied={(id, patch)=>setProjects(projects.map(x=>x.id===id?{...x,...patch}:x))}/>
                       ) : (
@@ -17493,11 +17548,9 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     const CIRC=201;
                     const dashArr=pct!=null?`${Math.round((pct/100)*CIRC)} ${CIRC-Math.round((pct/100)*CIRC)}`:`0 ${CIRC}`;
                     const ringColor=isOver?"#B0432B":pct!=null&&pct>80?"#D9A93E":"#3E7D5A";
-                    const photos=[
-                      {url:p.photo_before||p.photo_url,label:"Before"},
-                      {url:p.photo_progress,label:"During"},
-                      {url:p.photo_after,label:"After"},
-                    ].filter(ph=>ph.url);
+                    const photoAll=projectPhotoList(p);
+                    const photoPrev=projectPhotoPreview(photoAll,3);
+                    const photos=photoPrev.shown.map(ph=>({url:ph.url,label:projectPhotoLabel(ph.kind)}));
 
                     return (
                       <div key={p.id} onClick={()=>setSelectedProject(p.id)} style={{margin:"0 1rem 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",overflow:"hidden",borderTop:`3px solid ${sc.edge}`,cursor:"pointer",transition:"box-shadow .15s"}}
@@ -17527,6 +17580,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                               <div key={i} style={{position:"relative",cursor:"pointer"}} onClick={()=>setLightbox(ph.url)}>
                                 <SImg src={ph.url} alt={ph.label} style={{width:"100%",height:80,objectFit:"cover",display:"block"}}/>
                                 <span style={{position:"absolute",bottom:4,left:5,background:"rgba(0,0,0,.55)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 6px",borderRadius:4}}>{ph.label}</span>
+                                {photoPrev.more>0&&i===photos.length-1&&<span style={{position:"absolute",top:4,right:5,background:"rgba(0,0,0,.65)",color:"#fff",fontSize:".62rem",fontWeight:700,padding:"2px 6px",borderRadius:4}}>+{photoPrev.more} more</span>}
                               </div>
                             ))}
                           </div>
