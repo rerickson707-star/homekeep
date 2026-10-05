@@ -179,15 +179,27 @@ async function callClaude(body: Row): Promise<Row> {
 }
 
 const oneOf = <T extends string>(v: unknown, list: readonly T[], d: T): T => (list as readonly string[]).includes(String(v)) ? (v as T) : d;
-const score15 = (v: unknown) => { const n = Math.round(Number(v)); return n >= 1 && n <= 5 ? n : null; };
+// 1-5, also accepting "3", "3 - acceptable" or 3.0
+const score15 = (v: unknown) => {
+  let n = Math.round(Number(v));
+  if (!Number.isFinite(n) && typeof v === "string") { const m = v.match(/[1-5]/); n = m ? Number(m[0]) : NaN; }
+  return n >= 1 && n <= 5 ? n : null;
+};
+// Models sometimes hand back a nested object or list as a JSON string; read it either way.
+const unwrap = (v: unknown): any => { if (typeof v === "string") { try { return JSON.parse(v); } catch { return v; } } return v; };
 
 // Clean up whatever the model returned so only well-formed, bounded values are stored and shown.
-export function sanitize(inp: Row, scopeKeys: string[]) {
+export function sanitize(raw: Row, scopeKeys: string[]) {
+  const inp: Row = { ...raw };
+  for (const k of ["before", "after", "workmanship_issues", "changes", "missing_views"]) inp[k] = unwrap(inp[k]);
+  for (const k of ["before", "after"]) if (inp[k] && typeof inp[k] === "object") inp[k] = { ...inp[k], features: unwrap(inp[k].features) };
   const side = (s: Row) => ({
     condition: score15(s?.condition), summary: clip(s?.summary, 240),
     features: (Array.isArray(s?.features) ? s.features : []).slice(0, 6).map((x: unknown) => clip(x, 70)).filter(Boolean),
   });
   const before = side(inp.before || {}), after = side(inp.after || {});
+  if (before.condition === null) before.condition = score15(inp.before_condition);   // tolerate flattened field names
+  if (after.condition === null) after.condition = score15(inp.after_condition);
   return {
     photos_comparable: inp.photos_comparable !== false,
     work_visible: inp.work_visible !== false,
@@ -373,14 +385,26 @@ export async function handler(req: Request): Promise<Response> {
     const detail = e instanceof AiError ? String(e.message).slice(0, 220) : String(e).slice(0, 160);
     return json({ ok: false, code: "ai_unavailable", detail, error: "The review service is busy right now. Your review wasn't counted; please try again in a moment." }, 502);
   }
-  const tu = findTool(resp);
+  let tu = findTool(resp);
   if (!tu?.input) { await refund(); return json({ ok: false, code: "ai_unavailable", detail: "no tool result (stop_reason " + String(resp.stop_reason || "?") + ")", error: "No result came back. Your review wasn't counted; please try again." }, 502); }
 
-  const a = sanitize(tu.input, scopeKeys);
+  let a = sanitize(tu.input, scopeKeys);
+  if ((a.before.condition === null || a.after.condition === null) && a.photos_comparable && a.work_visible && a.photo_quality !== "poor") {
+    // the answer came back without usable 1-5 condition scores: ask once more, spelling out what is missing
+    console.error("project review: scores missing, retrying", JSON.stringify(tu.input).slice(0, 1200));
+    try {
+      messages.push({ role: "assistant", content: resp.content });
+      messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: tu.id, is_error: true, content: "before.condition and after.condition must each be a whole number from 1 to 5 (" + CONDITION_SCALE + "). Call submit_project_review again with complete values." }] });
+      const resp2 = await callClaude({ model: MODEL, max_tokens: MAX_OUT_TOKENS, system, tools: [tool], tool_choice: { type: "tool", name: tool.name }, messages });
+      tin += resp2.usage?.input_tokens ?? 0; tout += resp2.usage?.output_tokens ?? 0;
+      const tu2 = findTool(resp2);
+      if (tu2?.input) { tu = tu2; a = sanitize(tu2.input, scopeKeys); }
+    } catch (e) { console.error("project review retry failed", String(e).slice(0, 200)); }
+  }
   if (!a.photos_comparable || !a.work_visible || a.photo_quality === "poor" || a.before.condition === null || a.after.condition === null) {
     await refund();
     const reason = !a.photos_comparable ? "not_comparable" : !a.work_visible ? "work_not_visible" : a.photo_quality === "poor" ? "poor_quality" : "no_scores";
-    console.error("project review rejected", JSON.stringify({ reason, photos_comparable: a.photos_comparable, work_visible: a.work_visible, photo_quality: a.photo_quality, before: a.before.condition, after: a.after.condition, summary: a.summary }));
+    console.error("project review rejected", JSON.stringify({ reason, tool_input_start: JSON.stringify(tu.input).slice(0, 600), photos_comparable: a.photos_comparable, work_visible: a.work_visible, photo_quality: a.photo_quality, before: a.before.condition, after: a.after.condition, summary: a.summary }));
     const why = !a.photos_comparable ? "The before and after photos don't seem to show the same area."
       : !a.work_visible ? "The after photo doesn't show the finished work."
       : a.photo_quality === "poor" ? "The photos were too unclear to compare."
