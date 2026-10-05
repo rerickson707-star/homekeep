@@ -130,7 +130,7 @@ RULES
 - Judge ONLY what the photos show, plus the record provided. Never invent materials, brands or work you cannot see.
 - There may be several photos of the same stage (different angles). Use them together; one photo of the same area is not a reason for low confidence.
 - If the record's status is not "Completed", the AFTER photos show the work so far. Judge only what is visible now, do not call the project "less" than described just because work remains, and lower your confidence a little.
-- Before and after photos often differ in angle, lighting and clutter. Compare the same area. If they clearly show different spaces or items, set photos_comparable = false. If the after photo does not show finished work, set work_visible = false.
+- Before and after photos often differ in angle, lighting and clutter, and a remodel can change almost everything you can see (cabinets, counters, backsplash, flooring, paint). Do NOT conclude the photos show different spaces because the finishes changed. Look for things that stay put: windows, doors, ceiling, room shape, where the sink, stove or fixtures sit. Treat the photos as comparable unless they are clearly different rooms or different parts of the home, and set photos_comparable = false only in that case. If the after photo does not show finished work, set work_visible = false.
 - delivered_vs_claimed compares what is visible with the chosen scope's description: "less" if clearly less than described (for example only paint where a full remodel is described), "more" if clearly more, otherwise "as_described". When you cannot tell, use "as_described" and lower your confidence.
 - finish_level is about the AFTER photo only. Do not call something high_end unless the materials clearly are.
 - workmanship_issues: only clear, visible defects. Never guess about hidden work. An empty list is the normal answer.
@@ -379,11 +379,13 @@ export async function handler(req: Request): Promise<Response> {
   const a = sanitize(tu.input, scopeKeys);
   if (!a.photos_comparable || !a.work_visible || a.photo_quality === "poor" || a.before.condition === null || a.after.condition === null) {
     await refund();
+    const reason = !a.photos_comparable ? "not_comparable" : !a.work_visible ? "work_not_visible" : a.photo_quality === "poor" ? "poor_quality" : "no_scores";
+    console.error("project review rejected", JSON.stringify({ reason, photos_comparable: a.photos_comparable, work_visible: a.work_visible, photo_quality: a.photo_quality, before: a.before.condition, after: a.after.condition, summary: a.summary }));
     const why = !a.photos_comparable ? "The before and after photos don't seem to show the same area."
       : !a.work_visible ? "The after photo doesn't show the finished work."
       : a.photo_quality === "poor" ? "The photos were too unclear to compare."
       : "The photos couldn't be compared.";
-    return json({ ok: false, code: "unclear_photos", error: `${why} No estimate was made and your review wasn't counted.`, missing_views: a.missing_views, summary: a.summary }, 422);
+    return json({ ok: false, code: "unclear_photos", reason, error: `${why} No estimate was made and your review wasn't counted.`, missing_views: a.missing_views, summary: a.summary }, 422);
   }
 
   const m = deriveMultiplier(a);
