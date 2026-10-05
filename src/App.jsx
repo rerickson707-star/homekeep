@@ -1,5 +1,5 @@
-// Steadwell v311 — 2026-10-02
-import { useState, useEffect, useRef, useMemo, Component } from "react";
+// Steadwell v312 — 2026-10-03
+import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 
@@ -9651,67 +9651,136 @@ function fmtSigned$(n) {
   return (n < 0 ? "-$" : "$") + abs.toLocaleString();
 }
 
-// Computes the ROI estimate accounting for: whether the work is DIY or contractor,
-// how far the actual/budgeted spend deviates from the category's typical cost, and
-// a regional multiplier if one has been verified for this category/region.
-//
-// Why this matters: published ROI% is calculated against the FULL contractor-installed
-// cost (labor + materials). A finished garage door is worth the same to a buyer whether
-// you installed it yourself or paid a pro — so DIY doesn't reduce the value added, it
-// just reduces what you spent to get there. We model this by treating "value added" as
-// anchored to the category's typical finished-result value, while DIY cost basis uses
-// the separately-estimated diyCost range for that scope.
-//
-// Scope deviation: the published ROI is itself an average across small and large jobs
-// in that category. A spend far outside the typical range is less reliable to project
-// from — we flag this with a confidence note rather than silently extrapolating.
-function computeProjectROI(categories, categoryKey, actualSpend, isDIY, scopeKey, regionalMultiplier = 1.0) {
+// ─── PROJECT ROI ENGINE (v312) ────────────────────────────────────────────────
+// The published Cost vs. Value % compares what a TYPICAL job cost with what it added at resale. This engine
+// applies that % to what the person actually spent, then adjusts for four things the plain percentage ignores:
+//   1. Size of the job. Value scales with spend (a $5k kitchen is not a $30k kitchen with a better ratio).
+//   2. Spend above the scope's typical top returns less per dollar (bigger/fancier than the report's typical job).
+//   3. Home price. One project that is a large share of the home's value hits the "comp ceiling": buyers price a
+//      home against its neighbours, so the extra dollars return less. Needs the home's estimated value.
+//   4. Who did the work. DIY spend is materials only; the finished work is valued as a contractor job.
+// Optionally multiplied by an AI before/after adjustment (bounded 0.70x - 1.25x, see project-roi-review).
+// Items 2 and 3 use fixed assumptions, listed below and shown in plain words to the person -- they are
+// documented heuristics, not figures from the report.
+// Tunable assumptions (NOT published figures -- documented heuristics, see the audit notes):
+//   ROI_TAIL       share of the usual return that still applies to money spent ABOVE the top of the
+//                  scope's typical cost range (bigger/fancier than the report's typical job).
+//   ROI_COMP_*     "comp ceiling": once one project's market cost passes this share of the home's value,
+//                  each extra dollar returns less, because buyers price a home against its neighbours.
+const ROI_TAIL = 0.35;
+const ROI_TAIL_CAP = 0.25;   // dollars past the typical top never return more than this per dollar, however high the published %
+const ROI_COMP = [ { share: 0.12, f: 0.5 }, { share: 0.25, f: 0.25 } ];
+const ROI_AI_MIN = 0.7, ROI_AI_MAX = 1.25;
+
+// Area under a stepped marginal-return curve: 1.0 up to the first break, then multiplied down at each break.
+function roiCurve(M, breaks) {
+  const pts = breaks.filter(b => b.at > 0 && Number.isFinite(b.at)).sort((a, b) => a.at - b.at);
+  let prev = 0, mult = 1, total = 0;
+  for (const p of pts) {
+    if (M <= p.at) break;
+    total += (p.at - prev) * mult; prev = p.at; mult *= p.f;
+  }
+  return total + Math.max(0, M - prev) * mult;
+}
+
+// Which scope's typical cost range a given market cost falls in (null when no scopes or only one).
+function suggestRoiScope(info, marketCost) {
+  const scopes = info?.scopes;
+  if (!scopes || scopes.length < 2 || !(marketCost > 0)) return null;
+  const hit = scopes.find(s => marketCost >= s.contractorCost[0] * 0.85 && marketCost <= s.contractorCost[1] * 1.15);
+  if (hit) return hit;
+  let best = null, bd = Infinity;
+  for (const s of scopes) {
+    const mid = (s.contractorCost[0] + s.contractorCost[1]) / 2;
+    const d = Math.abs(Math.log(marketCost / mid));
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
+}
+
+function computeProjectROI(categories, categoryKey, actualSpend, isDIY, scopeKey, regionalMultiplier = 1.0, ctx = {}) {
   const info = categories?.[categoryKey];
   if (!info || info.roi === null) return null;
 
   const scope = info.scopes?.find(s => s.key === scopeKey) || null;
   const baseRoi = scope ? scope.roi : info.roi;
   const roi = Math.round(baseRoi * regionalMultiplier);
+  const r = roi / 100;
 
-  // Value added is anchored to the typical CONTRACTOR cost for this scope —
-  // because that's what the Cost vs. Value ROI% was measured against.
-  // A finished bathroom is worth the same to a buyer regardless of who installed it.
-  const contractorMidpoint = scope?.contractorCost
-    ? Math.round((scope.contractorCost[0] + scope.contractorCost[1]) / 2)
-    : info.avgCost;
+  // The cost basis the published % was measured on: the contractor-installed typical job.
+  const lo = scope?.contractorCost ? scope.contractorCost[0] : info.avgCost * 0.6;
+  const hi = scope?.contractorCost ? scope.contractorCost[1] : info.avgCost * 1.6;
+  const contractorMid = Math.round((lo + hi) / 2);
+  const diyMid = scope?.diyCost ? Math.round((scope.diyCost[0] + scope.diyCost[1]) / 2) : null;
 
-  // Value added is the same whether DIY or contractor
-  const valueAdded = Math.round(contractorMidpoint * (roi / 100));
-
-  // What the user actually spends depends on DIY vs contractor
-  const diyMidpoint = scope?.diyCost
-    ? Math.round((scope.diyCost[0] + scope.diyCost[1]) / 2)
-    : null;
-
-  const defaultSpend = isDIY && diyMidpoint ? diyMidpoint : contractorMidpoint;
+  const defaultSpend = isDIY && diyMid ? diyMid : contractorMid;
   const spend = Number(actualSpend) > 0 ? Number(actualSpend) : defaultSpend;
+
+  // What a buyer would see: the finished work priced as if a contractor did it.
+  // DIY spend is materials only, so scale it up by the typical contractor-to-DIY ratio for this scope.
+  const diyScale = isDIY && diyMid && contractorMid ? Math.min(3, Math.max(1, contractorMid / diyMid)) : 1;
+  const marketCost = spend * diyScale;
+
+  const home = Number(ctx.homeValue) > 0 ? Number(ctx.homeValue) : 0;
+  const tailF = r > 0 ? Math.min(ROI_TAIL, ROI_TAIL_CAP / r) : ROI_TAIL;
+  const breaks = [{ at: hi, f: tailF }];
+  if (home > 0) for (const c of ROI_COMP) breaks.push({ at: home * c.share, f: c.f });
+
+  const baseValue = r * roiCurve(marketCost, breaks);
+  const aiMult = Number(ctx.aiMultiplier) > 0 ? Math.min(ROI_AI_MAX, Math.max(ROI_AI_MIN, Number(ctx.aiMultiplier))) : 1;
+  const valueAdded = Math.round(baseValue * aiMult);
 
   const netCost = spend - valueAdded;
   const effectiveROI = spend > 0 ? Math.round((valueAdded / spend) * 100) : roi;
 
-  const refCost = contractorMidpoint || info.avgCost;
-  const deviationRatio = refCost ? spend / refCost : 1;
+  const deviationRatio = contractorMid ? marketCost / contractorMid : 1;
   const lowConfidence = !scope && (deviationRatio < 0.4 || deviationRatio > 2.5);
+  const aboveTypical = marketCost > hi * 1.05;
+  const belowTypical = marketCost < lo * 0.5;
+  const compShare = home > 0 ? marketCost / home : null;
+  const ceilingHit = home > 0 && marketCost > home * ROI_COMP[0].share;
+  const suggested = suggestRoiScope(info, marketCost);
+  const scopeMismatch = suggested && scope && suggested.key !== scope.key ? suggested : null;
 
   return {
-    spend,
-    valueAdded,
-    netCost,
-    effectiveROI,
-    publishedROI: roi,
-    baseRoi,
-    regionalMultiplier,
-    isDIY,
-    lowConfidence,
-    dataConfidence: scope?.confidence || info.confidence,
-    isCVRTracked: info.isCVRTracked,
-    scope,
+    spend, marketCost: Math.round(marketCost), valueAdded, netCost, effectiveROI,
+    publishedROI: roi, baseRoi, regionalMultiplier, isDIY, lowConfidence,
+    dataConfidence: scope?.confidence || info.confidence, isCVRTracked: info.isCVRTracked, scope,
+    aiMultiplier: aiMult !== 1 ? aiMult : null,
+    aboveTypical, belowTypical, ceilingHit, compShare, scopeMismatch,
+    typicalRange: [Math.round(lo), Math.round(hi)],
   };
+}
+
+// Plain-words explanation of what the engine did beyond the published percentage.
+function roiNotesFor(calc, homeValue) {
+  if (!calc) return [];
+  const d = v => "$" + Math.round(v).toLocaleString();
+  const out = [];
+  if (calc.scopeMismatch) {
+    const s = calc.scopeMismatch;
+    out.push({ key: "scope", text: `Your cost looks closer to "${s.label}" (typically ${d(s.contractorCost[0])} to ${d(s.contractorCost[1])}).`, scope: s.key });
+  }
+  if (calc.aboveTypical) out.push({ key: "above", text: `That is above the typical ${d(calc.typicalRange[0])} to ${d(calc.typicalRange[1])} for this scope. Dollars past ${d(calc.typicalRange[1])} return much less than the national figure.` });
+  else if (calc.belowTypical) out.push({ key: "below", text: "This is smaller than a typical job, so the value added is scaled down to match." });
+  if (calc.ceilingHit) out.push({ key: "ceiling", text: `This project is about ${Math.round(calc.compShare * 100)}% of your home's estimated value. Buyers price a home against its neighbours, so returns taper off above roughly ${Math.round(ROI_COMP[0].share * 100)}%.` });
+  else if (!(homeValue > 0)) out.push({ key: "nohome", text: "Add your home's estimated value in My Home to check this against a price ceiling.", subtle: true });
+  if (calc.aiMultiplier) out.push({ key: "ai", text: `Adjusted ${calc.aiMultiplier > 1 ? "up" : "down"} ${Math.abs(Math.round((calc.aiMultiplier - 1) * 100))}% based on your before and after photos.` });
+  return out;
+}
+function RoiNotes({ calc, homeValue, onSwitchScope }) {
+  const items = roiNotesFor(calc, homeValue);
+  if (!items.length) return null;
+  return (
+    <ul style={{listStyle:"none",margin:".65rem 0 0",padding:".6rem 0 0",borderTop:"1px solid rgba(255,255,255,.1)",display:"flex",flexDirection:"column",gap:".4rem"}}>
+      {items.map(it => (
+        <li key={it.key} style={{fontSize:".74rem",lineHeight:1.5,color:it.subtle?"rgba(244,237,223,.55)":"rgba(244,237,223,.85)",display:"flex",gap:".5rem",alignItems:"baseline"}}>
+          <span aria-hidden="true" style={{color:it.key==="ai"?"#7DCBA1":"#E8A57F"}}>●</span>
+          <span>{it.text}{it.scope && onSwitchScope && <> <button type="button" onClick={()=>onSwitchScope(it.scope)} style={{background:"none",border:"none",padding:0,color:"#F0CE7A",fontWeight:700,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:"inherit"}}>Switch scope</button></>}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 const PROJECT_STATUS_STYLE = {
@@ -9802,7 +9871,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       <div className="field s2"><label>Project Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Kitchen Remodel" /></div>
       <div className="field s2">
         <label>Project Type <span style={{fontWeight:400,color:"#A8A09A"}}>(for cost estimate)</span></label>
-        <select value={data.roi_category||""} onChange={e=>onChange({...data, roi_category:e.target.value, roi_scope:""})} disabled={roiLoading}>
+        <select value={data.roi_category||""} onChange={e=>onChange({...data, roi_category:e.target.value, roi_scope:"", roi_ai_multiplier:null, roi_ai_review_id:null})} disabled={roiLoading}>
           <option value="">{roiLoading ? "Loading project types…" : "Select project type…"}</option>
           {roiData && Object.entries(roiData.categories).map(([key,d])=><option key={key} value={key}>{d.icon} {d.label}</option>)}
         </select>
@@ -9898,7 +9967,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
       )}
       {activeScope && isPaid && (() => {
         const useBudget = Number(data.budget) > 0 ? Number(data.budget) : null;
-        const calc = computeProjectROI(roiData.categories, data.roi_category, useBudget, !!data.roi_diy, data.roi_scope, regionalMult);
+        const calc = computeProjectROI(roiData.categories, data.roi_category, useBudget, !!data.roi_diy, data.roi_scope, regionalMult, { homeValue, aiMultiplier: data.roi_ai_multiplier });
         if (!calc) return null;
         const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
         return (
@@ -9930,6 +9999,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
                 {calc.regionalMultiplier!==1 && ` Adjusted for your region.`}
                 {" "}{calc.isCVRTracked ? PROJECT_ROI_SOURCE_CVR : PROJECT_ROI_SOURCE_EST} Estimate only — not an appraisal.
               </div>
+              <RoiNotes calc={calc} homeValue={homeValue} onSwitchScope={k=>f("roi_scope",k)}/>
               {calc.lowConfidence && (
                 <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
                   ⚠ Your budget is outside the typical range — treat this estimate as a rough guide.
@@ -16170,6 +16240,253 @@ function MonthlySpend({ months, yr }) {
   );
 }
 
+// ─── PROJECT BEFORE/AFTER REVIEW (v312) ───────────────────────────────────────
+// The AI compares the before and after photos and reports what it can see. A fixed formula on the server turns that
+// into a bounded adjustment to the national estimate. The owner decides whether to use it; see project-roi-review.
+const PROJ_REVIEW_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/project-roi-review";
+async function projReviewCall(body) {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) return { status: 401, json: { ok: false, code: "unauthorized" } };
+  const resp = await fetch(PROJ_REVIEW_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: ANON_KEY },
+    body: JSON.stringify(body),
+  });
+  let json = null;
+  try { json = await resp.json(); } catch { /* non-JSON error page */ }
+  return { status: resp.status, json: json || { ok: false, code: "bad_response" } };
+}
+const PR_COND = { 1: "Damaged", 2: "Dated", 3: "Acceptable", 4: "Updated", 5: "Excellent" };
+const PR_FINISH = { basic: "Basic finishes", midrange: "Midrange finishes", high_end: "High-end finishes" };
+const pctSigned = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v * 100)) + "%";
+
+function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spent, userId, onApplied, toast, onEditProject }) {
+  const [rows, setRows] = useState(null);       // review history, newest first
+  const [usage, setUsage] = useState(null);
+  const [phase, setPhase] = useState("idle");   // idle | uploading | analyzing
+  const [err, setErr] = useState(null);
+  const [notes, setNotes] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+
+  const beforeUrl = p.photo_before || p.photo_url;
+  const afterUrl = p.photo_after;
+  const progressUrl = p.photo_progress;
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from("project_ai_reviews").select("*").eq("project_id", p.id).order("created_at", { ascending: false }).limit(10);
+    if (alive.current) setRows(Array.isArray(data) ? data : []);
+  }, [p.id]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (!open || usage) return; projReviewCall({ action: "usage" }).then(r => { if (alive.current && r.json?.ok) setUsage(r.json.usage); }); }, [open, usage]);
+
+  const latest = rows && rows[0] ? rows[0] : null;
+  const hasEstimate = latest && latest.multiplier != null;
+  const statusOf = latest ? latest.status : null;
+  const left = usage ? usage.remaining : null;
+
+  const grab = async (url) => {
+    const path = storagePathFromUrl(url);
+    let blob = null;
+    if (path) { const r = await supabase.storage.from("expense-files").download(path); blob = r?.data || null; }
+    if (!blob) { const u = await getSignedFileUrl(url); if (u) blob = await (await fetch(u)).blob(); }
+    if (!blob) throw new Error("photo");
+    return compressPhoto(new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" }));
+  };
+
+  const run = async () => {
+    setErr(null); setPhase("uploading");
+    const stamp = Date.now();
+    const paths = {};
+    try {
+      const slots = [["before", beforeUrl], ["after", afterUrl], ...(progressUrl ? [["progress", progressUrl]] : [])];
+      for (const [k, url] of slots) {
+        const blob = await grab(url);
+        const path = `${userId}/projreview/${p.id}/${k}-${stamp}.jpg`;
+        const { error } = await supabase.storage.from("expense-files").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+        if (error) throw new Error("upload");
+        paths[k] = path;
+      }
+    } catch {
+      if (!alive.current) return;
+      setPhase("idle"); setErr("Couldn't read your project photos. Check your connection and try again."); return;
+    }
+    if (!alive.current) return;
+    setPhase("analyzing");
+    const { status, json } = await projReviewCall({ action: "review", project_id: p.id, photo_paths: paths, notes: notes.trim(), today: localISO() });
+    if (!alive.current) return;
+    setPhase("idle");
+    if (json?.ok) { setUsage(json.usage || usage); setNotes(""); await load(); return; }
+    if (json?.usage) setUsage(json.usage);
+    if (status === 429 || json?.code === "limit_reached") setErr(`You've used all ${json?.usage?.limit ?? ""} reviews this month${json?.usage?.resets ? ` (resets ${fmtD(json.usage.resets)})` : ""}.`);
+    else setErr(json?.error || "The review didn't finish. Please try again.");
+  };
+
+  const decide = async (apply) => {
+    if (!latest || busy) return;
+    setBusy(true);
+    const { json } = await projReviewCall({ action: "decide", review_id: latest.id, apply });
+    if (!alive.current) return;
+    setBusy(false);
+    if (json?.ok) { onApplied(p.id, apply ? { roi_ai_multiplier: latest.multiplier, roi_ai_review_id: latest.id } : { roi_ai_multiplier: null, roi_ai_review_id: null }); toast(apply ? "AI-adjusted estimate applied ✓" : "Keeping the national estimate"); await load(); }
+    else toast(json?.error || "Couldn't save that. Please try again.", "error");
+  };
+  const remove = async () => {
+    if (busy) return;
+    setBusy(true);
+    const { error } = await supabase.from("projects").update({ roi_ai_multiplier: null, roi_ai_review_id: null }).eq("id", p.id);
+    if (!alive.current) return;
+    setBusy(false);
+    if (!error) { onApplied(p.id, { roi_ai_multiplier: null, roi_ai_review_id: null }); toast("Back to the national estimate"); }
+    else toast("Couldn't remove it. Please try again.", "error");
+  };
+
+  // the numbers, with and without the AI adjustment
+  const cat = p.roi_category;
+  const regional = getRegionalMultiplier(roiData, cat, propertyAddress);
+  const mk = (aiM) => computeProjectROI(roiData.categories, cat, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, regional, { homeValue, aiMultiplier: aiM });
+  const baseCalc = mk(null);
+  const viewRow = latest && latest.ai_output ? latest : null;
+  const adjCalc = viewRow && viewRow.multiplier != null ? mk(viewRow.multiplier) : null;
+  const ai = viewRow ? viewRow.ai_output : null;
+  const applied = statusOf === "applied" && Number(p.roi_ai_multiplier) > 0;
+  const pending = statusOf === "proposed";
+  const card = { background: "var(--white)", border: "1.5px solid var(--stone)", borderRadius: "var(--r-sm)", marginBottom: "1rem", overflow: "hidden" };
+
+  if (!baseCalc || rows === null) return null;
+  const intro = !viewRow;
+
+  return (
+    <div style={card} data-testid="proj-ai-review">
+      <div style={{ display: "flex", alignItems: "center", gap: ".6rem", padding: ".9rem 1rem" }}>
+        <span style={{ fontSize: "1.05rem" }} aria-hidden="true">✨</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: "1rem", fontWeight: 700 }}>Before &amp; after review</div>
+          <div style={{ fontSize: ".8rem", color: "#6E665D", lineHeight: 1.4 }}>
+            {applied ? "Your estimate uses what the photos show." : pending ? "Review ready. Choose whether to use it." : intro ? "Let AI compare your photos and sharpen the estimate." : "You kept the national estimate."}
+          </div>
+        </div>
+        {applied && <span style={{ fontSize: ".7rem", fontWeight: 700, background: "#E4F1E9", color: "#2F7A55", padding: "3px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>AI-adjusted</span>}
+      </div>
+
+      {viewRow && (
+        <div style={{ padding: "0 1rem 1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".6rem", marginBottom: ".8rem" }}>
+            {[["Before", beforeUrl, ai?.before], ["After", afterUrl, ai?.after]].map(([label, url, side]) => (
+              <div key={label}>
+                <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", background: "var(--cream2)" }}>
+                  <SImg src={url} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <span style={{ position: "absolute", left: 6, bottom: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: ".7rem", fontWeight: 700, padding: "2px 8px", borderRadius: 5 }}>{label}</span>
+                </div>
+                {side?.condition && (
+                  <div style={{ marginTop: ".4rem", display: "flex", alignItems: "center", gap: ".45rem", flexWrap: "wrap" }}>
+                    <ScoreDots score={side.condition} size={8} />
+                    <span style={{ fontSize: ".78rem", fontWeight: 700 }}>{PR_COND[side.condition]}</span>
+                  </div>
+                )}
+                {side?.summary && <div style={{ fontSize: ".78rem", color: "#4A443E", lineHeight: 1.4, marginTop: ".2rem" }}>{side.summary}</div>}
+              </div>
+            ))}
+          </div>
+
+          {ai?.summary && <p style={{ margin: "0 0 .8rem", fontSize: ".9rem", lineHeight: 1.5, color: "var(--dark)" }}>{ai.summary}</p>}
+
+          {Array.isArray(ai?.changes) && ai.changes.length > 0 && (
+            <ul style={{ listStyle: "none", margin: "0 0 .8rem", padding: 0, display: "flex", flexDirection: "column", gap: ".4rem" }}>
+              {ai.changes.map((c, i) => (
+                <li key={i} style={{ display: "flex", gap: ".55rem", fontSize: ".84rem", lineHeight: 1.4 }}>
+                  <span aria-label={c.effect} style={{ fontWeight: 700, color: c.effect === "improves" ? "#2F7A55" : c.effect === "detracts" ? "#B0432B" : "#6E665D", width: 14, flexShrink: 0 }}>{c.effect === "improves" ? "↑" : c.effect === "detracts" ? "↓" : "–"}</span>
+                  <span><b>{c.area}.</b> {c.before} → {c.after}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {Array.isArray(ai?.workmanship_issues) && ai.workmanship_issues.length > 0 && (
+            <div style={{ background: "#FBF3DE", borderRadius: 10, padding: ".6rem .75rem", marginBottom: ".8rem", fontSize: ".8rem", lineHeight: 1.45, color: "#6B4F0E" }}>
+              <b>Worth a closer look:</b> {ai.workmanship_issues.map(i => i.issue).join("; ")}.
+            </div>
+          )}
+
+          {adjCalc ? (
+            <div style={{ background: "linear-gradient(135deg,#1C3D31,#234A3D)", borderRadius: 12, padding: ".95rem 1rem", color: "#F4EDDF" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>
+                <div>
+                  <div style={{ fontSize: ".74rem", color: "rgba(244,237,223,.78)", fontWeight: 600 }}>National estimate</div>
+                  <div style={{ fontFamily: "'Fraunces',serif", fontSize: "1.2rem", fontWeight: 700 }}>{fmtSigned$(baseCalc.valueAdded)}</div>
+                  <div style={{ fontSize: ".74rem", color: "rgba(244,237,223,.7)" }}>{baseCalc.effectiveROI}% ROI</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: ".74rem", color: "rgba(244,237,223,.78)", fontWeight: 600 }}>With your photos</div>
+                  <div style={{ fontFamily: "'Fraunces',serif", fontSize: "1.2rem", fontWeight: 700, color: adjCalc.valueAdded >= baseCalc.valueAdded ? "#7DCBA1" : "#F0B79A" }}>{fmtSigned$(adjCalc.valueAdded)}</div>
+                  <div style={{ fontSize: ".74rem", color: "rgba(244,237,223,.7)" }}>{adjCalc.effectiveROI}% ROI · {pctSigned(viewRow.multiplier - 1)}</div>
+                </div>
+              </div>
+              {Array.isArray(viewRow.basis?.factors) && (
+                <ul style={{ listStyle: "none", margin: ".75rem 0 0", padding: ".65rem 0 0", borderTop: "1px solid rgba(255,255,255,.12)", display: "flex", flexDirection: "column", gap: ".3rem" }}>
+                  {viewRow.basis.factors.filter(f => Math.abs(f.effect) >= 0.005).map(f => (
+                    <li key={f.key || f.label} style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: ".78rem", color: "rgba(244,237,223,.88)" }}>
+                      <span>{f.label}</span><b style={{ color: f.effect > 0 ? "#7DCBA1" : "#F0B79A" }}>{pctSigned(f.effect)}</b>
+                    </li>
+                  ))}
+                  {viewRow.basis.factors.every(f => Math.abs(f.effect) < 0.005) && <li style={{ fontSize: ".78rem", color: "rgba(244,237,223,.88)" }}>The photos match what the national figure assumes, so nothing changed.</li>}
+                </ul>
+              )}
+              <div style={{ fontSize: ".72rem", color: "rgba(244,237,223,.7)", marginTop: ".65rem", lineHeight: 1.45 }}>
+                Confidence: {viewRow.confidence}. {ai?.finish_level ? PR_FINISH[ai.finish_level] + " seen. " : ""}{viewRow.basis?.keep < 1 ? "The adjustment is reduced because photos can't show everything about this kind of project." : ""}
+              </div>
+            </div>
+          ) : (
+            <div style={{ background: "var(--cream)", borderRadius: 10, padding: ".7rem .85rem", fontSize: ".84rem", color: "#4A443E" }}>The photos didn't give enough to adjust the estimate.</div>
+          )}
+
+          {Array.isArray(ai?.missing_views) && ai.missing_views.length > 0 && (
+            <div style={{ fontSize: ".78rem", color: "#6E665D", marginTop: ".6rem" }}>A clearer photo of {ai.missing_views[0].replace(/^the\s+/i, "the ")} would sharpen this.</div>
+          )}
+
+          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".9rem", alignItems: "center" }}>
+            {pending && hasEstimate && (<>
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => decide(true)}>Use this estimate</button>
+              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => decide(false)}>Keep national estimate</button>
+            </>)}
+            {pending && !hasEstimate && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => decide(false)}>Dismiss</button>}
+            {applied && <button type="button" className="asm-link" disabled={busy} onClick={remove}>Go back to the national estimate</button>}
+            {!pending && <button type="button" className="asm-link" onClick={() => { setOpen(o => !o); }}>{open ? "Hide" : "Run a new review"}</button>}
+          </div>
+        </div>
+      )}
+
+      {(intro || (open && !pending)) && (
+        <div style={{ padding: intro ? "0 1rem 1rem" : "0 1rem 1rem", borderTop: viewRow ? "1px solid var(--cream2)" : "none", paddingTop: viewRow ? ".9rem" : 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".6rem", marginBottom: ".8rem" }}>
+            {[["Before", beforeUrl], ["After", afterUrl]].map(([label, url]) => (
+              <div key={label} style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", background: "var(--cream2)" }}>
+                <SImg src={url} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <span style={{ position: "absolute", left: 6, bottom: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: ".7rem", fontWeight: 700, padding: "2px 8px", borderRadius: 5 }}>{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="field" style={{ marginBottom: ".7rem" }}>
+            <label htmlFor="pr-notes">Anything the AI should know? <span style={{ color: "#6E665D", fontWeight: 500 }}>(optional)</span></label>
+            <textarea id="pr-notes" value={notes} maxLength={300} onChange={e => setNotes(e.target.value)} placeholder="e.g. We also moved a wall and added a window" style={{ minHeight: 56 }} />
+          </div>
+          <button type="button" className="btn btn-primary" disabled={phase !== "idle" || left === 0} onClick={run}>
+            {phase === "uploading" ? "Preparing photos…" : phase === "analyzing" ? "Comparing… about 20 seconds" : "Compare my before & after"}
+          </button>
+          {err && <div role="alert" style={{ color: "#B0432B", fontSize: ".84rem", marginTop: ".6rem", lineHeight: 1.45 }}>{err}</div>}
+          {usage && !err && <div style={{ fontSize: ".78rem", color: left === 0 ? "#B0432B" : "#6E665D", marginTop: ".6rem" }}>{left === 0 ? `You've used all ${usage.limit} reviews this month (resets ${fmtD(usage.resets)}).` : `${left} of ${usage.limit} reviews left this month. Only successful reviews count.`}</div>}
+          <div style={{ fontSize: ".74rem", color: "#6E665D", marginTop: ".6rem", lineHeight: 1.5 }}>
+            Your photos are saved privately in your account and sent securely to Claude, Anthropic's AI, to compare them. Steadwell doesn't use them to train AI. The AI reports what it can see, and a fixed formula turns that into a small adjustment (never more than about 25% up or 30% down). It is not an appraisal.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress, pendingSelectedExpense=null, onClearPendingSelectedExpense }) {
   const { roiData } = useProjectROIData();
   const [view, setView] = useState("expenses");
@@ -16276,7 +16593,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   // ── Project CRUD
-  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after","roi_category","roi_diy"];
+  const PROJECT_FIELDS = ["name","status","budget","start_date","end_date","description","contractor_name","notes","photo_url","photo_before","photo_progress","photo_after","roi_category","roi_scope","roi_diy","roi_ai_multiplier","roi_ai_review_id"];
   const pickProject = (d) => Object.fromEntries(PROJECT_FIELDS.filter(f => f in d && d[f] !== undefined).map(f => [f, d[f] ?? null]));
 
   const openNewProject = () => { setProjectEditData({status:"Planning",start_date:localISO()}); setProjectEditId(null); setProjectModal(true); };
@@ -16901,7 +17218,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         );
                       }
 
-                      const calc = computeProjectROI(roiData.categories, p.roi_category, spent, !!p.roi_diy, p.roi_scope, regionalMult);
+                      const calc = computeProjectROI(roiData.categories, p.roi_category, spent, !!p.roi_diy, p.roi_scope, regionalMult, { homeValue, aiMultiplier: p.roi_ai_multiplier });
                       if (!calc) return null;
                       const pctOfHome = homeValue > 0 ? ((calc.spend / homeValue) * 100).toFixed(1) : null;
                       const isComplete = p.status === "Completed";
@@ -16936,6 +17253,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                             {calc.regionalMultiplier!==1 && ` Adjusted for your region.`}
                             {" "}{calc.isCVRTracked ? PROJECT_ROI_SOURCE_CVR : PROJECT_ROI_SOURCE_EST} Estimate only — not an appraisal.
                           </div>
+                          <RoiNotes calc={calc} homeValue={homeValue}/>
                           {calc.lowConfidence && (
                             <div style={{marginTop:".6rem",paddingTop:".6rem",borderTop:"1px solid rgba(255,255,255,.1)",fontSize:".7rem",color:"#E8A57F",lineHeight:1.5}}>
                               ⚠ Your spend is far from the typical range for this project type — treat this estimate as rougher than usual.
@@ -16944,6 +17262,19 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                         </div>
                       );
                     })()}
+
+                    {/* AI before/after review — completed projects with a type, both photos, and a paid plan */}
+                    {(planData?.plan === "plus" || planData?.plan === "pro") && p.roi_category && roiData?.categories[p.roi_category]?.roi != null && spent > 0 && p.status === "Completed" && (
+                      (p.photo_before || p.photo_url) && p.photo_after ? (
+                        <ProjectAIReview key={p.id} project={p} roiData={roiData} homeValue={homeValue} propertyAddress={propertyAddress} spent={spent} userId={userId} toast={toast}
+                          onApplied={(id, patch)=>setProjects(projects.map(x=>x.id===id?{...x,...patch}:x))}/>
+                      ) : (
+                        <button type="button" onClick={()=>openEditProject(p)} style={{display:"flex",alignItems:"center",gap:".75rem",width:"100%",textAlign:"left",padding:".9rem 1rem",background:"var(--white)",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",cursor:"pointer",marginBottom:"1rem",fontFamily:"inherit"}}>
+                          <span style={{fontSize:"1.2rem"}} aria-hidden="true">✨</span>
+                          <span><span style={{display:"block",fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Sharpen this estimate with photos</span><span style={{display:"block",fontSize:".8rem",color:"#6E665D",marginTop:2}}>Add a before and an after photo and AI will compare them.</span></span>
+                        </button>
+                      )
+                    )}
 
                     {/* Budget donut — only if budget set */}
                     {budget > 0 && (
@@ -18084,7 +18415,7 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
     const projExpenses = expenses.filter(e => e.project_id === p.id);
     const spentAmt = projExpenses.reduce((s,e) => s + Number(e.amount||0), 0);
     const mult = multCache[p.roi_category] ?? (multCache[p.roi_category] = getRegionalMultiplier(roiData, p.roi_category, profile?.address));
-    const calc = computeProjectROI(roiData.categories, p.roi_category, spentAmt > 0 ? spentAmt : null, !!p.roi_diy, p.roi_scope, mult);
+    const calc = computeProjectROI(roiData.categories, p.roi_category, spentAmt > 0 ? spentAmt : null, !!p.roi_diy, p.roi_scope, mult, { homeValue: Number(profile?.zestimate) || 0, aiMultiplier: p.roi_ai_multiplier });
     return calc ? { p, calc } : null;
   }).filter(Boolean);
 
@@ -19516,10 +19847,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       if (!p.roi_category || !roiData.categories[p.roi_category]) return sum;
       const spent = expenses.filter(e => e.project_id === p.id).reduce((s,e) => s+Number(e.amount||0), 0);
       const mult = getRegionalMultiplier(roiData, p.roi_category, profile?.address);
-      const calc = computeProjectROI(roiData.categories, p.roi_category, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, mult);
+      const calc = computeProjectROI(roiData.categories, p.roi_category, spent > 0 ? spent : null, !!p.roi_diy, p.roi_scope, mult, { homeValue: Number(profile?.zestimate) || 0, aiMultiplier: p.roi_ai_multiplier });
       return sum + (calc?.valueAdded || 0);
     }, 0);
-  }, [roiData, projects, expenses, profile?.address]);
+  }, [roiData, projects, expenses, profile?.address, profile?.zestimate]);
 
   const schoolRatingColor = r => !r ? "#C2B8AE" : r>=8 ? "#1A7A44" : r>=6 ? "#E0A84A" : "#B91C1C";
 
@@ -28862,7 +29193,7 @@ function PrivacyPage() {
     {t:"1. Who We Are",b:"Steadwell is a home management platform operated by Steadwell, LLC, a Florida limited liability company. This Privacy Policy explains what information we collect, how we use it, and your rights regarding it. By using Steadwell, you agree to the practices described here. Questions? Email privacy@trysteadwell.app."},
     {t:"2. Information We Collect",b:"Information you provide: your email address and name when you create an account; your home address and property details; maintenance records, expenses, warranties, and insurance details you enter; documents, photos, and files you upload; and emails you forward to your unique Steadwell capture address. Information provided by others: if a participating real estate agent gifts you a Steadwell trial, the agent provides us your name and email address so we can send the gift invitation — see Section 5 for how that's handled. Information we retrieve on your behalf: property data from Zillow (via APIllow) when you look up your address; address suggestions from Google Places API as you type. Technical and analytics data: log files, device type, browser type, and IP address for security monitoring and service improvement; anonymized usage analytics via Google Analytics 4 (page views and feature interactions, not linked to your identity); and error monitoring data via Sentry, which may include a replay of your browser session for a random sample of about 5% of sessions, plus 100% of sessions in which an error occurs (personally identifiable information such as form fields is masked in all cases). We do not collect payment card details — those go directly to Stripe."},
     {t:"3. How We Use Your Information",b:"To provide and operate the Service — storing your home data, generating reminders, processing emails you forward to your capture address, and running AI-powered features. To improve the Service — understanding how features are used (never tied to your personal identity). To communicate with you — sending warranty expiry alerts, maintenance reminders, weekly digests, and transactional emails like receipts and account confirmations. To process payments — through Stripe, which handles all payment data directly. To maintain security — detecting and preventing fraud, unauthorized access, and abuse. To comply with law — responding to valid legal requests. We do not use your data to serve third-party advertisements. Ever."},
-    {t:"4. AI Processing",b:"When you use AI-powered features — including email receipt capture, document scanning, and appliance nameplate recognition — your content is sent to Anthropic's Claude API for processing. Anthropic processes this data solely to return results to you and does not use it to train AI models under their standard API terms. Extracted data is returned to Steadwell and stored in your account for your review. You can review, edit, or delete any AI-extracted record at any time. Condition assessments: when you run an AI condition assessment on an asset, the photos you add (stored privately in your account) and basic details of that asset are sent to Anthropic\'s Claude API, which proposes a condition grade, findings, and suggested tasks. Nothing is saved to your asset until you review and confirm it. We keep each confirmed assessment, including the AI\'s proposal and your final decision, in your account as an assessment history. Ask Steadwell (the in-app home assistant): when you ask it a question, it looks up the relevant records in your account — such as your assets, tasks, expenses, service history, contractor names, and document names and summaries, but not your email address, phone number, street address, or account numbers — and sends them with your question to Anthropic's Claude API to write an answer. Unless you turn it off in Settings → Privacy, we also keep the text of your questions, with emails, phone numbers, and addresses automatically removed, under a pseudonymous identifier that is stored separately from your account, to understand what homeowners need and to improve the Service. We do not sell this information, use it for advertising, or share it with anyone other than the service providers in Section 5. If you turn the setting off, we stop saving your questions and delete the ones already saved; we still keep a count of questions (for plan limits) and a generic topic label, such as \"roof replacement,\" that is not linked to you. Saved question text is deleted after 13 months or when you delete your account. AI answers can be wrong, so check important details and consult a licensed professional for safety, legal, insurance, or financial decisions."},
+    {t:"4. AI Processing",b:"When you use AI-powered features — including email receipt capture, document scanning, and appliance nameplate recognition — your content is sent to Anthropic's Claude API for processing. Anthropic processes this data solely to return results to you and does not use it to train AI models under their standard API terms. Extracted data is returned to Steadwell and stored in your account for your review. You can review, edit, or delete any AI-extracted record at any time. Condition assessments: when you run an AI condition assessment on an asset, the photos you add (stored privately in your account) and basic details of that asset are sent to Anthropic\'s Claude API, which proposes a condition grade, findings, and suggested tasks. Nothing is saved to your asset until you review and confirm it. Project before-and-after reviews: when you ask for one on a completed project, the before and after photos you choose, any notes you add, and basic project details (name, description, category, scope, dates, who did the work, amount spent, and your home\'s type, year built, city, and state) are sent to Anthropic\'s Claude API, which describes what changed and the quality of the finish. A fixed formula then turns that into a suggested adjustment to the national return estimate. The adjustment is only applied if you choose to use it, and we keep each review and your decision in your account. This is an estimate, not an appraisal. We keep each confirmed assessment, including the AI\'s proposal and your final decision, in your account as an assessment history. Ask Steadwell (the in-app home assistant): when you ask it a question, it looks up the relevant records in your account — such as your assets, tasks, expenses, service history, contractor names, and document names and summaries, but not your email address, phone number, street address, or account numbers — and sends them with your question to Anthropic's Claude API to write an answer. Unless you turn it off in Settings → Privacy, we also keep the text of your questions, with emails, phone numbers, and addresses automatically removed, under a pseudonymous identifier that is stored separately from your account, to understand what homeowners need and to improve the Service. We do not sell this information, use it for advertising, or share it with anyone other than the service providers in Section 5. If you turn the setting off, we stop saving your questions and delete the ones already saved; we still keep a count of questions (for plan limits) and a generic topic label, such as \"roof replacement,\" that is not linked to you. Saved question text is deleted after 13 months or when you delete your account. AI answers can be wrong, so check important details and consult a licensed professional for safety, legal, insurance, or financial decisions."},
     {t:"5. How We Share Your Information",b:"We share your data with the following service providers strictly to operate the Service: Supabase (database, authentication, and file storage — SOC 2 Type II certified, row-level security enforced); Stripe (payment processing); Resend (email delivery and inbound email processing); Anthropic (AI feature processing via Claude API); APIllow / Zillow (property data lookups — your address only); Google Places API (address autocomplete); Sentry (error monitoring and session replay — Sentry may receive page interaction data and a replay of your browser session, either for a random sample of about 5% of all sessions or for any session in which an error occurs; personally identifiable information is masked in all cases and Sentry does not receive your documents or uploaded files); Google Analytics 4 (anonymous usage analytics — GA4 receives anonymized page views and feature usage patterns; no personally identifiable information is shared). We do not sell, rent, broker, or share your personal information with any other third party. The only exception is the optional Contractor Insights program described in Section 6, which is off by default and requires your explicit opt-in."},
     {t:"6. Agent Gift Referrals",b:"If a participating real estate agent gifts you a Steadwell trial, we receive your name and email address from that agent solely to send you the gift invitation. We do not use this information for any other purpose unless and until you claim the gift and create an account. If the gift is not claimed within 12 months, we delete this referral information. Email privacy@trysteadwell.app if you'd like it removed sooner."},
     {t:"7. Optional: Contractor Insights Program",b:"If you choose to opt in from Settings → Privacy, we may share de-identified, aggregated, non-personal trends — such as regional data about home system ages or common maintenance needs — with local contractor partners. This program never includes your name, address, contact information, property details, service history, uploaded documents, or any data that could identify you. We do not sell your information under this program. You can opt in or out at any time from Settings, and this choice has no effect on your access to any Steadwell feature."},
