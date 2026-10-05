@@ -1,4 +1,4 @@
-// Steadwell v323 — 2026-10-05
+// Steadwell v324 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -11855,14 +11855,201 @@ function useRecallAlerts(assets) {
 
 
 // ─── EMAIL INBOX MODAL ────────────────────────────────────────────────────────
+// ── Auto-forwarding setup (Gmail / Outlook rules that send only bills & receipts to the capture address) ──
+const FWD_RETAILERS = ["homedepot.com","lowes.com","bestbuy.com","acehardware.com","menards.com","harborfreight.com"];
+function fwdList(str){
+  return String(str||"").split(/[\s,;]+/).map(x=>x.trim().replace(/[^A-Za-z0-9@._+-]/g,"")).filter(x=>x.length>2 && /[.@]/.test(x));
+}
+function fwdRecipes({ utility, receipts, contractors, warranty, utilityText, contractorText }){
+  const out = [];
+  const u = fwdList(utilityText), c = fwdList(contractorText);
+  if (utility && u.length) out.push({ key:"utility", icon:"⚡", label:"Utility bills", senders:u, query:`from:(${u.join(" OR ")})` });
+  if (receipts) out.push({ key:"receipts", icon:"🧾", label:"Store receipts", senders:FWD_RETAILERS, query:`from:(${FWD_RETAILERS.join(" OR ")}) (receipt OR "order confirmation" OR invoice OR "your order")` });
+  if (contractors && c.length) out.push({ key:"contractors", icon:"👷", label:"Contractor invoices", senders:c, query:`from:(${c.join(" OR ")})` });
+  if (warranty) out.push({ key:"warranty", icon:"🔖", label:"Warranty registrations", senders:[], query:`subject:("warranty registration" OR "warranty confirmation" OR "product registration")` });
+  return out;
+}
+function fwdGmailXml(address, recipes){
+  const x = v => String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+  const entries = recipes.map(r =>
+    "  <entry>\n    <category term='filter'></category>\n    <title>Steadwell: " + x(r.label) + "</title>\n    <content></content>\n" +
+    "    <apps:property name='hasTheWord' value='" + x(r.query) + "'/>\n" +
+    "    <apps:property name='forwardTo' value='" + x(address) + "'/>\n  </entry>").join("\n");
+  return "<?xml version='1.0' encoding='UTF-8'?>\n<feed xmlns='http://www.w3.org/2005/Atom' xmlns:apps='http://schemas.google.com/apps/2006'>\n  <title>Mail Filters</title>\n" + entries + "\n</feed>\n";
+}
+function AutoForwardGuide({ address, lastCaptureText }) {
+  const [tab, setTab] = useState("gmail");
+  const [sel, setSel] = useState({ utility:true, receipts:true, contractors:false, warranty:true });
+  const [utilityText, setUtilityText] = useState("");
+  const [contractorText, setContractorText] = useState("");
+  const [copied, setCopied] = useState("");
+  const recipes = fwdRecipes({ ...sel, utilityText, contractorText });
+  const copy = async (text, key) => {
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      else { const ta = document.createElement("textarea"); ta.value = text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+      setCopied(key); setTimeout(()=>setCopied(c=>c===key?"":c), 1600);
+    } catch { /* ignore */ }
+  };
+  const download = () => {
+    const blob = new Blob([fwdGmailXml(address, recipes)], { type:"text/xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "steadwell-gmail-filters.xml";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  };
+  const card = { background:"var(--white)", border:"1px solid var(--stone)", borderRadius:10, padding:".85rem 1rem", marginBottom:".75rem" };
+  const h = { fontSize:".7rem", fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", color:"#8A8178", marginBottom:".5rem" };
+  const mono = { fontFamily:"monospace", fontSize:".74rem", color:"#5A534B", background:"var(--cream2)", borderRadius:6, padding:".4rem .5rem", wordBreak:"break-all", lineHeight:1.4, flex:1, minWidth:0 };
+  const smallBtn = (on) => ({ background:on?"#2A7A4A":"var(--pine)", color:"#F4EDDF", border:"none", borderRadius:7, padding:"4px 10px", fontSize:".7rem", fontWeight:700, cursor:"pointer", flexShrink:0 });
+  const inp = { width:"100%", padding:".5rem .6rem", border:"1.5px solid var(--stone)", borderRadius:8, fontFamily:"inherit", fontSize:".82rem", background:"var(--white)", boxSizing:"border-box", marginTop:".35rem" };
+  const toggle = (k) => setSel(v => ({ ...v, [k]: !v[k] }));
+  const Row = ({ k, icon, title, desc, children }) => (
+    <div style={{ display:"flex", gap:".6rem", alignItems:"flex-start", padding:".55rem 0", borderTop:"1px solid #F0E9DB" }}>
+      <input type="checkbox" checked={!!sel[k]} onChange={()=>toggle(k)} aria-label={title}
+        style={{ WebkitAppearance:"checkbox", appearance:"auto", width:18, height:18, minWidth:18, padding:0, margin:"2px 0 0", flex:"none", borderRadius:4, accentColor:"#234A3D", cursor:"pointer" }} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div onClick={()=>toggle(k)} style={{ cursor:"pointer" }}>
+          <div style={{ fontWeight:600, fontSize:".85rem", textTransform:"none", letterSpacing:0, color:"var(--dark)" }}><span aria-hidden="true">{icon}</span> {title}</div>
+          <div style={{ fontSize:".75rem", color:"#8A8178", lineHeight:1.45, textTransform:"none", letterSpacing:0 }}>{desc}</div>
+        </div>
+        {sel[k] && children}
+      </div>
+    </div>
+  );
+  const Step = ({ n, children }) => (
+    <div style={{ display:"flex", gap:".6rem", marginBottom:".6rem", fontSize:".82rem", color:"#5A534B", lineHeight:1.5 }}>
+      <span style={{ flexShrink:0, width:20, height:20, borderRadius:"50%", background:"var(--pine)", color:"#F4EDDF", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1 }}>{n}</span>
+      <div style={{ flex:1, minWidth:0 }}>{children}</div>
+    </div>
+  );
+  return (
+    <div>
+      <div style={{ fontFamily:"'Fraunces',serif", fontSize:"1.15rem", color:"var(--pine)", marginBottom:".25rem" }}>Auto-forward bills and receipts</div>
+      <div style={{ fontSize:".8rem", color:"#8A8178", lineHeight:1.55, marginBottom:".9rem" }}>
+        Make a rule in your email once, and matching messages are sent to your capture address. Everything still lands here for you to review before it is saved. Do this on a computer.
+      </div>
+
+      <div style={card}>
+        <div style={h}>1. Choose what to forward</div>
+        <Row k="utility" icon="⚡" title="Utility bills" desc="Sender-based, so promotions don't come along.">
+          <input value={utilityText} onChange={e=>setUtilityText(e.target.value)} placeholder="Sender emails or domains, e.g. yourutility.com" style={inp} aria-label="Utility sender emails or domains" />
+        </Row>
+        <Row k="receipts" icon="🧾" title="Store receipts" desc="Home Depot, Lowe's, Best Buy, Ace, Menards and Harbor Freight order and receipt emails." />
+        <Row k="contractors" icon="👷" title="Contractor invoices" desc="Only mail from the contractors you list.">
+          <input value={contractorText} onChange={e=>setContractorText(e.target.value)} placeholder="Their email addresses, separated by commas" style={inp} aria-label="Contractor email addresses" />
+        </Row>
+        <Row k="warranty" icon="🔖" title="Warranty registrations" desc="Registration and warranty confirmation emails." />
+      </div>
+
+      <div style={card}>
+        <div style={h}>2. Add the rule</div>
+        <div style={{ display:"flex", gap:".4rem", marginBottom:".75rem" }}>
+          {[["gmail","Gmail"],["outlook","Outlook"]].map(([k,l]) => (
+            <button key={k} onClick={()=>setTab(k)} style={{ padding:".35rem .9rem", borderRadius:20, border:"1.5px solid "+(tab===k?"var(--pine)":"var(--stone)"), background:tab===k?"var(--pine)":"var(--white)", color:tab===k?"#F4EDDF":"var(--dark)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer" }}>{l}</button>
+          ))}
+        </div>
+
+        {tab==="gmail" ? (<>
+          <Step n="1">In Gmail open <b>Settings → See all settings → Forwarding and POP/IMAP → Add a forwarding address</b> and paste your capture address.
+            <div style={{ display:"flex", gap:".4rem", alignItems:"center", marginTop:".35rem" }}>
+              <div style={mono}>{address || "Not available yet"}</div>
+              <button disabled={!address} onClick={()=>copy(address,"addr")} style={smallBtn(copied==="addr")}>{copied==="addr"?"✓ Copied":"Copy"}</button>
+            </div>
+          </Step>
+          <Step n="2">Gmail sends a confirmation code to that address. It shows up at the top of this inbox within a minute or two. Enter it in Gmail, and leave <b>Disable forwarding</b> selected so only your rules forward mail.</Step>
+          <Step n="3">
+            {recipes.length>0 ? (<>
+              Download your filters, then in Gmail open <b>Settings → Filters and Blocked Addresses → Import filters</b>, choose the file, and select <b>Create filters</b>.
+              <div style={{ marginTop:".4rem" }}><button onClick={download} style={{ ...smallBtn(false), padding:"7px 14px", fontSize:".78rem" }}>Download Gmail filters</button></div>
+            </>) : (<span style={{ color:"#B8861E" }}>Choose at least one thing to forward above (add sender addresses for utility bills or contractors).</span>)}
+          </Step>
+          {recipes.length>0 && (
+            <div style={{ marginTop:".6rem" }}>
+              <div style={{ fontSize:".72rem", color:"#8A8178", marginBottom:".35rem" }}>If the import doesn't forward, make each filter by hand: in Gmail search, choose <b>Show search options → Create filter → Forward it to</b>, and paste the search below.</div>
+              {recipes.map(r => (
+                <div key={r.key} style={{ marginBottom:".5rem" }}>
+                  <div style={{ fontSize:".74rem", fontWeight:600, marginBottom:3 }}>{r.icon} {r.label}</div>
+                  <div style={{ display:"flex", gap:".4rem", alignItems:"flex-start" }}>
+                    <div style={mono}>{r.query}</div>
+                    <button onClick={()=>copy(r.query,r.key)} style={smallBtn(copied===r.key)}>{copied===r.key?"✓ Copied":"Copy"}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>) : (<>
+          <Step n="1">In Outlook on the web open <b>Settings → Mail → Rules → Add new rule</b>.</Step>
+          <Step n="2">For the condition choose <b>From</b> (or <b>Subject includes</b>) and enter the sender or words below. Make one rule for each thing you picked.</Step>
+          <Step n="3">For the action choose <b>Forward to</b> and paste your capture address, then save.
+            <div style={{ display:"flex", gap:".4rem", alignItems:"center", marginTop:".35rem" }}>
+              <div style={mono}>{address || "Not available yet"}</div>
+              <button disabled={!address} onClick={()=>copy(address,"addr2")} style={smallBtn(copied==="addr2")}>{copied==="addr2"?"✓ Copied":"Copy"}</button>
+            </div>
+          </Step>
+          {recipes.length>0 && (
+            <div style={{ marginTop:".6rem" }}>
+              {recipes.map(r => (
+                <div key={r.key} style={{ marginBottom:".5rem" }}>
+                  <div style={{ fontSize:".74rem", fontWeight:600, marginBottom:3 }}>{r.icon} {r.label}</div>
+                  <div style={{ display:"flex", gap:".4rem", alignItems:"flex-start" }}>
+                    <div style={mono}>{r.senders.length ? r.senders.join(", ") : "warranty registration, warranty confirmation, product registration"}</div>
+                    <button onClick={()=>copy(r.senders.length?r.senders.join(", "):"warranty registration, warranty confirmation, product registration",r.key)} style={smallBtn(copied===r.key)}>{copied===r.key?"✓ Copied":"Copy"}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize:".72rem", color:"#8A8178", lineHeight:1.5, marginTop:".5rem" }}>Work or school accounts often block forwarding outside the organization. If <b>Forward to</b> is missing, forward each email by hand or use a personal address.</div>
+        </>)}
+      </div>
+
+      <div style={card}>
+        <div style={h}>3. Check that it works</div>
+        <div style={{ fontSize:".82rem", color:"#5A534B", lineHeight:1.5 }}>{lastCaptureText}. Forward any bill to your capture address to test it. New mail then appears in your inbox within a minute.</div>
+      </div>
+      <div style={{ fontSize:".72rem", color:"#8A8178", lineHeight:1.5 }}>Only forward mail you're comfortable having processed. Narrow rules work best, and you can delete any capture. See our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color:"var(--pine)", fontWeight:600 }}>Privacy Policy</a>.</div>
+    </div>
+  );
+}
+
 function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState({});
   const [addressCopied, setAddressCopied] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [codeCopied, setCodeCopied] = useState("");
 
-  const pending = captures.filter(c => c.status === "pending");
+  // Gmail's forwarding-confirmation emails are shown as a code card, not as a record to save.
+  const verifications = captures.filter(c => c.status === "pending" && c.extracted_type === "forwarding_verification");
+  const pending = captures.filter(c => c.status === "pending" && c.extracted_type !== "forwarding_verification");
   const saved   = captures.filter(c => c.status === "saved");
+  const lastCaptured = captures.filter(c => c.extracted_type !== "forwarding_verification" && c.created_at)
+    .reduce((m, c) => (!m || new Date(c.created_at) > m ? new Date(c.created_at) : m), null);
+  const lastCaptureText = (() => {
+    if (!lastCaptured) return "Nothing captured yet";
+    const days = Math.floor((Date.now() - lastCaptured.getTime()) / 86400000);
+    return "Last captured " + (days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago");
+  })();
+
+  const dismissVerification = async (c) => {
+    await supabase.from("email_captures").update({ status: "dismissed", reviewed_at: new Date().toISOString() }).eq("id", c.id);
+    onUpdate(c.id, { status: "dismissed" });
+  };
+  const copyCode = async (c) => {
+    try { await navigator.clipboard?.writeText(String(c.extracted_data?.code || "")); setCodeCopied(c.id); setTimeout(() => setCodeCopied(""), 1600); } catch { /* ignore */ }
+  };
+  const openAttachment = async (a) => {
+    const w = window.open("", "_blank");
+    let url = null;
+    if (a?.path) {
+      const { data } = await supabase.storage.from("email-attachments").createSignedUrl(a.path, 300);
+      url = data?.signedUrl || null;
+    }
+    if (!url && a?.url) url = a.url;
+    if (url && w) w.location.href = url; else if (w) w.close();
+  };
 
   const openCapture = (c) => {
     setSelected(c);
@@ -11954,8 +12141,8 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
     setSelected(null);
   };
 
-  const typeColor = { warranty:"var(--pine)", expense:"#B8861E", document:"#3B5EA6", asset:"var(--rust)", utility_bill:"#3B8A6E", unknown:"#8A8178" };
-  const typeLabel = { warranty:"Warranty", expense:"Expense", document:"Document", asset:"Asset", utility_bill:"Utility Bill", unknown:"Unknown" };
+  const typeColor = { warranty:"var(--pine)", expense:"#B8861E", document:"#3B5EA6", asset:"var(--rust)", utility_bill:"#3B8A6E", unknown:"#8A8178", forwarding_verification:"#3B5EA6" };
+  const typeLabel = { warranty:"Warranty", expense:"Expense", document:"Document", asset:"Asset", utility_bill:"Utility Bill", unknown:"Unknown", forwarding_verification:"Forwarding" };
 
   const FieldRow = ({ label, field, type="text" }) => (
     <div style={{marginBottom:".75rem"}}>
@@ -12021,10 +12208,22 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
           </button>
         </div>
 
+        {!selected && (
+          <div style={{padding:".5rem 1.25rem",borderBottom:"1px solid var(--stone)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem"}}>
+            <div style={{fontSize:".75rem",color:"#8A8178"}}>{lastCaptureText}</div>
+            <button onClick={()=>setShowGuide(g=>!g)}
+              style={{background:"none",border:"none",cursor:"pointer",color:"var(--pine)",fontWeight:700,fontSize:".78rem",padding:0,fontFamily:"inherit"}}>
+              {showGuide ? "← Back to inbox" : "Set up auto-forwarding"}
+            </button>
+          </div>
+        )}
+
         {/* Content */}
         <div style={{flex:1,overflow:"auto",padding:"1rem 1.25rem"}}>
 
-          {selected ? (
+          {showGuide && !selected ? (
+            <AutoForwardGuide address={profile?.inbound_email} lastCaptureText={lastCaptureText} />
+          ) : selected ? (
             /* Detail view */
             <div>
               <button onClick={() => setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--pine)",fontWeight:600,fontSize:".85rem",padding:0,marginBottom:".75rem",display:"flex",alignItems:"center",gap:4}}>
@@ -12084,6 +12283,20 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                 </div>
               )}
 
+              {Array.isArray(selected.attachment_urls) && selected.attachment_urls.length > 0 && (
+                <div style={{marginBottom:"1rem"}}>
+                  <div style={{fontWeight:700,marginBottom:6,fontSize:".7rem",textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178"}}>Attachments</div>
+                  {selected.attachment_urls.map((a, i) => (
+                    <button key={i} onClick={() => openAttachment(a)}
+                      style={{display:"flex",alignItems:"center",gap:".5rem",width:"100%",textAlign:"left",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:8,padding:".5rem .7rem",marginBottom:".35rem",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem",color:"var(--dark)"}}>
+                      <span aria-hidden="true">📎</span>
+                      <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.filename || "Attachment"}</span>
+                      <span style={{color:"var(--pine)",fontWeight:700,fontSize:".72rem"}}>View</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div style={{display:"flex",gap:".65rem"}}>
                 <button
                   onClick={handleSave}
@@ -12101,11 +12314,35 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
           ) : (
             /* List view */
             <>
-              {pending.length === 0 && saved.length === 0 && (
+              {verifications.map(c => (
+                <div key={c.id} style={{background:"#EEF2FA",border:"1.5px solid #B9C7E6",borderRadius:10,padding:".9rem 1rem",marginBottom:".75rem"}}>
+                  <div style={{fontWeight:700,fontSize:".88rem",color:"#2F4C8A",marginBottom:".25rem"}}>Gmail is asking you to confirm forwarding</div>
+                  <div style={{fontSize:".78rem",color:"#5A534B",lineHeight:1.5,marginBottom:".6rem"}}>
+                    {c.extracted_data?.account ? <>Requested from <b>{c.extracted_data.account}</b>. </> : null}
+                    {c.extracted_data?.code ? "Enter this code in Gmail (Settings → Forwarding and POP/IMAP)." : "Open the link below while signed in to that Gmail account."}
+                  </div>
+                  {c.extracted_data?.code && (
+                    <div style={{display:"flex",alignItems:"center",gap:".6rem",marginBottom:".6rem"}}>
+                      <span style={{fontFamily:"monospace",fontSize:"1.25rem",fontWeight:700,letterSpacing:".12em",color:"#2F4C8A"}}>{c.extracted_data.code}</span>
+                      <button onClick={()=>copyCode(c)} style={{background:codeCopied===c.id?"#2A7A4A":"#2F4C8A",color:"#fff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".7rem",fontWeight:700,cursor:"pointer"}}>{codeCopied===c.id?"✓ Copied":"Copy"}</button>
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+                    {c.extracted_data?.link && (
+                      <a href={c.extracted_data.link} target="_blank" rel="noopener noreferrer"
+                        style={{background:"#2F4C8A",color:"#fff",textDecoration:"none",borderRadius:8,padding:".45rem .8rem",fontSize:".78rem",fontWeight:700}}>Open confirmation link</a>
+                    )}
+                    <button onClick={()=>dismissVerification(c)} style={{background:"none",border:"1.5px solid #B9C7E6",color:"#5A534B",borderRadius:8,padding:".45rem .8rem",fontSize:".78rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Done</button>
+                  </div>
+                </div>
+              ))}
+
+              {pending.length === 0 && saved.length === 0 && verifications.length === 0 && (
                 <div style={{textAlign:"center",padding:"2.5rem 1rem",color:"#8A8178"}}>
                   <div style={{fontSize:"2rem",marginBottom:".75rem"}}>📭</div>
                   <div style={{fontWeight:600,marginBottom:".5rem"}}>No emails yet</div>
-                  <div style={{fontSize:".82rem",lineHeight:1.6}}>Forward receipts, warranties, and invoices to your capture address and they will appear here.</div>
+                  <div style={{fontSize:".82rem",lineHeight:1.6}}>Forward receipts, warranties, and invoices to your capture address and they will appear here. Or set up auto-forwarding so bills arrive on their own.</div>
+                  <button onClick={()=>setShowGuide(true)} style={{marginTop:".9rem",background:"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:9,padding:".6rem 1.1rem",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,cursor:"pointer"}}>Set up auto-forwarding</button>
                 </div>
               )}
 
@@ -19461,11 +19698,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       .eq("user_id", userId)
       .eq("property_id", profile.id)
       .order("created_at", { ascending: false })
-      .limit(50)
+      .limit(100)
       .then(({ data }) => { if (data) setEmailCaptures(data); });
   }, [userId, profile?.id]);
 
-  const pendingCaptures = emailCaptures.filter(c => c.status === "pending");
+  const pendingCaptures = emailCaptures.filter(c => c.status === "pending" && c.extracted_type !== "forwarding_verification");
+  const gmailCodeWaiting = emailCaptures.some(c => c.status === "pending" && c.extracted_type === "forwarding_verification");
   const [editModal, setEditModal] = useState(false);
   const [editTab, setEditTab]     = useState("property");
   const [modal, setModal]         = useState(false);
@@ -20722,7 +20960,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null});}},
               {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
-              {ico:"📬", name:"Email inbox",      desc:pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
+              {ico:"📬", name:"Email inbox",      desc:gmailCodeWaiting?"Gmail code waiting for you":pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
               {ico:"🏡", name:"Refresh data",     desc:"Re-pull value, sale price, schools & tax", action:async()=>{ toast("Fetching property data…"); await refreshPropertyData(); }},
             ].map(t=>(
               <div key={t.name} onClick={t.action}
@@ -27973,6 +28211,22 @@ function EmailCapturePage() {
           </LPGrid>
         </LPSection>
         <LPSection>
+          <LPSectionHead h2="Or set it once and forget it" sub="Skip the manual forwarding. Add a rule in Gmail or Outlook and your bills and receipts arrive on their own."/>
+          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+            {[
+              {icon:"⚡",title:"Utility bills",text:"Pick the sender, like your electric or water company. Each new statement is sent to your inbox for review."},
+              {icon:"🧾",title:"Receipts and invoices",text:"Store receipts and contractor invoices from the senders you choose are filed as expenses and warranties."},
+              {icon:"✅",title:"Still your call",text:"Every capture waits in your Email Inbox. You check the details and save it, or dismiss it."},
+            ].map((s,i)=>(
+              <LPCard key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:"1.3rem"}}>{s.icon}</span><div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div></div>
+                <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.6}}>{s.text}</div>
+              </LPCard>
+            ))}
+          </LPGrid>
+          <p style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.6,marginTop:20,textAlign:"left"}}>Steadwell shows step-by-step setup for Gmail and Outlook inside your Email Inbox.</p>
+        </LPSection>
+        <LPSection alt>
           <LPSectionHead h2="Why this matters" sub="The friction of logging is why most people don&#39;t track their home."/>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:"2rem",alignItems:"start"}}>
             <div>
@@ -27994,12 +28248,13 @@ function EmailCapturePage() {
             </div>
           </div>
         </LPSection>
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={[
             ["Where do I find my capture address?","Log into Steadwell, go to the My Home tab, and open the Email Inbox card in your Home Toolbox. Your unique capture address is shown at the top with a copy button."],
             ["Does every property get its own address?","Yes — each property you track in Steadwell gets its own unique capture address. Forwarded emails are automatically routed to the correct property."],
-            ["What happens after I forward an email?","The email lands in your Email Inbox as a pending capture. You receive a confirmation email, then review the AI-extracted details in the app before saving."],
+            ["What happens after I forward an email?","The email lands in your Email Inbox as a pending capture. We send you an email to let you know, one at a time so a busy day doesn’t fill your inbox. Then you review the AI-extracted details in the app before saving."],
+            ["Can I forward bills automatically?","Yes. Add a rule in Gmail or Outlook that sends only the senders you choose, such as your utility company, to your capture address. Steadwell walks you through it in your Email Inbox. Everything still waits for your review."],
             ["Is the email capture secure?","Yes. Your capture address is uniquely generated and not guessable. Only emails forwarded to your specific address are processed."],
             ["What if the AI can't parse the email?","Every email appears in your inbox regardless of parse confidence. Low-confidence captures are flagged so you can review and correct the details manually."],
           ]}/>
