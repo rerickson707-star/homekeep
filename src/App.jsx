@@ -1,4 +1,4 @@
-// Steadwell v315 — 2026-10-05
+// Steadwell v316 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9842,7 +9842,7 @@ function ProjectPhotosEditor({ data, onChange, userId, status }) {
   const list = projectPhotoList(data);
   const visible = PROJECT_PHOTO_KINDS.filter(k =>
     projectPhotosOf(list, k.kind).length > 0 || k.kind === "before" ||
-    (k.kind === "progress" && status !== "Planning") || (k.kind === "after" && status !== "Planning" && status !== "In Progress"));
+    (k.kind === "progress" && status !== "Planning") || (k.kind === "after" && status !== "Planning"));
 
   const commit = (next, removedUrl) => {
     const cur = dataRef.current;
@@ -9893,10 +9893,11 @@ function ProjectPhotosEditor({ data, onChange, userId, status }) {
       {visible.map(k => {
         const mine = projectPhotosOf(list, k.kind);
         const full = mine.length >= PROJECT_PHOTO_MAX;
+        const title = k.kind === "after" && status !== "Completed" ? "After (or latest so far)" : k.label;
         return (
           <div key={k.kind}>
             <div style={{ display: "flex", alignItems: "baseline", gap: ".5rem", marginBottom: ".4rem" }}>
-              <span style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--dark)" }}>{k.emoji} {k.label}</span>
+              <span style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--dark)" }}>{k.emoji} {title}</span>
               <span style={{ fontSize: ".74rem", color: "#6E665D" }}>{mine.length === 0 ? "No photos yet" : `${mine.length} photo${mine.length === 1 ? "" : "s"}`}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(88px,1fr))", gap: ".5rem" }}>
@@ -10104,7 +10105,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
         <ProjectPhotosEditor data={data} onChange={onChange} userId={userId} status={status}/>
         <div style={{fontSize:".72rem",color:"#6E665D",marginTop:".6rem",lineHeight:1.5}}>
           {status==="Planning" ? "Add Before photos now. Come back to add progress and after shots as work proceeds." :
-           status==="In Progress" ? "Document progress as work happens. Add After photos when it's done." :
+           status==="In Progress" ? "Document progress as work happens. Add an After (or latest) photo any time to get an AI before and after review." :
            "Add several angles of each stage. Choose photos from your library or take new ones."}
         </div>
       </div>
@@ -16387,13 +16388,18 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
     }
     if (!alive.current) return;
     setPhase("analyzing");
-    const { status, json } = await projReviewCall({ action: "review", project_id: p.id, photo_paths: paths, notes: notes.trim(), today: localISO() });
+    let { status, json } = await projReviewCall({ action: "review", project_id: p.id, photo_paths: paths, notes: notes.trim(), today: localISO() });
+    if (json?.code === "bad_photos") {   // an older copy of the review service only takes one photo per stage
+      const single = { before: paths.before?.[0], after: paths.after?.[0], ...(paths.progress?.[0] ? { progress: paths.progress[0] } : {}) };
+      ({ status, json } = await projReviewCall({ action: "review", project_id: p.id, photo_paths: single, notes: notes.trim(), today: localISO() }));
+    }
     if (!alive.current) return;
     setPhase("idle");
     if (json?.ok) { setUsage(json.usage || usage); setNotes(""); await load(); return; }
     if (json?.usage) setUsage(json.usage);
     if (status === 429 || json?.code === "limit_reached") setErr(`You've used all ${json?.usage?.limit ?? ""} reviews this month${json?.usage?.resets ? ` (resets ${fmtD(json.usage.resets)})` : ""}.`);
-    else setErr(json?.error || "The review didn't finish. Please try again.");
+    else if (json?.code === "bad_response") setErr("Couldn't reach the review service. Try again in a moment.");
+    else setErr((json?.error || "The review didn't finish. Please try again.") + (json?.code ? ` (${json.code})` : ""));
   };
 
   const decide = async (apply) => {
@@ -16439,6 +16445,9 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
           <div style={{ fontSize: ".8rem", color: "#6E665D", lineHeight: 1.4 }}>
             {applied ? "Your estimate uses what the photos show." : pending ? "Review ready. Choose whether to use it." : intro ? "Let AI compare your photos and sharpen the estimate." : "You kept the national estimate."}
           </div>
+          {p.status !== "Completed" && (
+            <div style={{ fontSize: ".76rem", color: "#6E665D", lineHeight: 1.4, marginTop: 2 }}>This project isn't marked done, so the review reflects what's finished so far. Run it again when the work is complete.</div>
+          )}
         </div>
         {applied && <span style={{ fontSize: ".7rem", fontWeight: 700, background: "#E4F1E9", color: "#2F7A55", padding: "3px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>AI-adjusted</span>}
       </div>
@@ -17332,14 +17341,14 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                     })()}
 
                     {/* AI before/after review — completed projects with a type, both photos, and a paid plan */}
-                    {(planData?.plan === "plus" || planData?.plan === "pro") && p.roi_category && roiData?.categories[p.roi_category]?.roi != null && spent > 0 && p.status === "Completed" && (
+                    {(planData?.plan === "plus" || planData?.plan === "pro") && p.roi_category && roiData?.categories[p.roi_category]?.roi != null && spent > 0 && p.status !== "Planning" && (
                       projectPhotosOf(projectPhotoList(p), "before").length > 0 && projectPhotosOf(projectPhotoList(p), "after").length > 0 ? (
                         <ProjectAIReview key={p.id} project={p} roiData={roiData} homeValue={homeValue} propertyAddress={propertyAddress} spent={spent} userId={userId} toast={toast}
                           onApplied={(id, patch)=>setProjects(projects.map(x=>x.id===id?{...x,...patch}:x))}/>
                       ) : (
                         <button type="button" onClick={()=>openEditProject(p)} style={{display:"flex",alignItems:"center",gap:".75rem",width:"100%",textAlign:"left",padding:".9rem 1rem",background:"var(--white)",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",cursor:"pointer",marginBottom:"1rem",fontFamily:"inherit"}}>
                           <span style={{fontSize:"1.2rem"}} aria-hidden="true">✨</span>
-                          <span><span style={{display:"block",fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Sharpen this estimate with photos</span><span style={{display:"block",fontSize:".8rem",color:"#6E665D",marginTop:2}}>Add a before and an after photo and AI will compare them.</span></span>
+                          <span><span style={{display:"block",fontSize:".92rem",fontWeight:700,color:"var(--dark)"}}>Sharpen this estimate with photos</span><span style={{display:"block",fontSize:".8rem",color:"#6E665D",marginTop:2}}>Add a before photo and an after (or latest) photo and AI will compare them.</span></span>
                         </button>
                       )
                     )}
