@@ -1,4 +1,4 @@
-// Steadwell v316 — 2026-10-05
+// Steadwell v318 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -13829,7 +13829,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
           <textarea value={notes} maxLength={300} onChange={e => setNotes(e.target.value)} placeholder="e.g. There was a leak last spring, or it makes a rattling noise" style={{ minHeight: 60 }} />
         </div>
         <div className="asm-note" style={{ marginTop: ".6rem" }}>
-          Your photos are saved privately in your account and sent securely to Claude, Anthropic's AI, to produce the assessment. Steadwell doesn't use them to train AI. AI estimates from photos are not a professional inspection.
+          Your photos are saved privately in your account and analyzed with AI to produce the assessment. Steadwell doesn't use them to train AI. AI estimates from photos are not a professional inspection. Details in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Privacy Policy</a>.
         </div>
         {usage && <div style={{ fontSize: ".78rem", color: remainingLeft === 0 ? "#B0432B" : "#8A8178", marginTop: ".6rem" }}>
           {remainingLeft === 0 ? `You've used all ${usage.limit} assessments this month (resets ${fmtD(usage.resets)}).` : `${remainingLeft} of ${usage.limit} assessments left this month. Only successful assessments count.`}
@@ -16559,7 +16559,7 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
           {err && <div role="alert" style={{ color: "#B0432B", fontSize: ".84rem", marginTop: ".6rem", lineHeight: 1.45 }}>{err}</div>}
           {usage && !err && <div style={{ fontSize: ".78rem", color: left === 0 ? "#B0432B" : "#6E665D", marginTop: ".6rem" }}>{left === 0 ? `You've used all ${usage.limit} reviews this month (resets ${fmtD(usage.resets)}).` : `${left} of ${usage.limit} reviews left this month. Only successful reviews count.`}</div>}
           <div style={{ fontSize: ".74rem", color: "#6E665D", marginTop: ".6rem", lineHeight: 1.5 }}>
-            Your photos are saved privately in your account and sent securely to Claude, Anthropic's AI, to compare them. Steadwell doesn't use them to train AI. The AI reports what it can see, and a fixed formula turns that into a small adjustment (never more than about 25% up or 30% down). It is not an appraisal.
+            Your photos are saved privately in your account and analyzed with AI. Steadwell doesn't use them to train AI. The AI reports what it can see, and a fixed formula turns that into a small adjustment (never more than about 25% up or 30% down). It is not an appraisal. See our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Privacy Policy</a> for details.
           </div>
         </div>
       )}
