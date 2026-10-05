@@ -1,4 +1,4 @@
-// Steadwell v313 — 2026-10-03
+// Steadwell v314 — 2026-10-05
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9920,7 +9920,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
                 <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:10,padding:".75rem"}}>
                   <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:4}}>🔧 DIY</div>
                   <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.1rem",fontWeight:600,color:"var(--dark)"}}>~{fmt(Math.round(activeScope.contractorCost[0]/ROI_DIY_FALLBACK))} – {fmt(Math.round(activeScope.contractorCost[1]/ROI_DIY_FALLBACK))}</div>
-                  <div style={{fontSize:".68rem",color:"#6E665D",marginTop:2}}>Estimate: about half the contractor price</div>
+                  <div style={{fontSize:".68rem",color:"#6E665D",marginTop:2}}>Estimate</div>
                 </div>
               )}
             </div>
@@ -9948,19 +9948,19 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
             <button type="button" aria-pressed={!data.roi_diy} onClick={()=>f("roi_diy",false)}
               style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${!data.roi_diy?"var(--pine)":"var(--stone)"}`,background:!data.roi_diy?"var(--pine)":"var(--white)",color:!data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
-              👷 Hired contractor
+              👷 Contractor
             </button>
             {(
               <button type="button" aria-pressed={!!data.roi_diy} onClick={()=>f("roi_diy",true)}
                 style={{padding:".65rem",borderRadius:10,border:`1.5px solid ${data.roi_diy?"var(--pine)":"var(--stone)"}`,background:data.roi_diy?"var(--pine)":"var(--white)",color:data.roi_diy?"#fff":"var(--dark)",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
-                🔧 DIY or people I know
+                🔧 DIY
               </button>
             )}
           </div>
           <div style={{fontSize:".72rem",color:"#6E665D",lineHeight:1.5,marginTop:".45rem"}}>
             {data.roi_diy
-              ? "Works for you, a friend, or family, even on jobs that normally need a licensed pro. Log only what you actually paid (materials, rentals, anyone you paid). We value the finished work at typical contractor prices."
-              : "Choose DIY if you or people you know did the work. Choose hired contractor if you paid market rates."}
+              ? "You or someone you know did the work. Log only what you paid."
+              : "Hired a pro at normal rates."}
           </div>
         </div>
       )}
@@ -10007,7 +10007,7 @@ function ProjectForm({ data, onChange, userId, contractors=[], homeValue, planDa
               </div>
               <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
                 {useBudget ? `Based on your $${calc.spend.toLocaleString()} budget` : `Based on typical ${(activeScope?.label || roiInfo.label).toLowerCase()} cost`} · {calc.isDIY?"DIY":"contractor"}.
-                {calc.isDIY && ` Your cost is what you pay yourself. The finished work is valued at typical contractor prices${calc.diyEstimated ? ", and we assume you pay about half of that" : ""}.`}
+                {calc.isDIY && ` Value is based on typical contractor prices for this work.`}
                 {pctOfHome && ` About ${pctOfHome}% of your home's value.`}
                 {calc.regionalMultiplier!==1 && ` Adjusted for your region.`}
                 {" "}{calc.isCVRTracked ? PROJECT_ROI_SOURCE_CVR : PROJECT_ROI_SOURCE_EST} Estimate only — not an appraisal.
@@ -17261,7 +17261,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                           </div>
                           <div style={{fontSize:".72rem",color:"rgba(244,237,223,.5)",lineHeight:1.5}}>
                             Based on ${calc.spend.toLocaleString()} spent on {roiInfo.label.toLowerCase()} ({calc.isDIY?"DIY":"contractor"}).
-                            {calc.isDIY && ` The published ${calc.publishedROI}% ROI assumes a contractor did the work. For DIY or friends-and-family jobs we value the finished work at typical contractor prices, so the return on what you actually paid is higher.`}
+                            {calc.isDIY && ` Value is based on typical contractor prices for this work, so the return on what you paid is higher.`}
                             {pctOfHome && ` About ${pctOfHome}% of your home's estimated value.`}
                             {calc.regionalMultiplier!==1 && ` Adjusted for your region.`}
                             {" "}{calc.isCVRTracked ? PROJECT_ROI_SOURCE_CVR : PROJECT_ROI_SOURCE_EST} Estimate only — not an appraisal.
