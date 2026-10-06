@@ -36,7 +36,7 @@ const PAGES = [
 ];
 
 // Posts that must not be listed (for example a duplicate that now redirects elsewhere).
-const EXCLUDE_SLUGS = new Set([]);
+const EXCLUDE_SLUGS = new Set(["first-30-days-new-home-checklist"]);
 
 // Used only if Sanity is unreachable.
 const FALLBACK_POSTS = [

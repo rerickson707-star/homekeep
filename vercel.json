@@ -36,6 +36,11 @@
       "source": "/account",
       "destination": "/",
       "permanent": false
+    },
+    {
+      "source": "/blog/first-30-days-new-home-checklist",
+      "destination": "/blog/new-homeowner-checklist-first-30-days",
+      "permanent": true
     }
   ],
   "rewrites": [

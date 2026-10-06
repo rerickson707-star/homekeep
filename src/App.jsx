@@ -1,4 +1,4 @@
-// Steadwell v329 — 2026-10-06
+// Steadwell v330 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -29933,6 +29933,10 @@ function blogIsoDate(value) {
 const BLOG_AUTHOR = { "@type": "Organization", name: "Steadwell", url: SEO_SITE_URL };
 const BLOG_DEFAULT_IMAGE = SEO_SITE_URL + "/og-image.png";
 
+// Posts that were merged into another post. They stay in Sanity but are hidden from the blog,
+// related-guide lists and the pre-render; vercel.json 301-redirects each to its replacement.
+const BLOG_HIDDEN_SLUGS = new Set(["first-30-days-new-home-checklist"]);
+
 async function fetchSanityPosts() {
   try {
     const query = encodeURIComponent('*[_type == "blogPost"] | order(publishedAt desc) { "slug": slug.current, title, description, tag, publishedAt, _updatedAt, readTime, body, "image": coalesce(mainImage.asset->url, coverImage.asset->url, image.asset->url) }');
@@ -29942,7 +29946,7 @@ async function fetchSanityPosts() {
     const data = await res.json();
     const results = data.result || [];
     if (!results.length) return null;
-    return results.map(p => ({
+    return results.filter(p => !BLOG_HIDDEN_SLUGS.has(p.slug)).map(p => ({
       slug: p.slug,
       title: p.title,
       description: p.description,
