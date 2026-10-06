@@ -1,22 +1,215 @@
 {
   "framework": "vite",
+  "buildCommand": "npm run build",
+  "redirects": [
+    {
+      "source": "/terms.html",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/privacy.html",
+      "destination": "/privacy",
+      "permanent": true
+    },
+    {
+      "source": "/ada.html",
+      "destination": "/ada",
+      "permanent": true
+    },
+    {
+      "source": "/accessibility",
+      "destination": "/ada",
+      "permanent": true
+    },
+    {
+      "source": "/accessibility.html",
+      "destination": "/ada",
+      "permanent": true
+    },
+    {
+      "source": "/warranty-tracker.html",
+      "destination": "/warranty-tracker",
+      "permanent": true
+    }
+  ],
   "rewrites": [
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/unsubscribe", "destination": "/index.html" },
-    { "source": "/blog/:slug", "destination": "/index.html" },
-    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
-    { "source": "/robots.txt", "destination": "/robots.txt" },
-    { "source": "/llms.txt", "destination": "/llms.txt" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/warranty-tracker",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/recall-alerts",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/ai-scan",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/email-capture",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-maintenance-tracker",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/contractor-tracker",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-insurance-tracker",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-expense-tracker",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-projects",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-document-vault",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/utility-bill-tracker",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-condition-assessment",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/ask-steadwell",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/home-health-score",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/calendar-sync",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/shared-household-access",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/ada",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/guides",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/affiliates",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/affiliate-agreement",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/unsubscribe",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/for-agents",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/gift",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/gift/:path*",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/print-card/:path*",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/agent",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/agent-portal",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/agent-setup",
+      "destination": "/spa-shell.html"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/spa-shell.html"
+    }
   ],
   "headers": [
     {
       "source": "/index.html",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/spa-shell.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }

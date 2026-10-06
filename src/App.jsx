@@ -1,4 +1,4 @@
-// Steadwell v327 — 2026-10-06
+// Steadwell v328 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4518,6 +4518,11 @@ function useNoIndex(on = true) {
 }
 
 function useSEO({ title, description, canonical, jsonLd, noindex, image, ogType } = {}) {
+  // Build-time pre-rendering (scripts/prerender.mjs) renders each page on the server and
+  // collects what it would put in <head> here; effects below never run on the server.
+  if (typeof globalThis !== "undefined" && typeof globalThis.__SW_SEO_SINK__ === "function") {
+    globalThis.__SW_SEO_SINK__({ title, description, canonical, jsonLd, noindex, image, ogType });
+  }
   useNoIndex(!!noindex);
   useEffect(() => {
     const fullTitle = seoTitle(title);
@@ -4596,7 +4601,7 @@ function LandingPage({ onSignIn, onSignUp }) {
   useSEO({
     title: "Free Home Maintenance, Warranty & Utility Tracker",
     description: "Track warranties, maintenance, utility bills, insurance and home value in one place, plus AI condition assessments from photos. Free to start.",
-    canonical: "https://www.trysteadwell.app",
+    canonical: "https://www.trysteadwell.app/",
     jsonLd: {
       "@context": "https://schema.org",
       "@graph": [
@@ -4613,6 +4618,14 @@ function LandingPage({ onSignIn, onSignUp }) {
             { "@type": "Offer", "name": "Plus", "price": "7.99", "priceCurrency": "USD" },
             { "@type": "Offer", "name": "Pro", "price": "14.99", "priceCurrency": "USD" },
           ],
+        },
+        {
+          "@type": "Organization",
+          "name": "Steadwell",
+          "legalName": "Steadwell, LLC",
+          "url": "https://www.trysteadwell.app/",
+          "logo": "https://www.trysteadwell.app/icon-512.png",
+          "contactPoint": { "@type": "ContactPoint", "email": "hello@trysteadwell.app", "contactType": "customer support" },
         },
         {
           "@type": "FAQPage",
@@ -23601,7 +23614,20 @@ export default function App() {
   const _appPaths = ["/", "", "/index.html", "/login", "/signup", "/login/", "/signup/"];
   if (!_appPaths.includes(_path)) return <NotFoundPage />;
   const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  // Show the landing page straight away for visitors who clearly have no saved login, so the
+  // pre-rendered page is not replaced by a spinner while the session check runs. Anything that
+  // could be a sign-in (stored session, auth redirect, reset link) still waits for the check.
+  const [authLoading, setAuthLoading] = useState(() => {
+    try {
+      const url = window.location.search + window.location.hash;
+      if (/access_token|refresh_token|[?&#]code=|type=recovery|type=signup|type=invite|type=magiclink|error_description/.test(url)) return true;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) || "";
+        if (/^sb-.*-auth-token/.test(k) || /supabase\.auth\.token/.test(k)) return true;
+      }
+      return false;
+    } catch { return true; }
+  });
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [verifyResendState, setVerifyResendState] = useState("idle"); // idle | sending | sent
   const [screen, setScreen] = useState(() => {
@@ -27099,7 +27125,7 @@ function LPFooter() {
     { h:"Features", items: LP_FEATURE_PAGES.slice(0, half).map(p => ({h:p.href,l:p.label})) },
     { h:"More features", items: LP_FEATURE_PAGES.slice(half).map(p => ({h:p.href,l:p.label})) },
     { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-agents",l:"For Agents"},{h:"/affiliates",l:"Affiliates"}] },
-    { h:"Company", items:[{h:"mailto:hello@trysteadwell.app",l:"Contact"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"/accessibility",l:"Accessibility"}] },
+    { h:"Company", items:[{h:"mailto:hello@trysteadwell.app",l:"Contact"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"/ada",l:"Accessibility"}] },
   ];
   return (
     <footer role="contentinfo" style={{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"40px 24px 28px",fontSize:".82rem"}}>
@@ -27341,7 +27367,7 @@ function LPGuides({ path }) {
 
 function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home on track" }) {
   const items = hrefs.map(h => LP_FEATURE_PAGES.find(p => p.href === h)).filter(Boolean);
-  const path = typeof window !== "undefined" ? (window.location.pathname.replace(/\/+$/, "") || "/") : "/";
+  const path = typeof window !== "undefined" ? (window.location.pathname.replace(/\/+$/, "") || "/") : (globalThis.__SW_PATH__ || "/");
   return (
     <>
       <LPGuides path={path}/>
@@ -29934,8 +29960,11 @@ async function fetchSanityPosts() {
 }
 
 function useBlogPosts() {
-  const [posts, setPosts] = useState(BLOG_POSTS_FALLBACK);
-  const [loading, setLoading] = useState(true);
+  // At build time the pre-render script supplies the posts it fetched from Sanity, so the
+  // server HTML contains the real article instead of a loading spinner.
+  const prerendered = typeof globalThis !== "undefined" ? globalThis.__SW_BLOG_POSTS__ : null;
+  const [posts, setPosts] = useState(prerendered || BLOG_POSTS_FALLBACK);
+  const [loading, setLoading] = useState(!prerendered);
   useEffect(() => {
     fetchSanityPosts().then(sanityPosts => {
       if (sanityPosts && sanityPosts.length > 0) setPosts(sanityPosts);
@@ -31852,3 +31881,36 @@ function HomeSetupWizard({ existingAssets=[], existingTasks=[], profile, setProf
 
   return null;
 }
+
+// ─── PRE-RENDER SUPPORT ──────────────────────────────────────────────────────
+// scripts/prerender.mjs imports these at build time to write real HTML for every public page.
+// Nothing here runs in the browser bundle's normal path.
+export const PRERENDER_PAGES = {
+  "/warranty-tracker": WarrantyTrackerPage,
+  "/recall-alerts": RecallAlertsPage,
+  "/ai-scan": AIScanPage,
+  "/email-capture": EmailCapturePage,
+  "/home-maintenance-tracker": MaintenanceTrackerPage,
+  "/contractor-tracker": ContractorTrackerPage,
+  "/home-insurance-tracker": InsuranceTrackerPage,
+  "/home-expense-tracker": HomeExpenseTrackerPage,
+  "/home-projects": HomeProjectsPage,
+  "/home-document-vault": DocumentVaultPage,
+  "/utility-bill-tracker": UtilityBillTrackerPage,
+  "/home-condition-assessment": ConditionAssessmentPage,
+  "/ask-steadwell": AskSteadwellPage,
+  "/home-health-score": HomeHealthScorePage,
+  "/calendar-sync": CalendarSyncPage,
+  "/shared-household-access": SharedHouseholdAccessPage,
+  "/pricing": PricingPage,
+  "/terms": TermsPage,
+  "/privacy": PrivacyPage,
+  "/ada": ADAPage,
+  "/guides": GuidesPage,
+  "/affiliates": AffiliatesPage,
+  "/affiliate-agreement": AffiliateAgreementPage,
+};
+export {
+  CSS as APP_CSS, LandingPage, BlogIndex, BlogPost, NotFoundPage,
+  seoTitle, seoClip, SEO_DESC_MAX, SEO_SITE_URL, fetchSanityPosts, BLOG_POSTS_FALLBACK,
+};
