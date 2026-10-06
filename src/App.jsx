@@ -1,4 +1,4 @@
-// Steadwell v324 — 2026-10-05
+// Steadwell v325 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4475,12 +4475,51 @@ function useFormDraft(key, initial) {
   return [state, setDraft, clearDraft];
 }
 
-function useSEO({ title, description, canonical, jsonLd } = {}) {
+// Search results cut titles near 60 characters and descriptions near 155, so the
+// head tags are held to that here for every page, whatever the caller passes.
+const SEO_TITLE_MAX = 60;
+const SEO_DESC_MAX = 155;
+const SEO_SITE_URL = "https://www.trysteadwell.app";
+function seoClip(str, max) {
+  const s = String(str || "").replace(/\s+/g, " ").trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\-—–]+$/, "") + "…";
+}
+function seoTitle(title) {
+  const siteName = "Steadwell";
+  if (!title) return `${siteName} — Home Maintenance Tracking & Asset Management`;
+  const full = `${title} | ${siteName}`;
+  if (full.length <= SEO_TITLE_MAX) return full;
+  // Too long: prefer the part before a subtitle ("Title: subtitle", "Title (note)") over a mid-word cut.
+  const lead = title.split(/:\s|\s[—–]\s|\s\(/)[0].trim();
+  if (lead.length >= 15 && lead.length < title.length) {
+    if (`${lead} | ${siteName}`.length <= SEO_TITLE_MAX) return `${lead} | ${siteName}`;
+    if (lead.length <= SEO_TITLE_MAX) return lead;
+  }
+  return seoClip(title, SEO_TITLE_MAX); // no room for the brand suffix
+}
+
+// Keeps a page out of search results (login, signup, partner pages) while mounted.
+function useNoIndex(on = true) {
   useEffect(() => {
-    const siteName = "Steadwell";
-    const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — Home Maintenance Tracking & Asset Management`;
-    const metaDesc = description || "Steadwell helps homeowners track maintenance, manage appliances, and stay ahead of repairs. Free to start.";
-    const canonicalUrl = canonical || "https://www.trysteadwell.app/";
+    if (!on) return undefined;
+    let el = document.querySelector('meta[name="robots"]');
+    const created = !el;
+    if (!el) { el = document.createElement("meta"); el.setAttribute("name", "robots"); document.head.appendChild(el); }
+    const prev = el.getAttribute("content");
+    el.setAttribute("content", "noindex, follow");
+    return () => { if (created) el.remove(); else if (prev) el.setAttribute("content", prev); };
+  }, [on]);
+}
+
+function useSEO({ title, description, canonical, jsonLd, noindex, image, ogType } = {}) {
+  useNoIndex(!!noindex);
+  useEffect(() => {
+    const fullTitle = seoTitle(title);
+    const metaDesc = seoClip(description || "Steadwell helps homeowners track maintenance, manage appliances, and stay ahead of repairs. Free to start.", SEO_DESC_MAX);
+    const canonicalUrl = canonical || `${SEO_SITE_URL}/`;
 
     // Title
     document.title = fullTitle;
@@ -4488,7 +4527,12 @@ function useSEO({ title, description, canonical, jsonLd } = {}) {
     // Helper to set/create meta tag
     const setMeta = (selector, attr, value) => {
       let el = document.querySelector(selector);
-      if (!el) { el = document.createElement("meta"); document.head.appendChild(el); }
+      if (!el) {
+        el = document.createElement("meta");
+        const m = selector.match(/\[(name|property)="([^"]+)"\]/);
+        if (m) el.setAttribute(m[1], m[2]);
+        document.head.appendChild(el);
+      }
       el.setAttribute(attr, value);
     };
 
@@ -4498,6 +4542,11 @@ function useSEO({ title, description, canonical, jsonLd } = {}) {
     setMeta('meta[property="og:url"]', "content", canonicalUrl);
     setMeta('meta[name="twitter:title"]', "content", fullTitle);
     setMeta('meta[name="twitter:description"]', "content", metaDesc);
+    if (ogType) setMeta('meta[property="og:type"]', "content", ogType);
+    if (image) {
+      setMeta('meta[property="og:image"]', "content", image);
+      setMeta('meta[name="twitter:image"]', "content", image);
+    }
 
     // Canonical
     let canonEl = document.querySelector('link[rel="canonical"]');
@@ -4517,11 +4566,11 @@ function useSEO({ title, description, canonical, jsonLd } = {}) {
 
     return () => {
       // Reset to defaults on unmount
-      document.title = `${siteName} — Home Maintenance Tracking & Asset Management`;
+      document.title = seoTitle("");
       const ld = document.querySelector('script[data-seo="dynamic"]');
       if (ld) ld.remove();
     };
-  }, [title, description, canonical, JSON.stringify(jsonLd)]);
+  }, [title, description, canonical, image, ogType, JSON.stringify(jsonLd)]);
 }
 
 const LANDING_FAQ = [
@@ -5040,6 +5089,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $14.99/mo</button>
             </div>
           </div>
+          <p style={{textAlign:"center",marginTop:"1.5rem"}}><a href="/pricing" style={{color:"var(--terracotta)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>Compare every plan in detail →</a></p>
         </div>
       </section>
 
@@ -5148,7 +5198,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             </div>
             <div className="foot-links">
               <a onClick={() => scrollTo("features")}>Features</a>
-              <a onClick={() => scrollTo("pricing")}>Pricing</a>
+              <a href="/pricing">Pricing</a>
               <a href="/warranty-tracker">Warranty Tracker</a>
               <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
@@ -23510,7 +23560,8 @@ export default function App() {
   };
 
   // URL-based routing for legal pages — check before any hooks
-  const _path = typeof window !== "undefined" ? window.location.pathname : "";
+  const _rawPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const _path = _rawPath.length > 1 ? _rawPath.replace(/\/+$/, "") : _rawPath; // "/terms/" behaves like "/terms"
   if (_path === "/terms" || _path === "/terms.html") return <TermsPage />;
   if (_path === "/privacy" || _path === "/privacy.html") return <PrivacyPage />;
   if (_path === "/ada" || _path === "/accessibility" || _path === "/ada/" || _path === "/ada.html" || _path === "/accessibility.html" || _path === "/accessibility/") return <ADAPage />;
@@ -23542,6 +23593,10 @@ export default function App() {
   if (_path === "/shared-household-access" || _path === "/shared-household-access/") return <SharedHouseholdAccessPage />;
   if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
+  if (_path === "/pricing" || _path === "/pricing/") return <PricingPage />;
+  // Anything that is not the app root, auth routes, or a path handled above is a dead link.
+  const _appPaths = ["/", "", "/index.html", "/login", "/signup", "/login/", "/signup/"];
+  if (!_appPaths.includes(_path)) return <NotFoundPage />;
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
@@ -23549,9 +23604,12 @@ export default function App() {
   const [screen, setScreen] = useState(() => {
     // If coming from a gift link or any ?action=signup link, open signup directly
     const params = new URLSearchParams(window.location.search);
-    if (params.get("action") === "signup") return "signup";
+    if (params.get("action") === "signup" || _path === "/signup" || _path === "/signup/") return "signup";
+    if (_path === "/login" || _path === "/login/") return "login";
     return "landing";
   }); // landing | login | signup
+  // /login and /signup are entry points, not content: keep them out of search results.
+  useNoIndex(_path === "/login" || _path === "/login/" || _path === "/signup" || _path === "/signup/");
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
   const [tab, setTabRaw] = useState(() => {
     try { return localStorage.getItem("sw_tab") || "dashboard"; } catch { return "dashboard"; }
@@ -26505,15 +26563,8 @@ function ForAgentsPage() {
     title:"For Real Estate Agents — A Closing Gift Clients Remember",
     description:"Give every client a closing gift that keeps your name in their home all year. Free to you, valuable to them. Apply to the Steadwell agent partner program.",
     canonical:"https://www.trysteadwell.app/for-agents",
+    noindex:true,
   });
-  useEffect(() => {
-    let el = document.querySelector('meta[name="robots"]');
-    const created = !el;
-    if (!el) { el = document.createElement("meta"); el.setAttribute("name","robots"); document.head.appendChild(el); }
-    const prev = el.getAttribute("content");
-    el.setAttribute("content","noindex");
-    return () => { if (created) el.remove(); else if (prev) el.setAttribute("content", prev); };
-  }, []);
   const [form, setForm] = useState({ name:"", email:"", brokerage:"", market:"", volume:"", note:"" });
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -27044,7 +27095,7 @@ function LPFooter() {
   const cols = [
     { h:"Features", items: LP_FEATURE_PAGES.slice(0, half).map(p => ({h:p.href,l:p.label})) },
     { h:"More features", items: LP_FEATURE_PAGES.slice(half).map(p => ({h:p.href,l:p.label})) },
-    { h:"Resources", items:[{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-agents",l:"For Agents"},{h:"/affiliates",l:"Affiliates"}] },
+    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-agents",l:"For Agents"},{h:"/affiliates",l:"Affiliates"}] },
     { h:"Company", items:[{h:"mailto:hello@trysteadwell.app",l:"Contact"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"/accessibility",l:"Accessibility"}] },
   ];
   return (
@@ -27261,24 +27312,225 @@ function LPPlanTiles({ plans = [], maxWidth }) {
   );
 }
 
-// "Keep going" strip: internal links to sibling feature pages.
-function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home on track" }) {
-  const items = hrefs.map(h => LP_FEATURE_PAGES.find(p => p.href === h)).filter(Boolean);
+// "Keep going" strip: internal links to sibling feature pages, followed by the
+// guides that support this page (matched by keyword against the live blog list).
+function LPGuides({ path }) {
+  const { posts } = useBlogPosts();
+  const guides = guidesForPage(path, posts, 3);
+  if (!guides.length) return null;
   return (
-    <LPSection alt>
-      <LPSectionHead h2={heading}/>
-      <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={14}>
-        {items.map(p => (
-          <a key={p.href} href={p.href} style={{textDecoration:"none",color:"inherit"}}>
+    <LPSection>
+      <LPSectionHead h2="Guides that go deeper" sub="Plain-English articles that pair with this page."/>
+      <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
+        {guides.map(g => (
+          <a key={g.slug} href={`/blog/${g.slug}`} style={{textDecoration:"none",color:"inherit"}}>
             <LPCard style={{height:"100%"}}>
-              <div style={{fontSize:"1.4rem",marginBottom:8}} aria-hidden="true">{p.icon}</div>
-              <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",marginBottom:4}}>{p.label}</div>
-              <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.5}}>{p.desc}</div>
+              {g.tag && <div style={{fontSize:".66rem",fontWeight:700,color:"#C16140",marginBottom:6}}>{g.tag}</div>}
+              <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1rem",color:"#234A3D",marginBottom:6,lineHeight:1.3}}>{g.title}</div>
+              <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.5}}>{g.description}</div>
             </LPCard>
           </a>
         ))}
       </LPGrid>
     </LPSection>
+  );
+}
+
+function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home on track" }) {
+  const items = hrefs.map(h => LP_FEATURE_PAGES.find(p => p.href === h)).filter(Boolean);
+  const path = typeof window !== "undefined" ? (window.location.pathname.replace(/\/+$/, "") || "/") : "/";
+  return (
+    <>
+      <LPGuides path={path}/>
+      <LPSection alt>
+        <LPSectionHead h2={heading}/>
+        <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={14}>
+          {items.map(p => (
+            <a key={p.href} href={p.href} style={{textDecoration:"none",color:"inherit"}}>
+              <LPCard style={{height:"100%"}}>
+                <div style={{fontSize:"1.4rem",marginBottom:8}} aria-hidden="true">{p.icon}</div>
+                <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",marginBottom:4}}>{p.label}</div>
+                <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.5}}>{p.desc}</div>
+              </LPCard>
+            </a>
+          ))}
+        </LPGrid>
+      </LPSection>
+    </>
+  );
+}
+
+// ─── PRICING PAGE ─────────────────────────────────────────────────────────────
+const PRICING_FAQ = [
+  ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex, email capture and essential document storage for one property. No credit card is needed to start."],
+  ["How much do Plus and Pro cost?","Plus is $7.99 a month or $63.99 a year. Pro is $14.99 a month or $119.99 a year. Paying yearly saves about 33% compared with paying monthly."],
+  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator and a home history report."],
+  ["What do I get with Pro?","Pro includes everything in Plus with higher AI limits (25 condition assessments, 150 Ask Steadwell questions and 15 project reviews a month), up to three properties, shared access so you can invite a spouse or team member and assign tasks, the full document vault, larger file uploads and priority support."],
+  ["Can I cancel any time?","Yes. Cancel from Account Settings whenever you like. Cancelling stops future renewals right away, and you keep access until the end of the period you already paid for. Paid plans renew automatically until you cancel, and the Terms of Service have the full billing details."],
+  ["Do I need a credit card to try Steadwell?","No. You can create a free account and use it for as long as you like without entering a card. A card is only needed if you choose Plus or Pro, and payments are handled by Stripe, so Steadwell never stores your card details."],
+  ["Which plan do I need if I own more than one property?","Pro. Free and Plus cover one property, and Pro covers up to three, each with its own assets, tasks, documents and bills."],
+  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, condition assessments, project reviews, the home health score and the cost forecast are part of Plus and Pro. Everything you track on Free stays yours if you ever change plans."],
+];
+
+// [feature, free, plus, pro]; true renders a check, false a dash, strings render as text
+const PRICING_ROWS = [
+  { group:"Track your home" },
+  ["Properties", "1", "1", "Up to 3"],
+  ["Tasks, assets and expenses", "Unlimited", "Unlimited", "Unlimited"],
+  ["Warranty expiry alerts and weekly digest", true, true, true],
+  ["Federal safety recall alerts", true, true, true],
+  ["Utility and bill tracking", true, true, true],
+  ["Email capture (forward a receipt or bill)", true, true, true],
+  ["Contractor rolodex and service history", true, true, true],
+  ["Calendar sync", true, true, true],
+  ["Document storage", "Essential", "Expanded", "Full vault"],
+  { group:"AI tools" },
+  ["Scan receipts, nameplates, bills and policies", false, true, true],
+  ["Condition assessments from photos", false, "5 a month", "25 a month"],
+  ["Ask Steadwell AI assistant", "3 to try", "30 a month", "150 a month"],
+  ["AI before and after project review", false, "3 a month", "15 a month"],
+  ["Smart Fill from a model number", false, true, true],
+  { group:"Plan ahead" },
+  ["Home health score", false, true, true],
+  ["5-year cost forecast", false, true, true],
+  ["Project ROI calculator", false, true, true],
+  ["Home history report (PDF)", false, true, true],
+  { group:"Share and support" },
+  ["Shared access and task assignment", false, false, true],
+  ["Larger file uploads", false, false, true],
+  ["Priority support", false, false, true],
+];
+
+function PricingPage() {
+  const path = "/pricing";
+  const description = "Steadwell is free to start. Plus is $7.99 a month and Pro is $14.99 a month, with AI scanning, assessments and shared access. Compare every plan.";
+  const plans = [
+    { plan:"Free", price:"$0", period:" / month", annual:"No time limit, no card", desc:"Everything you need to get organized.", cta:"Get started free",
+      features:["Unlimited tasks, assets and expenses","Warranty and recall alerts","Utility and bill tracking","Email capture and calendar sync","Contractor rolodex","Essential document storage, 1 property"] },
+    { plan:"Plus", price:"$7.99", period:" / month", annual:"or $63.99 a year, save 33%", desc:"AI tools and planning for the serious homeowner.", cta:"Start Plus", popular:true,
+      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Home health score and 5-year cost forecast","Project ROI calculator and AI project review"] },
+    { plan:"Pro", price:"$14.99", period:" / month", annual:"or $119.99 a year, save 33%", desc:"More properties, shared access and higher limits.", cta:"Start Pro",
+      features:["Everything in Plus","Up to 3 properties","Shared access, invite and assign tasks","25 assessments and 150 questions a month","Full document vault and larger uploads","Priority support"] },
+  ];
+  useSEO({
+    title:"Pricing — Free, Plus and Pro Plans",
+    description,
+    canonical:`https://www.trysteadwell.app${path}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Pricing",
+      path, description,
+      features:["Free plan with no time limit","Plus plan with AI scanning and condition assessments","Pro plan with up to three properties and shared access"],
+      faq: PRICING_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
+  });
+  const th = {padding:"12px 10px",fontSize:".82rem",fontWeight:700,color:"#234A3D",textAlign:"center",borderBottom:"2px solid #E6DECF",background:"#FBF7EE"};
+  const cell = {padding:"11px 10px",fontSize:".84rem",color:"#2A2723",textAlign:"center",borderBottom:"1px solid #E6DECF"};
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero eyebrow="Pricing" h1="Start free." h1em="Upgrade when you need more." sub="Steadwell is free for as long as you like. Add AI scanning, condition assessments and shared access when you want them." badge="No credit card to start · Cancel any time" cta="Get started free"/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Pick the plan that fits your home" sub="Pay monthly, or save about a third by paying yearly."/>
+          <LPPlanTiles plans={plans}/>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="Compare every feature" sub="What is included on each plan."/>
+          <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",border:"1px solid #E6DECF",borderRadius:14,background:"#fff"}}>
+            <table style={{width:"100%",minWidth:560,borderCollapse:"collapse"}}>
+              <caption style={{position:"absolute",left:-9999}}>Steadwell plan comparison</caption>
+              <thead>
+                <tr>
+                  <th scope="col" style={{...th,textAlign:"left",position:"sticky",left:0,zIndex:1}}>Feature</th>
+                  <th scope="col" style={th}>Free</th>
+                  <th scope="col" style={th}>Plus<div style={{fontWeight:500,fontSize:".72rem",color:"#7A7370"}}>$7.99 / mo</div></th>
+                  <th scope="col" style={th}>Pro<div style={{fontWeight:500,fontSize:".72rem",color:"#7A7370"}}>$14.99 / mo</div></th>
+                </tr>
+              </thead>
+              <tbody>
+                {PRICING_ROWS.map((r,i) => Array.isArray(r) ? (
+                  <tr key={i}>
+                    <th scope="row" style={{...cell,textAlign:"left",fontWeight:500,background:"#fff",position:"sticky",left:0}}>{r[0]}</th>
+                    {r.slice(1).map((v,j)=>(
+                      <td key={j} style={cell}>
+                        {v===true ? <span style={{color:"#2E7050",fontWeight:700}} aria-label="Included">✓</span>
+                          : v===false ? <span style={{color:"#A8A09A"}} aria-label="Not included">—</span>
+                          : v}
+                      </td>
+                    ))}
+                  </tr>
+                ) : (
+                  <tr key={i}><th scope="colgroup" colSpan={4} style={{padding:"10px 10px",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#C16140",textAlign:"left",background:"#FBF7EE",borderBottom:"1px solid #E6DECF"}}>{r.group}</th></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{fontSize:".8rem",color:"#7A7370",marginTop:14,lineHeight:1.6}}>AI features give estimates from the information you provide, and you review the results before anything is saved. See how scanning works on the <a href="/ai-scan" style={{color:"#C16140",fontWeight:600}}>AI scanning page</a>.</p>
+        </LPSection>
+
+        <LPSection narrow>
+          <LPSectionHead h2="What every plan includes" sub="The basics are never locked away."/>
+          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={16}>
+            {[
+              {icon:"🛡️",title:"Warranty and recall alerts",text:"Every item you track is checked against federal recalls, and you get a heads-up before a warranty ends.",href:"/warranty-tracker"},
+              {icon:"⚡",title:"Utility and bill tracking",text:"Electric, gas, water and internet bills with trends and spike alerts.",href:"/utility-bill-tracker"},
+              {icon:"✉️",title:"Email capture",text:"Forward a receipt or bill and it lands in your inbox to confirm.",href:"/email-capture"},
+            ].map(f=>(
+              <a key={f.href} href={f.href} style={{textDecoration:"none",color:"inherit"}}>
+                <LPCard style={{height:"100%"}}>
+                  <div style={{fontSize:"1.4rem",marginBottom:8}} aria-hidden="true">{f.icon}</div>
+                  <h3 style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",margin:"0 0 6px"}}>{f.title}</h3>
+                  <div style={{fontSize:".84rem",color:"#7A7370",lineHeight:1.55}}>{f.text}</div>
+                </LPCard>
+              </a>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Pricing questions"/>
+          <LPFAQ items={PRICING_FAQ}/>
+        </LPSection>
+
+        <LPRelated hrefs={["/home-condition-assessment","/ai-scan","/shared-household-access","/ask-steadwell"]} heading="See what the paid plans unlock"/>
+        <LPCTA h2="Start free today." sub="Set up your home in a few minutes. Upgrade only if and when you want the AI tools." btnLabel="Get started free →"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// ─── NOT FOUND PAGE ───────────────────────────────────────────────────────────
+// The host serves index.html for every path, so unknown URLs land here. The page
+// is noindexed so search engines drop it instead of treating it as a copy of the
+// homepage. (A true 404 status needs host-level routing, which is a separate step.)
+function NotFoundPage({ what = "page" }) {
+  useSEO({
+    title:"Page not found",
+    description:"The page you were looking for could not be found. Head back to the Steadwell homepage or browse the guides.",
+    canonical:`${SEO_SITE_URL}/`,
+    noindex:true,
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",display:"flex",flexDirection:"column"}}>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <main id="main" style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"56px 24px"}}>
+        <div style={{maxWidth:520,textAlign:"center"}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(3rem,10vw,5rem)",fontWeight:600,color:"#C16140",lineHeight:1}}>404</div>
+          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,4vw,2.2rem)",color:"#234A3D",margin:"12px 0"}}>We couldn't find that {what}</h1>
+          <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.65,marginBottom:28}}>The link may be out of date or mistyped. Try the homepage, or pick up where you left off below.</p>
+          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+            <a href="/" style={{background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontWeight:700,fontSize:".92rem"}}>Go to homepage</a>
+            <a href="/blog" style={{border:"1.5px solid #234A3D",color:"#234A3D",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontWeight:700,fontSize:".92rem"}}>Read the blog</a>
+            <a href="/pricing" style={{border:"1.5px solid #234A3D",color:"#234A3D",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontWeight:700,fontSize:".92rem"}}>See pricing</a>
+          </div>
+        </div>
+      </main>
+      <LPFooter/>
+    </div>
   );
 }
 
@@ -29476,6 +29728,11 @@ function GuidesPage() {
 }
 
 function TermsPage() {
+  useSEO({
+    title:"Terms of Service",
+    description:"The terms for using Steadwell: your account, plans and billing, AI features, your content and data, and how disputes are handled.",
+    canonical:"https://www.trysteadwell.app/terms",
+  });
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:6,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   const sections = [
@@ -29535,6 +29792,11 @@ function TermsPage() {
 
 // ─── PRIVACY POLICY PAGE ─────────────────────────────────────────────────────
 function PrivacyPage() {
+  useSEO({
+    title:"Privacy Policy",
+    description:"What Steadwell collects, how it is used, who it is shared with, and your choices, including how AI features handle your photos, documents and emails.",
+    canonical:"https://www.trysteadwell.app/privacy",
+  });
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   const sections = [
@@ -29617,9 +29879,28 @@ function formatSanityDate(dateStr) {
   return months[parseInt(parts[1],10)-1] + " " + parts[0];
 }
 
+// Search engines need real ISO dates (2026-09-14), not "September 2026".
+const BLOG_MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+function blogIsoDate(value) {
+  if (!value) return "";
+  const v = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const m = v.match(/^([A-Za-z]+)\s+(\d{4})$/); // "June 2026" from the built-in posts
+  if (m) {
+    const mi = BLOG_MONTHS.indexOf(m[1].toLowerCase());
+    if (mi >= 0) return `${m[2]}-${String(mi + 1).padStart(2, "0")}-01`;
+  }
+  return "";
+}
+
+// The byline for every article. Switch this to a named person (with an author page)
+// when ready: { "@type":"Person", name:"...", url:"https://www.trysteadwell.app/about" }.
+const BLOG_AUTHOR = { "@type": "Organization", name: "Steadwell", url: SEO_SITE_URL };
+const BLOG_DEFAULT_IMAGE = SEO_SITE_URL + "/og-image.png";
+
 async function fetchSanityPosts() {
   try {
-    const query = encodeURIComponent('*[_type == "blogPost"] | order(publishedAt desc) { "slug": slug.current, title, description, tag, publishedAt, readTime, body }');
+    const query = encodeURIComponent('*[_type == "blogPost"] | order(publishedAt desc) { "slug": slug.current, title, description, tag, publishedAt, _updatedAt, readTime, body, "image": coalesce(mainImage.asset->url, coverImage.asset->url, image.asset->url) }');
     const url = "https://" + SANITY_PROJECT_ID + ".api.sanity.io/v2024-01-01/data/query/" + SANITY_DATASET + "?query=" + query;
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -29633,6 +29914,9 @@ async function fetchSanityPosts() {
       tag: p.tag,
       time: p.readTime,
       date: formatSanityDate(p.publishedAt),
+      iso: blogIsoDate(p.publishedAt),
+      modified: blogIsoDate(p._updatedAt),
+      image: p.image || "",
       content: portableTextToHtml(p.body),
     }));
   } catch(e) {
@@ -29650,6 +29934,120 @@ function useBlogPosts() {
     });
   }, []);
   return { posts, loading };
+}
+
+// ─── INTERNAL LINKING (blog <-> feature pages) ───────────────────────────────
+// Keywords that tie each feature page to the guides that support it. Matching runs
+// against the live post list, so new Sanity posts are picked up without a code change.
+const LP_GUIDE_KEYWORDS = {
+  "/warranty-tracker":          ["warranty","serial number","appliance","recall"],
+  "/utility-bill-tracker":      ["utility","energy","bill","hvac","cost of"],
+  "/home-condition-assessment": ["water heater","roof","hvac","age of","how old","lifespan","replace"],
+  "/recall-alerts":             ["recall","serial number","appliance","safety"],
+  "/home-maintenance-tracker":  ["maintenance","checklist","schedule","hvac","deferred"],
+  "/home-expense-tracker":      ["cost","deferred","expense","budget","repair"],
+  "/ai-scan":                   ["serial number","appliance","nameplate","receipt","scan"],
+  "/email-capture":             ["receipt","bill","email","organize"],
+  "/contractor-tracker":        ["contractor","hire","repair","service"],
+  "/home-insurance-tracker":    ["insurance","claim","warranty","coverage"],
+  "/home-projects":             ["roof","project","renovation","remodel","value","replace"],
+  "/home-document-vault":       ["document","records","paperwork","age of","warranty"],
+  "/ask-steadwell":             ["checklist","maintenance","how old","schedule"],
+  "/home-health-score":         ["maintenance","deferred","checklist","condition"],
+  "/calendar-sync":             ["checklist","schedule","seasonal","reminder"],
+  "/shared-household-access":   ["checklist","maintenance","household","partner"],
+  "/pricing":                   [" vs ","alternative","homezada","homebinder","centriq"],
+};
+
+function guideScore(text, keywords) {
+  const t = " " + String(text || "").toLowerCase() + " ";
+  return keywords.reduce((n, k) => n + (t.includes(k) ? 1 : 0), 0);
+}
+function postText(p) { return `${p.title} ${p.description} ${p.tag} ${(p.slug || "").replace(/-/g, " ")}`; }
+
+function guidesForPage(href, posts, n = 3) {
+  const kws = LP_GUIDE_KEYWORDS[href] || [];
+  return posts
+    .map(p => ({ p, sc: guideScore(postText(p), kws) }))
+    .filter(x => x.sc > 0)
+    .sort((a, b) => b.sc - a.sc || String(b.p.iso || "").localeCompare(String(a.p.iso || "")))
+    .slice(0, n).map(x => x.p);
+}
+
+function featuresForPost(post, n = 2) {
+  const txt = postText(post);
+  const ranked = Object.keys(LP_GUIDE_KEYWORDS)
+    .filter(h => h !== "/pricing")
+    .map(h => ({ h, sc: guideScore(txt, LP_GUIDE_KEYWORDS[h]) }))
+    .filter(x => x.sc > 0)
+    .sort((a, b) => b.sc - a.sc)
+    .slice(0, n).map(x => LP_FEATURE_PAGES.find(f => f.href === x.h)).filter(Boolean);
+  return ranked.length ? ranked : [LP_FEATURE_PAGES.find(f => f.href === "/home-maintenance-tracker")].filter(Boolean);
+}
+
+const BLOG_STOPWORDS = new Set(["the","and","for","your","you","with","what","how","when","that","this","from","are","can","does","home","homeowner","guide","every","need","know","about","into","vs","to","of","in","a","is","it","on","or","do"]);
+function blogWords(str) {
+  return new Set(String(str || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2 && !BLOG_STOPWORDS.has(w)));
+}
+function relatedPosts(post, posts, n = 3) {
+  const tw = blogWords(post.title), dw = blogWords(post.description);
+  return posts
+    .filter(p => p.slug && p.slug !== post.slug)
+    .map(p => {
+      let sc = p.tag && p.tag === post.tag ? 3 : 0;
+      blogWords(p.title).forEach(w => { if (tw.has(w)) sc += 2; else if (dw.has(w)) sc += 1; });
+      return { p, sc };
+    })
+    .sort((a, b) => b.sc - a.sc || String(b.p.iso || "").localeCompare(String(a.p.iso || "")))
+    .slice(0, n).map(x => x.p);
+}
+
+// Contextual links inside article text: the first mention of a topic links to the page
+// or guide that covers it. One link per target, a handful per post, never in headings or
+// existing links, and a guide only links when it exists in the current post list.
+const BLOG_AUTOLINKS = [
+  { re:/\b(serial numbers?)\b/i,                                  post:"find-appliance-serial-number" },
+  { re:/\b(maintenance checklist)\b/i,                            post:"home-maintenance-checklist" },
+  { re:/\b(deferred maintenance)\b/i,                             post:"cost-of-deferred-maintenance" },
+  { re:/\b(water heater)\b/i,                                     post:"how-old-is-my-water-heater" },
+  { re:/\b(roof(?:ing)? (?:lifespan|replacement))\b/i,            post:"roof-lifespan-when-to-replace" },
+  { re:/\b(age of (?:a |your |the )?(?:house|home))\b/i,          post:"how-to-find-age-of-house" },
+  { re:/\b(hvac (?:maintenance|system|filters?))\b/i,             post:"hvac-maintenance-schedule" },
+  { re:/\b(home warranty|warranties)\b/i,                         href:"/warranty-tracker" },
+  { re:/\b(recalls?)\b/i,                                         href:"/recall-alerts" },
+  { re:/\b(utility bills?|energy bills?)\b/i,                     href:"/utility-bill-tracker" },
+  { re:/\b(maintenance (?:schedule|reminders?|tasks?))\b/i,       href:"/home-maintenance-tracker" },
+  { re:/\b(condition assessment)\b/i,                             href:"/home-condition-assessment" },
+  { re:/\b(scan(?:ning)? (?:receipts?|nameplates?|appliance labels?))\b/i, href:"/ai-scan" },
+  { re:/\b(home insurance|insurance claims?)\b/i,                 href:"/home-insurance-tracker" },
+  { re:/\b(contractors?)\b/i,                                     href:"/contractor-tracker" },
+  { re:/\b(home expenses?|repair costs?)\b/i,                     href:"/home-expense-tracker" },
+];
+function autoLinkHtml(html, posts, selfSlug, max = 5) {
+  if (!html) return html;
+  const slugs = new Set(posts.map(p => p.slug));
+  const rules = BLOG_AUTOLINKS.filter(r => r.href || (slugs.has(r.post) && r.post !== selfSlug));
+  const used = new Set();
+  let count = 0, inAnchor = false, inHead = 0;
+  return html.split(/(<[^>]+>)/).map(seg => {
+    if (seg.charAt(0) === "<") {
+      if (/^<a[\s>]/i.test(seg)) inAnchor = true;
+      else if (/^<\/a>/i.test(seg)) inAnchor = false;
+      else if (/^<h[1-6][\s>]/i.test(seg)) inHead++;
+      else if (/^<\/h[1-6]>/i.test(seg)) inHead = Math.max(0, inHead - 1);
+      return seg;
+    }
+    if (inAnchor || inHead || count >= max || seg.length < 40) return seg;
+    for (const r of rules) {
+      const href = r.href || `/blog/${r.post}`;
+      if (used.has(href)) continue;
+      const m = r.re.exec(seg);
+      if (!m) continue;
+      used.add(href); count++;
+      return seg.slice(0, m.index) + `<a href="${href}" style="color:#C16140;font-weight:600;text-decoration:underline">${m[0]}</a>` + seg.slice(m.index + m[0].length);
+    }
+    return seg;
+  }).join("");
 }
 
 const BLOG_POSTS_FALLBACK = [
@@ -29935,16 +30333,28 @@ const BLOG_POSTS_FALLBACK = [
 function BlogIndex() {
   const { posts } = useBlogPosts();
   useSEO({
-    title: "Home Maintenance Blog — Tips, Guides & Comparisons",
-    description: "Expert guides on home maintenance, appliance care, repair costs, and home management apps. Practical advice for every homeowner.",
+    title: "Home Maintenance Blog: Tips, Guides & Costs",
+    description: "Practical guides on home maintenance schedules, appliance care, repair costs and home management apps, written for homeowners.",
     canonical: "https://www.trysteadwell.app/blog",
     jsonLd: {
       "@context": "https://schema.org",
-      "@type": "Blog",
-      "name": "Steadwell Blog",
-      "description": "Expert guides on home maintenance, appliance care, repair costs, and home management apps.",
-      "url": "https://www.trysteadwell.app/blog",
-      "publisher": { "@type": "Organization", "name": "Steadwell", "url": "https://www.trysteadwell.app" }
+      "@graph": [
+        {
+          "@type": "Blog",
+          "name": "Steadwell Blog",
+          "description": "Expert guides on home maintenance, appliance care, repair costs, and home management apps.",
+          "url": "https://www.trysteadwell.app/blog",
+          "publisher": { "@type": "Organization", "name": "Steadwell", "url": "https://www.trysteadwell.app" },
+          "blogPost": posts.slice(0, 30).map(p => ({ "@type": "BlogPosting", "headline": p.title, "url": `${SEO_SITE_URL}/blog/${p.slug}`, ...(blogIsoDate(p.iso || p.date) ? { "datePublished": blogIsoDate(p.iso || p.date) } : {}) })),
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Steadwell", "item": "https://www.trysteadwell.app/" },
+            { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.trysteadwell.app/blog" },
+          ],
+        },
+      ],
     }
   });
   return (
@@ -29985,32 +30395,59 @@ function BlogIndex() {
 
 function BlogPost({ slug }) {
   const { posts, loading } = useBlogPosts();
-  const post = loading ? null : posts.find(p => p.slug === slug);
+  const cleanSlug = String(slug || "").replace(/\/+$/, "");
+  const post = loading ? null : posts.find(p => p.slug === cleanSlug);
+  const url = `${SEO_SITE_URL}/blog/${cleanSlug}`;
+
+  // Unknown article: a noindexed not-found page, not a blank "post not found" shell.
+  if (!loading && !post) return <NotFoundPage what="article"/>;
+  return <BlogPostView post={post} posts={posts} url={url} slug={cleanSlug}/>;
+}
+
+function BlogPostView({ post, posts, url, slug }) {
+  const iso = post ? blogIsoDate(post.iso || post.date) : "";
+  const modified = post ? (blogIsoDate(post.modified) || iso) : "";
+  const image = post ? (post.image || BLOG_DEFAULT_IMAGE) : "";
 
   useSEO(post ? {
     title: post.title,
     description: post.description,
-    canonical: `https://www.trysteadwell.app/blog/${post.slug}`,
+    canonical: url,
+    image,
+    ogType: "article",
     jsonLd: {
       "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": post.title,
-      "description": post.description,
-      "url": `https://www.trysteadwell.app/blog/${post.slug}`,
-      "datePublished": post.date,
-      "dateModified": post.date,
-      "author": { "@type": "Organization", "name": "Steadwell" },
-      "publisher": {
-        "@type": "Organization",
-        "name": "Steadwell",
-        "url": "https://www.trysteadwell.app",
-        "logo": { "@type": "ImageObject", "url": "https://www.trysteadwell.app/icon-512.png" }
-      },
-      "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.trysteadwell.app/blog/${post.slug}` }
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": seoClip(post.title, 110),
+          "description": post.description,
+          "url": url,
+          "image": [image],
+          ...(iso ? { "datePublished": iso, "dateModified": modified } : {}),
+          "articleSection": post.tag || undefined,
+          "author": BLOG_AUTHOR,
+          "publisher": {
+            "@type": "Organization",
+            "name": "Steadwell",
+            "url": "https://www.trysteadwell.app",
+            "logo": { "@type": "ImageObject", "url": "https://www.trysteadwell.app/icon-512.png" }
+          },
+          "mainEntityOfPage": { "@type": "WebPage", "@id": url }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Steadwell", "item": "https://www.trysteadwell.app/" },
+            { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.trysteadwell.app/blog" },
+            { "@type": "ListItem", "position": 3, "name": post.title, "item": url },
+          ],
+        },
+      ],
     }
-  } : {});
+  } : { canonical: url });
 
-  if (loading) {
+  if (!post) {
     return (
       <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"1rem"}}>
@@ -30021,39 +30458,71 @@ function BlogPost({ slug }) {
     );
   }
 
-  if (!post) {
-    return (
-      <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"1rem"}}>
-        <div style={{fontSize:"1.2rem",color:"#2A2723",fontWeight:500}}>Post not found</div>
-        <a href="/blog" style={{color:"#C16140",textDecoration:"none"}}>← Back to blog</a>
-      </div>
-    );
-  }
+  const related = relatedPosts(post, posts, 3);
+  const features = featuresForPost(post, 2);
+  const body = autoLinkHtml(post.content || "", posts, post.slug)
+    .replace(/<h2>/g,'<h2 style="font-family:\'Fraunces\',serif;font-size:1.35rem;font-weight:500;color:#2A2723;margin:2rem 0 .75rem">')
+    .replace(/<h3>/g,'<h3 style="font-family:\'Fraunces\',serif;font-size:1.1rem;font-weight:500;color:#2A2723;margin:1.5rem 0 .5rem">')
+    .replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">')
+    .replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">')
+    .replace(/<em>/g,'<em style="color:#5A534B;font-style:italic">');
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
       {/* Nav */}
       <nav style={{background:"#234A3D",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <a href="/" style={{display:"flex",alignItems:"center",gap:".5rem",textDecoration:"none"}}>
-          <svg viewBox="0 0 48 48" fill="none" width="28" height="28"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
+          <svg viewBox="0 0 48 48" fill="none" width="28" height="28" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
           <span style={{color:"#F4EDDF",fontWeight:700,fontSize:"1.05rem"}}>Steadwell</span>
         </a>
         <a href="/blog" style={{color:"rgba(244,237,223,.6)",textDecoration:"none",fontSize:".85rem"}}>← All articles</a>
       </nav>
       {/* Article */}
-      <article style={{maxWidth:720,margin:"0 auto",padding:"3rem 1.5rem 5rem"}}>
-        <div style={{display:"flex",gap:".5rem",alignItems:"center",marginBottom:"1rem"}}>
+      <article style={{maxWidth:720,margin:"0 auto",padding:"2.5rem 1.5rem 5rem"}}>
+        <nav aria-label="Breadcrumb" style={{fontSize:".78rem",color:"#A8A09A",marginBottom:"1.25rem",display:"flex",flexWrap:"wrap",gap:6}}>
+          <a href="/" style={{color:"#7A7370",textDecoration:"none"}}>Home</a><span aria-hidden="true">/</span>
+          <a href="/blog" style={{color:"#7A7370",textDecoration:"none"}}>Blog</a><span aria-hidden="true">/</span>
+          <span aria-current="page" style={{color:"#5A534B"}}>{post.tag || "Article"}</span>
+        </nav>
+        <div style={{display:"flex",gap:".5rem",alignItems:"center",marginBottom:"1rem",flexWrap:"wrap"}}>
           <span style={{fontSize:".7rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"#234A3D",padding:"2px 9px",borderRadius:8}}>{post.tag}</span>
-          <span style={{fontSize:".72rem",color:"#A8A09A"}}>{post.time} · {post.date}</span>
+          <span style={{fontSize:".72rem",color:"#A8A09A"}}>{post.time} · {iso ? <time dateTime={iso}>{post.date}</time> : post.date}</span>
+          <span style={{fontSize:".72rem",color:"#A8A09A"}}>· By {BLOG_AUTHOR.name}</span>
         </div>
         <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.7rem,4vw,2.4rem)",fontWeight:500,color:"#2A2723",lineHeight:1.2,marginBottom:"1rem"}}>{post.title}</h1>
         <p style={{fontSize:"1.1rem",color:"#7A7370",lineHeight:1.65,marginBottom:"2rem",borderBottom:"1px solid #E6DECF",paddingBottom:"1.5rem"}}>{post.description}</p>
-        <div style={{fontSize:"1rem",lineHeight:1.8,color:"#2A2723"}} dangerouslySetInnerHTML={{__html: (post.content||'').replace(/<h2>/g,'<h2 style="font-family:\'Fraunces\',serif;font-size:1.35rem;font-weight:500;color:#2A2723;margin:2rem 0 .75rem">').replace(/<h3>/g,'<h3 style="font-family:\'Fraunces\',serif;font-size:1.1rem;font-weight:500;color:#2A2723;margin:1.5rem 0 .5rem">').replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">').replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">').replace(/<em>/g,'<em style="color:#5A534B;font-style:italic">')}}/>
+        <div style={{fontSize:"1rem",lineHeight:1.8,color:"#2A2723"}} dangerouslySetInnerHTML={{__html: body}}/>
         {/* CTA */}
         <div style={{marginTop:"3rem",padding:"1.5rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
           <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
           <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",marginBottom:"1rem",lineHeight:1.5}}>Set reminders, scan appliance tags, and keep your home records in one place — free to start.</div>
           <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".7rem 1.5rem",borderRadius:10,fontWeight:700,fontSize:".9rem"}}>Get started free →</a>
         </div>
+        {features.length > 0 && (
+          <section aria-labelledby="blog-features" style={{marginTop:"2.5rem"}}>
+            <h2 id="blog-features" style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#2A2723",margin:"0 0 .9rem"}}>Put this into practice</h2>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,260px),1fr))",gap:12}}>
+              {features.map(f => (
+                <a key={f.href} href={f.href} style={{textDecoration:"none",color:"inherit",background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"14px 16px",display:"block"}}>
+                  <div style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:3}}><span aria-hidden="true">{f.icon} </span>{f.label}</div>
+                  <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.5}}>{f.desc}</div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+        {related.length > 0 && (
+          <section aria-labelledby="blog-related" style={{marginTop:"2.5rem"}}>
+            <h2 id="blog-related" style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#2A2723",margin:"0 0 .9rem"}}>Related guides</h2>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {related.map(r => (
+                <a key={r.slug} href={`/blog/${r.slug}`} style={{textDecoration:"none",background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"14px 16px",display:"block"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"#2A2723",lineHeight:1.3,marginBottom:4}}>{r.title}</div>
+                  <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.5}}>{r.description}</div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
       </article>
     </div>
   );
@@ -30061,6 +30530,11 @@ function BlogPost({ slug }) {
 
 
 function ADAPage() {
+  useSEO({
+    title:"Accessibility Statement",
+    description:"Steadwell's commitment to digital accessibility, the standards we aim for, and how to report a barrier or ask for help using the site.",
+    canonical:"https://www.trysteadwell.app/ada",
+  });
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   return (
