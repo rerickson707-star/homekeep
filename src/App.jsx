@@ -1,4 +1,4 @@
-// Steadwell v326 — 2026-10-06
+// Steadwell v327 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -27474,15 +27474,21 @@ function PricingPage() {
           <p style={{fontSize:".8rem",color:"#7A7370",marginTop:14,lineHeight:1.6}}>AI features give estimates from the information you provide, and you review the results before anything is saved. See how scanning works on the <a href="/ai-scan" style={{color:"#C16140",fontWeight:600}}>AI scanning page</a>.</p>
         </LPSection>
 
-        <LPSection narrow>
+        <LPSection>
           <LPSectionHead h2="What every plan includes" sub="The basics are never locked away."/>
-          <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={16}>
+          <style>{`
+            .pr-inc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+            @media (max-width:900px){.pr-inc{grid-template-columns:repeat(2,minmax(0,1fr))}}
+            @media (max-width:520px){.pr-inc{grid-template-columns:minmax(0,1fr)}}
+          `}</style>
+          <div className="pr-inc">
             {[
               {icon:"🛡️",title:"Warranty and recall alerts",text:"Every item you track is checked against federal recalls, and you get a heads-up before a warranty ends.",href:"/warranty-tracker"},
               {icon:"⚡",title:"Utility and bill tracking",text:"Electric, gas, water and internet bills with trends and spike alerts.",href:"/utility-bill-tracker"},
               {icon:"✉️",title:"Email capture",text:"Forward a receipt or bill and it lands in your inbox to confirm.",href:"/email-capture"},
+              {icon:"👷",title:"Contractor rolodex",text:"Save trusted pros and log every service visit and what you paid.",href:"/contractor-tracker"},
             ].map(f=>(
-              <a key={f.href} href={f.href} style={{textDecoration:"none",color:"inherit"}}>
+              <a key={f.href} href={f.href} style={{textDecoration:"none",color:"inherit",display:"block"}}>
                 <LPCard style={{height:"100%"}}>
                   <div style={{fontSize:"1.4rem",marginBottom:8}} aria-hidden="true">{f.icon}</div>
                   <h3 style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",margin:"0 0 6px"}}>{f.title}</h3>
@@ -27490,7 +27496,7 @@ function PricingPage() {
                 </LPCard>
               </a>
             ))}
-          </LPGrid>
+          </div>
         </LPSection>
 
         <LPSection alt narrow>
