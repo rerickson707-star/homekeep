@@ -1,4 +1,4 @@
-// Steadwell v330 — 2026-10-06
+// Steadwell v331 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -29892,19 +29892,92 @@ function PrivacyPage() {
 const SANITY_PROJECT_ID = "1r1eichb";
 const SANITY_DATASET = "production";
 
+// Sanity body (Portable Text) -> HTML. Supports headings, paragraphs, bold/italic, links,
+// bullet and numbered lists, quotes and simple tables, so posts can carry real checklists and
+// cost tables. Anything else is skipped rather than guessed at.
+function blogEsc(t) { return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function blogSafeHref(h) {
+  const v = String(h || "").trim();
+  if (/^https?:\/\//i.test(v) || /^mailto:/i.test(v)) return v;
+  if (/^\/(?!\/)/.test(v)) return v; // site-relative, e.g. /warranty-tracker
+  return "";
+}
+function portableSpansToHtml(block) {
+  const defs = {};
+  (block.markDefs || []).forEach(d => { if (d && d._key) defs[d._key] = d; });
+  return (block.children || []).map(span => {
+    let t = blogEsc(span.text || "");
+    const marks = span.marks || [];
+    marks.forEach(m => {
+      const d = defs[m];
+      if (d && d._type === "link") {
+        const href = blogSafeHref(d.href);
+        if (href) {
+          const ext = /^https?:\/\//i.test(href);
+          t = '<a href="' + blogEsc(href) + '"' + (ext ? ' target="_blank" rel="noopener noreferrer"' : "") + ' style="color:#C16140;font-weight:600;text-decoration:underline">' + t + "</a>";
+        }
+      }
+    });
+    if (marks.includes("strong")) t = "<strong>" + t + "</strong>";
+    if (marks.includes("em")) t = "<em>" + t + "</em>";
+    return t;
+  }).join("");
+}
 function portableTextToHtml(blocks) {
   if (!blocks || !Array.isArray(blocks)) return "";
-  return blocks.map(block => {
-    if (block._type !== "block") return "";
-    const tag = block.style === "h2" ? "h2" : block.style === "h3" ? "h3" : "p";
-    const inner = (block.children || []).map(span => {
-      let t = span.text || "";
-      if (span.marks && span.marks.includes("strong")) t = "<strong>" + t + "</strong>";
-      if (span.marks && span.marks.includes("em")) t = "<em>" + t + "</em>";
-      return t;
-    }).join("");
-    return "<" + tag + ">" + inner + "</" + tag + ">";
-  }).join("\n");
+  const out = [];
+  let list = null; // { tag, items: [] }
+  const flush = () => { if (list) { out.push("<" + list.tag + ">" + list.items.join("") + "</" + list.tag + ">"); list = null; } };
+  blocks.forEach(block => {
+    if (!block) return;
+    if (block._type === "table" && Array.isArray(block.rows)) {
+      flush();
+      const rows = block.rows.filter(r => r && Array.isArray(r.cells) && r.cells.length);
+      if (!rows.length) return;
+      const cell = (tag, c) => "<" + tag + ">" + blogEsc(c) + "</" + tag + ">";
+      const head = "<thead><tr>" + rows[0].cells.map(c => cell("th", c)).join("") + "</tr></thead>";
+      const body = "<tbody>" + rows.slice(1).map(r => "<tr>" + r.cells.map(c => cell("td", c)).join("") + "</tr>").join("") + "</tbody>";
+      out.push('<div style="overflow-x:auto;margin:0 0 1.25rem"><table>' + head + body + "</table></div>");
+      return;
+    }
+    if (block._type !== "block") return;
+    const inner = portableSpansToHtml(block);
+    if (block.listItem === "bullet" || block.listItem === "number") {
+      const tag = block.listItem === "number" ? "ol" : "ul";
+      if (!list || list.tag !== tag) { flush(); list = { tag, items: [] }; }
+      list.items.push("<li>" + inner + "</li>");
+      return;
+    }
+    flush();
+    const style = block.style;
+    if (style === "blockquote") out.push("<blockquote>" + inner + "</blockquote>");
+    else if (style === "h2" || style === "h1") out.push("<h2>" + inner + "</h2>");
+    else if (style === "h3" || style === "h4") out.push("<h3>" + inner + "</h3>");
+    else out.push("<p>" + inner + "</p>");
+  });
+  flush();
+  return out.join("\n");
+}
+
+// Question-and-answer pairs from a post's "FAQ" section (an h2 containing "FAQ", "frequently asked"
+// or "common questions", followed by h3 questions), used for FAQPage structured data.
+function blogFaqFromHtml(html) {
+  if (!html) return [];
+  const text = (h) => h.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim();
+  const parts = html.split(/(<h[23][^>]*>[\s\S]*?<\/h[23]>)/i);
+  const faqs = [];
+  let inFaq = false, q = null, a = [];
+  const push = () => { if (q && a.length) faqs.push({ q, a: a.join(" ").trim() }); q = null; a = []; };
+  parts.forEach(seg => {
+    const m = seg.match(/^<(h[23])[^>]*>([\s\S]*?)<\/h[23]>$/i);
+    if (m) {
+      const t = text(m[2]);
+      if (m[1].toLowerCase() === "h2") { push(); inFaq = /\bfaqs?\b|frequently asked|common questions/i.test(t); }
+      else if (inFaq) { push(); q = t; }
+    } else if (inFaq && q) { const t = text(seg); if (t) a.push(t); }
+  });
+  push();
+  return faqs;
 }
 
 function formatSanityDate(dateStr) {
@@ -30450,6 +30523,7 @@ function BlogPostView({ post, posts, url, slug }) {
   const iso = post ? blogIsoDate(post.iso || post.date) : "";
   const modified = post ? (blogIsoDate(post.modified) || iso) : "";
   const image = post ? (post.image || BLOG_DEFAULT_IMAGE) : "";
+  const faqs = post ? blogFaqFromHtml(post.content) : [];
 
   useSEO(post ? {
     title: post.title,
@@ -30485,6 +30559,10 @@ function BlogPostView({ post, posts, url, slug }) {
             { "@type": "ListItem", "position": 3, "name": post.title, "item": url },
           ],
         },
+        ...(faqs.length >= 2 ? [{
+          "@type": "FAQPage",
+          "mainEntity": faqs.map(f => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })),
+        }] : []),
       ],
     }
   } : { canonical: url });
@@ -30507,7 +30585,14 @@ function BlogPostView({ post, posts, url, slug }) {
     .replace(/<h3>/g,'<h3 style="font-family:\'Fraunces\',serif;font-size:1.1rem;font-weight:500;color:#2A2723;margin:1.5rem 0 .5rem">')
     .replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">')
     .replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">')
-    .replace(/<em>/g,'<em style="color:#5A534B;font-style:italic">');
+    .replace(/<em>/g,'<em style="color:#5A534B;font-style:italic">')
+    .replace(/<ul>/g,'<ul style="margin:0 0 1.2rem;padding-left:1.4rem;color:#5A534B;line-height:1.75">')
+    .replace(/<ol>/g,'<ol style="margin:0 0 1.2rem;padding-left:1.5rem;color:#5A534B;line-height:1.75">')
+    .replace(/<li>/g,'<li style="margin:0 0 .45rem;padding-left:.2rem">')
+    .replace(/<blockquote>/g,'<blockquote style="margin:0 0 1.2rem;padding:.2rem 0 .2rem 1.1rem;border-left:3px solid #C16140;color:#5A534B;font-style:italic">')
+    .replace(/<table>/g,'<table style="width:100%;border-collapse:collapse;font-size:.92rem;min-width:420px">')
+    .replace(/<th>/g,'<th style="text-align:left;padding:.6rem .75rem;background:#234A3D;color:#F4EDDF;font-weight:600;border:1px solid #234A3D">')
+    .replace(/<td>/g,'<td style="padding:.6rem .75rem;border:1px solid #E6DECF;color:#5A534B;vertical-align:top;background:#fff">');
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
       {/* Nav */}
