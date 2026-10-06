@@ -1,7 +1,8 @@
-// Steadwell v331 — 2026-10-06
+// Steadwell v332 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
+import { BLOG_OVERRIDES } from "./blog-overrides.js";
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliance","Roofing","Landscaping","Structure","Safety","Other"];
@@ -30010,6 +30011,11 @@ const BLOG_DEFAULT_IMAGE = SEO_SITE_URL + "/og-image.png";
 // related-guide lists and the pre-render; vercel.json 301-redirects each to its replacement.
 const BLOG_HIDDEN_SLUGS = new Set(["first-30-days-new-home-checklist"]);
 
+// Posts rewritten in src/blog-overrides.js replace the Sanity text for that slug.
+function applyBlogOverrides(posts) {
+  return posts.map(p => (BLOG_OVERRIDES && BLOG_OVERRIDES[p.slug]) ? { ...p, ...BLOG_OVERRIDES[p.slug] } : p);
+}
+
 async function fetchSanityPosts() {
   try {
     const query = encodeURIComponent('*[_type == "blogPost"] | order(publishedAt desc) { "slug": slug.current, title, description, tag, publishedAt, _updatedAt, readTime, body, "image": coalesce(mainImage.asset->url, coverImage.asset->url, image.asset->url) }');
@@ -30019,7 +30025,7 @@ async function fetchSanityPosts() {
     const data = await res.json();
     const results = data.result || [];
     if (!results.length) return null;
-    return results.filter(p => !BLOG_HIDDEN_SLUGS.has(p.slug)).map(p => ({
+    return applyBlogOverrides(results.filter(p => !BLOG_HIDDEN_SLUGS.has(p.slug)).map(p => ({
       slug: p.slug,
       title: p.title,
       description: p.description,
@@ -30030,7 +30036,7 @@ async function fetchSanityPosts() {
       modified: blogIsoDate(p._updatedAt),
       image: p.image || "",
       content: portableTextToHtml(p.body),
-    }));
+    })));
   } catch(e) {
     return null;
   }
@@ -30165,7 +30171,7 @@ function autoLinkHtml(html, posts, selfSlug, max = 5) {
   }).join("");
 }
 
-const BLOG_POSTS_FALLBACK = [
+const BLOG_POSTS_BASE = [
   {
     slug: "hvac-maintenance-schedule",
     title: "HVAC Maintenance Schedule: What Every Homeowner Needs to Know",
@@ -30444,6 +30450,7 @@ const BLOG_POSTS_FALLBACK = [
     `
   },
 ];
+const BLOG_POSTS_FALLBACK = applyBlogOverrides(BLOG_POSTS_BASE);
 
 function BlogIndex() {
   const { posts } = useBlogPosts();

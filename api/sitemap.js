@@ -65,6 +65,15 @@ export default async function handler(req, res) {
   let live = false;
   try { posts = await loadPosts(); live = true; } catch (e) { console.error("[sitemap] using fallback posts:", e && e.message); }
 
+  // Posts rewritten in src/blog-overrides.js carry their own modified date.
+  try {
+    const overrides = (await import("../src/blog-overrides.js")).BLOG_OVERRIDES || {};
+    posts = posts.map((p) => {
+      const m = overrides[p.slug] && day(overrides[p.slug].modified);
+      return m && m > (p.lastmod || "") ? { ...p, lastmod: m } : p;
+    });
+  } catch (e) { console.error("[sitemap] overrides not applied:", e && e.message); }
+
   const urls = [
     ...PAGES.map(([p, lastmod]) => ({ loc: SITE + (p === "/" ? "/" : p), lastmod })),
     ...posts.filter((p) => !EXCLUDE_SLUGS.has(p.slug)).map((p) => ({ loc: `${SITE}/blog/${p.slug}`, lastmod: p.lastmod })),
