@@ -1,4 +1,4 @@
-// Steadwell v328 — 2026-10-06
+// Steadwell v329 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -31909,6 +31909,7 @@ export const PRERENDER_PAGES = {
   "/guides": GuidesPage,
   "/affiliates": AffiliatesPage,
   "/affiliate-agreement": AffiliateAgreementPage,
+  "/for-agents": ForAgentsPage,
 };
 export {
   CSS as APP_CSS, LandingPage, BlogIndex, BlogPost, NotFoundPage,
