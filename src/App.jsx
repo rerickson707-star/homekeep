@@ -1,4 +1,4 @@
-// Steadwell v332 — 2026-10-06
+// Steadwell v333 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4497,7 +4497,8 @@ function seoTitle(title) {
   const full = `${title} | ${siteName}`;
   if (full.length <= SEO_TITLE_MAX) return full;
   // Too long: prefer the part before a subtitle ("Title: subtitle", "Title (note)") over a mid-word cut.
-  const lead = title.split(/:\s|\s[—–]\s|\s\(/)[0].trim();
+  let lead = title.split(/:\s|\s[—–]\s|\s\(/)[0].trim();
+  if (title.length > SEO_TITLE_MAX) { const q = lead.indexOf("? "); if (q > 0) lead = lead.slice(0, q + 1); } // "How long does X last? Guide to Y" -> "How long does X last?"
   if (lead.length >= 15 && lead.length < title.length) {
     if (`${lead} | ${siteName}`.length <= SEO_TITLE_MAX) return `${lead} | ${siteName}`;
     if (lead.length <= SEO_TITLE_MAX) return lead;
