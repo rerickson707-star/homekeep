@@ -1,4 +1,4 @@
-// Steadwell v325 — 2026-10-06
+// Steadwell v326 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2638,7 +2638,7 @@ img,.lp-root img{max-width:100%;height:auto}
 
 /* ---------- PRICING ---------- */
 .lp-root .pricing{background:var(--linen-2);border-top:1px solid var(--line)}
-.lp-root .price-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1060px;margin:0 auto}
+.lp-root .price-wrap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1060px;margin:0 auto}
 .lp-root .pcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:32px 26px;display:flex;flex-direction:column}
 .lp-root .pcard.plus{background:var(--pine);color:var(--linen);border-color:transparent;box-shadow:0 36px 80px -36px rgba(23,48,38,.6)}
 .lp-root .pcard.prem{background:var(--card);border:1.5px solid var(--terracotta);border-radius:24px;padding:32px 26px;display:flex;flex-direction:column}
@@ -2704,6 +2704,9 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .lp-nav-links{display:none}
   .lp-root .steps{grid-template-columns:1fr 1fr;gap:30px 22px}
   .lp-root .steps::before{display:none}
+}
+@media(max-width:900px){
+  .lp-root .price-wrap{grid-template-columns:minmax(0,1fr);max-width:520px}
 }
 @media(max-width:680px){
   .lp-root .wrap{padding:0 20px}
@@ -5103,7 +5106,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             </div>
             <a href="/blog" style={{color:"var(--terracotta)",textDecoration:"none",fontWeight:600,fontSize:".9rem",flexShrink:0}}>All articles →</a>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"1.25rem",marginTop:"2rem"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,260px),1fr))",gap:"1.25rem",marginTop:"2rem"}}>
             {[
               { title:"The complete home maintenance checklist (by season)", tag:"Maintenance", time:"8 min read", slug:"home-maintenance-checklist" },
               { title:"How to tell how old your water heater is — and when to replace it", tag:"Appliances", time:"4 min read", slug:"how-old-is-my-water-heater" },
@@ -5128,7 +5131,7 @@ function LandingPage({ onSignIn, onSignUp }) {
       {/* ── BUYER GUIDES CALLOUT ── */}
       <section style={{background:"var(--linen)",borderTop:"1px solid rgba(35,74,61,.08)",padding:"clamp(56px,8vw,96px) 0"}}>
         <div className="wrap">
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"clamp(2rem,5vw,4rem)",alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:"clamp(2rem,5vw,4rem)",alignItems:"center"}}>
             <div>
               <div className="eyebrow">First-Time Homebuyer Guides</div>
               <h2 className="h2" style={{marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta)"}}>We&#39;ve got a guide for that.</em></h2>
@@ -26612,7 +26615,7 @@ function ForAgentsPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="The relationship shouldn't end at the closing table" sub="Most agents lose touch the moment the deal closes. This keeps you in the home — and top of mind for referrals."/>
-          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             {[
               {icon:"🎁",title:"You look generous",text:"A thoughtful $24 housewarming gift, co-branded with your name — not another branded notepad they'll throw away."},
               {icon:"🏡",title:"Your clients get real value",text:"Steadwell organizes their new home — warranties, maintenance, documents, and costs — at the exact moment they're overwhelmed."},
@@ -27159,7 +27162,7 @@ function LPSectionHead({ h2, sub }) {
 }
 
 function LPCard({ children, style={} }) {
-  return <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 22px",textAlign:"left",...style}}>{children}</div>;
+  return <div style={{boxSizing:"border-box",overflowWrap:"anywhere",background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 22px",textAlign:"left",...style}}>{children}</div>;
 }
 
 function LPGrid({ cols="repeat(auto-fill,minmax(min(100%,220px),1fr))", gap=12, children, justify="start" }) {
@@ -27180,7 +27183,7 @@ function LPFAQ({ items }) {
   return items.map(([q,a],i)=>(
     <div key={i} style={{borderBottom:"1px solid #E6DECF",padding:"20px 0",textAlign:"left"}}>
       <div style={{fontWeight:600,fontSize:".95rem",color:"#2A2723",marginBottom:8}}>{q}</div>
-      <div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.6}}>{a}</div>
+      <div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.6,overflowWrap:"anywhere"}}>{a}</div>
     </div>
   ));
 }
@@ -27569,7 +27572,7 @@ function UtilityBillTrackerPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every utility, every bill, one timeline" sub="Utilities are the one home cost that arrives every month and almost never gets reviewed. Steadwell makes the pattern visible."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             <LPFieldCard icon="⚡" title="Utility accounts" badge="All plans" fields={["Electric, gas, water, sewer, internet, trash and other","Provider or company name","Account number, kept for your reference","Notes on each account","Separate accounts for each property"]}/>
             <LPFieldCard icon="🧾" title="Bills & usage" badge="All plans" fields={["Bill date and amount","Usage in kWh, therms, gallons or CCF","Billing-period notes","Scanned bills saved to your document vault","Edit or delete any bill later"]}/>
             <LPFieldCard icon="📈" title="Trends & spike alerts" badge="All plans" fields={["Last bill, 6-month average and year-to-date total","Bar chart of your last six bills","Spike warning when a bill jumps well above average","Full bill history for each utility","Utilities total for the year at a glance"]}/>
@@ -27578,7 +27581,7 @@ function UtilityBillTrackerPage() {
 
         <LPSection alt>
           <LPSectionHead h2="Three ways to log a bill" sub="Pick whichever is fastest for you. You always review the details before they are saved."/>
-          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             <LPFieldCard icon="📷" title="Scan it" badge="Plus & Pro" desc="Take a photo or upload a PDF of the bill. Steadwell AI reads the amount, bill date and usage and fills in the form for you." link={{href:"/ai-scan",label:"How AI scanning works"}}/>
             <LPFieldCard icon="✉️" title="Forward it" badge="All plans" desc="Email the bill to your Steadwell capture address. It lands in your Email Inbox; confirm it and Steadwell finds or creates the matching utility and logs the bill." link={{href:"/email-capture",label:"About email capture"}}/>
             <LPFieldCard icon="⌨️" title="Type it" badge="All plans" desc="Prefer to do it by hand? Enter the date, amount and usage in about ten seconds. Quick-add buttons pre-fill electric, gas, water and internet accounts."/>
@@ -27587,7 +27590,7 @@ function UtilityBillTrackerPage() {
 
         <LPSection>
           <LPSectionHead h2="What a spike is trying to tell you" sub="A jump in a bill is often the first visible sign of a problem. Steadwell flags it; here is where to look."/>
-          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             {[
               {icon:"💧",title:"Water or sewer",text:"A bill that climbs without a change in habits can point to a running toilet, a slow leak, or an irrigation zone stuck on."},
               {icon:"⚡",title:"Electric",text:"A summer spike can mean the air conditioner is working harder than it should, from a dirty coil or low refrigerant to a unit nearing the end of its life."},
@@ -27681,7 +27684,7 @@ function ConditionAssessmentPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you get from one assessment" sub="More than a number: a checklist, a timeline and a to-do list."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             <LPFieldCard icon="📊" title="A condition score" badge="1 to 5" fields={["Excellent, Good, Fair, Poor or Failing","A checklist built for that item type, each check marked OK, Watch, Concern or Can’t see","Findings by area, with severity","A plain-language summary"]}/>
             <LPFieldCard icon="⏳" title="A years-left estimate" badge="Feeds your forecast" fields={["About how many years the item has left","Used by your home health score","Used by your 5-year cost forecast","Reassess to keep it current"]} link={{href:"/home-expense-tracker",label:"See the cost forecast"}}/>
             <LPFieldCard icon="✅" title="Clear next steps" badge="You approve" fields={["Suggested maintenance tasks you choose from","A flag when a licensed professional should look","Label corrections for model, serial and install date","Tips on which extra photo would sharpen the next one"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tasks"}}/>
@@ -27907,7 +27910,7 @@ function CalendarSyncPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What lands on your calendar" sub="The dates that are easy to forget, in the place you already look."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             <LPFieldCard icon="🔧" title="Maintenance tasks" badge="All plans" fields={["Task names and due dates","Your whole maintenance list in one view","Stays in step as you add or change tasks"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
             <LPFieldCard icon="🛡️" title="Warranty expiries" badge="All plans" fields={["The date each warranty ends","Time to claim or renew before coverage lapses","Updates when you add or edit a warranty"]} link={{href:"/warranty-tracker",label:"About warranty tracking"}}/>
             <LPFieldCard icon="🔄" title="Always current" badge="Automatic" fields={["Subscribe once, no re-exporting","Your calendar app refreshes it on its own","Shows up on every device using that calendar"]}/>
@@ -27985,7 +27988,7 @@ function HomeHealthScorePage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Four things go into your score" sub="Asset condition counts the most, followed by tasks, warranties and your profile."/>
-          <LPGrid cols="repeat(auto-fit,minmax(250px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,250px),1fr))" gap={16}>
             <LPFieldCard icon="🔧" title="Assets" badge="Weighs most" fields={["Age against expected lifespan","Overdue maintenance on the item","Open product recalls","Condition assessments, when you have one"]} link={{href:"/home-condition-assessment",label:"About condition assessment"}}/>
             <LPFieldCard icon="✓" title="Tasks" fields={["Share of your tasks that are past due","Upcoming tasks do not count against you","Recurring maintenance keeps it high"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
             <LPFieldCard icon="🛡️" title="Warranties" fields={["Expired warranties count in full","Warranties ending within 30 days count partly","You can leave items out of the score"]} link={{href:"/warranty-tracker",label:"About warranty tracking"}}/>
@@ -28065,7 +28068,7 @@ function SharedHouseholdAccessPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Made for more than one person" sub="Whether it is a family home or a rental you look after, the work rarely falls on one person."/>
-          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             <LPFieldCard icon="🏡" title="Households" badge="Spouse or partner" fields={["Both of you see the same tasks, assets and costs","Split the to-do list instead of texting reminders","Nobody has to ask who has the warranty"]}/>
             <LPFieldCard icon="🔑" title="Landlords & rentals" badge="Co-owner or manager" fields={["Invite a property manager or co-owner with Full access","Give a handyman Tasks & assets access, without your expenses","Keep warranties, service history and costs in one place"]} link={{href:"/home-expense-tracker",label:"About expense tracking"}}/>
             <LPFieldCard icon="🤝" title="Family & caretakers" badge="Relatives or caretakers" fields={["An adult child helping with a parent’s home","A relative or caretaker with a task list","Remove their access whenever you like"]}/>
@@ -28074,7 +28077,7 @@ function SharedHouseholdAccessPage() {
 
         <LPSection alt>
           <LPSectionHead h2="Assign the work, see who owns it" sub="Tasks stop being a list for one person and become a plan for the whole team."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             <LPFieldCard icon="👤" title="Assign tasks" badge="Pro" fields={["Pick anyone who has accepted your invite","Set it when you add a task or edit one later","Recurring tasks stay with the same person"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tasks"}}/>
             <LPFieldCard icon="🔎" title="See who has what" badge="Filters" fields={["Filter by Assigned to me","Filter by Unassigned or by person","The name shows on each task"]}/>
             <LPFieldCard icon="✅" title="They can finish it" badge="Shared" fields={["The person you assigned can mark the task done","Recurring tasks create the next one automatically","Everyone sees the same current list"]}/>
@@ -28152,7 +28155,7 @@ function WarrantyTrackerPage() {
 
       {/* Hero */}
       <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(40px,6vw,56px)"}}>
-        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:36,alignItems:"center"}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:36,alignItems:"center"}}>
           <div style={{maxWidth:620}}>
             <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#D2876A",marginBottom:20}}>Free forever · No credit card</div>
             <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.1rem,4.6vw,3.1rem)",color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.02em",margin:"0 0 18px"}}>The warranty tracker that actually <em style={{fontStyle:"italic",color:"#D2876A"}}>does</em> something useful.</h1>
@@ -28193,7 +28196,7 @@ function WarrantyTrackerPage() {
 
         <LPSection alt>
           <LPSectionHead h2="Not just a reminder. A complete warranty system."/>
-          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             {[
               {icon:"📷",title:"Scan receipts & nameplates with AI",badge:"Plus & Pro",desc:"Point your camera at a receipt or the label on an appliance. Steadwell reads brand, model, purchase date, and price — no typing."},
               {icon:"🔔",title:"Expiry reminders — 30 and 7 days",badge:"Free",desc:"Two email alerts before every warranty expires, timed so you still have a real window to file a claim."},
@@ -28252,7 +28255,7 @@ function WarrantyTrackerPage() {
 
         {/* Recall check — claim softened from an absolute, unsubstantiated "no one else does this" */}
         <LPSection>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:40,alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:40,alignItems:"center"}}>
             <div style={{background:"#234A3D",borderRadius:16,padding:"18px 20px",maxWidth:420}}>
               <div style={{fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:12}}>🛡 Safety Recall Check <span style={{fontWeight:500,color:"rgba(244,237,223,.5)"}}>(example)</span></div>
               {[
@@ -28348,7 +28351,7 @@ function AIScanPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Four scans. Every home record covered." sub="Each scan type is trained to extract exactly what you need from that document."/>
-          <LPGrid cols="repeat(auto-fit,minmax(300px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={16}>
             {[
               { icon:"🧾", title:"Receipt scan", badge:"Warranty", fields:["Item name & description","Brand and manufacturer","Model number","Purchase price","Purchase date","Store or vendor","Warranty period"], desc:"Scan any paper or digital receipt. We create the warranty record and log the expense automatically." },
               { icon:"🏷️", title:"Nameplate scan", badge:"Asset", fields:["Brand and manufacturer","Model number","Serial number","Product category","Manufacture date","Capacity or voltage specs","Warranty expiry if shown"], desc:"Point your camera at the label on any appliance, HVAC unit, water heater, or tool. No barcode needed." },
@@ -28422,7 +28425,7 @@ function EmailCapturePage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you can forward" sub="Anything home-related. Our AI figures out what it is and files it correctly."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             {[
               { icon:"🧾", title:"Purchase receipts", creates:"Warranty + Expense", fields:["Item name","Brand & model","Purchase price","Purchase date","Store or vendor","Warranty period"], desc:"Forward a receipt from Home Depot, Best Buy, Amazon, or any retailer. We create the warranty record and log the expense." },
               { icon:"📋", title:"Contractor invoices", creates:"Expense record", fields:["Vendor/contractor name","Service description","Amount","Date of service","Notes"], desc:"Forward any invoice from a plumber, HVAC tech, roofer, or handyman. It gets logged as an expense and linked to your home." },
@@ -28464,7 +28467,7 @@ function EmailCapturePage() {
         </LPSection>
         <LPSection>
           <LPSectionHead h2="Or set it once and forget it" sub="Skip the manual forwarding. Add a rule in Gmail or Outlook and your bills and receipts arrive on their own."/>
-          <LPGrid cols="repeat(auto-fit,minmax(260px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             {[
               {icon:"⚡",title:"Utility bills",text:"Pick the sender, like your electric or water company. Each new statement is sent to your inbox for review."},
               {icon:"🧾",title:"Receipts and invoices",text:"Store receipts and contractor invoices from the senders you choose are filed as expenses and warranties."},
@@ -28600,7 +28603,7 @@ function ContractorTrackerPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Everything you track for each contractor" sub="A complete record of every pro who has worked on your home."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             {[
               {icon:"👤",title:"Contractor profile",fields:["Name and company","Phone and email","Trade or specialty","License number","Insurance status","Rating and notes"]},
               {icon:"📋",title:"Service history",fields:["Date of each visit","Work performed","Cost of each visit","Parts used or replaced","Warranty on work done","Follow-up notes"]},
@@ -28663,7 +28666,7 @@ function InsuranceTrackerPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What Steadwell tracks for your insurance" sub="Scan your declarations page and we fill in everything automatically."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             {[
               {icon:"🛡️",title:"Policy details",fields:["Insurance company","Policy number","Agent name & phone","Annual premium","Deductible amount","Renewal date"]},
               {icon:"🏠",title:"Coverage amounts",fields:["Dwelling coverage","Personal property coverage","Liability coverage","Loss of use coverage","Medical payments","Additional structures"]},
@@ -28726,7 +28729,7 @@ function HomeExpenseTrackerPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you track and what we forecast" sub="Historical spending plus a forward-looking view of what&#39;s coming."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             {[
               {icon:"💳",title:"Expense tracking (Free)",badge:"All plans",fields:["Expense description","Amount","Category","Date","Vendor or contractor","Receipt or invoice attachment","Notes"]},
               {icon:"📊",title:"5-year cost forecast (Plus)",badge:"Plus & Pro",fields:["Projected HVAC replacement cost & year","Water heater replacement timeline","Appliance end-of-life estimates","Roof replacement projection","Total 5-year cost estimate","Month-by-month forecast chart"]},
@@ -28799,7 +28802,7 @@ function HomeProjectsPage() {
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you track for each project" sub="From a $200 faucet replacement to a $50,000 kitchen remodel."/>
-          <LPGrid cols="repeat(auto-fit,minmax(280px,1fr))" gap={16}>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             {[
               {icon:"📋",title:"Project details",fields:["Project name & description","Status (planning/active/complete)","Start and end dates","Budget vs. actual cost","Contractor name","Notes and updates"]},
               {icon:"📸",title:"Documentation",fields:["Before and after photos","Contractor invoices","Permit numbers","Material receipts","Warranty on work done","Inspection reports"]},
@@ -29075,7 +29078,7 @@ function RecallAlertsPage() {
 
   const S = {
     page:    { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723" },
-    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:64, position:"sticky", top:0, zIndex:100 },
+    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", minHeight:64, flexWrap:"wrap", gap:"4px 12px", position:"sticky", top:0, zIndex:100 },
     navBrand:{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" },
     tile:    { width:32, height:32, borderRadius:9, background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, border:"1.5px solid rgba(244,237,223,.2)" },
     wm:      { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"1.1rem", color:"#F4EDDF" },
@@ -29130,7 +29133,7 @@ function RecallAlertsPage() {
           <span style={S.tile}><HM /></span>
           <span style={S.wm}>Steadwell</span>
         </a>
-        <div style={{display:"flex",gap:20,alignItems:"center"}}>
+        <div style={{display:"flex",gap:"6px 16px",alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           <a href="/warranty-tracker" style={S.navLink}>Warranty Tracker</a>
           <a href="/guides" style={S.navLink}>Buyer Guides</a>
           <a href="/" style={S.navCta}>Sign in →</a>
@@ -29363,7 +29366,7 @@ function GuidesPage() {
 
   const S = {
     page:    { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723" },
-    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:64, position:"sticky", top:0, zIndex:100 },
+    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", minHeight:64, flexWrap:"wrap", gap:"4px 12px", position:"sticky", top:0, zIndex:100 },
     navBrand:{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" },
     tile:    { width:32, height:32, borderRadius:9, background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
     wm:      { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"1.1rem", color:"#F4EDDF" },
@@ -29385,7 +29388,7 @@ function GuidesPage() {
     stateFactBox:{ display:"flex", alignItems:"center", gap:12, marginTop:16, padding:"12px 16px", background:"rgba(35,74,61,.06)", borderRadius:10 },
     stateEmoji:{ fontSize:"1.5rem", flexShrink:0 },
     stateFactText:{ fontSize:".85rem", color:"#5E574F", lineHeight:1.5 },
-    cards:   { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, marginTop:8, textAlign:"left" },
+    cards:   { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))", gap:20, marginTop:8, textAlign:"left" },
     card:    { background:"#fff", border:"1px solid #E6DECF", borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", transition:"box-shadow .2s,transform .2s", cursor:"default" },
     cardFeatured: { background:"#234A3D", border:"1px solid transparent", borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 12px 40px rgba(35,74,61,.25)" },
     cardTop: { padding:"24px 24px 0", textAlign:"left" },
@@ -29733,7 +29736,7 @@ function TermsPage() {
     description:"The terms for using Steadwell: your account, plans and billing, AI features, your content and data, and how disputes are handled.",
     canonical:"https://www.trysteadwell.app/terms",
   });
-  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:6,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
+  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},li:{marginBottom:6,fontSize:"1rem",lineHeight:1.6,overflowWrap:"anywhere"},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   const sections = [
     {t:"1. Who We Are",b:"Steadwell is a home management platform operated by Steadwell, LLC, a Florida limited liability company (\"we,\" \"us,\" or \"Steadwell\"). By creating an account or using Steadwell at trysteadwell.app (the \"Service\"), you agree to these Terms of Service. If you do not agree, do not use the Service. You must be at least 18 years old and a resident of the United States."},
@@ -29797,7 +29800,7 @@ function PrivacyPage() {
     description:"What Steadwell collects, how it is used, who it is shared with, and your choices, including how AI features handle your photos, documents and emails.",
     canonical:"https://www.trysteadwell.app/privacy",
   });
-  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
+  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   const sections = [
     {t:"1. Who We Are",b:"Steadwell is a home management platform operated by Steadwell, LLC, a Florida limited liability company. This Privacy Policy explains what information we collect, how we use it, and your rights regarding it. By using Steadwell, you agree to the practices described here. Questions? Email privacy@trysteadwell.app."},
@@ -30535,7 +30538,7 @@ function ADAPage() {
     description:"Steadwell's commitment to digital accessibility, the standards we aim for, and how to report a barrier or ask for help using the site.",
     canonical:"https://www.trysteadwell.app/ada",
   });
-  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
+  const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6,overflowWrap:"anywhere"},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   return (
     <div style={S.page}>
