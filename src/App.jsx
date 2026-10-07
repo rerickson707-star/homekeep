@@ -1,4 +1,4 @@
-// Steadwell v339 — 2026-10-07
+// Steadwell v340 — 2026-10-07
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3356,18 +3356,19 @@ img,.lp-root img{max-width:100%;height:auto}
   .ad-fact:nth-child(odd){padding-left:0;border-left:none}
   .ad-fact-v{font-size:1.1rem}
 }
-.ad-tabs{position:sticky;top:0;z-index:5;background:var(--linen);border-bottom:1px solid var(--stone)}
+.ad-tabs{position:sticky;top:0;z-index:5;background:var(--linen);border-bottom:1px solid var(--stone);padding:.6rem .75rem}
 .ad-in{max-width:880px;margin:0 auto;width:100%}
-.ad-tabs-in{display:flex;max-width:880px;margin:0 auto;padding:0 .5rem;overflow-x:auto;scrollbar-width:none}
+.ad-tabs-in{display:flex;gap:.25rem;max-width:880px;margin:0 auto;padding:.25rem;background:var(--white);border:1.5px solid var(--stone);border-radius:14px;overflow-x:auto;scrollbar-width:none}
 .ad-tabs-in::-webkit-scrollbar{display:none}
-.ad-tab{background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1px;padding:.85rem .85rem .7rem;font-family:inherit;font-size:.95rem;font-weight:600;color:#6E665D;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:.4rem}
-.ad-tab:hover{color:var(--dark)}
-.ad-tab[aria-selected="true"]{color:var(--pine);border-bottom-color:var(--pine);font-weight:700}
-.ad-tab:focus-visible{outline:2px solid var(--pine);outline-offset:-3px;border-radius:8px}
+.ad-tab{flex:1 1 0;min-height:44px;background:none;border:none;border-radius:10px;padding:.65rem .7rem;font-family:inherit;font-size:.95rem;font-weight:700;color:var(--stone-text);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;transition:background .15s,color .15s}
+.ad-tab:hover{background:rgba(35,74,61,.08);color:var(--dark)}
+.ad-tab[aria-selected="true"]{background:var(--pine);color:#F4EDDF;box-shadow:0 1px 3px rgba(23,48,38,.28)}
+.ad-tab:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .ad-tab-n{font-size:.72rem;font-weight:700;background:var(--rust);color:#fff;border-radius:10px;padding:0 .45rem;line-height:1.55}
+.sf-cb:focus-visible + .sf-box{outline:2px solid var(--pine);outline-offset:2px}
 .ad-pane{max-width:880px;margin:0 auto;padding:1.1rem 1rem 2.5rem}
-@media(min-width:1024px){.ad-pane{padding:1.4rem 0 3rem}.ad-tabs-in{padding:0}}
-@media(max-width:480px){.ad-tabs-in{padding:0 .25rem}.ad-tab{padding:.85rem .55rem .7rem;font-size:.9rem}}
+@media(min-width:1024px){.ad-pane{padding:1.4rem 0 3rem}}
+@media(max-width:480px){.ad-tabs{padding:.5rem .5rem}.ad-tabs-in{gap:.1rem;padding:.2rem}.ad-tab{padding:.65rem .2rem;font-size:.84rem;gap:.25rem}.ad-tab-n{padding:0 .36rem;font-size:.68rem}}
 .ad-actions{display:flex;gap:.6rem;margin-bottom:1rem}
 .ad-actions .btn{flex:1;justify-content:center;padding:.7rem 1rem;font-size:.92rem}
 @media(min-width:640px){.ad-actions .btn{flex:0 0 auto}}
@@ -7904,12 +7905,11 @@ function SmartFillReview({ asset, result, onApply, onCancel }) {
     const patch = {}; chosen.forEach(r => Object.assign(patch, r.fields));
     onApply(patch, chosen.map(r => r.label));
   };
-  const tick = { width: 18, height: 18, marginTop: 2, accentColor: "#234A3D", flexShrink: 0 };
   return (
     <div style={{ background: "var(--white)", border: `1.5px solid ${mismatch ? "#FCA5A5" : "rgba(35,74,61,.25)"}`, borderRadius: 14, overflow: "hidden" }}>
       <div style={{ padding: ".7rem .95rem", background: mismatch ? "#FEF2F2" : "rgba(35,74,61,.07)", borderBottom: "1px solid var(--stone)" }}>
         <div style={{ fontWeight: 700, fontSize: ".86rem", color: mismatch ? "#991B1B" : "var(--pine)" }}>✨ Smart Fill suggestions for {asset.brand} {asset.model}</div>
-        <div style={{ fontSize: ".72rem", color: "#6E665D", marginTop: 2 }}>Nothing changes until you apply. Tick what you want.</div>
+        <div style={{ fontSize: ".72rem", color: "#6E665D", marginTop: 2 }}>Nothing changes until you apply. Tap a row to select it.</div>
       </div>
       {mismatch && (
         <div style={{ padding: ".65rem .95rem", background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", fontSize: ".76rem", color: "#B91C1C", lineHeight: 1.5 }}>
@@ -7918,20 +7918,28 @@ function SmartFillReview({ asset, result, onApply, onCancel }) {
       )}
       <div style={{ padding: ".4rem .95rem" }}>
         {rows.length === 0 && <div style={{ padding: ".8rem 0", fontSize: ".82rem", color: "#6E665D" }}>Nothing new to suggest. This asset already has the details Smart Fill found.</div>}
-        {rows.map(r => (
-          <label key={r.id} style={{ display: "flex", gap: ".65rem", padding: ".6rem 0", borderBottom: "1px solid var(--stone)", cursor: "pointer", alignItems: "flex-start" }}>
-            <input type="checkbox" checked={!!sel[r.id]} onChange={e => setSel({ ...sel, [r.id]: e.target.checked })} style={tick} />
+        {rows.map(r => {
+          const on = !!sel[r.id];
+          return (
+          <label key={r.id} style={{ display: "flex", gap: ".7rem", padding: ".7rem .6rem", margin: "0 -.6rem", borderBottom: "1px solid var(--stone)", cursor: "pointer", alignItems: "flex-start", background: on ? "rgba(35,74,61,.07)" : "transparent", transition: "background .12s" }}>
+            <input type="checkbox" className="sf-cb" checked={on} onChange={e => setSel({ ...sel, [r.id]: e.target.checked })}
+              style={{ position: "absolute", opacity: 0, width: 1, height: 1, padding: 0, margin: 0, border: 0, pointerEvents: "none" }} />
+            <span className="sf-box" aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${on ? "#234A3D" : "#9E9690"}`, background: on ? "#234A3D" : "#fff", transition: "background .12s,border-color .12s" }}>
+              {on && <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5l3.2 3.2L13 4.6" /></svg>}
+            </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", gap: ".4rem", alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--dark)" }}>{r.label}</span>
+                <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--dark)" }}>{r.label}</span>
                 {r.mode === "replace" && <span style={{ fontSize: ".62rem", fontWeight: 700, background: "#FBF3DE", color: "#8A6410", padding: "1px 6px", borderRadius: 5 }}>Replaces your entry</span>}
+                <span style={{ marginLeft: "auto", fontSize: ".68rem", fontWeight: 700, color: on ? "#234A3D" : "#9E9690" }}>{on ? (r.mode === "replace" ? "Will replace" : "Will add") : "Skipped"}</span>
               </div>
-              {r.mode === "replace" && <div style={{ fontSize: ".74rem", color: "#9E9690", marginTop: 2, wordBreak: "break-word" }}>Yours: {r.current}</div>}
+              {r.mode === "replace" && <div style={{ fontSize: ".74rem", color: "#6E665D", marginTop: 2, wordBreak: "break-word" }}>Yours: {r.current}</div>}
               <div style={{ fontSize: ".78rem", color: "var(--dark)", marginTop: 2, lineHeight: 1.45, wordBreak: "break-word" }}>{r.mode === "replace" ? "Smart Fill: " : ""}{r.next}</div>
               {r.list && <ul style={{ margin: ".3rem 0 0", paddingLeft: "1.1rem", fontSize: ".72rem", color: "#6E665D", lineHeight: 1.5 }}>{r.list.map((t, i) => <li key={i}>{t}</li>)}</ul>}
             </div>
           </label>
-        ))}
+          );
+        })}
         {result.warranty_years && !asset.purchase_date && (
           <div style={{ padding: ".6rem 0", fontSize: ".74rem", color: "#6E665D", lineHeight: 1.5 }}>
             Typical warranty for this model is about {result.warranty_years} year{result.warranty_years > 1 ? "s" : ""}. Add the purchase date and Smart Fill can work out the end date.
