@@ -1,4 +1,4 @@
-// Steadwell v334 — 2026-10-06
+// Steadwell v335 — 2026-10-07
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4798,7 +4798,7 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>,
-      title: "Home health score", desc: "One score for your home, with a breakdown of what to fix first.", tag: "Plus",
+      title: "Home health score", desc: "One score for your home, free on every plan. Plus adds the breakdown of what to fix first.", tag: "Breakdown on Plus",
       href: "/home-health-score",
     },
     {
@@ -5092,7 +5092,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Home health score & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $7.99/mo</button>
             </div>
@@ -5361,7 +5361,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       key: "plus", label: "Plus", price: "$7.99", priceAnnual: "$63.99", period: "/mo", periodAnnual: "/yr",
       color: "#D2876A", bg: "rgba(210,135,106,.12)",
       pitch: "Automation and intelligence for the serious homeowner.",
-      features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
+      features: ["Full recurring task engine", "Home health score breakdown", "5-year cost forecasting", "AI receipt & bill scanning"],
       badge: "Most popular",
     },
     {
@@ -5380,7 +5380,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
     key: "gift_plus", label: "Plus — Your Gift", price: "$0", period: "for 3 months",
     color: "#D2876A", bg: "rgba(210,135,106,.14)",
     pitch: `Gifted by ${giftAgent?.display_name || giftAgent?.name || "your agent"} — full Plus access, on the house.`,
-    features: ["Full recurring task engine", "Home health score", "5-year cost forecasting", "AI receipt & bill scanning"],
+    features: ["Full recurring task engine", "Home health score breakdown", "5-year cost forecasting", "AI receipt & bill scanning"],
     badge: "Your gift",
   };
 
@@ -6509,7 +6509,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
     { key:"free", label:"Free", price:"$0", period:"forever", color:planColors.free.color, bg:planColors.free.bg, border:planColors.free.border, pitch:"Core tracking, no cost.",
       features:["Core maintenance tracking","Basic task reminders","1 property"] },
     { key:"plus", label:"Plus", price:"$7.99", priceAnnual:"$63.99", period:"/mo", periodAnnual:"/yr", color:planColors.plus.color, bg:planColors.plus.bg, border:planColors.plus.border, pitch:"Automation and intelligence for your home.",
-      features:["Full recurring task engine","Home health score","AI receipt and bill scanning","5-year cost forecasting","Home history report (PDF)"] },
+      features:["Full recurring task engine","Home health score breakdown","AI receipt and bill scanning","5-year cost forecasting","Home history report (PDF)"] },
     { key:"pro",  label:"Pro",  price:"$14.99", priceAnnual:"$119.99", period:"/mo", periodAnnual:"/yr", color:planColors.pro.color,  bg:planColors.pro.bg,  border:planColors.pro.border, pitch:"Multiple properties, shared access.",
       features:["Everything in Plus","Up to 3 properties","Shared home access","Priority support"] },
   ];
@@ -27400,7 +27400,7 @@ const PRICING_FAQ = [
   ["Can I cancel any time?","Yes. Cancel from Account Settings whenever you like. Cancelling stops future renewals right away, and you keep access until the end of the period you already paid for. Paid plans renew automatically until you cancel, and the Terms of Service have the full billing details."],
   ["Do I need a credit card to try Steadwell?","No. You can create a free account and use it for as long as you like without entering a card. A card is only needed if you choose Plus or Pro, and payments are handled by Stripe, so Steadwell never stores your card details."],
   ["Which plan do I need if I own more than one property?","Pro. Free and Plus cover one property, and Pro covers up to three, each with its own assets, tasks, documents and bills."],
-  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, condition assessments, project reviews, the home health score and the cost forecast are part of Plus and Pro. Everything you track on Free stays yours if you ever change plans."],
+  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Every account can see its overall home health score. Everything you track on Free stays yours if you ever change plans."],
 ];
 
 // [feature, free, plus, pro]; true renders a check, false a dash, strings render as text
@@ -27422,7 +27422,8 @@ const PRICING_ROWS = [
   ["AI before and after project review", false, "3 a month", "15 a month"],
   ["Smart Fill from a model number", false, true, true],
   { group:"Plan ahead" },
-  ["Home health score", false, true, true],
+  ["Overall home health score", true, true, true],
+  ["Home health score breakdown by factor", false, true, true],
   ["5-year cost forecast", false, true, true],
   ["Project ROI calculator", false, true, true],
   ["Home history report (PDF)", false, true, true],
@@ -27439,7 +27440,7 @@ function PricingPage() {
     { plan:"Free", price:"$0", period:" / month", annual:"No time limit, no card", desc:"Everything you need to get organized.", cta:"Get started free",
       features:["Unlimited tasks, assets and expenses","Warranty and recall alerts","Utility and bill tracking","Email capture and calendar sync","Contractor rolodex","Essential document storage, 1 property"] },
     { plan:"Plus", price:"$7.99", period:" / month", annual:"or $63.99 a year, save 33%", desc:"AI tools and planning for the serious homeowner.", cta:"Start Plus", popular:true,
-      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Home health score and 5-year cost forecast","Project ROI calculator and AI project review"] },
+      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review"] },
     { plan:"Pro", price:"$14.99", period:" / month", annual:"or $119.99 a year, save 33%", desc:"More properties, shared access and higher limits.", cta:"Start Pro",
       features:["Everything in Plus","Up to 3 properties","Shared access, invite and assign tasks","25 assessments and 150 questions a month","Full document vault and larger uploads","Priority support"] },
   ];
@@ -27771,7 +27772,7 @@ function ConditionAssessmentPage() {
           <LPSectionHead h2="Plans and pricing" sub="Condition assessments are included with Plus and Pro."/>
           <LPPlanTiles plans={[
             {plan:"Free",price:"$0",period:"",annual:"",desc:"Track your home, no assessments.",features:["Assets, tasks and warranties","Overall home health score","Condition assessments need Plus or Pro"],cta:"Start free",popular:false},
-            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"Assess the items that matter most.",features:["5 condition assessments a month","Ask Steadwell, health score and cost forecast","AI scanning for receipts, nameplates, bills and policies"],cta:"Start Plus",popular:true},
+            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"Assess the items that matter most.",features:["5 condition assessments a month","Ask Steadwell, score breakdown and cost forecast","AI scanning for receipts, nameplates, bills and policies"],cta:"Start Plus",popular:true},
             {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"Assess every system in every home.",features:["25 condition assessments a month","Everything in Plus","Up to 3 properties","Shared access and task assignment"],cta:"Start Pro",popular:false},
           ]}/>
         </LPSection>
@@ -29777,7 +29778,7 @@ function TermsPage() {
     {t:"2. What Steadwell Does",b:"Steadwell is a web-based platform that helps homeowners track home systems, maintenance tasks, warranties, service records, expenses, documents, insurance policies, contractors, and safety recall alerts. It is a personal organization tool — not a licensed real estate service, financial advisory, legal counsel, home inspection service, or insurance provider. Nothing in the Service constitutes professional advice of any kind."},
     {t:"3. Your Account",b:"You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. Use a strong, unique password. Contact us immediately at hello@trysteadwell.app if you suspect unauthorized access. One account per person. You may not share your account with others unless you use the Shared Household Access feature on an eligible plan."},
     {t:"4. Acceptable Use",b:"You agree to use the Service only for lawful purposes and in a manner that does not infringe the rights of others. You may not: (a) upload content you do not have the right to share; (b) attempt to gain unauthorized access to any part of the Service or its infrastructure; (c) reverse-engineer, decompile, or disassemble the Service; (d) use automated bots, scrapers, or crawlers; (e) impersonate another person or misrepresent your identity or property ownership; (f) transmit malware or code designed to damage systems; or (g) use the Service in any way that could harm Steadwell or its users. We reserve the right to suspend or terminate accounts that violate these terms at our sole discretion."},
-    {t:"5. Plans and Pricing",b:"Free Plan — no cost, one property: home setup wizard, unlimited asset and warranty tracking, 30-day and 7-day expiry alerts, safety recall alerts, maintenance scheduling, basic recurring tasks, insurance and claim tracking, contractor rolodex, expense tracking, email inbox capture, essential document storage, and email reminders. Plus Plan — $7.99/month or $63.99/year, one property: everything in Free, plus AI receipt and nameplate scanning, Smart Fill model lookup, full recurring task intervals, home health score, 5-year cost forecast, expanded document vault, and project ROI calculator. Pro Plan — $14.99/month or $119.99/year, up to 3 properties: everything in Plus, plus multi-property support, shared household access, and a full home document vault across all properties. Both monthly and annual paid plans automatically renew at the then-current price for the same billing period (monthly or annual) until you cancel. Annual subscribers receive an email reminder between 30 and 40 days before each renewal date; monthly subscribers receive an annual reminder of the recurring charge. If we increase the price of your plan, we will provide at least 45 days' advance notice by email before the new price applies to you and give you the opportunity to cancel before it takes effect — continued use of the Service after the new price applies constitutes acceptance of it. Cancel anytime from Account Settings; cancellation stops future renewals immediately, and access continues through the end of the billing period you already paid for. No prorated refunds for partial months. If you believe you were charged in error, contact hello@trysteadwell.app within 48 hours of the charge and we will review it. We do not offer refunds based on non-use or change of mind. Payments processed by Stripe — we do not store your card information."},
+    {t:"5. Plans and Pricing",b:"Free Plan — no cost, one property: home setup wizard, unlimited asset and warranty tracking, 30-day and 7-day expiry alerts, safety recall alerts, maintenance scheduling, basic recurring tasks, insurance and claim tracking, contractor rolodex, expense tracking, email inbox capture, essential document storage, and email reminders. Plus Plan — $7.99/month or $63.99/year, one property: everything in Free, plus AI receipt and nameplate scanning, Smart Fill model lookup, full recurring task intervals, home health score breakdown, 5-year cost forecast, expanded document vault, and project ROI calculator. Pro Plan — $14.99/month or $119.99/year, up to 3 properties: everything in Plus, plus multi-property support, shared household access, and a full home document vault across all properties. Both monthly and annual paid plans automatically renew at the then-current price for the same billing period (monthly or annual) until you cancel. Annual subscribers receive an email reminder between 30 and 40 days before each renewal date; monthly subscribers receive an annual reminder of the recurring charge. If we increase the price of your plan, we will provide at least 45 days' advance notice by email before the new price applies to you and give you the opportunity to cancel before it takes effect — continued use of the Service after the new price applies constitutes acceptance of it. Cancel anytime from Account Settings; cancellation stops future renewals immediately, and access continues through the end of the billing period you already paid for. No prorated refunds for partial months. If you believe you were charged in error, contact hello@trysteadwell.app within 48 hours of the charge and we will review it. We do not offer refunds based on non-use or change of mind. Payments processed by Stripe — we do not store your card information."},
     {t:"6. Agent Gift Program",b:"Participating real estate agents may gift a client a complimentary 90-day trial of Steadwell Plus at no cost and without collecting payment information. If you receive a gift, the referring agent has provided us with your name and email address for the sole purpose of sending you the gift invitation; see our Privacy Policy for how that information is handled, and contact privacy@trysteadwell.app if you'd like it removed before you create an account. At the end of the 90-day period, a claimed gift account automatically converts to the Free plan unless you choose to subscribe to a paid plan — no card is charged and no action is required on your part to avoid a charge. The gift is offered at Steadwell's discretion and may be modified, extended, or discontinued at any time. Agents who participate in referral or affiliate programs are subject to separate program terms governing disclosure obligations and any commission payable to them."},
     {t:"7. Digital Products — Homebuyer Guides",b:"Steadwell sells downloadable PDF guides (\"Digital Products\") through our Guides store at trysteadwell.app/guides. By purchasing a Digital Product, you receive a personal, non-exclusive, non-transferable license to download, save, and use the guide for your own personal, non-commercial purposes. All sales of Digital Products are final and non-refundable. Because digital files can be downloaded and retained immediately upon purchase, we do not offer refunds under any circumstances except where the file is technically defective (corrupted, blank, or unreadable) and we are unable to deliver a working replacement — in which case contact hello@trysteadwell.app within 48 hours of purchase with a description of the issue. Refunds are not available on the basis of content, format preference, or change of mind. By completing your purchase you acknowledge and accept this no-refund policy. You may not reproduce, redistribute, resell, sublicense, or share Digital Products with others. Digital Products are delivered via a secure, time-limited download link sent to your email address after purchase. Links expire after 24 hours; contact us if you need a new link. Steadwell guides are researched and written with the assistance of AI, including Claude by Anthropic, and reviewed for accuracy prior to publication. They are provided for general informational purposes only and do not constitute legal, financial, real estate, or professional advice. AI-generated content may contain errors, omissions, or outdated information. Local laws, programs, incentives, and market conditions change frequently — always verify information with licensed real estate professionals, attorneys, lenders, and local housing authorities in your area before making any home purchase or financial decision. Steadwell, LLC makes no representations or warranties as to the accuracy, completeness, or currentness of any guide."},
     {t:"8. Your Content",b:"You own everything you upload, create, or store in Steadwell — your documents, photos, records, and data are yours. To operate the Service, you grant Steadwell, LLC a limited, non-exclusive, royalty-free, worldwide license to store, process, display, and transmit your content solely for the purpose of providing and improving the Service for you. This license terminates when you delete the content or close your account. We do not sell, license, or share your content with third parties except as described in our Privacy Policy. You represent and warrant that you have all necessary rights to upload any content you submit. Avoid uploading documents that show full Social Security numbers or financial account numbers where not necessary — crop or redact them first where possible. You may export or permanently delete your data at any time from Account Settings. When you delete your account, we begin permanent deletion of your content within 30 days."},
