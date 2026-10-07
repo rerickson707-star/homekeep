@@ -1,4 +1,4 @@
-// Steadwell v333 — 2026-10-06
+// Steadwell v334 — 2026-10-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30527,6 +30527,162 @@ function BlogPost({ slug }) {
   return <BlogPostView post={post} posts={posts} url={url} slug={cleanSlug}/>;
 }
 
+
+// ─── BLOG READING LAYOUT ─────────────────────────────────────────────────────
+const BLOG_POST_CSS = `
+.bp-wrap{max-width:1120px;margin:0 auto;padding:2.2rem 1.5rem 5rem}
+.bp-head{max-width:820px;margin:0 0 2.2rem}
+.bp-crumbs{font-size:.8rem;color:#7A7370;margin:0 0 1.2rem;display:flex;flex-wrap:wrap;gap:6px}
+.bp-crumbs a{color:#7A7370;text-decoration:none}
+.bp-crumbs a:hover{color:#234A3D;text-decoration:underline}
+.bp-meta{display:flex;gap:.6rem;align-items:center;margin:0 0 1rem;flex-wrap:wrap;font-size:.82rem;color:#6B645B}
+.bp-tag{font-size:.74rem;font-weight:700;background:rgba(35,74,61,.12);color:#234A3D;padding:3px 10px;border-radius:8px}
+.bp-title{font-family:'Fraunces',serif;font-size:clamp(2rem,4.6vw,3.1rem);font-weight:500;color:#1F1B17;line-height:1.1;letter-spacing:-.015em;margin:0 0 1.1rem}
+.bp-lead{font-size:clamp(1.08rem,2vw,1.3rem);color:#4A443D;line-height:1.55;margin:0;max-width:720px}
+.bp-hero{display:block;width:100%;max-width:820px;height:auto;border-radius:16px;margin:1.8rem 0 0;background:#E9E0CC}
+.bp-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.bp-main{min-width:0;max-width:720px}
+.bp-rail{display:none}
+@media (min-width:1040px){
+  .bp-grid{grid-template-columns:minmax(0,720px) 280px;gap:72px}
+  .bp-rail{display:block}
+  .bp-toc-m{display:none}
+}
+.bp-rail-in{position:sticky;top:1.5rem;display:flex;flex-direction:column;gap:18px}
+.bp-toc{background:#fff;border:1px solid #E1D7C3;border-radius:16px;padding:1.1rem 1.2rem}
+.bp-toc-h{font-family:'Fraunces',serif;font-size:1.05rem;color:#1F3D32;margin:0 0 .6rem}
+.bp-toc ol{list-style:none;margin:0;padding:0;counter-reset:t}
+.bp-toc li{counter-increment:t;margin:0}
+.bp-toc a{display:block;padding:.42rem 0 .42rem .9rem;border-left:2px solid #E1D7C3;font-size:.9rem;line-height:1.35;color:#4A443D;text-decoration:none}
+.bp-toc a:hover{color:#234A3D;border-left-color:#9DB8A9}
+.bp-toc a.on{color:#234A3D;font-weight:700;border-left-color:#C16140}
+.bp-rail-cta{background:#234A3D;border-radius:16px;padding:1.2rem;color:#F4EDDF}
+.bp-rail-cta b{display:block;font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;margin:0 0 .35rem}
+.bp-rail-cta span{display:block;font-size:.85rem;line-height:1.5;color:rgba(244,237,223,.75);margin:0 0 .9rem}
+.bp-rail-cta a{display:inline-block;background:#C16140;color:#fff;text-decoration:none;padding:.6rem 1.1rem;border-radius:10px;font-weight:700;font-size:.88rem}
+.bp-toc-m{background:#fff;border:1px solid #E1D7C3;border-radius:14px;margin:0 0 2rem}
+.bp-toc-m summary{cursor:pointer;padding:.9rem 1.1rem;font-weight:700;font-size:.95rem;color:#234A3D;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.bp-toc-m summary::-webkit-details-marker{display:none}
+.bp-toc-m summary::after{content:"+";font-size:1.3rem;line-height:1;color:#C16140}
+.bp-toc-m[open] summary::after{content:"\\2212"}
+.bp-toc-m ol{list-style:none;margin:0;padding:0 1.1rem 1rem}
+.bp-toc-m li{margin:0}
+.bp-toc-m a{display:block;padding:.5rem 0;border-top:1px solid #EFE7D6;font-size:.95rem;color:#38332D;text-decoration:none}
+.bp-body{font-size:1.0625rem;line-height:1.78;color:#38332D;overflow-wrap:break-word}
+.bp-body p{margin:0 0 1.3rem}
+.bp-body strong{color:#1F1B17;font-weight:700}
+.bp-body a{color:#B5532F;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.bp-body h2{font-family:'Fraunces',serif;font-size:clamp(1.6rem,3.2vw,2.05rem);font-weight:500;line-height:1.18;letter-spacing:-.01em;color:#1F3D32;margin:3.4rem 0 1.1rem;padding-top:1.7rem;border-top:3px solid #234A3D;scroll-margin-top:1.2rem}
+.bp-body h2:first-child{margin-top:0;border-top:0;padding-top:0}
+.bp-body h3{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:500;line-height:1.25;color:#2A2723;margin:2.2rem 0 .7rem}
+.bp-body ul,.bp-body ol{list-style:none;margin:0 0 1.6rem;padding:0}
+.bp-body li{position:relative;padding:.5rem 0 .5rem 2rem;margin:0}
+.bp-body ul>li::before{content:"";position:absolute;left:.25rem;top:1.12rem;width:.6rem;height:.6rem;border-radius:2px;background:#C16140;transform:rotate(45deg)}
+.bp-body ol{counter-reset:n}
+.bp-body ol>li{counter-increment:n;padding-left:2.7rem}
+.bp-body ol>li::before{content:counter(n);position:absolute;left:0;top:.62rem;width:1.8rem;height:1.8rem;border-radius:50%;background:#234A3D;color:#F4EDDF;font-weight:700;font-size:.86rem;line-height:1.8rem;text-align:center}
+.bp-body blockquote{margin:0 0 1.8rem;padding:1.1rem 1.3rem;background:#fff;border:1px solid #E1D7C3;border-left:5px solid #234A3D;border-radius:12px;color:#2A2723;font-size:1.04rem}
+.bp-body blockquote p:last-child{margin:0}
+.bp-body table{width:100%;border-collapse:collapse;font-size:.95rem;min-width:420px}
+.bp-body th{text-align:left;padding:.65rem .8rem;background:#234A3D;color:#F4EDDF;font-weight:600;border:1px solid #234A3D}
+.bp-body td{padding:.65rem .8rem;border:1px solid #E1D7C3;vertical-align:top;background:#fff}
+.bp-body img{max-width:100%;height:auto;border-radius:12px}
+.bp-faq{margin:0 0 1.2rem}
+.bp-q{background:#fff;border:1px solid #E1D7C3;border-radius:14px;margin:0 0 .75rem}
+.bp-q summary{cursor:pointer;padding:1rem 1.2rem;font-family:'Fraunces',serif;font-size:1.08rem;line-height:1.3;color:#1F3D32;list-style:none;display:flex;justify-content:space-between;gap:1rem;align-items:center}
+.bp-q summary::-webkit-details-marker{display:none}
+.bp-q summary::after{content:"+";flex:none;font-family:'Hanken Grotesk',sans-serif;font-size:1.5rem;line-height:1;color:#C16140}
+.bp-q[open] summary::after{content:"\\2212"}
+.bp-q summary:focus-visible,.bp-toc-m summary:focus-visible{outline:2px solid #C16140;outline-offset:2px;border-radius:12px}
+.bp-a{padding:0 1.2rem .4rem}
+.bp-a p:last-child{margin-bottom:.9rem}
+.bp-chart{background:#fff;border:1px solid #E1D7C3;border-radius:16px;padding:1.3rem 1.3rem 1.1rem;margin:2.2rem 0}
+.bp-chart-t{font-family:'Fraunces',serif;font-size:1.12rem;color:#1F3D32;margin:0 0 .25rem;line-height:1.25}
+.bp-chart-s{font-size:.88rem;color:#6B645B;margin:0 0 1.1rem;line-height:1.45}
+.bp-row{display:grid;grid-template-columns:minmax(0,10.5rem) minmax(0,1fr);gap:.15rem 1rem;align-items:center;margin:.7rem 0}
+.bp-lab{font-size:.93rem;font-weight:700;color:#2A2723;line-height:1.25}
+.bp-lab small{display:block;font-weight:500;font-size:.82rem;color:#6B645B;margin-top:2px}
+.bp-track{position:relative;height:1.55rem;background:#EFE7D6;border-radius:8px;overflow:hidden}
+.bp-bar{position:absolute;top:0;bottom:0;background:#234A3D;border-radius:8px}
+.bp-bar.alt{background:#C16140}
+.bp-bar.soft{background:#9DB8A9}
+.bp-axis{display:grid;grid-template-columns:minmax(0,10.5rem) minmax(0,1fr);gap:0 1rem;margin-top:.5rem}
+.bp-axis div{display:flex;justify-content:space-between;font-size:.76rem;color:#6B645B}
+.bp-legend{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;margin:.9rem 0 0;font-size:.8rem;color:#6B645B}
+.bp-legend i{display:inline-block;width:.8rem;height:.8rem;border-radius:3px;margin-right:.4rem;vertical-align:-1px}
+.bp-note{font-size:.78rem;color:#6B645B;margin:.9rem 0 0;line-height:1.45}
+.bp-months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.bp-m{border-radius:10px;padding:.7rem .2rem;text-align:center;background:#EFE7D6;color:#4A443D}
+.bp-m b{display:block;font-size:.95rem}
+.bp-m span{display:block;font-size:.72rem;margin-top:2px}
+.bp-m.pk{background:#C16140;color:#fff}
+.bp-m.md{background:#E5C9B8;color:#4A2A1A}
+@media (max-width:560px){
+  .bp-row{grid-template-columns:minmax(0,1fr);gap:.3rem;margin:.95rem 0}
+  .bp-axis{grid-template-columns:minmax(0,1fr)}
+  .bp-axis>span{display:none}
+  .bp-m{padding:.6rem 0}
+  .bp-m span{font-size:.64rem}
+  .bp-chart{padding:1.1rem 1rem .9rem}
+  .bp-body li{padding-top:.4rem;padding-bottom:.4rem}
+}
+`;
+
+// Adds ids to the h2 headings, and returns them for the table of contents. Also turns the
+// "Frequently asked questions" section into expandable answers (the text stays in the page).
+function blogEnhanceHtml(html) {
+  const used = {};
+  const toc = [];
+  const strip = (t) => t.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+  let out = (html || "").replace(/<h2>([\s\S]*?)<\/h2>/g, (m, inner) => {
+    const text = strip(inner);
+    let id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "section";
+    if (used[id]) { used[id] += 1; id += "-" + used[id]; } else used[id] = 1;
+    toc.push({ id, text });
+    return '<h2 id="' + id + '">' + inner + "</h2>";
+  });
+  const m = out.match(/<h2 id="[^"]*">[^<]*(?:faq|frequently asked|common questions)[^<]*<\/h2>/i);
+  if (m) {
+    const start = out.indexOf(m[0]) + m[0].length;
+    const nextH2 = out.indexOf("<h2", start);
+    const end = nextH2 === -1 ? out.length : nextH2;
+    const seg = out.slice(start, end);
+    if (/<h3>/.test(seg)) {
+      let first = true;
+      const items = seg.replace(/<h3>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h3>|$)/g, (mm, q, a) => {
+        const open = first ? " open" : ""; first = false;
+        return "<details class=\"bp-q\"" + open + "><summary>" + q + "</summary><div class=\"bp-a\">" + a + "</div></details>";
+      });
+      out = out.slice(0, start) + '<div class="bp-faq">' + items + "</div>" + out.slice(end);
+    }
+  }
+  return { html: out, toc };
+}
+
+// Sticky "In this guide" list for wide screens; highlights the section being read.
+function BlogToc({ items }) {
+  const [active, setActive] = useState("");
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return undefined;
+    const els = items.map(i => document.getElementById(i.id)).filter(Boolean);
+    if (!els.length) return undefined;
+    const io = new IntersectionObserver(entries => {
+      const vis = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (vis[0]) setActive(vis[0].target.id);
+    }, { rootMargin: "0px 0px -65% 0px", threshold: 0 });
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, [items]);
+  return (
+    <nav className="bp-toc" aria-label="In this guide">
+      <div className="bp-toc-h">In this guide</div>
+      <ol>
+        {items.map(i => <li key={i.id}><a href={"#" + i.id} className={active === i.id ? "on" : ""}>{i.text}</a></li>)}
+      </ol>
+    </nav>
+  );
+}
+
 function BlogPostView({ post, posts, url, slug }) {
   const iso = post ? blogIsoDate(post.iso || post.date) : "";
   const modified = post ? (blogIsoDate(post.modified) || iso) : "";
@@ -30588,19 +30744,8 @@ function BlogPostView({ post, posts, url, slug }) {
 
   const related = relatedPosts(post, posts, 3);
   const features = featuresForPost(post, 2);
-  const body = autoLinkHtml(post.content || "", posts, post.slug)
-    .replace(/<h2>/g,'<h2 style="font-family:\'Fraunces\',serif;font-size:1.35rem;font-weight:500;color:#2A2723;margin:2rem 0 .75rem">')
-    .replace(/<h3>/g,'<h3 style="font-family:\'Fraunces\',serif;font-size:1.1rem;font-weight:500;color:#2A2723;margin:1.5rem 0 .5rem">')
-    .replace(/<p>/g,'<p style="margin:0 0 1.1rem;color:#5A534B;line-height:1.75">')
-    .replace(/<strong>/g,'<strong style="color:#2A2723;font-weight:600">')
-    .replace(/<em>/g,'<em style="color:#5A534B;font-style:italic">')
-    .replace(/<ul>/g,'<ul style="margin:0 0 1.2rem;padding-left:1.4rem;color:#5A534B;line-height:1.75">')
-    .replace(/<ol>/g,'<ol style="margin:0 0 1.2rem;padding-left:1.5rem;color:#5A534B;line-height:1.75">')
-    .replace(/<li>/g,'<li style="margin:0 0 .45rem;padding-left:.2rem">')
-    .replace(/<blockquote>/g,'<blockquote style="margin:0 0 1.2rem;padding:.2rem 0 .2rem 1.1rem;border-left:3px solid #C16140;color:#5A534B;font-style:italic">')
-    .replace(/<table>/g,'<table style="width:100%;border-collapse:collapse;font-size:.92rem;min-width:420px">')
-    .replace(/<th>/g,'<th style="text-align:left;padding:.6rem .75rem;background:#234A3D;color:#F4EDDF;font-weight:600;border:1px solid #234A3D">')
-    .replace(/<td>/g,'<td style="padding:.6rem .75rem;border:1px solid #E6DECF;color:#5A534B;vertical-align:top;background:#fff">');
+  const linked = post.noAutoLink ? (post.content || "") : autoLinkHtml(post.content || "", posts, post.slug);
+  const { html: body, toc } = blogEnhanceHtml(linked);
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
       {/* Nav */}
@@ -30612,29 +30757,41 @@ function BlogPostView({ post, posts, url, slug }) {
         <a href="/blog" style={{color:"rgba(244,237,223,.6)",textDecoration:"none",fontSize:".85rem"}}>← All articles</a>
       </nav>
       {/* Article */}
-      <article style={{maxWidth:720,margin:"0 auto",padding:"2.5rem 1.5rem 5rem"}}>
-        <nav aria-label="Breadcrumb" style={{fontSize:".78rem",color:"#A8A09A",marginBottom:"1.25rem",display:"flex",flexWrap:"wrap",gap:6}}>
-          <a href="/" style={{color:"#7A7370",textDecoration:"none"}}>Home</a><span aria-hidden="true">/</span>
-          <a href="/blog" style={{color:"#7A7370",textDecoration:"none"}}>Blog</a><span aria-hidden="true">/</span>
-          <span aria-current="page" style={{color:"#5A534B"}}>{post.tag || "Article"}</span>
-        </nav>
-        <div style={{display:"flex",gap:".5rem",alignItems:"center",marginBottom:"1rem",flexWrap:"wrap"}}>
-          <span style={{fontSize:".7rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"#234A3D",padding:"2px 9px",borderRadius:8}}>{post.tag}</span>
-          <span style={{fontSize:".72rem",color:"#A8A09A"}}>{post.time} · {iso ? <time dateTime={iso}>{post.date}</time> : post.date}</span>
-          <span style={{fontSize:".72rem",color:"#A8A09A"}}>· By {BLOG_AUTHOR.name}</span>
-        </div>
-        <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.7rem,4vw,2.4rem)",fontWeight:500,color:"#2A2723",lineHeight:1.2,marginBottom:"1rem"}}>{post.title}</h1>
-        <p style={{fontSize:"1.1rem",color:"#7A7370",lineHeight:1.65,marginBottom:"2rem",borderBottom:"1px solid #E6DECF",paddingBottom:"1.5rem"}}>{post.description}</p>
-        <div style={{fontSize:"1rem",lineHeight:1.8,color:"#2A2723"}} dangerouslySetInnerHTML={{__html: body}}/>
-        {/* CTA */}
-        <div style={{marginTop:"3rem",padding:"1.5rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
-          <div style={{fontSize:".85rem",color:"rgba(244,237,223,.6)",marginBottom:"1rem",lineHeight:1.5}}>Set reminders, scan appliance tags, and keep your home records in one place — free to start.</div>
-          <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".7rem 1.5rem",borderRadius:10,fontWeight:700,fontSize:".9rem"}}>Get started free →</a>
-        </div>
-        {features.length > 0 && (
+      <article className="bp-wrap">
+        <style>{BLOG_POST_CSS}</style>
+        <header className="bp-head">
+          <nav aria-label="Breadcrumb" className="bp-crumbs">
+            <a href="/">Home</a><span aria-hidden="true">/</span>
+            <a href="/blog">Blog</a><span aria-hidden="true">/</span>
+            <span aria-current="page" style={{color:"#4A443D"}}>{post.tag || "Article"}</span>
+          </nav>
+          <div className="bp-meta">
+            {post.tag && <span className="bp-tag">{post.tag}</span>}
+            <span>{post.time} · {iso ? <time dateTime={iso}>{post.date}</time> : post.date}</span>
+            <span>· By {BLOG_AUTHOR.name}</span>
+          </div>
+          <h1 className="bp-title">{post.title}</h1>
+          <p className="bp-lead">{post.description}</p>
+          {post.image && <img className="bp-hero" src={post.image} alt="" width="820" height="460" loading="eager" decoding="async" style={{aspectRatio:"16 / 9",objectFit:"cover"}}/>}
+        </header>
+        <div className="bp-grid">
+          <div className="bp-main">
+            {toc.length >= 3 && (
+              <details className="bp-toc-m">
+                <summary>In this article</summary>
+                <ol>{toc.map(i => <li key={i.id}><a href={"#" + i.id}>{i.text}</a></li>)}</ol>
+              </details>
+            )}
+            <div className="bp-body" dangerouslySetInnerHTML={{__html: body}}/>
+            {/* CTA */}
+            <div style={{marginTop:"3rem",padding:"1.6rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
+              <div style={{fontSize:".92rem",color:"rgba(244,237,223,.75)",marginBottom:"1rem",lineHeight:1.55}}>Set reminders, scan appliance tags, and keep your home records in one place — free to start.</div>
+              <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".75rem 1.6rem",borderRadius:10,fontWeight:700,fontSize:".95rem"}}>Get started free →</a>
+            </div>
+            {features.length > 0 && (
           <section aria-labelledby="blog-features" style={{marginTop:"2.5rem"}}>
-            <h2 id="blog-features" style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#2A2723",margin:"0 0 .9rem"}}>Put this into practice</h2>
+            <h2 id="blog-features" style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#1F3D32",margin:"0 0 1rem"}}>Put this into practice</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,260px),1fr))",gap:12}}>
               {features.map(f => (
                 <a key={f.href} href={f.href} style={{textDecoration:"none",color:"inherit",background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"14px 16px",display:"block"}}>
@@ -30647,7 +30804,7 @@ function BlogPostView({ post, posts, url, slug }) {
         )}
         {related.length > 0 && (
           <section aria-labelledby="blog-related" style={{marginTop:"2.5rem"}}>
-            <h2 id="blog-related" style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#2A2723",margin:"0 0 .9rem"}}>Related guides</h2>
+            <h2 id="blog-related" style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#1F3D32",margin:"0 0 1rem"}}>Related guides</h2>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {related.map(r => (
                 <a key={r.slug} href={`/blog/${r.slug}`} style={{textDecoration:"none",background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"14px 16px",display:"block"}}>
@@ -30658,6 +30815,18 @@ function BlogPostView({ post, posts, url, slug }) {
             </div>
           </section>
         )}
+          </div>
+          <aside className="bp-rail" aria-label="Article tools">
+            <div className="bp-rail-in">
+              {toc.length >= 3 && <BlogToc items={toc}/>}
+              <div className="bp-rail-cta">
+                <b>Track your home in Steadwell</b>
+                <span>Reminders, warranties, appliance ages and records in one place. Free to start.</span>
+                <a href="/">Get started free →</a>
+              </div>
+            </div>
+          </aside>
+        </div>
       </article>
     </div>
   );
