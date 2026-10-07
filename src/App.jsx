@@ -1,4 +1,4 @@
-// Steadwell v335 — 2026-10-07
+// Steadwell v336 — 2026-10-07
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4838,9 +4838,10 @@ function LandingPage({ onSignIn, onSignUp }) {
             <span className="wm">Steadwell</span>
           </div>
           <div className="lp-nav-links">
-            <a onClick={() => scrollTo("features")}>Features</a>
-            <a onClick={() => scrollTo("how")}>How it works</a>
-            <a onClick={() => scrollTo("pricing")}>Pricing</a>
+            <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); }}>Features</a>
+            <a href="#how" onClick={e => { e.preventDefault(); scrollTo("how"); }}>How it works</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/blog">Blog</a>
           </div>
           <div className="lp-nav-cta">
             <button className="lp-signin lp-nav-desktop" onClick={onSignIn}>Sign in</button>
@@ -4851,9 +4852,10 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
           {mobileMenuOpen && (
             <div className="lp-mobile-menu" role="navigation" aria-label="Mobile menu">
-              <a onClick={() => { scrollTo("features"); setMobileMenuOpen(false); }}>Features</a>
-              <a onClick={() => { scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
-              <a onClick={() => { scrollTo("pricing"); setMobileMenuOpen(false); }}>Pricing</a>
+              <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); setMobileMenuOpen(false); }}>Features</a>
+              <a href="#how" onClick={e => { e.preventDefault(); scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
+              <a href="/pricing">Pricing</a>
+              <a href="/blog">Blog</a>
               <div className="lp-mobile-menu-btns">
                 <button className="lp-signin" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>Sign in</button>
                 <button className="btn btn-pine" onClick={() => { onSignUp(); setMobileMenuOpen(false); }}>Get started free</button>
@@ -5215,13 +5217,13 @@ function LandingPage({ onSignIn, onSignUp }) {
               <span className="foot-tag">— Your home, kept well.</span>
             </div>
             <div className="foot-links">
-              <a onClick={() => scrollTo("features")}>Features</a>
+              <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); }}>Features</a>
               <a href="/pricing">Pricing</a>
               <a href="/warranty-tracker">Warranty Tracker</a>
               <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
               <a href="mailto:hello@trysteadwell.app">Contact</a>
-              <a onClick={onSignIn}>Sign in</a>
+              <a href="/" role="button" onClick={e => { e.preventDefault(); onSignIn(); }}>Sign in</a>
             </div>
           </div>
           <nav className="foot-feats" aria-label="Features">
@@ -27257,6 +27259,7 @@ const LP_NAV_DEFAULT = [
   { href:"/utility-bill-tracker",      label:"Utility Bills" },
   { href:"/warranty-tracker",          label:"Warranty Tracker" },
   { href:"/guides",                    label:"Buyer Guides" },
+  { href:"/pricing",                   label:"Pricing" },
 ];
 
 // schema.org graph for a feature page. FAQ entries are the same strings the page
@@ -29642,7 +29645,7 @@ function GuidesPage() {
               <p style={{fontSize:"1rem",color:"rgba(244,237,223,.6)",lineHeight:1.7,marginBottom:24}}>Once you close, Steadwell keeps your home running. Warranties, maintenance, contractors, documents, and costs — all in one place. Free to start, no credit card required.</p>
               <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
                 <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:700,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Try Steadwell free →</a>
-                <a href="/#pricing" style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:600,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>See Plus & Pro plans</a>
+                <a href="/pricing" style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:600,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>See Plus & Pro plans</a>
               </div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
