@@ -1,4 +1,4 @@
-// Steadwell v338 — 2026-10-07
+// Steadwell v339 — 2026-10-07
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -7760,7 +7760,7 @@ const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // model up twice. Everything now goes through smartFillLookup (with a 7-day
 // on-device cache and in-flight de-duplication) and smartFillPatch (fills only
 // empty fields, never overwrites what the user entered).
-const SF_CACHE_KEY = "sw_sf_cache_v1";
+const SF_CACHE_KEY = "sw_sf_cache_v2";
 const SF_TTL_MS = 7 * 24 * 3600 * 1000;
 const SF_INFLIGHT = new Map();
 const sfNorm = v => String(cleanVal(v) || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -7787,24 +7787,26 @@ function sfCacheWrite(key, d) {
 async function smartFillLookup(asset, { tier = "free", userId = "", zip = "", force = false } = {}) {
   const brand = cleanVal(asset.brand), model = cleanVal(asset.model);
   if (!brand && !model) return { ok: false, reason: "missing", message: "Add a brand or model number first." };
-  const body = {
-    brand, model, item: asset.item || "", upc: asset.upc || "", category: asset.category || "",
-    install_date: asset.install_date || "", zip_code: zip || "", tier,
-  };
-  const key = [sfNorm(brand), sfNorm(model), sfNorm(body.item), sfNorm(body.category), body.install_date, String(body.upc).trim(), body.zip_code].join("|");
+  // Only facts about the model are sent. Who is asking and which plan they are on is decided by the server from the login token;
+  // the install date and zip are never sent (the result is shared between owners, so it can't depend on them).
+  const body = { brand, model, item: asset.item || "", upc: asset.upc || "", category: asset.category || "" };
+  const key = [sfNorm(brand), sfNorm(model), sfNorm(body.item), sfNorm(body.category), String(body.upc).trim()].join("|");
   if (!force) { const hit = sfCacheRead(key); if (hit) return { ok: true, data: hit, cached: true }; }
   if (SF_INFLIGHT.has(key)) return SF_INFLIGHT.get(key);
   const run = (async () => {
     try {
-      let uid = userId;
-      if (!uid) { try { const { data } = await supabase.auth.getSession(); uid = data?.session?.user?.id || ""; } catch {} }
+      let token = "";
+      try { const { data } = await supabase.auth.getSession(); token = data?.session?.access_token || ""; } catch {}
+      if (!token) return { ok: false, reason: "failed", message: "Sign in to use Smart Fill." };
       const resp = await fetch(ASSET_INTEL_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
-        body: JSON.stringify({ ...body, user_id: uid }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, apikey: ANON_KEY },
+        body: JSON.stringify(body),
       });
       let json = null; try { json = await resp.json(); } catch {}
       if (resp.status === 429 || json?.limit_reached) return { ok: false, reason: "limit", message: "You've used today's Smart Fill lookups. Try again tomorrow." };
+      if (resp.status === 403 && json?.code === "plan_required") return { ok: false, reason: "plan", message: "Smart Fill is included with Plus and Pro." };
+      if (resp.status === 401) return { ok: false, reason: "failed", message: "Your session has expired. Sign in again to use Smart Fill." };
       if (!resp.ok || !json?.ok || !json.data) return { ok: false, reason: "failed", message: json?.error || "Smart Fill couldn't find that model. Check the brand and model number." };
       sfCacheWrite(key, json.data);
       return { ok: true, data: json.data, cached: false };
@@ -7823,7 +7825,7 @@ const sfMoney = n => "$" + Number(n).toLocaleString();
 const sfDate = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return iso; } };
 const sfNeedsDetails = a => sfBlank(a.lifespan_years) || sfParsePm(a.pm_schedule).length === 0 || sfBlank(a.document_ref);
 function sfKeyFor(asset, zip = "") {
-  return [sfNorm(asset.brand), sfNorm(asset.model), sfNorm(asset.item), sfNorm(asset.category), asset.install_date || "", String(asset.upc || "").trim(), zip].join("|");
+  return [sfNorm(asset.brand), sfNorm(asset.model), sfNorm(asset.item), sfNorm(asset.category), String(asset.upc || "").trim()].join("|");
 }
 // Instant, no-network look at the on-device cache, so a result that was fetched earlier can be offered straight away.
 function smartFillPeek(asset, zip = "") {
@@ -8328,10 +8330,14 @@ function BarcodeScanButton({ onResult }) {
     // Step 2 — Tavily fallback via edge function
     setProduct({ title: "Not in barcode database — searching web…", brand: "", model: "" });
     try {
+      // The server needs the signed-in user's token (it counts barcode searches toward the daily limit). Guests skip this step.
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error("no session");
       const resp = await fetch(ASSET_INTEL_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
-        body: JSON.stringify({ upc: code, item: "", brand: "", model: "", tier: "free", barcode_search: true }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, apikey: ANON_KEY },
+        body: JSON.stringify({ upc: code, barcode_search: true }),
       });
       const json = await resp.json();
       if (json.ok && json.data?.item) {
