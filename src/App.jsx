@@ -1,4 +1,4 @@
-// Steadwell v336 — 2026-10-07
+// Steadwell v338 — 2026-10-07
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -7754,216 +7754,301 @@ function getAssetHealthCore(asset, serviceLogs = [], tasks = [], opts = {}) {
 const ASSET_INTEL_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/asset-intelligence";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk";
 
-function SmartFillButton({ data, onChange, planData, onUpgrade, profile }) {
-  const [loading, setLoading] = useState(false);
-  const [result,  setResult]  = useState(null);
-  const [error,   setError]   = useState("");
-  const [applied, setApplied] = useState(false);
-
-  const tier   = planData?.plan || "free";
-  const isPlus = tier === "plus" || tier === "pro";
-  const isPro  = tier === "pro";
-  const canUse = isPlus;
-  const hasEnough = data.brand || data.model;
-
-  const run = async () => {
-    if (!canUse) { onUpgrade(); return; }
-    if (!hasEnough) return;
-    setLoading(true); setError(""); setResult(null); setApplied(false);
+// ─── SMART FILL: one lookup and one merge, used by every screen ──────────────
+// Before this, five screens each built their own request and their own "fill the
+// empty fields" logic, so they disagreed and a single save could look the same
+// model up twice. Everything now goes through smartFillLookup (with a 7-day
+// on-device cache and in-flight de-duplication) and smartFillPatch (fills only
+// empty fields, never overwrites what the user entered).
+const SF_CACHE_KEY = "sw_sf_cache_v1";
+const SF_TTL_MS = 7 * 24 * 3600 * 1000;
+const SF_INFLIGHT = new Map();
+const sfNorm = v => String(cleanVal(v) || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const sfBlank = v => v == null || v === "" || v === 0 || !cleanVal(v);
+function sfParsePm(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === "string" && v.trim()) { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } }
+  return [];
+}
+function sfCacheRead(key) {
+  try { const e = (JSON.parse(localStorage.getItem(SF_CACHE_KEY) || "{}"))[key]; if (e && Date.now() - e.t < SF_TTL_MS) return e.d; } catch {}
+  return null;
+}
+function sfCacheWrite(key, d) {
+  try {
+    const all = JSON.parse(localStorage.getItem(SF_CACHE_KEY) || "{}");
+    all[key] = { t: Date.now(), d };
+    const keys = Object.keys(all);
+    if (keys.length > 40) keys.sort((a, b) => all[a].t - all[b].t).slice(0, keys.length - 40).forEach(k => delete all[k]);
+    localStorage.setItem(SF_CACHE_KEY, JSON.stringify(all));
+  } catch {}
+}
+// Returns { ok:true, data, cached } or { ok:false, reason:"missing"|"limit"|"failed"|"network", message }.
+async function smartFillLookup(asset, { tier = "free", userId = "", zip = "", force = false } = {}) {
+  const brand = cleanVal(asset.brand), model = cleanVal(asset.model);
+  if (!brand && !model) return { ok: false, reason: "missing", message: "Add a brand or model number first." };
+  const body = {
+    brand, model, item: asset.item || "", upc: asset.upc || "", category: asset.category || "",
+    install_date: asset.install_date || "", zip_code: zip || "", tier,
+  };
+  const key = [sfNorm(brand), sfNorm(model), sfNorm(body.item), sfNorm(body.category), body.install_date, String(body.upc).trim(), body.zip_code].join("|");
+  if (!force) { const hit = sfCacheRead(key); if (hit) return { ok: true, data: hit, cached: true }; }
+  if (SF_INFLIGHT.has(key)) return SF_INFLIGHT.get(key);
+  const run = (async () => {
     try {
+      let uid = userId;
+      if (!uid) { try { const { data } = await supabase.auth.getSession(); uid = data?.session?.user?.id || ""; } catch {} }
       const resp = await fetch(ASSET_INTEL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
-        body: JSON.stringify({
-          brand: data.brand,
-          model: data.model,
-          item:  data.item,
-          upc:   data.upc || "",   // barcode scan result if available
-          category: data.category,
-          install_date: data.install_date,
-          zip_code: profile?.address?.match(/\b\d{5}\b/)?.[0] || "",
-          tier,
-        }),
+        body: JSON.stringify({ ...body, user_id: uid }),
       });
-      const json = await resp.json();
-      if (!json.ok) throw new Error(json.error || "Lookup failed");
-      setResult(json.data);
-    } catch(e) { setError(e.message || "Something went wrong — try again"); }
-    setLoading(false);
-  };
+      let json = null; try { json = await resp.json(); } catch {}
+      if (resp.status === 429 || json?.limit_reached) return { ok: false, reason: "limit", message: "You've used today's Smart Fill lookups. Try again tomorrow." };
+      if (!resp.ok || !json?.ok || !json.data) return { ok: false, reason: "failed", message: json?.error || "Smart Fill couldn't find that model. Check the brand and model number." };
+      sfCacheWrite(key, json.data);
+      return { ok: true, data: json.data, cached: false };
+    } catch { return { ok: false, reason: "network", message: "Couldn't reach Smart Fill. Check your connection and try again." }; }
+    finally { SF_INFLIGHT.delete(key); }
+  })();
+  SF_INFLIGHT.set(key, run);
+  return run;
+}
+function sfAddYears(iso, n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  if (!m || !n) return "";
+  return new Date(Date.UTC(+m[1] + Math.round(n), +m[2] - 1, +m[3])).toISOString().slice(0, 10);
+}
+const sfMoney = n => "$" + Number(n).toLocaleString();
+const sfDate = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return iso; } };
+const sfNeedsDetails = a => sfBlank(a.lifespan_years) || sfParsePm(a.pm_schedule).length === 0 || sfBlank(a.document_ref);
+function sfKeyFor(asset, zip = "") {
+  return [sfNorm(asset.brand), sfNorm(asset.model), sfNorm(asset.item), sfNorm(asset.category), asset.install_date || "", String(asset.upc || "").trim(), zip].join("|");
+}
+// Instant, no-network look at the on-device cache, so a result that was fetched earlier can be offered straight away.
+function smartFillPeek(asset, zip = "") {
+  if (!cleanVal(asset.brand) && !cleanVal(asset.model)) return null;
+  return sfCacheRead(sfKeyFor({ ...asset, brand: cleanVal(asset.brand), model: cleanVal(asset.model) }, zip));
+}
 
+// What Smart Fill SUGGESTS, one row per change. Nothing is applied from here.
+//   mode "add"     = the field is empty, so the suggestion fills a gap (pre-ticked in the review).
+//   mode "replace" = the person already has a different value (NOT ticked: they must opt in to replace it).
+// The model's own warranty end date and years-remaining are deliberately ignored: they depend on someone
+// else's purchase date. The end date is worked out here from THIS asset's purchase date and the typical warranty length.
+function smartFillChanges(asset, d) {
+  const rows = [];
+  const add = (id, label, fields, current, next, mode, extra = {}) => rows.push({ id, label, fields, current, next, mode, ...extra });
+  const same = (x, y) => String(x == null ? "" : x).trim() === String(y == null ? "" : y).trim();
+  // Names and identifiers: only ever offered to fill a blank, never to replace what the person typed.
+  [["item", "Name", d.item], ["brand", "Brand", d.brand], ["model", "Model", d.model], ["category", "Category", d.category]].forEach(([k, label, v]) => {
+    if (v && sfBlank(asset[k])) add(k, label, { [k]: v }, null, String(v), "add");
+  });
+  if (d.lifespan_years && !same(asset.lifespan_years, d.lifespan_years)) {
+    const blank = sfBlank(asset.lifespan_years);
+    add("lifespan_years", "Expected lifespan", { lifespan_years: d.lifespan_years }, blank ? null : `${asset.lifespan_years} years`, `${d.lifespan_years} years`, blank ? "add" : "replace");
+  }
+  const endDate = asset.purchase_date && d.warranty_years ? sfAddYears(asset.purchase_date, d.warranty_years) : "";
+  if (endDate && !same(asset.expiry_date, endDate)) {
+    const blank = sfBlank(asset.expiry_date);
+    add("expiry_date", "Warranty end date", { expiry_date: endDate }, blank ? null : sfDate(asset.expiry_date), `${sfDate(endDate)} (${d.warranty_years}-year warranty from your purchase date)`, blank ? "add" : "replace");
+  }
+  const pm = sfParsePm(d.pm_schedule), curPm = sfParsePm(asset.pm_schedule);
+  if (pm.length && JSON.stringify(pm) !== JSON.stringify(curPm)) {
+    add("pm_schedule", "Maintenance schedule", { pm_schedule: pm }, curPm.length ? `${curPm.length} task${curPm.length > 1 ? "s" : ""}` : null,
+      `${pm.length} task${pm.length > 1 ? "s" : ""}`, curPm.length ? "replace" : "add",
+      { list: pm.map(t => `${t.title}${t.interval_months ? ` (every ${t.interval_months < 12 ? t.interval_months + " mo" : (t.interval_months / 12) + " yr"})` : ""}`) });
+  }
+  if (d.maintenance_tip && !same(asset.maintenance_tip, d.maintenance_tip)) {
+    const blank = sfBlank(asset.maintenance_tip);
+    add("maintenance_tip", "Maintenance tip", { maintenance_tip: d.maintenance_tip }, blank ? null : String(asset.maintenance_tip), d.maintenance_tip, blank ? "add" : "replace");
+  }
+  if (d.replacement_cost_low) {
+    const mid = Math.round((d.replacement_cost_low + (d.replacement_cost_high || d.replacement_cost_low)) / 2);
+    if (!same(asset.replacement_cost, mid)) {
+      const blank = sfBlank(asset.replacement_cost);
+      add("replacement_cost", "Replacement cost", { replacement_cost: mid }, blank ? null : sfMoney(asset.replacement_cost),
+        `${sfMoney(mid)} (typical range ${sfMoney(d.replacement_cost_low)} to ${sfMoney(d.replacement_cost_high || d.replacement_cost_low)})`, blank ? "add" : "replace");
+    }
+  }
+  if (d.contractor_cost_low && !same(asset.contractor_cost_low, d.contractor_cost_low)) {
+    const blank = sfBlank(asset.contractor_cost_low);
+    add("contractor_cost_low", "Installed cost", { contractor_cost_low: d.contractor_cost_low, contractor_cost_high: d.contractor_cost_high },
+      blank ? null : sfMoney(asset.contractor_cost_low), `${sfMoney(d.contractor_cost_low)} to ${sfMoney(d.contractor_cost_high || d.contractor_cost_low)}`, blank ? "add" : "replace");
+  }
+  const manual = d.om_manual_url || d.manual_url;
+  if (manual && !same(asset.document_ref, manual)) {
+    const blank = sfBlank(asset.document_ref);
+    add("document_ref", "Owner's manual link", { document_ref: manual }, blank ? null : String(asset.document_ref), manual, blank ? "add" : "replace");
+  }
+  if (d.support_url && !String(asset.notes || "").includes("Support:"))
+    add("notes", "Manufacturer support link", { notes: [asset.notes, `Support: ${d.support_url}`].filter(Boolean).join("\n") }, null, d.support_url, "add");
+  return rows;
+}
+const sfSummary = list => list.length <= 1 ? (list[0] || "") : list.slice(0, -1).join(", ") + " and " + list[list.length - 1];
+
+// The review list: every suggestion with a checkbox. Gaps are pre-ticked; replacing a value the person already
+// has is unticked and labelled, so nothing is overwritten unless they choose it.
+function SmartFillReview({ asset, result, onApply, onCancel }) {
+  const rows = useMemo(() => smartFillChanges(asset, result), [asset, result]);
+  const [sel, setSel] = useState(() => Object.fromEntries(rows.map(r => [r.id, r.mode === "add"])));
+  const chosen = rows.filter(r => sel[r.id]);
+  const replaceChosen = chosen.filter(r => r.mode === "replace").length;
+  const uw = (asset.item || "").toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const rw = (result.item || "").toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const mismatch = uw.length > 0 && rw.length > 0 && !uw.some(w => rw.includes(w)) && (asset.item || "").toLowerCase() !== (result.item || "").toLowerCase();
+  const sources = (Array.isArray(result.data_sources) ? result.data_sources : []).filter(u => /^https?:\/\//.test(u)).slice(0, 2);
   const apply = () => {
-    if (!result) return;
-    const u = {...data};
-    // Fill every empty field — never overwrite existing data
-    if (result.item              && !u.item)              u.item              = result.item;
-    if (result.brand             && !u.brand)             u.brand             = result.brand;
-    if (result.model             && !u.model)             u.model             = result.model;
-    if (result.category          && !u.category)          u.category          = result.category;
-    if (result.condition         && !u.condition)         u.condition         = result.condition;
-    if (result.lifespan_years    && !u.lifespan_years)    u.lifespan_years    = result.lifespan_years;
-    if (result.warranty_expiry   && !u.expiry_date)       u.expiry_date       = result.warranty_expiry;
-    if (result.maintenance_tip   && !u.maintenance_tip)   u.maintenance_tip   = result.maintenance_tip;
-    // Store PM schedule
-    if (result.pm_schedule?.length > 0 && !u.pm_schedule?.length)
-      u.pm_schedule = result.pm_schedule;
-    // Costs
-    if (result.replacement_cost_low && !u.replacement_cost)
-      u.replacement_cost = Math.round((result.replacement_cost_low + (result.replacement_cost_high || result.replacement_cost_low)) / 2);
-    if (result.contractor_cost_low && !u.contractor_cost_low) {
-      u.contractor_cost_low  = result.contractor_cost_low;
-      u.contractor_cost_high = result.contractor_cost_high;
-    }
-    // O&M manual — prefer om_manual_url, fall back to manual_url — store in document_ref
-    const manualLink = result.om_manual_url || result.manual_url;
-    if (manualLink && !u.document_ref) u.document_ref = manualLink;
-    // Support URL in notes field (legacy — still needed for display parsing)
-    if (result.support_url && !u.notes?.includes("Support:")) {
-      u.notes = [u.notes, `Support: ${result.support_url}`].filter(Boolean).join("\n");
-    }
-    onChange(u);
-    setApplied(true);
+    const patch = {}; chosen.forEach(r => Object.assign(patch, r.fields));
+    onApply(patch, chosen.map(r => r.label));
   };
-
-  const fmt$ = n => n ? `$${Number(n).toLocaleString()}` : null;
-
+  const tick = { width: 18, height: 18, marginTop: 2, accentColor: "#234A3D", flexShrink: 0 };
   return (
-    <div style={{marginBottom:"1rem"}}>
-      <button type="button" onClick={run} disabled={loading || !hasEnough}
-        style={{width:"100%",display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1.1rem",borderRadius:14,
-          border:`1.5px solid ${canUse?"rgba(35,74,61,.25)":"var(--stone)"}`,
-          background:canUse?"linear-gradient(135deg,rgba(35,74,61,.06),rgba(35,74,61,.03))":"var(--cream)",
-          cursor:!hasEnough?"not-allowed":"pointer",opacity:!hasEnough?.55:1,
-          transition:"all .2s",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
-        <div style={{width:36,height:36,borderRadius:10,background:canUse?"rgba(35,74,61,.12)":"var(--stone)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"1.1rem"}}>
-          {loading?"⏳":applied?"✓":"✨"}
+    <div style={{ background: "var(--white)", border: `1.5px solid ${mismatch ? "#FCA5A5" : "rgba(35,74,61,.25)"}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ padding: ".7rem .95rem", background: mismatch ? "#FEF2F2" : "rgba(35,74,61,.07)", borderBottom: "1px solid var(--stone)" }}>
+        <div style={{ fontWeight: 700, fontSize: ".86rem", color: mismatch ? "#991B1B" : "var(--pine)" }}>✨ Smart Fill suggestions for {asset.brand} {asset.model}</div>
+        <div style={{ fontSize: ".72rem", color: "#6E665D", marginTop: 2 }}>Nothing changes until you apply. Tick what you want.</div>
+      </div>
+      {mismatch && (
+        <div style={{ padding: ".65rem .95rem", background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", fontSize: ".76rem", color: "#B91C1C", lineHeight: 1.5 }}>
+          <strong>This model may be a different product.</strong> You named it "{asset.item}", but the model number looks like a {result.item}. Check the nameplate before applying.
         </div>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:".88rem",color:canUse?"var(--pine)":"var(--dark)",display:"flex",alignItems:"center",gap:6}}>
-            Smart Fill
-            {!canUse&&<span style={{fontSize:".62rem",background:"#EEF4FF",color:"#3B5FBF",fontWeight:700,padding:"1px 7px",borderRadius:8}}>Plus</span>}
+      )}
+      <div style={{ padding: ".4rem .95rem" }}>
+        {rows.length === 0 && <div style={{ padding: ".8rem 0", fontSize: ".82rem", color: "#6E665D" }}>Nothing new to suggest. This asset already has the details Smart Fill found.</div>}
+        {rows.map(r => (
+          <label key={r.id} style={{ display: "flex", gap: ".65rem", padding: ".6rem 0", borderBottom: "1px solid var(--stone)", cursor: "pointer", alignItems: "flex-start" }}>
+            <input type="checkbox" checked={!!sel[r.id]} onChange={e => setSel({ ...sel, [r.id]: e.target.checked })} style={tick} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", gap: ".4rem", alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--dark)" }}>{r.label}</span>
+                {r.mode === "replace" && <span style={{ fontSize: ".62rem", fontWeight: 700, background: "#FBF3DE", color: "#8A6410", padding: "1px 6px", borderRadius: 5 }}>Replaces your entry</span>}
+              </div>
+              {r.mode === "replace" && <div style={{ fontSize: ".74rem", color: "#9E9690", marginTop: 2, wordBreak: "break-word" }}>Yours: {r.current}</div>}
+              <div style={{ fontSize: ".78rem", color: "var(--dark)", marginTop: 2, lineHeight: 1.45, wordBreak: "break-word" }}>{r.mode === "replace" ? "Smart Fill: " : ""}{r.next}</div>
+              {r.list && <ul style={{ margin: ".3rem 0 0", paddingLeft: "1.1rem", fontSize: ".72rem", color: "#6E665D", lineHeight: 1.5 }}>{r.list.map((t, i) => <li key={i}>{t}</li>)}</ul>}
+            </div>
+          </label>
+        ))}
+        {result.warranty_years && !asset.purchase_date && (
+          <div style={{ padding: ".6rem 0", fontSize: ".74rem", color: "#6E665D", lineHeight: 1.5 }}>
+            Typical warranty for this model is about {result.warranty_years} year{result.warranty_years > 1 ? "s" : ""}. Add the purchase date and Smart Fill can work out the end date.
           </div>
-          <div style={{fontSize:".72rem",color:"#9E9690",marginTop:1}}>
-            {loading?"Looking up your asset…":applied?"Fields filled — review and save":!hasEnough?"Enter brand or model number first":canUse?"Auto-fill lifespan, costs, manual & PM schedule":"Upgrade to auto-fill asset details with AI"}
-          </div>
+        )}
+        <div style={{ padding: ".5rem 0 .6rem", fontSize: ".66rem", color: "#B0A8A0", lineHeight: 1.5 }}>
+          Based on typical US manufacturer specs. Check them against your unit's own documents.
+          {sources.length > 0 && <> Sources: {sources.map((u, i) => <a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{ color: "var(--sky)", marginRight: 6 }}>{u.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}</a>)}</>}
         </div>
-        {!loading&&<span style={{color:"#C2B8AE",fontSize:".85rem",flexShrink:0}}>→</span>}
-      </button>
-
-      {error&&<div style={{marginTop:".5rem",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:10,fontSize:".78rem",color:"var(--red)"}}>⚠ {error}</div>}
-
-      {result && !applied && (()=>{
-        const sfUserWords  = (data.item||"").toLowerCase().split(/[ 	]+/).filter(w=>w.length>3);
-        const sfResultWords = (result.item||"").toLowerCase().split(/[ 	]+/).filter(w=>w.length>3);
-        const sfOverlap = sfUserWords.filter(w => sfResultWords.includes(w));
-        const sfMismatch = sfUserWords.length > 0 && sfResultWords.length > 0 && sfOverlap.length === 0
-          && (data.item||"").toLowerCase() !== (result.item||"").toLowerCase();
-        return (
-        <div style={{marginTop:".65rem",background:"var(--cream)",border:`1.5px solid ${sfMismatch?"#FCA5A5":"rgba(35,74,61,.2)"}`,borderRadius:14,overflow:"hidden"}}>
-          {sfMismatch && (
-            <div style={{padding:".65rem 1rem",background:"#FEF2F2",borderBottom:"1px solid #FCA5A5"}}>
-              <div style={{fontWeight:700,fontSize:".8rem",color:"#991B1B",marginBottom:".25rem"}}>⚠️ Check your device — model may not match</div>
-              <div style={{fontSize:".75rem",color:"#B91C1C",lineHeight:1.5}}>
-                You entered <strong>"{data.item}"</strong> but model <strong>{data.model}</strong> looks like a <strong>{result.item}</strong>. Make sure you scanned the right nameplate — not a nearby appliance.
-              </div>
-            </div>
-          )}
-          <div style={{background:sfMismatch?"#FEF9F9":"rgba(35,74,61,.07)",padding:".7rem 1rem",borderBottom:"1px solid rgba(35,74,61,.1)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontWeight:700,fontSize:".82rem",color:sfMismatch?"#991B1B":"var(--pine)"}}>
-              {sfMismatch?"⚠️ Possible mismatch":"✨ Smart Fill results"}
-            </div>
-            <div style={{fontSize:".7rem",color:sfMismatch?"#B91C1C":"#9E9690"}}>{data.brand} {data.model}</div>
-          </div>
-          <div style={{padding:".85rem 1rem",display:"flex",flexDirection:"column",gap:".6rem"}}>
-            {result.condition_assessment&&<div style={{fontSize:".8rem",color:"var(--dark)",lineHeight:1.5,fontStyle:"italic",paddingBottom:".6rem",borderBottom:"1px solid var(--stone)"}}>"{result.condition_assessment}"</div>}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
-              {result.lifespan_years&&<div style={{background:"var(--white)",borderRadius:10,padding:".6rem .75rem",border:"1px solid var(--stone)"}}>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Lifespan</div>
-                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--dark)"}}>{result.lifespan_years} yrs</div>
-                {result.years_remaining!=null&&<div style={{fontSize:".7rem",color:result.years_remaining<3?"var(--red)":result.years_remaining<6?"var(--gold)":"#3B6D11",marginTop:1}}>~{Math.max(0,result.years_remaining)} yrs remaining</div>}
-              </div>}
-              {result.warranty_years&&<div style={{background:"var(--white)",borderRadius:10,padding:".6rem .75rem",border:"1px solid var(--stone)"}}>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Warranty</div>
-                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--dark)"}}>{result.warranty_years} yr{result.warranty_years>1?"s":""}</div>
-                {result.warranty_expiry&&<div style={{fontSize:".7rem",color:"#9E9690",marginTop:1}}>Expires {new Date(result.warranty_expiry).toLocaleDateString("en-US",{month:"short",year:"numeric"})}</div>}
-              </div>}
-              {isPlus&&result.replacement_cost_low&&<div style={{background:"var(--white)",borderRadius:10,padding:".6rem .75rem",border:"1px solid var(--stone)"}}>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Replacement</div>
-                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--dark)"}}>{fmt$(result.replacement_cost_low)}–{fmt$(result.replacement_cost_high)}</div>
-                {result.replacement_cost_note&&<div style={{fontSize:".68rem",color:"#9E9690",marginTop:1,lineHeight:1.4}}>{result.replacement_cost_note}</div>}
-              </div>}
-              {isPro&&result.contractor_cost_low&&<div style={{background:"rgba(35,74,61,.05)",borderRadius:10,padding:".6rem .75rem",border:"1px solid rgba(35,74,61,.15)"}}>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"var(--pine)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Installed cost</div>
-                <div style={{fontWeight:700,fontSize:".92rem",color:"var(--pine)"}}>{fmt$(result.contractor_cost_low)}–{fmt$(result.contractor_cost_high)}</div>
-                {result.contractor_note&&<div style={{fontSize:".68rem",color:"#9E9690",marginTop:1,lineHeight:1.4}}>{result.contractor_note}</div>}
-              </div>}
-            </div>
-            {result.pm_schedule?.length>0&&<div>
-              <div style={{fontSize:".7rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>Maintenance schedule</div>
-              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                {(Array.isArray(result.pm_schedule) ? result.pm_schedule : []).slice(0,4).map((pm,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".45rem .65rem",background:"var(--white)",borderRadius:9,border:"1px solid var(--stone)"}}>
-                    <span style={{fontSize:".8rem",flexShrink:0}}>{pm.diy?"🔧":"👷"}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".8rem",fontWeight:600,color:"var(--dark)"}}>{pm.title}</div>
-                      <div style={{fontSize:".68rem",color:"#9E9690"}}>Every {pm.interval_months<12?`${pm.interval_months} mo`:`${pm.interval_months/12} yr`} · {pm.diy?"DIY":"Contractor"}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>}
-            {(result.manual_url || result.om_manual_url || result.support_url) && (
-              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                {result.om_manual_url && (
-                  <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".5rem .75rem",background:"rgba(35,74,61,.06)",borderRadius:10,border:"1px solid rgba(35,74,61,.15)"}}>
-                    <span style={{fontSize:"1rem"}}>📋</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)"}}>O&M Manual</div>
-                      <a href={result.om_manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".68rem",color:"var(--sky)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{result.om_manual_url.replace(/^https?:\/\//,"")}</a>
-                    </div>
-                    <a href={result.om_manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".7rem",fontWeight:600,color:"var(--pine)",textDecoration:"none",flexShrink:0}}>Open →</a>
-                  </div>
-                )}
-                {result.manual_url && result.manual_url !== result.om_manual_url && (
-                  <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".5rem .75rem",background:"var(--white)",borderRadius:10,border:"1px solid var(--stone)"}}>
-                    <span style={{fontSize:"1rem"}}>📖</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)"}}>Owner's Manual</div>
-                      <a href={result.manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".68rem",color:"var(--sky)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{result.manual_url.replace(/^https?:\/\//,"")}</a>
-                    </div>
-                    <a href={result.manual_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".7rem",fontWeight:600,color:"#9E9690",textDecoration:"none",flexShrink:0}}>Open →</a>
-                  </div>
-                )}
-                {result.support_url && (
-                  <div style={{display:"flex",alignItems:"center",gap:".6rem",padding:".5rem .75rem",background:"var(--white)",borderRadius:10,border:"1px solid var(--stone)"}}>
-                    <span style={{fontSize:"1rem"}}>🔗</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)"}}>Manufacturer Support</div>
-                      <a href={result.support_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".68rem",color:"var(--sky)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{result.support_url.replace(/^https?:\/\//,"")}</a>
-                    </div>
-                    <a href={result.support_url} target="_blank" rel="noopener noreferrer" style={{fontSize:".7rem",fontWeight:600,color:"#9E9690",textDecoration:"none",flexShrink:0}}>Open →</a>
-                  </div>
-                )}
-              </div>
-            )}
-            {result.maintenance_tip&&<div style={{padding:".55rem .75rem",background:"rgba(167,191,168,.12)",borderRadius:10,fontSize:".78rem",color:"var(--pine)",lineHeight:1.5,border:"1px solid rgba(167,191,168,.3)"}}>💡 {result.maintenance_tip}</div>}
-            <div style={{fontSize:".65rem",color:"#B0A8A0",lineHeight:1.5,borderTop:"1px solid var(--stone)",paddingTop:".5rem"}}>
-              Estimates based on typical US market data. Get a licensed contractor quote before budgeting for major replacements.
-            </div>
-          </div>
-          <div style={{padding:".75rem 1rem",borderTop:`1px solid ${sfMismatch?"#FCA5A5":"var(--stone)"}`,display:"flex",gap:".5rem",flexWrap:"wrap"}}>
-            {sfMismatch && <div style={{width:"100%",fontSize:".7rem",color:"#B91C1C",fontWeight:600,marginBottom:".15rem"}}>⚠ Review carefully — confirm you're looking at the right device</div>}
-            <button type="button" onClick={apply} style={{flex:1,padding:".65rem",background:sfMismatch?"#DC2626":"var(--pine)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
-              {sfMismatch?"Apply anyway — correct device":"Apply to asset ✓"}
-            </button>
-            <button type="button" onClick={()=>setResult(null)} style={{padding:".65rem .9rem",background:"none",border:"1px solid var(--stone)",borderRadius:10,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".82rem",color:"#9E9690",cursor:"pointer"}}>Dismiss</button>
-          </div>
-        </div>
-        );
-      })()}
+      </div>
+      <div style={{ padding: ".7rem .95rem", borderTop: "1px solid var(--stone)", display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
+        <button type="button" onClick={apply} disabled={chosen.length === 0}
+          style={{ flex: 1, minWidth: 140, padding: ".65rem", background: chosen.length === 0 ? "#C8C0B8" : mismatch ? "#DC2626" : "var(--pine)", color: "#fff", border: "none", borderRadius: 10, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: ".85rem", fontWeight: 700, cursor: chosen.length === 0 ? "not-allowed" : "pointer" }}>
+          {chosen.length === 0 ? "Nothing selected" : `Apply ${chosen.length} selected${replaceChosen ? ` (replaces ${replaceChosen})` : ""}`}
+        </button>
+        <button type="button" onClick={onCancel} style={{ padding: ".65rem 1rem", background: "none", border: "1px solid var(--stone)", borderRadius: 10, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: ".82rem", color: "#6E665D", cursor: "pointer" }}>Not now</button>
+      </div>
     </div>
   );
 }
+
+// The single Smart Fill entry point. Shows where the details are entered or viewed, asks before changing anything,
+// and offers Undo. variant: "form" (Add/Edit asset), "detail" (asset page), "screen" (model-number entry screen).
+function SmartFillInline({ asset, onApply, planData, onUpgrade, userId = "", zip = "", variant = "form" }) {
+  const [phase, setPhase] = useState("idle"); // idle | loading | review | done
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [step, setStep] = useState("");
+  const [doneMsg, setDoneMsg] = useState("");
+  const prevRef = useRef(null);
+  const forceNext = useRef(false);
+  const isPaid = planData?.plan === "plus" || planData?.plan === "pro";
+  const hasBM = !!(cleanVal(asset.brand) || cleanVal(asset.model));
+  const label = `${cleanVal(asset.brand)} ${cleanVal(asset.model)}`.trim();
+  const needs = sfNeedsDetails(asset);
+  const ready = phase === "idle" && isPaid && hasBM ? smartFillPeek(asset, zip) : null;
+  // Offer the prominent card only when there is something to suggest (missing details, or a fetched result with changes).
+  const showCard = ready ? smartFillChanges(asset, ready).length > 0 : needs;
+
+  const run = async () => {
+    if (!isPaid) { onUpgrade && onUpgrade(); return; }
+    if (!hasBM) return;
+    setPhase("loading"); setError("");
+    const phases = ["Searching manufacturer docs…", "Reading product data…", "Checking warranty and lifespan…", "Building maintenance schedule…"];
+    let i = 0; setStep(phases[0]);
+    const timer = setInterval(() => { i = Math.min(i + 1, phases.length - 1); setStep(phases[i]); }, 2000);
+    const force = forceNext.current; forceNext.current = false;
+    const r = await smartFillLookup(asset, { tier: planData?.plan || "free", userId, zip, force });
+    clearInterval(timer);
+    if (r.ok) { setResult(r.data); setPhase("review"); } else { setError(r.message); setPhase("idle"); }
+  };
+  const open = () => { if (ready) { setResult(ready); setPhase("review"); } else run(); };
+  const apply = async (patch, labels) => {
+    const prev = {};
+    Object.keys(patch).forEach(k => { prev[k] = asset[k] === undefined || asset[k] === null ? (k === "pm_schedule" ? [] : "") : asset[k]; });
+    prevRef.current = prev;
+    await onApply(patch);
+    setDoneMsg(labels.length ? `Added ${sfSummary(labels.map(l => l.toLowerCase()))}.` : "No changes made.");
+    setPhase("done");
+  };
+  const undo = async () => { if (prevRef.current) await onApply(prevRef.current); prevRef.current = null; setPhase("idle"); setResult(null); };
+
+  const card = { background: "linear-gradient(135deg,rgba(35,74,61,.07),rgba(35,74,61,.03))", border: "1.5px solid rgba(35,74,61,.22)", borderRadius: 14, padding: ".85rem 1rem", margin: ".25rem 0 .9rem", display: "flex", gap: ".75rem", alignItems: "center", flexWrap: "wrap" };
+  const btn = { padding: ".55rem 1rem", background: "var(--pine)", color: "#fff", border: "none", borderRadius: 10, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: ".83rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" };
+  const quiet = { background: "none", border: "none", padding: ".3rem 0", fontFamily: "inherit", fontSize: ".84rem", fontWeight: 700, color: "var(--pine)", cursor: "pointer", textDecoration: "underline" };
+  const err = error && <div style={{ margin: ".4rem 0 .8rem", padding: ".6rem .85rem", background: "var(--red-light)", borderRadius: 10, fontSize: ".78rem", color: "var(--red)" }}>⚠ {error}</div>;
+
+  if (phase === "review") return (
+    <div style={{ margin: ".25rem 0 .9rem" }}>
+      <SmartFillReview asset={asset} result={result} onApply={apply} onCancel={() => setPhase("idle")} />
+    </div>
+  );
+  if (phase === "loading") return (
+    <div style={card} role="status" aria-live="polite">
+      <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+      <div style={{ fontSize: ".84rem", color: "var(--pine)", fontWeight: 600 }}>{step}</div>
+    </div>
+  );
+  if (phase === "done") return (
+    <div style={{ ...card, background: "#E9F1EA", borderColor: "#C5DCC9" }}>
+      <div style={{ flex: 1, minWidth: 180, fontSize: ".84rem", color: "#2F6A49", fontWeight: 600 }}>✓ {doneMsg}</div>
+      <button type="button" style={quiet} onClick={undo}>Undo</button>
+      <button type="button" style={{ ...quiet, color: "#6E665D" }} onClick={() => { forceNext.current = true; run(); }}>Look up again</button>
+    </div>
+  );
+  // idle
+  if (!hasBM) return variant === "form" ? (
+    <div style={{ fontSize: ".76rem", color: "#6E665D", margin: ".1rem 0 .9rem", lineHeight: 1.5 }}>✨ Add a brand and model number and Smart Fill can fill in the lifespan, maintenance schedule and manual for you.</div>
+  ) : null;
+  if (!isPaid) return (
+    <div style={card}>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--dark)" }}>✨ Smart Fill <span style={{ fontSize: ".62rem", background: "#EEF4FF", color: "#3B5FBF", padding: "1px 7px", borderRadius: 8, marginLeft: 4 }}>Plus</span></div>
+        <div style={{ fontSize: ".76rem", color: "#6E665D", marginTop: 2, lineHeight: 1.45 }}>Fill in the lifespan, maintenance schedule and owner's manual for {label || "this item"} from its model number.</div>
+      </div>
+      <button type="button" style={{ ...btn, background: "none", color: "var(--pine)", border: "1.5px solid var(--pine)" }} onClick={onUpgrade}>See Plus</button>
+    </div>
+  );
+  if (!showCard) return (
+    <div style={{ margin: ".1rem 0 .5rem" }}>
+      <button type="button" style={quiet} onClick={run}>✨ Check Smart Fill suggestions</button>{err}
+    </div>
+  );
+  return (
+    <>
+      <div style={card}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--pine)" }}>{ready ? `✨ Smart Fill has details for ${label}` : "✨ Fill in the details with Smart Fill"}</div>
+          <div style={{ fontSize: ".76rem", color: "#6E665D", marginTop: 2, lineHeight: 1.45 }}>
+            {ready ? "Review the suggestions and choose what to add." : `Looks up the lifespan, maintenance schedule and manual for ${label}. You choose what to keep. Nothing changes without your OK.`}
+          </div>
+        </div>
+        <button type="button" style={btn} onClick={open}>{ready ? "Review" : "Look up"}</button>
+      </div>
+      {err}
+    </>
+  );
+}
+
 
 // ─── ASSET ADD CHOICE MODAL ──────────────────────────────────────────────────
 function AssetAddChoiceModal({ onClose, onChoose, planData, onUpgrade }) {
@@ -8594,6 +8679,17 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
     return !!(data.item || data.brand || data.model);
   });
 
+  // Pre-fetch Smart Fill for Plus/Pro. The result is cached on this device and reused by the Smart Fill button and the save step.
+  const warmSmartFill = (d) => {
+    if (planData?.plan !== "plus" && planData?.plan !== "pro") return;
+    if (!cleanVal(d.brand) && !cleanVal(d.model)) return;
+    smartFillLookup(d, { tier: planData.plan, userId }).catch(() => {});
+  };
+  // A barcode scan opens this form with brand and model already filled in; start the lookup right away.
+  useEffect(() => {
+    if (!data.id && initialMode === "manual") warmSmartFill(data);
+  }, []);
+
   const handleScanComplete = (fields) => {
     const mapped = {};
     if (fields.item)            mapped.item           = fields.item;
@@ -8611,6 +8707,8 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
     }
     onChange({...data, ...mapped});
     setScanned(true);
+    // Start the Smart Fill lookup while the person reviews the scanned fields, so the button and the save step are instant.
+    if (mapped.brand || mapped.model) warmSmartFill({...data, ...mapped});
   };
 
   // ── Focused entry screens per mode ────────────────────────────────────────
@@ -8663,14 +8761,14 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
             style={{width:"100%",padding:".75rem 1rem",borderRadius:12,border:"1.5px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.08)",color:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".95rem"}}
           />
         </div>
-        <SmartFillButton
-          data={data}
-          onChange={result=>{
-            onChange({...data,...result});
-            setScanned(true);
-          }}
+        <SmartFillInline
+          variant="screen"
+          asset={data}
           planData={planData}
           onUpgrade={onUpgrade}
+          userId={userId}
+          zip={profile?.address?.match(/\b\d{5}\b/)?.[0] || ""}
+          onApply={patch => { onChange({ ...data, ...patch }); setScanned(true); }}
         />
       </div>
       <button type="button" onClick={()=>setScanned(true)}
@@ -8775,6 +8873,15 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
       </div>
       <div className="field"><label>Brand</label><input value={data.brand||""} onChange={e=>f("brand",e.target.value)} placeholder="e.g. Carrier, LG, Rheem"/></div>
       <div className="field"><label>Model Number</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} placeholder="e.g. 50XC21-048"/></div>
+      <SmartFillInline
+        variant="form"
+        asset={data}
+        planData={planData}
+        onUpgrade={onUpgrade}
+        userId={userId}
+        zip={profile?.address?.match(/\b\d{5}\b/)?.[0] || ""}
+        onApply={patch => { const u = {...data, ...patch}; onChange(u); if (draftKey) { try { localStorage.setItem(draftKey, JSON.stringify(u)); } catch {} } }}
+      />
       <div className="field"><label>Serial Number</label><input value={data.serial_number||""} onChange={e=>f("serial_number",e.target.value)} placeholder="Found on the unit label"/></div>
       {data.upc && <div className="field"><label>Barcode (UPC)</label><input value={data.upc||""} onChange={e=>f("upc",e.target.value)} placeholder="Scanned barcode" style={{fontFamily:"monospace",fontSize:".82rem"}}/></div>}
       <div className="field"><label>Vendor / Store</label>
@@ -14603,57 +14710,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     }
   }, [pendingWarrantyTracker]);
 
-  // Run Smart Fill silently after save and patch the asset in-place
-  const runSmartFillAfterSave = async (assetId, assetData) => {
-    const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
-    if (!isPlus) return;
-    if (!assetData.brand && !assetData.model) return;
-    try {
-      const resp = await fetch(ASSET_INTEL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
-        body: JSON.stringify({
-          brand: assetData.brand, model: assetData.model,
-          item: assetData.item, upc: assetData.upc||"",
-          category: assetData.category, install_date: assetData.install_date,
-          tier: planData?.plan||"free", user_id: userId||"",
-        }),
-      });
-      if (!resp.ok) return;
-      const json = await resp.json();
-      // 429 = rate limited — fail silently, asset is already saved
-      if (!json.ok || !json.data || json.limit_reached) return;
-      const d = json.data;
-
-      // Build the enriched update — never overwrite fields the user already filled
-      const enriched = {};
-      if (d.lifespan_years && !assetData.lifespan_years)   enriched.lifespan_years   = d.lifespan_years;
-      if (d.warranty_expiry && !assetData.expiry_date)     enriched.expiry_date       = d.warranty_expiry;
-      if (d.replacement_cost_low && !assetData.replacement_cost)
-        enriched.replacement_cost = Math.round((d.replacement_cost_low + (d.replacement_cost_high||d.replacement_cost_low))/2);
-      if (d.contractor_cost_low && !assetData.contractor_cost_low) {
-        enriched.contractor_cost_low  = d.contractor_cost_low;
-        enriched.contractor_cost_high = d.contractor_cost_high;
-      }
-      const pmArray = Array.isArray(d.pm_schedule) ? d.pm_schedule : [];
-      if (pmArray.length > 0) enriched.pm_schedule = JSON.stringify(pmArray);
-      if (d.maintenance_tip && !assetData.maintenance_tip) enriched.maintenance_tip = d.maintenance_tip;
-      const manualLink = d.om_manual_url || d.manual_url;
-      if (manualLink && !assetData.document_ref) enriched.document_ref = manualLink;
-      if (d.support_url && !assetData.notes?.includes("Support:"))
-        enriched.notes = [assetData.notes, `Support: ${d.support_url}`].filter(Boolean).join("\n");
-      if (Object.keys(enriched).length === 0) return;
-
-      const { error } = await supabase.from("warranties").update(enriched).eq("id", assetId);
-      if (!error) {
-        const stateEnriched = {...enriched};
-        if (pmArray.length > 0) stateEnriched.pm_schedule = pmArray;
-        setAssets(prev => prev.map(a => a.id === assetId ? {...a, ...stateEnriched} : a));
-        toast("✨ Smart Fill applied — PM schedule & manual loaded");
-      }
-    } catch { /* fail silently — the asset is already saved */ }
-  };
-
   const save = async () => {
     if(!editData.item?.trim()) return;
     if(editData.purchase_date && editData.expiry_date && editData.expiry_date < editData.purchase_date) {
@@ -14703,14 +14759,21 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const hasBrandOnly  = !!payload.brand && !payload.model;
     const hasModelOnly  = !payload.brand && !!payload.model;
     const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
+    // Look the model up only when it can add something: a new asset that is still missing details, or an
+    // existing asset whose brand or model just changed. Plain edits (a note, a date) no longer re-run it.
+    const prevAsset = editId ? assets.find(a => a.id === editId) : null;
+    const idChanged = !prevAsset || sfNorm(prevAsset.brand) !== sfNorm(payload.brand) || sfNorm(prevAsset.model) !== sfNorm(payload.model);
+    const stillMissing = sfParsePm(payload.pm_schedule).length === 0 || sfBlank(payload.lifespan_years);
+    const runLookup = hasBrandModel && isPlus && stillMissing && (editId ? idChanged : true);
 
     if(editId) {
       const {error} = await supabase.from("warranties").update(payload).eq("id",editId);
       if(!error) {
         setAssets(assets.map(a=>a.id===editId?{...editData,...payload,id:editId}:a));
-        if (hasBrandModel && isPlus) {
-          toast("Asset updated — running Smart Fill…");
-          runSmartFillAfterSave(editId, payload);
+        if (runLookup) {
+          toast("Asset updated ✓");
+          // Pre-fetch only, so Smart Fill is ready to review on the asset page. Nothing is changed without the person's OK.
+          smartFillLookup(payload, { tier: planData?.plan || "free", userId: userId || "" }).catch(() => {});
         } else {
           toast("Asset updated ✓");
           if (hasMissing && isPlus) {
@@ -14730,9 +14793,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       if(!error&&data) {
         const newAsset = data[0];
         setAssets([...assets, newAsset]);
-        if (hasBrandModel && isPlus) {
-          toast("Asset saved — running Smart Fill…");
-          runSmartFillAfterSave(newAsset.id, payload);
+        if (runLookup) {
+          toast("Asset saved ✓");
+          smartFillLookup(payload, { tier: planData?.plan || "free", userId: userId || "" }).catch(() => {});
         } else {
           toast("Asset added ✓");
           if (hasMissing && isPlus) {
@@ -15257,6 +15320,17 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   </div>
                 )}
 
+                {!asset.retired_at && (
+                  <SmartFillInline
+                    variant="detail"
+                    asset={asset}
+                    planData={planData}
+                    onUpgrade={onUpgrade}
+                    userId={userId}
+                    onApply={patch => applySmartFill({...asset, ...patch})}
+                  />
+                )}
+
                 {asset.expiry_date && (
                   <div className="ad-notice" style={{background:warrantyExpired?"#FBEDE8":warrantySoon?"#FBF3DE":"#E9F1EA",borderColor:warrantyExpired?"#EBC5B8":warrantySoon?"#EAD9A6":"#C5DCC9"}}>
                     <div style={{flex:1,minWidth:0}}>
@@ -15484,12 +15558,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                   </div>
                 )}
 
-                <AssetSmartFillPanel
-                  asset={asset}
-                  planData={planData}
-                  onUpgrade={onUpgrade}
-                  onApply={applySmartFill}
-                />
               </>
             )}
           </div>
@@ -15512,37 +15580,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               footer={addMode !== "choose" ? (
                 <div className="modal-footer">
                   <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                  {(() => {
-                    const hasData  = !!(editData.brand || editData.model);
-                    const isPaid   = planData?.plan==="plus" || planData?.plan==="pro";
-                    const runSmartFill = async () => {
-                      try {
-                        const resp = await fetch(ASSET_INTEL_URL, {method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},body:JSON.stringify({brand:editData.brand,model:editData.model,item:editData.item,upc:editData.upc||"",category:editData.category,install_date:editData.install_date,tier:planData?.plan||"free",user_id:userId||""})});
-                        if(resp.ok){const json=await resp.json();if(json.ok&&json.data){const d=json.data,u={...editData};if(d.lifespan_years&&!u.lifespan_years)u.lifespan_years=d.lifespan_years;if(d.warranty_expiry&&!u.expiry_date)u.expiry_date=d.warranty_expiry;if(d.replacement_cost_low&&!u.replacement_cost)u.replacement_cost=Math.round((d.replacement_cost_low+(d.replacement_cost_high||d.replacement_cost_low))/2);if(d.pm_schedule?.length&&!u.pm_schedule?.length)u.pm_schedule=d.pm_schedule;if(d.maintenance_tip&&!u.maintenance_tip)u.maintenance_tip=d.maintenance_tip;const ml=d.om_manual_url||d.manual_url;if(ml&&!u.document_ref)u.document_ref=ml;if(d.support_url&&!u.notes?.includes("Support:"))u.notes=[u.notes,`Support: ${d.support_url}`].filter(Boolean).join("\n");setEditData(u);toast("✨ Smart Fill applied — review and save");}}
-                      }catch{toast("Smart Fill failed — save anyway","error");}
-                    };
-                    if (!hasData) return (
-                      <button disabled title="Enter a brand or model number first" className="btn btn-ghost"
-                        style={{display:"flex",alignItems:"center",gap:".4rem",opacity:.4,cursor:"not-allowed",color:"#A8A09A",border:"1.5px solid var(--stone)"}}>
-                        <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
-                      </button>
-                    );
-                    if (!isPaid) return (
-                      <button className="btn btn-ghost" title="Upgrade to Plus to use Smart Fill"
-                        style={{display:"flex",alignItems:"center",gap:".4rem",color:"#A8A09A",border:"1.5px solid var(--stone)"}}
-                        onClick={onUpgrade}>
-                        <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
-                        <span style={{fontSize:".6rem",background:"rgba(193,97,64,.2)",color:"var(--rust)",fontWeight:700,padding:"1px 6px",borderRadius:5}}>Plus</span>
-                      </button>
-                    );
-                    return (
-                      <button className="btn btn-ghost"
-                        style={{display:"flex",alignItems:"center",gap:".4rem",color:"var(--pine)",border:"1.5px solid var(--pine)"}}
-                        onClick={runSmartFill}>
-                        <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
-                      </button>
-                    );
-                  })()}
                   <button className="btn btn-primary" onClick={save}>Save</button>
                 </div>
               ) : undefined}
@@ -15930,37 +15967,6 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
             footer={(
               <div className="modal-footer">
                 <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                {(() => {
-                  const hasData  = !!(editData.brand || editData.model);
-                  const isPaid   = planData?.plan==="plus" || planData?.plan==="pro";
-                  const runSmartFill = async () => {
-                    try {
-                      const resp = await fetch(ASSET_INTEL_URL, {method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},body:JSON.stringify({brand:editData.brand,model:editData.model,item:editData.item,upc:editData.upc||"",category:editData.category,install_date:editData.install_date,tier:planData?.plan||"free",user_id:userId||""})});
-                      if(resp.ok){const json=await resp.json();if(json.ok&&json.data){const d=json.data,u={...editData};if(d.lifespan_years&&!u.lifespan_years)u.lifespan_years=d.lifespan_years;if(d.warranty_expiry&&!u.expiry_date)u.expiry_date=d.warranty_expiry;if(d.replacement_cost_low&&!u.replacement_cost)u.replacement_cost=Math.round((d.replacement_cost_low+(d.replacement_cost_high||d.replacement_cost_low))/2);if(d.pm_schedule?.length&&!u.pm_schedule?.length)u.pm_schedule=d.pm_schedule;if(d.maintenance_tip&&!u.maintenance_tip)u.maintenance_tip=d.maintenance_tip;const ml=d.om_manual_url||d.manual_url;if(ml&&!u.document_ref)u.document_ref=ml;if(d.support_url&&!u.notes?.includes("Support:"))u.notes=[u.notes,`Support: ${d.support_url}`].filter(Boolean).join("\n");setEditData(u);toast("✨ Smart Fill applied — review and save");}}
-                    }catch{toast("Smart Fill failed — save anyway","error");}
-                  };
-                  if (!hasData) return (
-                    <button disabled title="Enter a brand or model number first" className="btn btn-ghost"
-                      style={{display:"flex",alignItems:"center",gap:".4rem",opacity:.4,cursor:"not-allowed",color:"#A8A09A",border:"1.5px solid var(--stone)"}}>
-                      <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
-                    </button>
-                  );
-                  if (!isPaid) return (
-                    <button className="btn btn-ghost" title="Upgrade to Plus to use Smart Fill"
-                      style={{display:"flex",alignItems:"center",gap:".4rem",color:"#A8A09A",border:"1.5px solid var(--stone)"}}
-                      onClick={onUpgrade}>
-                      <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
-                      <span style={{fontSize:".6rem",background:"rgba(193,97,64,.2)",color:"var(--rust)",fontWeight:700,padding:"1px 6px",borderRadius:5}}>Plus</span>
-                    </button>
-                  );
-                  return (
-                    <button className="btn btn-ghost"
-                      style={{display:"flex",alignItems:"center",gap:".4rem",color:"var(--pine)",border:"1.5px solid var(--pine)"}}
-                      onClick={runSmartFill}>
-                      <span style={{fontSize:".9rem"}}>✨</span> Smart Fill
-                    </button>
-                  );
-                })()}
                 <button className="btn btn-primary" onClick={save}>Save</button>
               </div>
             )}
@@ -19220,306 +19226,6 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
 
 
 // ─── ASSET SMART FILL PANEL (inline on asset detail) ─────────────────────────
-function AssetSmartFillPanel({ asset, planData, onUpgrade, onApply }) {
-  const [open, setOpen]           = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [result, setResult]       = useState(null);
-  const [error, setError]         = useState("");
-  const [applied, setApplied]     = useState(false);
-  const [streamText, setStreamText] = useState(""); // live streaming text
-  const [streamPhase, setStreamPhase] = useState(""); // what we're doing right now
-
-  const isPlus = planData?.plan === "plus" || planData?.plan === "pro";
-  const isPro  = planData?.plan === "pro";
-  const hasBrand = cleanVal(asset.brand) || cleanVal(asset.model);
-
-  const run = async () => {
-    if (!isPlus) { onUpgrade(); return; }
-    if (!hasBrand) return;
-    setLoading(true); setError(""); setResult(null); setApplied(false);
-    setStreamText(""); setStreamPhase("Searching manufacturer docs…");
-
-    // Animated phases so the wait feels active (no actual streaming)
-    const phases = ["Searching manufacturer docs…","Reading product data…","Checking warranty & lifespan…","Building maintenance schedule…"];
-    let phaseIdx = 0;
-    const phaseTimer = setInterval(() => {
-      phaseIdx = Math.min(phaseIdx + 1, phases.length - 1);
-      setStreamPhase(phases[phaseIdx]);
-    }, 2000);
-
-    try {
-      const resp = await fetch(ASSET_INTEL_URL, {
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":`Bearer ${ANON_KEY}`},
-        body:JSON.stringify({ brand:cleanVal(asset.brand), model:cleanVal(asset.model), item:asset.item, upc:asset.upc||"", category:asset.category, install_date:asset.install_date, tier:planData?.plan||"free", user_id:asset.user_id||"" }),
-      });
-      const json = await resp.json();
-      if (resp.status === 429 || json.limit_reached) {
-        throw new Error("Daily limit reached (40 lookups/day) — resets at midnight ✓");
-      }
-      if (!json.ok) throw new Error(json.error||"Lookup failed");
-      setResult(json.data);
-      setOpen(true);
-      setStreamText(""); setStreamPhase("");
-    } catch(e) {
-      setError(e.message||"Could not reach Smart Fill — try again");
-      setStreamText(""); setStreamPhase("");
-    }
-    clearInterval(phaseTimer);
-    setLoading(false);
-  };
-
-  const fmt$ = n => n ? `$${Number(n).toLocaleString()}` : null;
-
-  const apply = async () => {
-    if (!result) return;
-    const u = {...asset};
-    if (result.brand         && !cleanVal(u.brand))  u.brand            = result.brand;
-    if (result.model         && !cleanVal(u.model))  u.model            = result.model;
-    if (result.category      && !u.category)         u.category         = result.category;
-    if (result.condition     && !u.condition)        u.condition        = result.condition;
-    if (result.lifespan_years && !u.lifespan_years)  u.lifespan_years   = result.lifespan_years;
-    if (result.warranty_expiry && !u.expiry_date)    u.expiry_date      = result.warranty_expiry;
-    if (result.maintenance_tip && !u.maintenance_tip) u.maintenance_tip = result.maintenance_tip;
-    if (result.pm_schedule?.length > 0 && !asset.pm_schedule?.length)
-      u.pm_schedule = result.pm_schedule;
-    if (result.replacement_cost_low && !u.replacement_cost)
-      u.replacement_cost = Math.round((result.replacement_cost_low + (result.replacement_cost_high||result.replacement_cost_low))/2);
-    if (result.contractor_cost_low && !u.contractor_cost_low) {
-      u.contractor_cost_low  = result.contractor_cost_low;
-      u.contractor_cost_high = result.contractor_cost_high;
-    }
-    const manualLink = result.om_manual_url || result.manual_url;
-    if (manualLink && !u.document_ref) u.document_ref = manualLink;
-    if (result.support_url && !u.notes?.includes("Support:"))
-      u.notes = [u.notes, `Support: ${result.support_url}`].filter(Boolean).join("\n");
-    await onApply(u);
-    setApplied(true);
-    setOpen(false);
-  };
-
-  return (
-    <div style={{marginBottom:".5rem"}}>
-      {/* Smart Fill: one quiet text action */}
-      {applied ? (
-        <div className="ad-sf">
-          <span className="ad-sf-hint" style={{color:"#2F6A49",fontWeight:700}}>Smart Fill applied</span>
-          <button type="button" className="ad-sf-btn" style={{fontWeight:600,fontSize:".82rem"}} onClick={()=>{ setApplied(false); setResult(null); }}>Run again</button>
-        </div>
-      ) : (
-        <div className="ad-sf">
-          <button type="button" className="ad-sf-btn"
-            onClick={open ? ()=>setOpen(false) : (result ? ()=>setOpen(true) : run)}
-            disabled={loading || (isPlus && !hasBrand)}
-            aria-expanded={open}>
-            {loading ? (streamPhase || "Looking up…") : result && !open ? "Review Smart Fill results" : "Fill in details with Smart Fill"}
-          </button>
-          {!isPlus && <span className="ad-sf-tag">Plus</span>}
-          {isPlus && !hasBrand && <span className="ad-sf-hint">Add a brand or model first</span>}
-        </div>
-      )}
-
-      {/* Live streaming preview — shown while loading */}
-      {loading && streamText && (
-        <div style={{marginTop:".4rem",padding:".65rem .85rem",background:"rgba(35,74,61,.05)",border:"1px solid rgba(35,74,61,.12)",borderRadius:"var(--r-sm)"}}>
-          <div style={{fontSize:".65rem",fontWeight:700,color:"var(--pine)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem",display:"flex",alignItems:"center",gap:".4rem"}}>
-            <span className="spinner" style={{width:8,height:8,borderWidth:1.5,borderColor:"rgba(35,74,61,.2)",borderTopColor:"var(--pine)",flexShrink:0}}/>
-            {streamPhase}
-          </div>
-          {/* Show fields as they stream in */}
-          {(()=>{
-            // Extract readable fields from partial JSON as they appear
-            const fields = [];
-            const extract = (key, label, fmt) => {
-              const match = streamText.match(new RegExp('"' + key + '"\\s*:\\s*([^,}\\n]+)'));
-              if (match) {
-                let val = match[1].trim().replace(/^"|"$/g,"").replace(/,$/, "");
-                if (val && val !== "null" && val !== "0" && val !== '""') {
-                  fields.push({ label, val: fmt ? fmt(val) : val });
-                }
-              }
-            };
-            extract("item",            "Product");
-            extract("category",        "Category");
-            extract("lifespan_years",  "Lifespan",    v => v + " yrs");
-            extract("warranty_years",  "Warranty",    v => v + " yr" + (Number(v)>1?"s":""));
-            extract("replacement_cost_low", "Est. replace", v => "$" + Number(v).toLocaleString() + "+");
-            extract("confidence",      "Confidence");
-            return fields.length > 0 ? (
-              <div style={{display:"flex",flexWrap:"wrap",gap:".35rem"}}>
-                {fields.map((f,i) => (
-                  <div key={i} style={{fontSize:".7rem",padding:"2px 8px",borderRadius:6,background:"rgba(35,74,61,.08)",color:"var(--pine)"}}>
-                    <span style={{opacity:.65}}>{f.label}: </span><strong>{f.val}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{fontSize:".7rem",color:"rgba(35,74,61,.5)",fontStyle:"italic"}}>Receiving data…</div>
-            );
-          })()}
-        </div>
-      )}
-
-      {error && <div style={{margin:".4rem 0",padding:".6rem .85rem",background:"var(--red-light)",borderRadius:8,fontSize:".75rem",color:"var(--red)"}}>⚠ {error}</div>}
-
-      {/* Results panel */}
-      {open && result && !applied && (()=>{
-        // Detect if AI returned a different product than what the user named
-        // e.g. user typed "Coffee Maker" but AI returned "Ice Cream Maker"
-        const userWords  = (asset.item||"").toLowerCase().split(/\s+/).filter(w=>w.length>3);
-        const resultWords = (result.item||"").toLowerCase().split(/\s+/).filter(w=>w.length>3);
-        const overlap = userWords.filter(w => resultWords.includes(w));
-        const hasMismatch = userWords.length > 0 && resultWords.length > 0 && overlap.length === 0
-          && (asset.item||"").toLowerCase() !== (result.item||"").toLowerCase();
-        return (
-        <div style={{background:"var(--white)",border:`1.5px solid ${hasMismatch?"#FCA5A5":"rgba(35,74,61,.2)"}`,borderRadius:"var(--r-sm)",overflow:"hidden",marginTop:".4rem"}}>
-          <div style={{background:hasMismatch?"#FEF2F2":"rgba(35,74,61,.07)",padding:".65rem .9rem",borderBottom:`1px solid ${hasMismatch?"#FCA5A5":"rgba(35,74,61,.1)"}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontWeight:700,fontSize:".8rem",color:hasMismatch?"#991B1B":"var(--pine)"}}>
-              {hasMismatch?"⚠️ Product mismatch detected":"✨ Smart Fill"} — {asset.brand} {asset.model}
-            </div>
-            <div style={{fontSize:".65rem",color:hasMismatch?"#B91C1C":"#9E9690"}}>Manufacturer data</div>
-          </div>
-
-          {/* Mismatch warning — shown prominently before results */}
-          {hasMismatch && (
-            <div style={{padding:".75rem .9rem",background:"#FEF2F2",borderBottom:"1px solid #FCA5A5"}}>
-              <div style={{fontWeight:700,fontSize:".82rem",color:"#991B1B",marginBottom:".3rem"}}>
-                This model number may belong to a different product
-              </div>
-              <div style={{fontSize:".78rem",color:"#B91C1C",lineHeight:1.5,marginBottom:".5rem"}}>
-                You named this asset <strong>"{asset.item}"</strong> but the model number <strong>{asset.model}</strong> appears to match a <strong>{result.item}</strong>.
-              </div>
-              <div style={{fontSize:".73rem",color:"#7F1D1D",lineHeight:1.5}}>
-                Double-check you scanned the correct nameplate. If you have multiple appliances nearby, make sure you're looking at the right one.
-              </div>
-            </div>
-          )}
-          <div style={{padding:".8rem .9rem",display:"flex",flexDirection:"column",gap:".65rem"}}>
-
-            {/* Condition assessment */}
-            {result.condition_assessment && (
-              <div style={{fontSize:".78rem",color:"var(--dark)",lineHeight:1.5,fontStyle:"italic",padding:".55rem .7rem",background:"rgba(167,191,168,.1)",borderRadius:8,border:"1px solid rgba(167,191,168,.25)"}}>
-                "{result.condition_assessment}"
-              </div>
-            )}
-
-            {/* Key stats grid */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:".45rem"}}>
-              {result.lifespan_years && (
-                <div style={{background:"var(--cream)",borderRadius:8,padding:".5rem .65rem"}}>
-                  <div style={{fontSize:".58rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Lifespan</div>
-                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>{result.lifespan_years} yrs</div>
-                  {result.years_remaining != null && (
-                    <div style={{fontSize:".68rem",color:result.years_remaining<3?"var(--red)":result.years_remaining<6?"var(--gold)":"#3B6D11",marginTop:1}}>
-                      ~{Math.max(0,result.years_remaining)} yrs remaining
-                    </div>
-                  )}
-                </div>
-              )}
-              {result.warranty_years && (
-                <div style={{background:"var(--cream)",borderRadius:8,padding:".5rem .65rem"}}>
-                  <div style={{fontSize:".58rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Warranty</div>
-                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>{result.warranty_years} yr{result.warranty_years>1?"s":""}</div>
-                  {result.warranty_expiry && <div style={{fontSize:".68rem",color:"#9E9690",marginTop:1}}>Expires {new Date(result.warranty_expiry).toLocaleDateString("en-US",{month:"short",year:"numeric"})}</div>}
-                </div>
-              )}
-              {result.replacement_cost_low && (
-                <div style={{background:"var(--cream)",borderRadius:8,padding:".5rem .65rem"}}>
-                  <div style={{fontSize:".58rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Replacement</div>
-                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--dark)"}}>{fmt$(result.replacement_cost_low)}–{fmt$(result.replacement_cost_high)}</div>
-                </div>
-              )}
-              {isPro && result.contractor_cost_low && (
-                <div style={{background:"rgba(35,74,61,.05)",borderRadius:8,padding:".5rem .65rem",border:"1px solid rgba(35,74,61,.12)"}}>
-                  <div style={{fontSize:".58rem",fontWeight:700,color:"var(--pine)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Installed cost</div>
-                  <div style={{fontWeight:700,fontSize:".9rem",color:"var(--pine)"}}>{fmt$(result.contractor_cost_low)}–{fmt$(result.contractor_cost_high)}</div>
-                </div>
-              )}
-            </div>
-
-            {/* PM Schedule from manufacturer */}
-            {result.pm_schedule?.length > 0 && (
-              <div>
-                <div style={{fontSize:".65rem",fontWeight:700,color:"#9E9690",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".4rem"}}>
-                  Manufacturer-recommended maintenance
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                  {(Array.isArray(result.pm_schedule) ? result.pm_schedule : []).map((pm,i) => (
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".45rem .65rem",background:"var(--cream)",borderRadius:8,border:"1px solid var(--stone)"}}>
-                      <span style={{fontSize:".85rem",flexShrink:0}}>{pm.diy?"🔧":"👷"}</span>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:".8rem",fontWeight:600,color:"var(--dark)"}}>{pm.title}</div>
-                        <div style={{fontSize:".67rem",color:"#9E9690"}}>
-                          Every {pm.interval_months<12?`${pm.interval_months} mo`:`${pm.interval_months/12} yr`} · {pm.diy?"DIY":"Contractor"}
-                          {pm.description && ` · ${pm.description}`}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Manual & support links */}
-            {(result.om_manual_url || result.manual_url || result.support_url) && (
-              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
-                {(result.om_manual_url || result.manual_url) && (
-                  <a href={result.om_manual_url||result.manual_url} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".55rem",padding:".5rem .65rem",background:"rgba(35,74,61,.06)",borderRadius:8,border:"1px solid rgba(35,74,61,.15)",textDecoration:"none"}}>
-                    <span style={{fontSize:".95rem"}}>📋</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".75rem",fontWeight:700,color:"var(--pine)"}}>Owner's Manual</div>
-                      <div style={{fontSize:".65rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(result.om_manual_url||result.manual_url).replace(/^https?:\/\//,"")}</div>
-                    </div>
-                    <span style={{fontSize:".7rem",fontWeight:600,color:"var(--pine)",flexShrink:0}}>Open →</span>
-                  </a>
-                )}
-                {result.support_url && (
-                  <a href={result.support_url} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:".55rem",padding:".5rem .65rem",background:"var(--white)",borderRadius:8,border:"1px solid var(--stone)",textDecoration:"none"}}>
-                    <span style={{fontSize:".95rem"}}>🔗</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".75rem",fontWeight:600,color:"var(--dark)"}}>Manufacturer Support</div>
-                      <div style={{fontSize:".65rem",color:"var(--sky)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{result.support_url.replace(/^https?:\/\//,"")}</div>
-                    </div>
-                    <span style={{fontSize:".7rem",fontWeight:600,color:"#9E9690",flexShrink:0}}>Open →</span>
-                  </a>
-                )}
-              </div>
-            )}
-
-            {result.maintenance_tip && (
-              <div style={{padding:".5rem .7rem",background:"rgba(167,191,168,.12)",borderRadius:8,fontSize:".76rem",color:"var(--pine)",lineHeight:1.5,border:"1px solid rgba(167,191,168,.3)"}}>
-                💡 {result.maintenance_tip}
-              </div>
-            )}
-
-            <div style={{fontSize:".62rem",color:"#B0A8A0",lineHeight:1.5,paddingTop:".5rem",borderTop:"1px solid var(--stone)"}}>
-              Based on typical US manufacturer specs. Verify with your specific unit documentation.
-            </div>
-          </div>
-
-          <div style={{padding:".65rem .9rem",borderTop:`1px solid ${hasMismatch?"#FCA5A5":"var(--stone)"}`,display:"flex",gap:".5rem",flexWrap:"wrap"}}>
-            {hasMismatch && (
-              <div style={{width:"100%",fontSize:".7rem",color:"#B91C1C",marginBottom:".25rem",fontWeight:600}}>
-                ⚠ Review the results carefully before applying
-              </div>
-            )}
-            <button onClick={apply} style={{flex:1,padding:".6rem",
-              background:hasMismatch?"#DC2626":"var(--pine)",
-              color:"#fff",border:"none",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".83rem",fontWeight:700,cursor:"pointer"}}>
-              {hasMismatch?"Apply anyway — I scanned the right device":"Apply to this asset ✓"}
-            </button>
-            <button onClick={()=>setOpen(false)} style={{padding:".6rem .85rem",background:"none",border:"1px solid var(--stone)",borderRadius:9,fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",color:"#9E9690",cursor:"pointer"}}>
-              Close
-            </button>
-          </div>
-        </div>
-        );
-      })()}
-    </div>
-  );
-}
 
 // ─── ASSET PM SCHEDULE PANEL (recommended service on asset detail) ─────────────
 function AssetPMSchedule({ asset, onSchedule, onCreateTask }) {
