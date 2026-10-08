@@ -1,4 +1,4 @@
-// Steadwell v341 — 2026-10-08
+// Steadwell v342 — 2026-10-08
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -26846,10 +26846,12 @@ function LPNav({ links=[] }) {
       )}
 
       <style>{`
-        @media (max-width: 640px) {
+        @media (max-width: 900px) {
           .lp-nav-links { display: none !important; }
-          .lp-nav-cta { display: none !important; }
           .lp-nav-burger { display: flex !important; }
+        }
+        @media (max-width: 640px) {
+          .lp-nav-cta { display: none !important; }
         }
       `}</style>
     </nav>
@@ -27224,8 +27226,7 @@ function PricingPage() {
       offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
     }),
   });
-  const th = {padding:"12px 10px",fontSize:".82rem",fontWeight:700,color:"#234A3D",textAlign:"center",borderBottom:"2px solid #E6DECF",background:"#FBF7EE"};
-  const cell = {padding:"11px 10px",fontSize:".84rem",color:"#2A2723",textAlign:"center",borderBottom:"1px solid #E6DECF"};
+  const planNames = ["Free","Plus","Pro"];
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
@@ -27239,31 +27240,56 @@ function PricingPage() {
 
         <LPSection alt>
           <LPSectionHead h2="Compare every feature" sub="What is included on each plan."/>
-          <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",border:"1px solid #E6DECF",borderRadius:14,background:"#fff"}}>
-            <table style={{width:"100%",minWidth:560,borderCollapse:"collapse"}}>
+          <style>{`
+            .pr-cmp-w{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #E6DECF;border-radius:14px;background:#fff}
+            .pr-cmp{width:100%;border-collapse:collapse}
+            .pr-cmp th,.pr-cmp td{padding:11px 10px;font-size:.84rem;color:#2A2723;text-align:center;border-bottom:1px solid #E6DECF}
+            .pr-cmp thead th{padding:12px 10px;font-size:.82rem;font-weight:700;color:#234A3D;border-bottom:2px solid #E6DECF;background:#FBF7EE}
+            .pr-cmp thead small{display:block;font-weight:500;font-size:.72rem;color:#7A7370}
+            .pr-cmp .pr-f{text-align:left;font-weight:500;background:#fff}
+            .pr-cmp thead .pr-f{background:#FBF7EE;font-weight:700}
+            .pr-cmp .pr-g{padding:10px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#C16140;text-align:left;background:#FBF7EE}
+            .pr-cmp .pr-y{color:#2E7050;font-weight:700}
+            .pr-cmp .pr-n{color:#A8A09A}
+            .pr-cmp tbody tr:last-child>*{border-bottom:0}
+            @media (max-width:640px){
+              .pr-cmp thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+              .pr-cmp,.pr-cmp tbody{display:block}
+              .pr-cmp tr.pr-gr{display:block}
+              .pr-cmp tr.pr-gr th{display:block;padding:10px 14px}
+              .pr-cmp tr.pr-r{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid #E6DECF}
+              .pr-cmp tr.pr-r>*{border-bottom:0}
+              .pr-cmp tr.pr-r th.pr-f{grid-column:1 / -1;padding:12px 14px 4px;font-size:.9rem;line-height:1.35}
+              .pr-cmp tr.pr-r td{padding:4px 6px 12px;font-size:.88rem;line-height:1.3;overflow-wrap:anywhere}
+              .pr-cmp tr.pr-r td::before{content:attr(data-plan);display:block;font-size:.66rem;font-weight:600;color:#7A7370;margin-bottom:2px}
+              .pr-cmp tbody tr:last-child{border-bottom:0}
+            }
+          `}</style>
+          <div className="pr-cmp-w">
+            <table className="pr-cmp">
               <caption style={{position:"absolute",left:-9999}}>Steadwell plan comparison</caption>
               <thead>
                 <tr>
-                  <th scope="col" style={{...th,textAlign:"left",position:"sticky",left:0,zIndex:1}}>Feature</th>
-                  <th scope="col" style={th}>Free</th>
-                  <th scope="col" style={th}>Plus<div style={{fontWeight:500,fontSize:".72rem",color:"#7A7370"}}>$7.99 / mo</div></th>
-                  <th scope="col" style={th}>Pro<div style={{fontWeight:500,fontSize:".72rem",color:"#7A7370"}}>$14.99 / mo</div></th>
+                  <th scope="col" className="pr-f">Feature</th>
+                  <th scope="col">Free</th>
+                  <th scope="col">Plus<small>$7.99 / mo</small></th>
+                  <th scope="col">Pro<small>$14.99 / mo</small></th>
                 </tr>
               </thead>
               <tbody>
                 {PRICING_ROWS.map((r,i) => Array.isArray(r) ? (
-                  <tr key={i}>
-                    <th scope="row" style={{...cell,textAlign:"left",fontWeight:500,background:"#fff",position:"sticky",left:0}}>{r[0]}</th>
+                  <tr key={i} className="pr-r">
+                    <th scope="row" className="pr-f">{r[0]}</th>
                     {r.slice(1).map((v,j)=>(
-                      <td key={j} style={cell}>
-                        {v===true ? <span style={{color:"#2E7050",fontWeight:700}} aria-label="Included">✓</span>
-                          : v===false ? <span style={{color:"#A8A09A"}} aria-label="Not included">—</span>
+                      <td key={j} data-plan={planNames[j]}>
+                        {v===true ? <span className="pr-y" aria-label="Included">✓</span>
+                          : v===false ? <span className="pr-n" aria-label="Not included">—</span>
                           : v}
                       </td>
                     ))}
                   </tr>
                 ) : (
-                  <tr key={i}><th scope="colgroup" colSpan={4} style={{padding:"10px 10px",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#C16140",textAlign:"left",background:"#FBF7EE",borderBottom:"1px solid #E6DECF"}}>{r.group}</th></tr>
+                  <tr key={i} className="pr-gr"><th scope="colgroup" colSpan={4} className="pr-g">{r.group}</th></tr>
                 ))}
               </tbody>
             </table>
@@ -30511,6 +30537,14 @@ const BLOG_POST_CSS = `
   .bp-m span{font-size:.64rem}
   .bp-chart{padding:1.1rem 1rem .9rem}
   .bp-body li{padding-top:.4rem;padding-bottom:.4rem}
+  .bp-body table{min-width:0;display:block;font-size:.95rem}
+  .bp-body thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .bp-body tbody{display:block}
+  .bp-body tr{display:block;margin:0 0 .85rem;border:1px solid #E1D7C3;border-radius:12px;overflow:hidden;background:#fff}
+  .bp-body td{display:block;border:0;border-top:1px solid #EFE7D6;padding:.6rem .9rem;line-height:1.5}
+  .bp-body td:first-child{border-top:0;background:#234A3D;color:#F4EDDF;font-weight:700}
+  .bp-body td:first-child strong{color:inherit}
+  .bp-body td[data-label]:not(:first-child)::before{content:attr(data-label);display:block;font-size:.72rem;font-weight:700;color:#7A7370;margin-bottom:2px}
 }
 `;
 
@@ -30526,6 +30560,20 @@ function blogEnhanceHtml(html) {
     if (used[id]) { used[id] += 1; id += "-" + used[id]; } else used[id] = 1;
     toc.push({ id, text });
     return '<h2 id="' + id + '">' + inner + "</h2>";
+  });
+  // Tables: label every data cell with its column heading so phones can show each row as a stacked card.
+  out = out.replace(/<table[\s\S]*?<\/table>/g, (tbl) => {
+    const head = (tbl.match(/<thead[\s\S]*?<\/thead>/) || [""])[0];
+    const heads = [...head.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map(h => strip(h[1]));
+    if (!heads.length) return tbl;
+    return tbl.replace(/<tr[^>]*>[\s\S]*?<\/tr>/g, (row) => {
+      let i = 0;
+      return row.replace(/<(td|th)(\s[^>]*)?>/g, (cellTag, tag, attrs) => {
+        const label = heads[i++];
+        if (tag !== "td" || !label || /data-label=/.test(attrs || "")) return cellTag;
+        return '<td data-label="' + label.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;") + '"' + (attrs || "") + ">";
+      });
+    });
   });
   const m = out.match(/<h2 id="[^"]*">[^<]*(?:faq|frequently asked|common questions)[^<]*<\/h2>/i);
   if (m) {
@@ -30653,8 +30701,7 @@ function BlogPostView({ post, posts, url, slug }) {
           </nav>
           <div className="bp-meta">
             {post.tag && <span className="bp-tag">{post.tag}</span>}
-            <span>{post.time} · {iso ? <time dateTime={iso}>{post.date}</time> : post.date}</span>
-            <span>· By {BLOG_AUTHOR.name}</span>
+            <span>{post.time} · {iso ? <time dateTime={iso}>{post.date}</time> : post.date} · By {BLOG_AUTHOR.name}</span>
           </div>
           <h1 className="bp-title">{post.title}</h1>
           <p className="bp-lead">{post.description}</p>
