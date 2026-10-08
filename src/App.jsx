@@ -1,4 +1,4 @@
-// Steadwell v340 — 2026-10-07
+// Steadwell v341 — 2026-10-08
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4489,6 +4489,14 @@ function seoClip(str, max) {
   const s = String(str || "").replace(/\s+/g, " ").trim();
   if (s.length <= max) return s;
   const cut = s.slice(0, max - 1);
+  // Prefer ending on a whole sentence over a mid-sentence "…".
+  let stop = -1;
+  for (const m of cut.matchAll(/[.?!](?=\s)/g)) {
+    if (m[0] === "." && /\b(vs|etc|approx|est|mr|mrs|ms|dr|inc|llc|e\.g|i\.e)$/i.test(cut.slice(0, m.index))) continue; // abbreviation, not a sentence end
+    stop = m.index;
+  }
+  if (stop > max * 0.5) return cut.slice(0, stop + 1);
+  if (/[.?!]$/.test(s.slice(0, max)) && s.slice(0, max).length > max * 0.5) return s.slice(0, max);
   const sp = cut.lastIndexOf(" ");
   return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\-—–]+$/, "") + "…";
 }
@@ -26453,11 +26461,23 @@ function ForAgentsPage() {
   );
 }
 
+const AFFILIATE_FAQ = [
+    ["How does the 30-day cookie work?","When someone clicks your affiliate link, a 30-day cookie is set in their browser. If they sign up for a paid plan within 30 days, you receive credit — even if they don't convert immediately."],
+    ["When do I get paid?","Commissions are paid monthly via PayPal or bank transfer once your balance reaches $50. Payments issue within 15 days of month end."],
+    ["How long do I earn commissions?","You earn 30% of each referred subscriber's monthly payment for 12 months. Annual plan commissions are paid as a single 40% payment the following month."],
+    ["Is there a cost to join?","No — free to join. We review applications within 3 business days."],
+    ["Can I promote Steadwell with paid ads?","You may not bid on branded keywords ('Steadwell', 'trysteadwell'). All other paid promotion is permitted with prior written approval."],
+    ["What content performs best?","Warranty tracking, recall alerts, and the project ROI calculator convert well. Content that shows a real problem and then the solution tends to work best."],
+];
+
 function AffiliatesPage() {
+  const seoPath = "/affiliates";
+  const seoDesc = "Earn 30% recurring commissions for 12 months on every paid plan you refer. Built for home improvement creators, real estate agents and finance writers.";
   useSEO({
     title:"Affiliate Program — Earn Recurring Commissions",
-    description:"Partner with Steadwell and earn 30% recurring commissions for 12 months on every paid plan you refer. Built for home improvement creators, real estate agents, and personal finance writers.",
-    canonical:"https://www.trysteadwell.app/affiliates",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpPageJsonLd({ name:"Affiliate Program", path:seoPath, description:seoDesc, faq:AFFILIATE_FAQ }),
   });
 
   const [form, setForm] = useState({ name:"", email:"", website:"", audience:"", why:"", contentType:"", reach:"", otherProfiles:"", payoutMethod:"" });
@@ -26493,14 +26513,6 @@ function AffiliatesPage() {
     { plan:"Bundle",        price:"$37.99",      commission:"25%", earn:"~$9.50",      note:"Per sale" },
   ];
 
-  const faqs = [
-    ["How does the 30-day cookie work?","When someone clicks your affiliate link, a 30-day cookie is set in their browser. If they sign up for a paid plan within 30 days, you receive credit — even if they don't convert immediately."],
-    ["When do I get paid?","Commissions are paid monthly via PayPal or bank transfer once your balance reaches $50. Payments issue within 15 days of month end."],
-    ["How long do I earn commissions?","You earn 30% of each referred subscriber's monthly payment for 12 months. Annual plan commissions are paid as a single 40% payment the following month."],
-    ["Is there a cost to join?","No — free to join. We review applications within 3 business days."],
-    ["Can I promote Steadwell with paid ads?","You may not bid on branded keywords ('Steadwell', 'trysteadwell'). All other paid promotion is permitted with prior written approval."],
-    ["What content performs best?","Warranty tracking, recall alerts, and the project ROI calculator convert well. Content that shows a real problem and then the solution tends to work best."],
-  ];
 
   const inputStyle = {
     width:"100%", padding:".75rem 1rem", borderRadius:10,
@@ -26687,7 +26699,7 @@ function AffiliatesPage() {
         {/* FAQ */}
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={faqs}/>
+          <LPFAQ items={AFFILIATE_FAQ}/>
         </LPSection>
 
         {/* Footer CTA */}
@@ -26707,10 +26719,13 @@ function AffiliatesPage() {
 
 // ─── AFFILIATE AGREEMENT PAGE ─────────────────────────────────────────────────
 function AffiliateAgreementPage() {
+  const seoPath = "/affiliate-agreement";
+  const seoDesc = "Steadwell affiliate program terms — commission rates, cookie window, payout schedule, and prohibited promotion methods.";
   useSEO({
     title:"Affiliate Agreement",
-    description:"Steadwell affiliate program terms — commission rates, cookie window, payout schedule, and prohibited promotion methods.",
-    canonical:"https://www.trysteadwell.app/affiliate-agreement",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpPageJsonLd({ name:"Affiliate Agreement", path:seoPath, description:seoDesc }),
   });
 
   const S = {
@@ -26996,6 +27011,36 @@ function lpJsonLd({ name, path, description, features = [], faq = [], offers = [
       "operatingSystem": "Web",
       "featureList": features,
       "offers": offers.map(o => ({ "@type": "Offer", "name": o.name, "price": o.price, "priceCurrency": "USD" })),
+      "publisher": { "@type": "Organization", "name": "Steadwell", "url": "https://www.trysteadwell.app" },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Steadwell", "item": "https://www.trysteadwell.app/" },
+        { "@type": "ListItem", "position": 2, "name": name, "item": url },
+      ],
+    },
+  ];
+  if (faq.length) {
+    graph.push({
+      "@type": "FAQPage",
+      "mainEntity": faq.map(([q, a]) => ({ "@type": "Question", "name": q, "acceptedAnswer": { "@type": "Answer", "text": a } })),
+    });
+  }
+  return { "@context": "https://schema.org", "@graph": graph };
+}
+
+// schema.org graph for plain content pages (legal, policy and partner pages): a WebPage plus breadcrumbs,
+// and the page's own FAQ when it shows one.
+function lpPageJsonLd({ name, path, description, faq = [] }) {
+  const url = `https://www.trysteadwell.app${path}`;
+  const graph = [
+    {
+      "@type": "WebPage",
+      "name": name,
+      "url": url,
+      "description": description,
+      "isPartOf": { "@type": "WebSite", "name": "Steadwell", "url": "https://www.trysteadwell.app/" },
       "publisher": { "@type": "Organization", "name": "Steadwell", "url": "https://www.trysteadwell.app" },
     },
     {
@@ -27309,7 +27354,7 @@ const UTILITY_FAQ = [
 
 function UtilityBillTrackerPage() {
   const path = "/utility-bill-tracker";
-  const description = "Track electric, gas, water and internet bills in one place. Scan bills with AI, catch usage spikes, and see what your home really costs to run. Free to start.";
+  const description = "Track electric, gas, water and internet bills in one place. Scan bills with AI, catch usage spikes and see what your home costs to run. Free to start.";
   useSEO({
     title:"Home Utility Bill Tracker — Electric, Gas, Water",
     description,
@@ -27412,7 +27457,7 @@ const ASSESS_FAQ = [
 
 function ConditionAssessmentPage() {
   const path = "/home-condition-assessment";
-  const description = "Photograph your water heater, HVAC, roof or appliances and get a 1 to 5 condition grade, a years-left estimate and next steps. You review everything before it saves.";
+  const description = "Photograph your water heater, HVAC, roof or appliances for a 1 to 5 condition grade, a years-left estimate and next steps. You review it before it saves.";
   useSEO({
     title:"AI Home Condition Assessment from Photos",
     description,
@@ -27527,9 +27572,9 @@ const ASK_FAQ = [
 
 function AskSteadwellPage() {
   const path = "/ask-steadwell";
-  const description = "Ask Steadwell is an AI assistant for your home. Ask in plain English and get answers from your own warranties, tasks, repairs and spending. 3 free questions.";
+  const description = "Ask Steadwell is an AI assistant for your home. Ask in plain English and get answers from your own warranties, tasks and spending. Try 3 questions free.";
   useSEO({
-    title:"AI Home Assistant — Ask Questions About Your Home",
+    title:"AI Home Assistant — Ask About Your Home",
     description,
     canonical:`https://www.trysteadwell.app${path}`,
     jsonLd: lpJsonLd({
@@ -27647,7 +27692,7 @@ const CAL_FAQ = [
 
 function CalendarSyncPage() {
   const path = "/calendar-sync";
-  const description = "Subscribe to your home maintenance tasks and warranty expiry dates in Google Calendar, Apple Calendar or Outlook. Updates automatically. Free on every plan.";
+  const description = "Add your home maintenance tasks and warranty expiry dates to Google Calendar, Apple Calendar or Outlook. Updates automatically. Free on every plan.";
   useSEO({
     title:"Home Maintenance Calendar Sync — Google, Apple, Outlook",
     description,
@@ -27719,7 +27764,7 @@ const HEALTH_FAQ = [
 
 function HomeHealthScorePage() {
   const path = "/home-health-score";
-  const description = "One 0 to 100 score for how well your home is kept, built from asset condition, overdue tasks, warranty coverage and profile, with a breakdown of what to fix first.";
+  const description = "One 0 to 100 score for how well your home is kept, built from asset condition, overdue tasks, warranties and your profile, with what to fix first.";
   useSEO({
     title:"Home Health Score — How Well Is Your Home Kept?",
     description,
@@ -27805,7 +27850,7 @@ const SHARED_FAQ = [
 
 function SharedHouseholdAccessPage() {
   const path = "/shared-household-access";
-  const description = "Invite a spouse, partner, property manager or team member to your home's Steadwell records, assign tasks to them, and keep everyone on the same page. Included with Pro.";
+  const description = "Invite a spouse, partner, property manager or team member to your home's records, assign them tasks and keep everyone on the same page. Included with Pro.";
   useSEO({
     title:"Shared Access & Task Assignment for Your Home",
     description,
@@ -27892,16 +27937,32 @@ function SharedHouseholdAccessPage() {
   );
 }
 
+const WARRANTY_FAQ = [
+            ["Is warranty tracking free?","Yes — unlimited warranties on the Free plan, no credit card required to start."],
+            ["How do I add a warranty?","Scan a receipt or appliance nameplate with AI (Plus and Pro), or enter the details yourself on any plan."],
+            ["What alerts do I get?","An email 30 days before expiry and another at 7 days, plus a separate alert if the item is subject to a safety recall."],
+            ["Is this an appraisal or guarantee of coverage?","No — Steadwell tracks the dates and documents you give it. Always confirm coverage details directly with the manufacturer or retailer."],
+];
+
 // ─── WARRANTY TRACKER LANDING PAGE ────────────────────────────────────────────
 // Rebuilt to render from App.jsx instead of a hand-maintained warranty-tracker.html
 // (which never existed in the deployed build — see compliance audit finding #3/#7).
 // Pricing here reads from the same figures as PricingSection/TermsPage so it can't
 // drift out of sync with the rest of the product again.
 function WarrantyTrackerPage() {
+  const seoPath = "/warranty-tracker";
+  const seoDesc = "Track warranties for every appliance and device you own, get reminded before they expire, and check for federal recalls automatically. Free forever.";
   useSEO({
     title:"Free Warranty Tracker App — Track Any Warranty",
-    description:"Track warranties for every appliance, device, and asset you own. Get reminded before they expire, checked against federal recall data automatically. Free forever, no credit card required.",
-    canonical:"https://www.trysteadwell.app/warranty-tracker",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Warranty Tracker",
+      path:seoPath, description:seoDesc,
+      features:["Warranty tracking for appliances, electronics, tools, vehicles and more", "Expiry reminder emails at 30 days and 7 days", "Automatic federal safety recall checks", "Receipt and nameplate scanning with AI (Plus and Pro)", "Service history, documents and receipts linked to each item", "Smart Fill model lookup for typical warranty length (Plus and Pro)"],
+      faq:WARRANTY_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   const S = {
     statNum:{fontFamily:"'Fraunces',serif",fontSize:"2.2rem",fontWeight:700,color:"#234A3D"},
@@ -28078,12 +28139,7 @@ function WarrantyTrackerPage() {
 
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Is warranty tracking free?","Yes — unlimited warranties on the Free plan, no credit card required to start."],
-            ["How do I add a warranty?","Scan a receipt or appliance nameplate with AI (Plus and Pro), or enter the details yourself on any plan."],
-            ["What alerts do I get?","An email 30 days before expiry and another at 7 days, plus a separate alert if the item is subject to a safety recall."],
-            ["Is this an appraisal or guarantee of coverage?","No — Steadwell tracks the dates and documents you give it. Always confirm coverage details directly with the manufacturer or retailer."],
-          ]}/>
+          <LPFAQ items={WARRANTY_FAQ}/>
         </LPSection>
 
         <LPRelated hrefs={["/home-condition-assessment","/recall-alerts","/utility-bill-tracker","/ai-scan"]}/>
@@ -28094,12 +28150,31 @@ function WarrantyTrackerPage() {
   );
 }
 
+const AISCAN_FAQ = [
+            ["What file types does the scanner accept?","The scanner accepts JPG, PNG, HEIC, WebP, and PDF files up to 50MB. For insurance policies, upload just the declarations page rather than the full policy packet."],
+            ["How accurate is the AI extraction?","Very accurate for clear, well-lit photos of standard receipts and nameplates. You always review the extracted fields before saving, so any errors are easy to catch and correct."],
+            ["Does it work on old receipts or faded labels?","It works best on clear, legible documents. Faded thermal receipts or worn nameplates may produce incomplete results — you can always fill in missing fields manually."],
+            ["Is AI scanning available on the free plan?","AI scanning is available on Plus and Pro plans. The free plan includes manual entry for all record types."],
+            ["Can I scan items that aren't appliances?","Yes — the nameplate scanner works on any labeled product including tools, outdoor equipment, electronics, and HVAC systems."],
+            ["Can it scan utility bills?","Yes. Pick the utility, scan the bill, and Steadwell fills in the amount, bill date and usage. You review the details, then save. Bills build into the trend, six-month average and spike alerts on the utility and bill tracker page."],
+            ["Can AI tell me the condition of an appliance?","That is a separate feature called condition assessment. You take a few photos of the item and Steadwell grades its condition from 1 to 5, estimates the years it has left and suggests next steps. It is included with Plus and Pro."],
+];
+
 // ─── AI SCAN PAGE ─────────────────────────────────────────────────────────────
 function AIScanPage() {
+  const seoPath = "/ai-scan";
+  const seoDesc = "Scan receipts, appliance nameplates, utility bills and insurance documents with your camera. Steadwell AI fills in the details so you don't have to type.";
   useSEO({
     title:"AI Receipt & Nameplate Scanner for Home Management",
-    description:"Scan any receipt, appliance nameplate, utility bill, or insurance document with your camera. Steadwell AI extracts the details automatically — no typing required.",
-    canonical:"https://www.trysteadwell.app/ai-scan",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell AI Scanning",
+      path:seoPath, description:seoDesc,
+      features:["Receipt scanning that creates warranty and expense records", "Appliance nameplate scanning for brand, model, serial number and dates", "Insurance declarations page scanning", "Utility bill scanning for amount, date and usage", "Review every extracted field before saving", "JPG, PNG, HEIC, WebP and PDF files up to 50MB"],
+      faq:AISCAN_FAQ,
+      offers:[{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -28150,15 +28225,7 @@ function AIScanPage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["What file types does the scanner accept?","The scanner accepts JPG, PNG, HEIC, WebP, and PDF files up to 50MB. For insurance policies, upload just the declarations page rather than the full policy packet."],
-            ["How accurate is the AI extraction?","Very accurate for clear, well-lit photos of standard receipts and nameplates. You always review the extracted fields before saving, so any errors are easy to catch and correct."],
-            ["Does it work on old receipts or faded labels?","It works best on clear, legible documents. Faded thermal receipts or worn nameplates may produce incomplete results — you can always fill in missing fields manually."],
-            ["Is AI scanning available on the free plan?","AI scanning is available on Plus and Pro plans. The free plan includes manual entry for all record types."],
-            ["Can I scan items that aren't appliances?","Yes — the nameplate scanner works on any labeled product including tools, outdoor equipment, electronics, and HVAC systems."],
-            ["Can it scan utility bills?","Yes. Pick the utility, scan the bill, and Steadwell fills in the amount, bill date and usage. You review the details, then save. Bills build into the trend, six-month average and spike alerts on the utility and bill tracker page."],
-            ["Can AI tell me the condition of an appliance?","That is a separate feature called condition assessment. You take a few photos of the item and Steadwell grades its condition from 1 to 5, estimates the years it has left and suggests next steps. It is included with Plus and Pro."],
-          ]}/>
+          <LPFAQ items={AISCAN_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/utility-bill-tracker","/home-condition-assessment","/email-capture","/warranty-tracker"]}/>
         <LPCTA h2="Stop typing. Start scanning." sub="Upgrade to Plus and scan your first appliance nameplate or receipt in under 60 seconds." btnLabel="Upgrade to Plus →"/>
@@ -28168,12 +28235,30 @@ function AIScanPage() {
   );
 }
 
+const EMAILCAP_FAQ = [
+            ["Where do I find my capture address?","Log into Steadwell, go to the My Home tab, and open the Email Inbox card in your Home Toolbox. Your unique capture address is shown at the top with a copy button."],
+            ["Does every property get its own address?","Yes — each property you track in Steadwell gets its own unique capture address. Forwarded emails are automatically routed to the correct property."],
+            ["What happens after I forward an email?","The email lands in your Email Inbox as a pending capture. We send you an email to let you know, one at a time so a busy day doesn’t fill your inbox. Then you review the AI-extracted details in the app before saving."],
+            ["Can I forward bills automatically?","Yes. Add a rule in Gmail or Outlook that sends only the senders you choose, such as your utility company, to your capture address. Steadwell walks you through it in your Email Inbox. Everything still waits for your review."],
+            ["Is the email capture secure?","Yes. Your capture address is uniquely generated and not guessable. Only emails forwarded to your specific address are processed."],
+            ["What if the AI can't parse the email?","Every email appears in your inbox regardless of parse confidence. Low-confidence captures are flagged so you can review and correct the details manually."],
+];
+
 // ─── EMAIL CAPTURE PAGE ───────────────────────────────────────────────────────
 function EmailCapturePage() {
+  const seoPath = "/email-capture";
+  const seoDesc = "Forward any receipt, invoice, utility bill or warranty document to your unique Steadwell address and it files itself. Free for all plans.";
   useSEO({
     title:"Forward Receipts by Email — Automatic Home Record Capture",
-    description:"Forward any receipt, invoice, utility bill, or warranty document to your unique Steadwell address. We extract the details and file them automatically. Free for all plans.",
-    canonical:"https://www.trysteadwell.app/email-capture",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Email Capture",
+      path:seoPath, description:seoDesc,
+      features:["A unique forwarding address for each property", "Forward receipts, invoices, warranty cards and utility bills", "AI sorts each email into a warranty, expense or document", "Optional Gmail and Outlook forwarding rules", "Review every capture before it is saved"],
+      faq:EMAILCAP_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -28263,14 +28348,7 @@ function EmailCapturePage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Where do I find my capture address?","Log into Steadwell, go to the My Home tab, and open the Email Inbox card in your Home Toolbox. Your unique capture address is shown at the top with a copy button."],
-            ["Does every property get its own address?","Yes — each property you track in Steadwell gets its own unique capture address. Forwarded emails are automatically routed to the correct property."],
-            ["What happens after I forward an email?","The email lands in your Email Inbox as a pending capture. We send you an email to let you know, one at a time so a busy day doesn’t fill your inbox. Then you review the AI-extracted details in the app before saving."],
-            ["Can I forward bills automatically?","Yes. Add a rule in Gmail or Outlook that sends only the senders you choose, such as your utility company, to your capture address. Steadwell walks you through it in your Email Inbox. Everything still waits for your review."],
-            ["Is the email capture secure?","Yes. Your capture address is uniquely generated and not guessable. Only emails forwarded to your specific address are processed."],
-            ["What if the AI can't parse the email?","Every email appears in your inbox regardless of parse confidence. Low-confidence captures are flagged so you can review and correct the details manually."],
-          ]}/>
+          <LPFAQ items={EMAILCAP_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/utility-bill-tracker","/ai-scan","/home-expense-tracker","/warranty-tracker"]}/>
         <LPCTA h2="Never manually enter a receipt again." sub="Get your unique capture address and start forwarding receipts, invoices, and home documents today." btnLabel="Get started free →"/>
@@ -28280,12 +28358,28 @@ function EmailCapturePage() {
   );
 }
 
+const MAINTENANCE_FAQ = [
+            ["Is maintenance tracking free?","Yes, completely free on all plans including the free tier. Plus unlocks the full range of recurrence intervals."],
+            ["Can I set tasks for specific contractors?","Yes — you can add contractor notes to any task and link it to a saved contractor in your rolodex."],
+            ["Does Steadwell suggest maintenance tasks?","The setup wizard asks about your home's systems and age, and we recommend common tasks based on that information."],
+            ["Can I track tasks across multiple properties?","Yes — Pro users can track maintenance for up to 3 properties, each with their own task list and history."],
+];
+
 // ─── MAINTENANCE TRACKER PAGE ─────────────────────────────────────────────────
 function MaintenanceTrackerPage() {
+  const seoPath = "/home-maintenance-tracker";
+  const seoDesc = "Track every home maintenance task with reminders, recurring schedules, and a complete service history. Free for all plans.";
   useSEO({
     title:"Home Maintenance Schedule App — Never Miss a Task",
-    description:"Track every home maintenance task with reminders, recurring schedules, and a complete service history. Free for all plans.",
-    canonical:"https://www.trysteadwell.app/home-maintenance-tracker",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Home Maintenance Tracker",
+      path:seoPath, description:seoDesc,
+      features:["Recurring maintenance tasks with due dates, categories and priorities", "Email reminders 3 days before anything is due", "Service history that builds as you complete tasks", "Setup wizard that suggests tasks for your home's age and systems", "Contractor notes on tasks"],
+      faq:MAINTENANCE_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   const tasks = [
     {cat:"HVAC",icon:"🌡️",items:["Replace air filter every 90 days","Annual HVAC tune-up","Clean dryer vent yearly","Check refrigerant levels"]},
@@ -28331,12 +28425,7 @@ function MaintenanceTrackerPage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Is maintenance tracking free?","Yes, completely free on all plans including the free tier. Plus unlocks the full range of recurrence intervals."],
-            ["Can I set tasks for specific contractors?","Yes — you can add contractor notes to any task and link it to a saved contractor in your rolodex."],
-            ["Does Steadwell suggest maintenance tasks?","The setup wizard asks about your home's systems and age, and we recommend common tasks based on that information."],
-            ["Can I track tasks across multiple properties?","Yes — Pro users can track maintenance for up to 3 properties, each with their own task list and history."],
-          ]}/>
+          <LPFAQ items={MAINTENANCE_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/home-condition-assessment","/warranty-tracker","/utility-bill-tracker","/calendar-sync"]}/>
         <LPCTA h2="Your home won&#39;t maintain itself." sub="Start tracking maintenance tasks today and build a complete service history for your home." btnLabel="Start for free →"/>
@@ -28346,12 +28435,28 @@ function MaintenanceTrackerPage() {
   );
 }
 
+const CONTRACTOR_FAQ = [
+            ["Is contractor tracking free?","Yes, completely free on all Steadwell plans."],
+            ["Can I log contractor invoices automatically?","Yes — forward any invoice to your Steadwell capture address and it will be automatically linked as a service log entry."],
+            ["Can I share my contractor list?","Pro users can invite a spouse, partner or team member to the home with shared access. Invited people work from the same home records, and you can assign tasks to them."],
+            ["How is this different from keeping contacts in my phone?","Steadwell links each contractor to your home's service history, tracks total spending per trade, and keeps work notes and receipts alongside contact info."],
+];
+
 // ─── CONTRACTOR TRACKER PAGE ──────────────────────────────────────────────────
 function ContractorTrackerPage() {
+  const seoPath = "/contractor-tracker";
+  const seoDesc = "Save your trusted contractors, log every service visit, and track what each one has cost. Free for all plans.";
   useSEO({
     title:"Home Contractor Tracker — Save Trusted Pros",
-    description:"Save your trusted contractors, log every service visit, and track what each one has cost. Free for all plans.",
-    canonical:"https://www.trysteadwell.app/contractor-tracker",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Contractor Tracker",
+      path:seoPath, description:seoDesc,
+      features:["Saved contractors with contact details, specialty and license details", "Service visit log with date, work done and cost", "Total spending per contractor and per trade", "Year-over-year spending", "Invoices linked to your home's service history"],
+      faq:CONTRACTOR_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -28394,12 +28499,7 @@ function ContractorTrackerPage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Is contractor tracking free?","Yes, completely free on all Steadwell plans."],
-            ["Can I log contractor invoices automatically?","Yes — forward any invoice to your Steadwell capture address and it will be automatically linked as a service log entry."],
-            ["Can I share my contractor list?","Pro users can invite a spouse, partner or team member to the home with shared access. Invited people work from the same home records, and you can assign tasks to them."],
-            ["How is this different from keeping contacts in my phone?","Steadwell links each contractor to your home's service history, tracks total spending per trade, and keeps work notes and receipts alongside contact info."],
-          ]}/>
+          <LPFAQ items={CONTRACTOR_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/home-maintenance-tracker","/home-condition-assessment","/home-expense-tracker","/shared-household-access"]}/>
         <LPCTA h2="Never lose a good contractor again." sub="Save your trusted pros and build a complete service history for your home." btnLabel="Start for free →"/>
@@ -28409,12 +28509,28 @@ function ContractorTrackerPage() {
   );
 }
 
+const INSURANCE_FAQ = [
+            ["Is insurance tracking free?","Yes, completely free on all Steadwell plans."],
+            ["Can I track multiple policies?","Yes — track your homeowners policy plus flood, umbrella, and any other additional policies separately."],
+            ["Is my policy information secure?","Yes. Your data is stored securely in Supabase with row-level security, so other Steadwell users can never see it. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
+            ["What if my coverage changes mid-year?","You can update your coverage amounts anytime. Steadwell keeps a history of changes."],
+];
+
 // ─── INSURANCE TRACKER PAGE ───────────────────────────────────────────────────
 function InsuranceTrackerPage() {
+  const seoPath = "/home-insurance-tracker";
+  const seoDesc = "Store your home insurance policies, log claims, and get annual renewal reminders. Everything ready before you ever need to file.";
   useSEO({
     title:"Home Insurance Organizer — Track Policies & Claims",
-    description:"Store your home insurance policies, log claims, and get annual renewal reminders. Everything ready before you ever need to file.",
-    canonical:"https://www.trysteadwell.app/home-insurance-tracker",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Home Insurance Tracker",
+      path:seoPath, description:seoDesc,
+      features:["Homeowners, flood, umbrella and other policies in one place", "Declarations page scanning that fills in the policy (Plus and Pro)", "Renewal reminders 30 days before a policy renews", "Claims log with dates, amounts and outcomes", "Annual coverage check-in"],
+      faq:INSURANCE_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -28457,12 +28573,7 @@ function InsuranceTrackerPage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Is insurance tracking free?","Yes, completely free on all Steadwell plans."],
-            ["Can I track multiple policies?","Yes — track your homeowners policy plus flood, umbrella, and any other additional policies separately."],
-            ["Is my policy information secure?","Yes. Your data is stored securely in Supabase with row-level security, so other Steadwell users can never see it. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
-            ["What if my coverage changes mid-year?","You can update your coverage amounts anytime. Steadwell keeps a history of changes."],
-          ]}/>
+          <LPFAQ items={INSURANCE_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/home-document-vault","/home-condition-assessment","/home-expense-tracker","/warranty-tracker"]}/>
         <LPCTA h2="Know your coverage before you need it." sub="Store your policy details and claims history in one place — always ready when you need to file." btnLabel="Start for free →"/>
@@ -28472,12 +28583,29 @@ function InsuranceTrackerPage() {
   );
 }
 
+const EXPENSE_FAQ = [
+            ["Is expense tracking free?","Yes, expense tracking and spending analytics are free on all plans. The 5-year cost forecast requires Plus or Pro."],
+            ["How accurate is the cost forecast?","The forecast uses industry average replacement costs and lifespans. Actual costs vary by region, brand, and contractor — use it as a planning guide, not a guarantee."],
+            ["Can I log expenses automatically?","Yes — forward any invoice or receipt to your Steadwell capture address and it is logged as an expense automatically."],
+            ["Can I export my expense data?","Yes — Steadwell includes a data export feature on all plans."],
+            ["Are utility bills included?","Yes. Electric, gas, water, internet and trash bills are tracked on the utility and bill tracker page and count toward your yearly and all-time home spend under a Utilities category."],
+];
+
 // ─── EXPENSE TRACKER PAGE ─────────────────────────────────────────────────────
 function HomeExpenseTrackerPage() {
+  const seoPath = "/home-expense-tracker";
+  const seoDesc = "Track every dollar your home costs you and see a 5-year forecast of upcoming expenses based on your appliance ages. Free to start.";
   useSEO({
     title:"Home Expense Tracker & 5-Year Cost Forecast",
-    description:"Track every dollar your home costs you and see a 5-year forecast of upcoming expenses based on your appliance ages. Free to start.",
-    canonical:"https://www.trysteadwell.app/home-expense-tracker",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Home Expense Tracker",
+      path:seoPath, description:seoDesc,
+      features:["Expense tracking with receipt and invoice attachments", "Spending analytics with year-over-year comparison", "Utility bills included in yearly and all-time spend", "5-year cost forecast based on your appliance ages (Plus and Pro)"],
+      faq:EXPENSE_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -28524,13 +28652,7 @@ function HomeExpenseTrackerPage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Is expense tracking free?","Yes, expense tracking and spending analytics are free on all plans. The 5-year cost forecast requires Plus or Pro."],
-            ["How accurate is the cost forecast?","The forecast uses industry average replacement costs and lifespans. Actual costs vary by region, brand, and contractor — use it as a planning guide, not a guarantee."],
-            ["Can I log expenses automatically?","Yes — forward any invoice or receipt to your Steadwell capture address and it is logged as an expense automatically."],
-            ["Can I export my expense data?","Yes — Steadwell includes a data export feature on all plans."],
-            ["Are utility bills included?","Yes. Electric, gas, water, internet and trash bills are tracked on the utility and bill tracker page and count toward your yearly and all-time home spend under a Utilities category."],
-          ]}/>
+          <LPFAQ items={EXPENSE_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/utility-bill-tracker","/home-condition-assessment","/ai-scan","/home-projects"]}/>
         <LPCTA h2="Know what&#39;s coming before it arrives." sub="Track your home expenses and get a 5-year cost forecast based on your actual appliances." btnLabel="Start for free →"/>
@@ -28540,12 +28662,32 @@ function HomeExpenseTrackerPage() {
   );
 }
 
+const PROJECTS_FAQ = [
+            ["Is project tracking free?","Yes, project tracking is free on all plans. The ROI calculator and the AI project review require Plus or Pro."],
+            ["What is the Cost vs. Value Report?","The Cost vs. Value Report is an annual study by Remodeling Magazine that tracks the average cost and resale value of common home improvement projects across US markets."],
+            ["How accurate is the ROI estimate?","ROI estimates are based on regional averages from the Cost vs. Value Report. Actual returns vary based on your specific home, neighborhood, and market conditions."],
+            ["Can I track multiple projects at once?","Yes — track as many projects as you like simultaneously, each with their own budget, timeline, and contractor."],
+            ["How does the AI project review work?","You add before and after photos to a project. AI describes what changed, including condition, finish level, and whether the result matches the scope you logged. A fixed formula turns that into an adjustment to your ROI estimate, limited to between −30% and +25%. You choose whether to apply it."],
+            ["Is the AI review an appraisal?","No. It is an estimate that adjusts a national average using what the photos show. It does not replace a licensed appraiser, and actual resale value depends on your home, neighborhood, and market."],
+            ["Who sees my project photos?","Photos are saved privately in your account and analyzed with AI. Steadwell doesn’t use them to train AI. Details are in our Privacy Policy."],
+            ["How many AI project reviews do I get?","Plus includes 3 a month and Pro includes 15. A review that fails, or one where the photos are too unclear to read, doesn’t count against your total."],
+];
+
 // ─── PROJECTS PAGE ────────────────────────────────────────────────────────────
 function HomeProjectsPage() {
+  const seoPath = "/home-projects";
+  const seoDesc = "Track renovations with budgets, timelines and a Cost vs. Value ROI calculator. When the work is done, AI reviews your before and after photos.";
   useSEO({
     title:"Home Renovation Tracker with ROI Calculator",
-    description:"Track every home renovation with budgets, timelines, and a Cost vs. Value ROI calculator. When the work is done, AI reviews your before and after photos to adjust the estimate.",
-    canonical:"https://www.trysteadwell.app/home-projects",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Home Projects and ROI",
+      path:seoPath, description:seoDesc,
+      features:["Project budgets, timelines, status and contractor details", "Before, progress and after photos", "Cost vs. Value ROI estimate by project type (Plus and Pro)", "AI review of before and after photos to adjust the estimate (Plus and Pro)"],
+      faq:PROJECTS_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
@@ -28644,16 +28786,7 @@ function HomeProjectsPage() {
         </LPSection>
         <LPSection alt narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Is project tracking free?","Yes, project tracking is free on all plans. The ROI calculator and the AI project review require Plus or Pro."],
-            ["What is the Cost vs. Value Report?","The Cost vs. Value Report is an annual study by Remodeling Magazine that tracks the average cost and resale value of common home improvement projects across US markets."],
-            ["How accurate is the ROI estimate?","ROI estimates are based on regional averages from the Cost vs. Value Report. Actual returns vary based on your specific home, neighborhood, and market conditions."],
-            ["Can I track multiple projects at once?","Yes — track as many projects as you like simultaneously, each with their own budget, timeline, and contractor."],
-            ["How does the AI project review work?","You add before and after photos to a project. AI describes what changed, including condition, finish level, and whether the result matches the scope you logged. A fixed formula turns that into an adjustment to your ROI estimate, limited to between −30% and +25%. You choose whether to apply it."],
-            ["Is the AI review an appraisal?","No. It is an estimate that adjusts a national average using what the photos show. It does not replace a licensed appraiser, and actual resale value depends on your home, neighborhood, and market."],
-            ["Who sees my project photos?","Photos are saved privately in your account and analyzed with AI. Steadwell doesn’t use them to train AI. Details are in our Privacy Policy."],
-            ["How many AI project reviews do I get?","Plus includes 3 a month and Pro includes 15. A review that fails, or one where the photos are too unclear to read, doesn’t count against your total."],
-          ]}/>
+          <LPFAQ items={PROJECTS_FAQ}/>
         </LPSection>
         <LPSection narrow>
           <div style={{textAlign:"center",marginBottom:32}}>
@@ -28722,12 +28855,28 @@ function HomeProjectsPage() {
   );
 }
 
+const VAULT_FAQ = [
+            ["What file types can I upload?","PDF, JPG, PNG, HEIC, DOC, and DOCX files up to 50MB per file."],
+            ["Is the document vault secure?","Yes. Documents are stored in Supabase Storage with row-level security, so other Steadwell users can never see them. Documents belong to your account and are not shared with people you invite to a home. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
+            ["What's the difference between the storage tiers?","Free includes essential storage for core documents. Plus gets an expanded vault for receipts, warranties, and home records. Pro gets the full vault for multiple properties."],
+            ["Can I share documents with a contractor?","You can download any document and share it directly. Contractors do not have direct access to your vault."],
+];
+
 // ─── DOCUMENT VAULT PAGE ──────────────────────────────────────────────────────
 function DocumentVaultPage() {
+  const seoPath = "/home-document-vault";
+  const seoDesc = "Store every important home document in one secure place. Deeds, permits, inspection reports, manuals, HOA documents — always findable when you need them.";
   useSEO({
-    title:"Home Document Vault — Store Deeds, Permits & More",
-    description:"Store every important home document in one secure place. Deeds, permits, inspection reports, manuals, HOA documents — always findable when you need them.",
-    canonical:"https://www.trysteadwell.app/home-document-vault",
+    title:"Home Document Vault — Deeds, Permits & Manuals",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Home Document Vault",
+      path:seoPath, description:seoDesc,
+      features:["Store PDFs, images and Word documents up to 50MB per file", "Categories, linked assets, descriptions and expiry dates", "Search across every document", "Scan paper documents with your phone camera", "Private to your account and available on any device"],
+      faq:VAULT_FAQ,
+      offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
+    }),
   });
   const docTypes = [
     {icon:"📜",name:"Deeds & titles",examples:"Purchase deed, title insurance, survey"},
@@ -28772,12 +28921,7 @@ function DocumentVaultPage() {
         </LPSection>
         <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["What file types can I upload?","PDF, JPG, PNG, HEIC, DOC, and DOCX files up to 50MB per file."],
-            ["Is the document vault secure?","Yes. Documents are stored in Supabase Storage with row-level security, so other Steadwell users can never see them. Documents belong to your account and are not shared with people you invite to a home. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
-            ["What's the difference between the storage tiers?","Free includes essential storage for core documents. Plus gets an expanded vault for receipts, warranties, and home records. Pro gets the full vault for multiple properties."],
-            ["Can I share documents with a contractor?","You can download any document and share it directly. Contractors do not have direct access to your vault."],
-          ]}/>
+          <LPFAQ items={VAULT_FAQ}/>
         </LPSection>
         <LPRelated hrefs={["/email-capture","/warranty-tracker","/home-insurance-tracker","/shared-household-access"]}/>
         <LPCTA h2="Stop losing important documents." sub="Store every home document in one secure, searchable vault — always accessible when you need it." btnLabel="Start for free →"/>
@@ -28788,23 +28932,31 @@ function DocumentVaultPage() {
 }
 
 
+const RECALL_FAQ = [
+              ["How does Steadwell check for recalls?", "Steadwell sends the brand, product type, and model number of each item you track to the CPSC SaferProducts.gov database. If a recall matches, it appears as an alert on your dashboard."],
+              ["What happens when a recall is found?", "You see a recall alert at the top of your dashboard with the full recall details — what the hazard is, which models are affected, and a direct link to the CPSC notice with instructions for getting a remedy."],
+              ["Do I need to check manually?", "No. Steadwell checks automatically every time you open the app. You do not need to search the CPSC website or sign up for any separate alert service."],
+              ["Is recall checking free?", "Yes, completely free on all Steadwell plans including the free tier. There is no limit on how many items are checked."],
+              ["What if my exact model isn't recalled but a similar one is?", "Steadwell checks by brand and product category, so you may see alerts for related models within the same product line. We always link to the official CPSC notice so you can confirm whether your specific model is affected."],
+              ["Can I report a product safety issue?", "Yes — you can report unsafe products directly to the CPSC at SaferProducts.gov. Steadwell links to the reporting form from every recall alert."],
+];
+
 // ─── RECALL ALERTS PAGE ───────────────────────────────────────────────────────
 function RecallAlertsPage() {
 
+  const seoPath = "/recall-alerts";
+  const seoDesc = "Find out if anything in your home has been recalled. Steadwell checks every item you track against the CPSC database automatically. Free on every plan.";
   useSEO({
-    title: "Product Safety Recall Alerts for Your Home",
-    description: "Find out if anything in your home has been recalled. Steadwell checks every tracked product against the CPSC database automatically — appliances, tools, electronics, safety devices, and more.",
-    canonical: "https://www.trysteadwell.app/recall-alerts",
-    jsonLd: {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Steadwell Recall Alerts",
-      "description": "Automatic CPSC product safety recall checking for every item in your home.",
-      "url": "https://www.trysteadwell.app/recall-alerts",
-      "applicationCategory": "HomeAndGarden",
-      "operatingSystem": "Web",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-    }
+    title:"Product Safety Recall Alerts for Your Home",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name:"Steadwell Recall Alerts",
+      path:seoPath, description:seoDesc,
+      features:["Every tracked item checked against the CPSC recall database", "Recall alerts at the top of your dashboard with hazard details", "Automatic checks each time you open the app", "Free on every plan with no limit on items"],
+      faq:RECALL_FAQ,
+      offers:[{name:"Free",price:"0"}],
+    }),
   });
 
   const HM = () => (
@@ -29018,14 +29170,7 @@ function RecallAlertsPage() {
           <div style={{...S.wrap,maxWidth:720}}>
             <h2 style={S.h2}>Common questions</h2>
             <p style={S.h2sub}>Everything you need to know about recall checking.</p>
-            {[
-              ["How does Steadwell check for recalls?", "Steadwell sends the brand, product type, and model number of each item you track to the CPSC SaferProducts.gov database. If a recall matches, it appears as an alert on your dashboard."],
-              ["What happens when a recall is found?", "You see a recall alert at the top of your dashboard with the full recall details — what the hazard is, which models are affected, and a direct link to the CPSC notice with instructions for getting a remedy."],
-              ["Do I need to check manually?", "No. Steadwell checks automatically every time you open the app. You do not need to search the CPSC website or sign up for any separate alert service."],
-              ["Is recall checking free?", "Yes, completely free on all Steadwell plans including the free tier. There is no limit on how many items are checked."],
-              ["What if my exact model isn't recalled but a similar one is?", "Steadwell checks by brand and product category, so you may see alerts for related models within the same product line. We always link to the official CPSC notice so you can confirm whether your specific model is affected."],
-              ["Can I report a product safety issue?", "Yes — you can report unsafe products directly to the CPSC at SaferProducts.gov. Steadwell links to the reporting form from every recall alert."],
-            ].map(([q,a],i) => (
+            {RECALL_FAQ.map(([q,a],i) => (
               <div key={i} style={S.faqItem}>
                 <div style={S.faqQ}>{q}</div>
                 <div style={S.faqA}>{a}</div>
@@ -29092,15 +29237,26 @@ function GuidesPage() {
 
   useSEO({
     title: "First-Time Homebuyer Guides — All 50 States",
-    description: "State-specific first-time homebuyer guides covering assistance programs, disclosure laws, inspection checklists, and county-level intelligence. Pick your state.",
+    description: "State-specific first-time homebuyer guides covering assistance programs, disclosure laws and inspection checklists, with county detail. Pick your state.",
     canonical: "https://www.trysteadwell.app/guides",
     jsonLd: {
       "@context": "https://schema.org",
-      "@type": "ItemList",
-      "name": "Steadwell First-Time Homebuyer Guides",
-      "description": "State-specific homebuyer guides for all 50 US states",
-      "url": "https://www.trysteadwell.app/guides",
-      "numberOfItems": 50
+      "@graph": [
+        {
+          "@type": "ItemList",
+          "name": "Steadwell First-Time Homebuyer Guides",
+          "description": "State-specific homebuyer guides for all 50 US states",
+          "url": "https://www.trysteadwell.app/guides",
+          "numberOfItems": 50
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Steadwell", "item": "https://www.trysteadwell.app/" },
+            { "@type": "ListItem", "position": 2, "name": "Homebuyer Guides", "item": "https://www.trysteadwell.app/guides" },
+          ],
+        },
+      ],
     }
   });
 
@@ -29489,10 +29645,13 @@ function GuidesPage() {
 }
 
 function TermsPage() {
+  const seoPath = "/terms";
+  const seoDesc = "The terms for using Steadwell: your account, plans and billing, AI features, your content and data, and how disputes are handled.";
   useSEO({
     title:"Terms of Service",
-    description:"The terms for using Steadwell: your account, plans and billing, AI features, your content and data, and how disputes are handled.",
-    canonical:"https://www.trysteadwell.app/terms",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpPageJsonLd({ name:"Terms of Service", path:seoPath, description:seoDesc }),
   });
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},li:{marginBottom:6,fontSize:"1rem",lineHeight:1.6,overflowWrap:"anywhere"},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
@@ -29553,10 +29712,13 @@ function TermsPage() {
 
 // ─── PRIVACY POLICY PAGE ─────────────────────────────────────────────────────
 function PrivacyPage() {
+  const seoPath = "/privacy";
+  const seoDesc = "What Steadwell collects, how it is used, who it is shared with, and your choices, including how AI features handle your photos, documents and emails.";
   useSEO({
     title:"Privacy Policy",
-    description:"What Steadwell collects, how it is used, who it is shared with, and your choices, including how AI features handle your photos, documents and emails.",
-    canonical:"https://www.trysteadwell.app/privacy",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpPageJsonLd({ name:"Privacy Policy", path:seoPath, description:seoDesc }),
   });
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #C16140",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
@@ -30558,10 +30720,13 @@ function BlogPostView({ post, posts, url, slug }) {
 
 
 function ADAPage() {
+  const seoPath = "/ada";
+  const seoDesc = "Steadwell's commitment to digital accessibility, the standards we aim for, and how to report a barrier or ask for help using the site.";
   useSEO({
     title:"Accessibility Statement",
-    description:"Steadwell's commitment to digital accessibility, the standards we aim for, and how to report a barrier or ask for help using the site.",
-    canonical:"https://www.trysteadwell.app/ada",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpPageJsonLd({ name:"Accessibility Statement", path:seoPath, description:seoDesc }),
   });
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6,overflowWrap:"anywhere"},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;

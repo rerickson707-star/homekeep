@@ -190,7 +190,7 @@
     },
     {
       "source": "/blog/:slug",
-      "destination": "/spa-shell.html"
+      "destination": "/api/blog?slug=:slug"
     }
   ],
   "headers": [
