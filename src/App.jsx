@@ -1,4 +1,4 @@
-// Steadwell v346 — 2026-10-09
+// Steadwell v347 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2709,6 +2709,19 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .foot-links{display:flex;gap:26px;flex-wrap:wrap;justify-content:flex-end}
 .lp-root .foot-links a{font-size:.88rem;color:rgba(244,237,223,.72);cursor:pointer;transition:color .2s;text-decoration:none;font-family:var(--body)}
 .lp-root .foot-links a:hover{color:#fff}
+.lp-root .foot-cta{white-space:nowrap}
+.lp-root .foot-cols{display:grid;grid-template-columns:2fr 1fr 1fr;gap:32px 40px;margin-top:28px;padding-top:28px;border-top:1px solid rgba(167,191,168,.14)}
+.lp-root .foot-h{font-family:var(--display);font-weight:600;font-size:1.02rem;color:var(--linen);margin-bottom:10px}
+.lp-root .foot-col a{display:block;font-size:.95rem;line-height:1.35;color:rgba(244,237,223,.8);text-decoration:none;padding:8px 0;font-family:var(--body);transition:color .2s}
+.lp-root .foot-col a:hover{color:#fff}
+.lp-root .foot-col a:focus-visible,.lp-root .foot-social:focus-visible{outline:2px solid var(--terracotta-soft);outline-offset:2px;border-radius:4px}
+.lp-root .foot-col-list{columns:2;column-gap:32px}
+.lp-root .foot-col-list a{break-inside:avoid}
+.lp-root .foot-bottom{margin-top:24px;padding-top:20px;border-top:1px solid rgba(167,191,168,.14);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px}
+.lp-root .foot-copy-t{font-size:.85rem;color:rgba(244,237,223,.62);font-family:var(--body)}
+.lp-root .foot-socials{display:flex;gap:4px;align-items:center}
+.lp-root .foot-social{display:flex;align-items:center;justify-content:center;width:44px;height:44px;color:rgba(244,237,223,.7);transition:color .2s}
+.lp-root .foot-social:hover{color:#fff}
 .lp-root .foot-copy{max-width:var(--maxw);margin:26px auto 0;padding-top:22px;border-top:1px solid rgba(167,191,168,.1);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.8rem;color:rgba(244,237,223,.45)}
 
 /* ---------- RESPONSIVE ---------- */
@@ -2717,6 +2730,9 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .hero-vis{max-width:480px}
   .lp-root .feat.spot{grid-template-columns:1fr;gap:26px;padding:32px 30px}
   .lp-root .bento{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:1100px){
+  .lp-root .lp-nav-links{gap:22px}
 }
 @media(max-width:860px){
   .lp-root .lp-nav-links{display:none}
@@ -2745,6 +2761,9 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .feat.spot h3{font-size:1.5rem}
   .lp-root .price-wrap{grid-template-columns:1fr;max-width:100%}
   .lp-root .foot-in{flex-direction:column;align-items:flex-start;gap:18px}
+  .lp-root .foot-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .lp-root .foot-col-wide{grid-column:1/-1}
+  .lp-root .foot-cta{width:100%}
   .lp-root .foot-links{justify-content:flex-start;gap:16px 22px}
   .lp-root .foot-copy{justify-content:flex-start;flex-direction:column;gap:4px}
   .lp-root .hero-btns{gap:10px}
@@ -4863,6 +4882,7 @@ function LandingPage({ onSignIn, onSignUp }) {
             <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); }}>Features</a>
             <a href="#how" onClick={e => { e.preventDefault(); scrollTo("how"); }}>How it works</a>
             <a href="/pricing">Pricing</a>
+            <a href="/guides">Buyer Guides</a>
             <a href="/blog">Blog</a>
           </div>
           <div className="lp-nav-cta">
@@ -4877,6 +4897,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); setMobileMenuOpen(false); }}>Features</a>
               <a href="#how" onClick={e => { e.preventDefault(); scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
               <a href="/pricing">Pricing</a>
+              <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
               <div className="lp-mobile-menu-btns">
                 <button className="lp-signin" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>Sign in</button>
@@ -5257,46 +5278,52 @@ function LandingPage({ onSignIn, onSignUp }) {
             <div className="foot-brand">
               <span className="tile"><HouseMark/></span>
               <span className="wm">Steadwell</span>
-              <span className="foot-tag">— Your home, kept well.</span>
+              <span className="foot-tag">Your home, kept well.</span>
             </div>
-            <div className="foot-links">
-              <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); }}>Features</a>
+            <button className="btn btn-terra foot-cta" onClick={onSignUp}>Get started free</button>
+          </div>
+          <div className="foot-cols">
+            <nav className="foot-col foot-col-wide" aria-label="Features">
+              <div className="foot-h">Features</div>
+              <div className="foot-col-list">
+                {LP_FEATURE_PAGES.map(p => <a key={p.href} href={p.href}>{p.label}</a>)}
+              </div>
+            </nav>
+            <nav className="foot-col" aria-label="Resources">
+              <div className="foot-h">Resources</div>
               <a href="/pricing">Pricing</a>
-              <a href="/warranty-tracker">Warranty Tracker</a>
               <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
+              <a href="/for-agents">For Agents</a>
+              <a href="/affiliates">Affiliates</a>
+            </nav>
+            <nav className="foot-col" aria-label="Company">
+              <div className="foot-h">Company</div>
               <a href="mailto:hello@trysteadwell.app">Contact</a>
               <a href="/" role="button" onClick={e => { e.preventDefault(); onSignIn(); }}>Sign in</a>
-            </div>
+              <a href="/terms">Terms</a>
+              <a href="/privacy">Privacy</a>
+              <a href="/ada">Accessibility</a>
+            </nav>
           </div>
-          <nav className="foot-feats" aria-label="Features">
-            {LP_FEATURE_PAGES.map(p => <a key={p.href} href={p.href}>{p.label}</a>)}
-          </nav>
-          <div style={{marginTop:"1.25rem",paddingTop:"1rem",borderTop:"1px solid rgba(244,237,223,.07)",display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:"1rem",alignItems:"center"}}>
-            <span style={{fontSize:".78rem",color:"rgba(244,237,223,.28)",fontFamily:"var(--body)"}}>&copy; 2026 Steadwell, LLC. Built for homeowners.</span>
-            <div style={{display:"flex",gap:"1.25rem",alignItems:"center",flexWrap:"wrap"}}>
-              <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
+          <div className="foot-bottom">
+            <span className="foot-copy-t">&copy; 2026 Steadwell, LLC. Built for homeowners.</span>
+            <div className="foot-socials">
                 <a href="https://www.instagram.com/trysteadwell" target="_blank" rel="noopener noreferrer" aria-label="Steadwell on Instagram"
-                  style={{color:"rgba(244,237,223,.35)",display:"flex",transition:"color .2s"}}
-                  onMouseEnter={e=>e.currentTarget.style.color="#F4EDDF"} onMouseLeave={e=>e.currentTarget.style.color="rgba(244,237,223,.35)"}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                  className="foot-social"
+                  >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
                 </a>
                 <a href="https://www.facebook.com/people/Steadwell/61590757207786/" target="_blank" rel="noopener noreferrer" aria-label="Steadwell on Facebook"
-                  style={{color:"rgba(244,237,223,.35)",display:"flex",transition:"color .2s"}}
-                  onMouseEnter={e=>e.currentTarget.style.color="#F4EDDF"} onMouseLeave={e=>e.currentTarget.style.color="rgba(244,237,223,.35)"}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                  className="foot-social"
+                  >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                 </a>
                 <a href="https://linkedin.com/company/steadwell" target="_blank" rel="noopener noreferrer" aria-label="Steadwell on LinkedIn"
-                  style={{color:"rgba(244,237,223,.35)",display:"flex",transition:"color .2s"}}
-                  onMouseEnter={e=>e.currentTarget.style.color="#F4EDDF"} onMouseLeave={e=>e.currentTarget.style.color="rgba(244,237,223,.35)"}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                  className="foot-social"
+                  >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
                 </a>
-              </div>
-              <a href="/for-agents" style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>For Agents</a>
-              <a href="/affiliates"  style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Affiliates</a>
-              <a href="/terms"       style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Terms</a>
-              <a href="/privacy"     style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Privacy</a>
-              <a href="/ada"         style={{color:"rgba(244,237,223,.28)",textDecoration:"none",fontSize:".78rem",fontFamily:"var(--body)"}}>Accessibility</a>
             </div>
           </div>
         </div>
