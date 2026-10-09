@@ -133,6 +133,10 @@
       "destination": "/spa-shell.html"
     },
     {
+      "source": "/guides/:path*",
+      "destination": "/spa-shell.html"
+    },
+    {
       "source": "/affiliates",
       "destination": "/spa-shell.html"
     },

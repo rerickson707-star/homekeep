@@ -1,8 +1,9 @@
-// Steadwell v344 — 2026-10-08
+// Steadwell v345 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 import { BLOG_OVERRIDES } from "./blog-overrides.js";
+import { GUIDE_PRICES, GUIDE_EDITION, GUIDE_CURRENT_AS_OF, BUNDLE_TRIAL, GUIDE_CONSENT_VERSION, GUIDE_CONSENT_TEXT, GUIDE_LEAD_OPTIONS, guideByPath, guideStates, guidePagePaths, bundleFor, stateGuide, countyGuides, liveGuides } from "./guides-registry.js";
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliance","Roofing","Landscaping","Structure","Safety","Other"];
@@ -5194,13 +5195,13 @@ function LandingPage({ onSignIn, onSignUp }) {
             <div>
               <div className="eyebrow">First-Time Homebuyer Guides</div>
               <h2 className="h2" style={{marginBottom:"1rem"}}>Buying a home?<br/><em style={{fontStyle:"italic",color:"var(--terracotta)"}}>We&#39;ve got a guide for that.</em></h2>
-              <p style={{fontSize:"1rem",color:"var(--ink-soft)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State-specific guides covering every assistance program, disclosure law, inspection checklist, and county-level detail — written clearly for first-time buyers. Available for all 50 states.</p>
+              <p style={{fontSize:"1rem",color:"var(--ink-soft)",lineHeight:1.65,marginBottom:"1.75rem",maxWidth:"34rem"}}>State and county buyer guides covering assistance programs, disclosure rules, inspection checklists and local detail, written clearly for first-time buyers. Florida and Pinellas County are ready now, and more states are on the way.</p>
               <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",alignItems:"center"}}>
                 <a href="/guides" style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--pine)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:12,fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:".92rem",transition:"opacity .18s"}}
                   onMouseEnter={e=>e.currentTarget.style.opacity=".88"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-                  Browse all 50 states <span aria-hidden="true">→</span>
+                  Browse the guides <span aria-hidden="true">→</span>
                 </a>
-                <span style={{fontSize:".82rem",color:"var(--ink-soft)"}}>From $12 · Instant download</span>
+                <span style={{fontSize:".82rem",color:"var(--ink-soft)"}}>From $14.99 · Free preview</span>
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".75rem"}}>
@@ -23349,7 +23350,7 @@ export default function App() {
   if (_path === "/warranty-tracker" || _path === "/warranty-tracker/" || _path === "/warranty-tracker.html") return <WarrantyTrackerPage />;
   if (_path === "/blog" || _path === "/blog/") return <BlogIndex />;
   if (_path.startsWith("/blog/")) return <BlogPost slug={_path.replace("/blog/","")} />;
-  if (_path === "/guides" || _path === "/guides/") return <GuidesPage />;
+  if (_path === "/guides" || _path.startsWith("/guides/")) return <GuideRoute />;
   if (_path === "/unsubscribe") return <UnsubscribePage />;
   if (_path === "/recall-alerts" || _path === "/recall-alerts/") return <RecallAlertsPage />;
   if (_path === "/ai-scan" || _path === "/ai-scan/") return <AIScanPage />;
@@ -29265,6 +29266,14 @@ function RecallAlertsPage() {
   );
 }
 
+// ─── BUYER GUIDES (hub + one page per guide, all driven by src/guides-registry.js) ───────────────
+// /guides                         hub: every live guide, plus a "tell me when my state is ready" form
+// /guides/florida                 state guide page
+// /guides/florida/pinellas-county county guide page
+// Prices, chapters, free-preview pages and facts come from the registry, so a new guide is a new
+// registry entry, not new page code. Checkout is not wired yet: the buy buttons say so, and the free
+// preview (behind an email address and a few questions) is the live call to action.
+
 const STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
   "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
@@ -29276,431 +29285,579 @@ const STATES = [
   "Wisconsin","Wyoming"
 ];
 
-const STATE_FACTS = {
-  Florida:       { emoji:"🌴", tagline:"Sunshine State buyer programs, flood zones & hurricane prep" },
-  Texas:         { emoji:"⭐", tagline:"No income tax, large county assistance programs & disclosure laws" },
-  California:    { emoji:"🌉", tagline:"CalHFA programs, wildfire zones & earthquake disclosure" },
-  "New York":    { emoji:"🗽", tagline:"SONYMA programs, co-op vs condo rules & NYC transfer taxes" },
-  "North Carolina":{ emoji:"🌲", tagline:"NC Home Advantage, USDA-eligible areas & storm prep" },
-  Georgia:       { emoji:"🍑", tagline:"DCA programs, attorney-state closings & HOA laws" },
-  Arizona:       { emoji:"🌵", tagline:"HOA super-liens, desert climate maintenance & well/septic rules" },
-  Colorado:      { emoji:"🏔️", tagline:"CHFA programs, HOA disclosures & wildfire zone guidance" },
-  Washington:    { emoji:"🌲", tagline:"WSHFC programs, earthquake risk & radon in Eastern WA" },
-  Tennessee:     { emoji:"🎵", tagline:"THDA programs, attorney-state closings & no state income tax" },
+const GUIDE_CSS = `
+.gd-chip{min-height:44px;padding:8px 14px;border-radius:999px;border:1.5px solid #CFC5B0;background:#fff;color:#2A2723;font:600 .9rem/1.2 'Hanken Grotesk',sans-serif;cursor:pointer;text-align:left}
+.gd-chip[aria-checked="true"]{background:#234A3D;border-color:#234A3D;color:#F4EDDF}
+.gd-chip:hover:not([aria-checked="true"]){border-color:#234A3D}
+.gd-chip:focus-visible,.gd-box:focus-visible,.gd-btn:focus-visible,.gd-in:focus-visible,.gd-link:focus-visible{outline:3px solid #C16140;outline-offset:2px}
+.gd-in{box-sizing:border-box;width:100%;min-height:48px;padding:0 14px;border:1.5px solid #CFC5B0;border-radius:12px;background:#fff;color:#2A2723;font:400 16px 'Hanken Grotesk',sans-serif}
+.gd-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:12px;border:2px solid transparent;font:700 .95rem 'Hanken Grotesk',sans-serif;text-decoration:none;cursor:pointer;text-align:center}
+.gd-btn:disabled{cursor:not-allowed}
+.gd-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,48px);align-items:start}
+@media (max-width:760px){.gd-split{grid-template-columns:minmax(0,1fr)}}
+`;
+
+const GD_INK = "#2A2723";
+const GD_SOFT = "#5E574F";
+const GD_LINE = "#E6DECF";
+
+const usd = (n) => "$" + Number(n).toFixed(2);
+
+const GUIDE_ERRORS = {
+  invalid_email: "That email address doesn't look right. Check it and try again.",
+  stage_required: "Choose where you are in the process.",
+  consent_required: "Please tick the box so we can send your preview.",
+  preview_unavailable: "The preview isn't available right now. Please try again in a few minutes.",
+  default: "Something went wrong. Please try again, or email hello@trysteadwell.app.",
 };
 
-function GuidesPage() {
-  const [selectedState, setSelectedState] = useState("Florida");
-  const [purchasing, setPurchasing] = useState(null);
-  const fact = STATE_FACTS[selectedState] || { emoji:"🏠", tagline:"State-specific buyer programs, disclosures & local guidance" };
+async function guideFnErrorCode(error) {
+  try { const body = await error.context.json(); return body && body.error; } catch { return null; }
+}
 
-  useSEO({
-    title: "First-Time Homebuyer Guides — All 50 States",
-    description: "State-specific first-time homebuyer guides covering assistance programs, disclosure laws and inspection checklists, with county detail. Pick your state.",
-    canonical: "https://www.trysteadwell.app/guides",
-    jsonLd: {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "ItemList",
-          "name": "Steadwell First-Time Homebuyer Guides",
-          "description": "State-specific homebuyer guides for all 50 US states",
-          "url": "https://www.trysteadwell.app/guides",
-          "numberOfItems": 50
-        },
-        {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Steadwell", "item": "https://www.trysteadwell.app/" },
-            { "@type": "ListItem", "position": 2, "name": "Homebuyer Guides", "item": "https://www.trysteadwell.app/guides" },
-          ],
-        },
-      ],
-    }
-  });
-
-  const HM = () => (
-    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true">
-      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
-      <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
-    </svg>
-  );
-
-  const handleBuy = (tier) => {
-    setPurchasing(tier);
-    // Stripe Checkout will be wired here once LLC + Stripe account is live
-    setTimeout(() => {
-      setPurchasing(null);
-      window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: "Guides are launching soon — check back shortly! 🏠", type: "success" } }));
-    }, 300);
-  };
-
-  const S = {
-    page:    { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723" },
-    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", minHeight:64, flexWrap:"wrap", gap:"4px 12px", position:"sticky", top:0, zIndex:100 },
-    navBrand:{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" },
-    tile:    { width:32, height:32, borderRadius:9, background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
-    wm:      { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"1.1rem", color:"#F4EDDF" },
-    navLink: { color:"rgba(244,237,223,.7)", textDecoration:"none", fontSize:".88rem", fontWeight:500 },
-    wrap:    { maxWidth:1080, margin:"0 auto", padding:"0 24px" },
-    hero:    { background:"#234A3D", padding:"72px 24px 80px", textAlign:"center" },
-    eyebrow: { fontSize:".72rem", fontWeight:700, letterSpacing:".18em", textTransform:"uppercase", color:"#D2876A", marginBottom:16 },
-    h1:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(2.2rem,5vw,3.4rem)", color:"#F4EDDF", lineHeight:1.06, letterSpacing:"-.025em", margin:"0 0 20px" },
-    heroSub: { fontSize:"1.05rem", color:"rgba(244,237,223,.65)", maxWidth:"36rem", margin:"0 auto 40px", lineHeight:1.6 },
-    pillRow: { display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap", marginBottom:8 },
-    pill:    { background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.14)", borderRadius:20, padding:"5px 14px", fontSize:".78rem", color:"rgba(244,237,223,.8)", fontWeight:500 },
-    section: { padding:"64px 24px" },
-    sectionDark: { padding:"64px 24px", background:"#EFE7D7" },
-    h2:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.6rem,3vw,2.2rem)", color:"#234A3D", letterSpacing:"-.02em", marginBottom:8 },
-    h2sub:   { fontSize:"1rem", color:"#7A7370", marginBottom:40, lineHeight:1.6 },
-    stateBar:{ background:"#fff", border:"1px solid #E6DECF", borderRadius:16, padding:"28px 32px", marginBottom:40, boxShadow:"0 2px 12px rgba(35,74,61,.06)" },
-    stateLabel:{ fontSize:".68rem", fontWeight:700, letterSpacing:".1em", textTransform:"uppercase", color:"#A8A09A", marginBottom:8 },
-    stateSelect:{ width:"100%", padding:".75rem 1rem", border:"1.5px solid #E6DECF", borderRadius:10, fontFamily:"'Hanken Grotesk',sans-serif", fontSize:"1rem", color:"#2A2723", background:"#fff", cursor:"pointer", outline:"none", appearance:"none", backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 5 4.5-5' stroke='%232A2723' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat:"no-repeat", backgroundPosition:"right 1rem center" },
-    stateFactBox:{ display:"flex", alignItems:"center", gap:12, marginTop:16, padding:"12px 16px", background:"rgba(35,74,61,.06)", borderRadius:10 },
-    stateEmoji:{ fontSize:"1.5rem", flexShrink:0 },
-    stateFactText:{ fontSize:".85rem", color:"#5E574F", lineHeight:1.5 },
-    cards:   { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))", gap:20, marginTop:8, textAlign:"left" },
-    card:    { background:"#fff", border:"1px solid #E6DECF", borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", transition:"box-shadow .2s,transform .2s", cursor:"default" },
-    cardFeatured: { background:"#234A3D", border:"1px solid transparent", borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 12px 40px rgba(35,74,61,.25)" },
-    cardTop: { padding:"24px 24px 0", textAlign:"left" },
-    cardTopFeatured: { padding:"24px 24px 0", textAlign:"left" },
-    badge:   { display:"inline-flex", alignItems:"center", fontSize:".65rem", fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", padding:"3px 10px", borderRadius:20, marginBottom:12 },
-    tier:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1.1rem", color:"#234A3D", marginBottom:4 },
-    tierFeatured: { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1.1rem", color:"#F4EDDF", marginBottom:4 },
-    price:   { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"2.6rem", color:"#234A3D", lineHeight:1, letterSpacing:"-.02em" },
-    priceFeatured: { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"2.6rem", color:"#F4EDDF", lineHeight:1, letterSpacing:"-.02em" },
-    priceNote:{ fontSize:".8rem", color:"#A8A09A", marginTop:4, marginBottom:20 },
-    priceNoteFeatured:{ fontSize:".8rem", color:"rgba(244,237,223,.5)", marginTop:4, marginBottom:20 },
-    divider: { height:1, background:"#E6DECF", margin:"0 24px" },
-    dividerFeatured: { height:1, background:"rgba(255,255,255,.1)", margin:"0 24px" },
-    feats:   { padding:"20px 24px", flex:1, textAlign:"left" },
-    feat:    { display:"flex", alignItems:"flex-start", gap:10, marginBottom:12, fontSize:".88rem", color:"#5E574F", lineHeight:1.5 },
-    featFeatured: { display:"flex", alignItems:"flex-start", gap:10, marginBottom:12, fontSize:".88rem", color:"rgba(244,237,223,.8)", lineHeight:1.5 },
-    check:   { width:18, height:18, borderRadius:"50%", background:"rgba(35,74,61,.1)", color:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".6rem", fontWeight:800, flexShrink:0, marginTop:1 },
-    checkFeatured: { width:18, height:18, borderRadius:"50%", background:"#C16140", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".6rem", fontWeight:800, flexShrink:0, marginTop:1 },
-    cardFoot:{ padding:"0 24px 24px" },
-    btn:     { display:"block", width:"100%", padding:".85rem", borderRadius:12, border:"none", fontFamily:"'Hanken Grotesk',sans-serif", fontSize:".92rem", fontWeight:700, cursor:"pointer", textAlign:"center", transition:"all .18s" },
-    btnPrimary:{ background:"#C16140", color:"#fff" },
-    btnOutline:{ background:"transparent", color:"#234A3D", border:"1.5px solid #E6DECF" },
-    btnFeatured:{ background:"#F4EDDF", color:"#234A3D" },
-    includes:{ fontSize:".72rem", color:"#A8A09A", textAlign:"center", marginTop:10 },
-    includesFeatured:{ fontSize:".72rem", color:"rgba(244,237,223,.4)", textAlign:"center", marginTop:10 },
-    whyGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 },
-    whyCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"24px" },
-    whyIcon: { fontSize:"1.6rem", marginBottom:12 },
-    whyTitle:{ fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"1rem", color:"#234A3D", marginBottom:6 },
-    whyText: { fontSize:".85rem", color:"#7A7370", lineHeight:1.6 },
-    faqItem: { borderBottom:"1px solid #E6DECF", padding:"20px 0" },
-    faqQ:    { fontWeight:600, fontSize:".95rem", color:"#2A2723", marginBottom:8 },
-    faqA:    { fontSize:".88rem", color:"#7A7370", lineHeight:1.6 },
-    cta:     { background:"#234A3D", padding:"72px 24px", textAlign:"center" },
-    ctaH:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#F4EDDF", marginBottom:16, letterSpacing:"-.02em" },
-    ctaSub:  { fontSize:"1rem", color:"rgba(244,237,223,.65)", maxWidth:"32rem", margin:"0 auto 32px", lineHeight:1.6 },
-    ctaBtn:  { display:"inline-block", background:"#C16140", color:"#fff", textDecoration:"none", padding:".9rem 2rem", borderRadius:12, fontWeight:700, fontSize:".95rem", fontFamily:"'Hanken Grotesk',sans-serif", border:"none", cursor:"pointer" },
-    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem", textAlign:"left" },
-    footLinks:{ display:"flex", gap:24, flexWrap:"wrap" },
-    footA:   { color:"rgba(244,237,223,.55)", textDecoration:"none" },
-  };
-
-  const tiers = [
+function guideJsonLd({ name, path, description, trail, faq = [], list }) {
+  const url = `https://www.trysteadwell.app${path}`;
+  const graph = [
     {
-      key:      "state",
-      label:    "State Guide",
-      price:    "$14.99",
-      note:     "One-time purchase · Instant PDF download",
-      featured: false,
-      badgeText:null,
-      badgeBg:  null,
-      features: [
-        "State-specific buyer assistance programs & grants",
-        "Step-by-step closing process & timeline",
-        "Disclosure laws explained plainly",
-        "Climate, seasonal maintenance & hazard guidance",
-        "Complete home inspection checklist",
-        "Homestead exemption & tax savings",
-        "Property viewing notes & comparison sheets",
-      ],
-      includes: `${selectedState} State Guide PDF`,
+      "@type": list ? "CollectionPage" : "WebPage",
+      "name": name,
+      "url": url,
+      "description": description,
+      "isPartOf": { "@type": "WebSite", "name": "Steadwell", "url": "https://www.trysteadwell.app/" },
+      "publisher": { "@type": "Organization", "name": "Steadwell", "url": "https://www.trysteadwell.app" },
     },
     {
-      key:      "bundle",
-      label:    "Complete Bundle",
-      price:    "$37.99",
-      wasPrice: "$44.98",
-      note:     "Save $7 vs buying separately · Instant PDF downloads",
-      featured: true,
-      badgeText:"Best Value",
-      badgeBg:  "#C16140",
-      features: [
-        "Everything in the State Guide",
-        `All ${selectedState} counties — special tax districts & CDD fees`,
-        "City-by-city breakdown: income, millage rates & key notes",
-        "Opportunity Zones & Community Redevelopment Areas",
-        "Housing stock age analysis with insurance implications",
-        "Local down payment programs by county",
-        "Environmental restrictions & flood zone guidance by county",
-      ],
-      includes: `${selectedState} State Guide + County Intelligence Pack`,
-    },
-    {
-      key:      "county",
-      label:    "County Intelligence Pack",
-      price:    "$29.99",
-      note:     "One-time purchase · Instant PDF download",
-      featured: false,
-      badgeText:null,
-      badgeBg:  null,
-      features: [
-        `All ${selectedState} counties covered in detail`,
-        "County-level median prices & market conditions",
-        "Local down payment assistance by county",
-        "School district & flood zone overview per county",
-        "Top neighborhoods & what to watch out for",
-        "County-specific inspection tips",
-        "Infrastructure & commute notes per county",
-      ],
-      includes: `${selectedState} County Intelligence Pack PDF`,
+      "@type": "BreadcrumbList",
+      "itemListElement": trail.map((t, i) => ({ "@type": "ListItem", "position": i + 1, "name": t.name, "item": `https://www.trysteadwell.app${t.path}` })),
     },
   ];
+  if (list) {
+    graph.push({
+      "@type": "ItemList",
+      "itemListElement": list.map((g, i) => ({ "@type": "ListItem", "position": i + 1, "name": g.title, "url": `https://www.trysteadwell.app${g.path}` })),
+    });
+  }
+  if (faq.length) {
+    graph.push({
+      "@type": "FAQPage",
+      "mainEntity": faq.map(([q, a]) => ({ "@type": "Question", "name": q, "acceptedAnswer": { "@type": "Answer", "text": a } })),
+    });
+  }
+  return { "@context": "https://schema.org", "@graph": graph };
+}
+
+// A custom checkbox (the global CSS strips native inputs). The box is the focusable control; the
+// text beside it toggles it too, except when the click lands on a link inside the text.
+function GuideConsent({ checked, onChange, children, id }) {
+  return (
+    <div style={{display:"flex",alignItems:"flex-start",gap:4}}>
+      <button type="button" role="checkbox" aria-checked={checked} aria-labelledby={id} className="gd-box"
+        onClick={() => onChange(!checked)}
+        style={{width:44,height:44,flexShrink:0,background:"none",border:"none",padding:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:10}}>
+        <span style={{width:24,height:24,borderRadius:7,border:"2px solid "+(checked?"#234A3D":"#8F8776"),background:checked?"#234A3D":"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {checked && <svg viewBox="0 0 12 12" width="13" height="13" fill="none" aria-hidden="true"><path d="M2.5 6.2 5 8.6l4.5-5" stroke="#F4EDDF" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </span>
+      </button>
+      <span id={id} onClick={(e) => { if (!e.target.closest("a")) onChange(!checked); }}
+        style={{fontSize:".88rem",color:GD_SOFT,lineHeight:1.5,paddingTop:11,cursor:"pointer"}}>{children}</span>
+    </div>
+  );
+}
+
+function GuideChoices({ label, options, value, onPick, multi = false, max = 3 }) {
+  const isOn = (c) => (multi ? value.includes(c) : value === c);
+  return (
+    <div role={multi ? "group" : "radiogroup"} aria-label={label} style={{display:"flex",flexWrap:"wrap",gap:8}}>
+      {options.map((o) => {
+        const on = isOn(o.code);
+        const locked = multi && !on && value.length >= max;
+        return (
+          <button key={o.code} type="button" className="gd-chip" role={multi ? "checkbox" : "radio"} aria-checked={on}
+            aria-disabled={locked || undefined}
+            onClick={() => { if (!locked) onPick(o.code); }}
+            style={locked ? {opacity:.5} : undefined}>{o.label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// The free-preview form: email, where you are in the process, and consent. After it succeeds the
+// download link is shown straight away (and emailed), followed by a few optional questions.
+function GuideLeadForm({ guide }) {
+  const [email, setEmail] = useState("");
+  const [stage, setStage] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [hp, setHp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(null);
+  const [timeline, setTimeline] = useState("");
+  const [area, setArea] = useState("");
+  const [concerns, setConcerns] = useState([]);
+  const [agent, setAgent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const opts = GUIDE_LEAD_OPTIONS;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const em = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { setErr(GUIDE_ERRORS.invalid_email); return; }
+    if (!stage) { setErr(GUIDE_ERRORS.stage_required); return; }
+    if (!consent) { setErr(GUIDE_ERRORS.consent_required); return; }
+    setErr(""); setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("guide-preview", {
+        body: { mode: "request", email: em, guideId: guide.id, stage, consent: true, consentVersion: GUIDE_CONSENT_VERSION, sourcePath: window.location.pathname, website: hp },
+      });
+      if (error) { const code = await guideFnErrorCode(error); setErr(GUIDE_ERRORS[code] || GUIDE_ERRORS.default); return; }
+      if (!data || !data.ok || !data.url) { setErr(GUIDE_ERRORS.default); return; }
+      setDone(data);
+    } catch { setErr(GUIDE_ERRORS.default); }
+    finally { setBusy(false); }
+  };
+
+  const saveDetails = async () => {
+    if (saving || !done || !done.leadId) return;
+    setSaving(true);
+    try {
+      await supabase.functions.invoke("guide-preview", {
+        body: { mode: "details", leadId: done.leadId, timeline, area, concerns, hasAgent: agent },
+      });
+      setSaved(true);
+    } catch { setSaved(true); }
+    finally { setSaving(false); }
+  };
+
+  const toggleConcern = (c) => setConcerns((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : cur.length < 3 ? [...cur, c] : cur));
+  const qLabel = {fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:8,display:"block"};
+
+  if (done) {
+    return (
+      <div>
+        <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.4rem",color:"#234A3D",margin:"0 0 8px"}}>Your free preview is ready</h3>
+        <p style={{fontSize:".95rem",color:GD_SOFT,lineHeight:1.6,margin:"0 0 16px"}}>
+          {done.emailed ? "We also emailed you a copy of the link." : done.recentlySent ? "We emailed this link a few minutes ago." : "We couldn't send the email, so save the PDF from this link. It works for 7 days."}
+        </p>
+        <a className="gd-btn" href={done.url} target="_blank" rel="noopener noreferrer" style={{background:"#C16140",color:"#fff"}}>Open the free preview (PDF)</a>
+        <div style={{borderTop:"1px solid "+GD_LINE,marginTop:24,paddingTop:20}}>
+          {saved ? (
+            <p role="status" style={{fontSize:".95rem",color:"#234A3D",fontWeight:600,margin:0}}>Thanks. We'll use your answers to keep what we send useful.</p>
+          ) : (
+            <>
+              <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",marginBottom:4}}>A few quick questions (optional)</div>
+              <p style={{fontSize:".88rem",color:GD_SOFT,lineHeight:1.5,margin:"0 0 16px"}}>They help us decide what to write next and what to send you.</p>
+              <div style={{display:"flex",flexDirection:"column",gap:18}}>
+                <div>
+                  <span style={qLabel} id="gd-q-timeline">When do you expect to buy?</span>
+                  <GuideChoices label="When do you expect to buy?" options={opts.timeline} value={timeline} onPick={(c) => setTimeline(timeline === c ? "" : c)}/>
+                </div>
+                <div>
+                  <label style={qLabel} htmlFor="gd-area">Where are you looking?</label>
+                  <input id="gd-area" className="gd-in" type="text" maxLength={80} autoComplete="off" placeholder={guide.countyName ? "City or neighborhood" : "City or county"} value={area} onChange={(e) => setArea(e.target.value)}/>
+                </div>
+                <div>
+                  <span style={qLabel}>What worries you most? Pick up to 3.</span>
+                  <GuideChoices label="What worries you most" options={opts.concerns} value={concerns} onPick={toggleConcern} multi/>
+                </div>
+                <div>
+                  <span style={qLabel}>Do you have an agent yet?</span>
+                  <GuideChoices label="Do you have an agent yet" options={opts.agent} value={agent} onPick={(c) => setAgent(agent === c ? "" : c)}/>
+                </div>
+              </div>
+              <button type="button" className="gd-btn" onClick={saveDetails} disabled={saving} style={{marginTop:20,background:"#234A3D",color:"#F4EDDF"}}>{saving ? "Saving…" : "Save my answers"}</button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={S.page}>
-      <a href="#guides-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
-
-      {/* ── NAV ── */}
-      <nav style={S.nav} role="banner">
-        <a href="/" style={S.navBrand} aria-label="Steadwell homepage">
-          <span style={S.tile}><HM /></span>
-          <span style={S.wm}>Steadwell</span>
-        </a>
-        <div style={{display:"flex",gap:24,alignItems:"center"}}>
-          <a href="/blog" style={S.navLink}>Blog</a>
-          <a href="/" style={{...S.navLink,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",padding:"6px 16px",borderRadius:20,color:"#F4EDDF",fontWeight:600}}>Sign in →</a>
+    <form onSubmit={submit} noValidate>
+      <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.4rem",color:"#234A3D",margin:"0 0 6px"}}>Get the free preview</h3>
+      <p style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.55,margin:"0 0 18px"}}>We'll show you the link right away and email a copy.</p>
+      <div style={{display:"flex",flexDirection:"column",gap:18}}>
+        <div>
+          <label htmlFor="gd-email" style={qLabel}>Your email</label>
+          <input id="gd-email" className="gd-in" type="email" inputMode="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}/>
         </div>
-      </nav>
+        <div>
+          <span style={qLabel}>Where are you in the process?</span>
+          <GuideChoices label="Where are you in the process" options={opts.stage} value={stage} onPick={setStage}/>
+        </div>
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={hp} onChange={(e) => setHp(e.target.value)} style={{position:"absolute",left:"-9999px",width:1,height:1,opacity:0}}/>
+        <GuideConsent id="gd-consent" checked={consent} onChange={setConsent}>
+          {GUIDE_CONSENT_TEXT} <a href="/privacy" style={{color:"#A5472A",fontWeight:600}}>Privacy Policy</a>
+        </GuideConsent>
+      </div>
+      {err && <div role="alert" style={{marginTop:14,padding:"10px 14px",borderRadius:10,background:"#F9E4DC",color:"#7E3419",fontSize:".9rem",fontWeight:600,lineHeight:1.45}}>{err}</div>}
+      <button type="submit" className="gd-btn" disabled={busy} style={{marginTop:18,width:"100%",background:"#C16140",color:"#fff"}}>{busy ? "Sending…" : "Send me the free preview"}</button>
+    </form>
+  );
+}
 
-      {/* ── HERO ── */}
-      <section style={{...S.hero, padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)"}}>
-        <div style={{maxWidth:700,margin:"0 auto"}}>
-          <div style={S.eyebrow}>First-Time Homebuyer Guides · 2026 Edition</div>
-          <h1 style={S.h1}>Buy your first home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>with confidence.</em></h1>
-          <p style={S.heroSub}>State-specific guides covering every program, law, inspection, and trap first-time buyers face — written clearly, without the jargon.</p>
-          <div style={S.pillRow}>
-            {["All 50 States","Instant Download","2026 Edition","One-Time Purchase","No Subscription"].map(p=>(
-              <span key={p} style={S.pill}>{p}</span>
-            ))}
+// Hub-only form: people in a state with no guide yet. Saves their state so we know what to write next.
+function GuideWaitlistForm() {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [hp, setHp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const em = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { setErr(GUIDE_ERRORS.invalid_email); return; }
+    if (!state) { setErr("Choose your state."); return; }
+    if (!consent) { setErr(GUIDE_ERRORS.consent_required); return; }
+    setErr(""); setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("guide-preview", {
+        body: { mode: "waitlist", email: em, area: state, consent: true, consentVersion: GUIDE_CONSENT_VERSION, sourcePath: window.location.pathname, website: hp },
+      });
+      if (error || !data || !data.ok) { const code = error ? await guideFnErrorCode(error) : null; setErr(GUIDE_ERRORS[code] || GUIDE_ERRORS.default); return; }
+      setDone(true);
+    } catch { setErr(GUIDE_ERRORS.default); }
+    finally { setBusy(false); }
+  };
+  if (done) return <p role="status" style={{fontSize:"1rem",color:"#234A3D",fontWeight:600,lineHeight:1.5,margin:0}}>Thanks. We'll write your state's guide in the order people ask for them.</p>;
+  return (
+    <form onSubmit={submit} noValidate style={{display:"flex",flexDirection:"column",gap:16}}>
+      <div>
+        <label htmlFor="gw-state" style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:8,display:"block"}}>Your state</label>
+        <select id="gw-state" className="gd-in" value={state} onChange={(e) => setState(e.target.value)} style={{appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 5 4.5-5' stroke='%232A2723' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center",paddingRight:36}}>
+          <option value="">Choose a state</option>
+          {STATES.filter((s) => !guideStates().some((g) => g.stateName === s)).map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="gw-email" style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:8,display:"block"}}>Your email</label>
+        <input id="gw-email" className="gd-in" type="email" inputMode="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}/>
+      </div>
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={hp} onChange={(e) => setHp(e.target.value)} style={{position:"absolute",left:"-9999px",width:1,height:1,opacity:0}}/>
+      <GuideConsent id="gw-consent" checked={consent} onChange={setConsent}>
+        Email me when my state's guide is ready, plus occasional home-buying tips from Steadwell. I can unsubscribe at any time. <a href="/privacy" style={{color:"#A5472A",fontWeight:600}}>Privacy Policy</a>
+      </GuideConsent>
+      {err && <div role="alert" style={{padding:"10px 14px",borderRadius:10,background:"#F9E4DC",color:"#7E3419",fontSize:".9rem",fontWeight:600,lineHeight:1.45}}>{err}</div>}
+      <button type="submit" className="gd-btn" disabled={busy} style={{background:"#C16140",color:"#fff"}}>{busy ? "Saving…" : "Tell me when it's ready"}</button>
+    </form>
+  );
+}
+
+function GuideCrumbs({ trail }) {
+  return (
+    <nav aria-label="Breadcrumb" style={{background:"#1D3D32",padding:"10px 24px"}}>
+      <ol style={{listStyle:"none",margin:"0 auto",padding:0,maxWidth:1080,display:"flex",flexWrap:"wrap",gap:"2px 8px",fontSize:".82rem",color:"rgba(244,237,223,.7)"}}>
+        {trail.map((t, i) => (
+          <li key={t.path} style={{display:"flex",alignItems:"center",gap:8}}>
+            {i > 0 && <span aria-hidden="true">/</span>}
+            {i < trail.length - 1
+              ? <a className="gd-link" href={t.path} style={{color:"rgba(244,237,223,.85)",textDecoration:"none",padding:"8px 0",display:"inline-block"}}>{t.name}</a>
+              : <span aria-current="page" style={{color:"#F4EDDF",fontWeight:600,padding:"8px 0"}}>{t.name}</span>}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+function GuideBuyCard({ title, price, was, note, points, featured = false }) {
+  const bg = featured ? "#234A3D" : "#fff";
+  const fg = featured ? "#F4EDDF" : GD_INK;
+  const soft = featured ? "rgba(244,237,223,.72)" : GD_SOFT;
+  return (
+    <div style={{boxSizing:"border-box",background:bg,color:fg,border:"1px solid "+(featured?"#234A3D":GD_LINE),borderRadius:18,padding:"24px 22px",display:"flex",flexDirection:"column",textAlign:"left"}}>
+      <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.2rem",lineHeight:1.25}}>{title}</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap",margin:"10px 0 4px"}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"2.4rem",lineHeight:1,letterSpacing:"-.02em"}}>{price}</span>
+        {was && <span style={{fontSize:".95rem",color:soft,textDecoration:"line-through"}}>{was}</span>}
+      </div>
+      <div style={{fontSize:".85rem",color:soft,marginBottom:16}}>{note}</div>
+      <ul style={{listStyle:"none",margin:"0 0 20px",padding:0,display:"flex",flexDirection:"column",gap:9,flex:1}}>
+        {points.map((p) => (
+          <li key={p} style={{display:"flex",gap:10,fontSize:".92rem",lineHeight:1.45,color:featured?"rgba(244,237,223,.9)":GD_SOFT}}>
+            <span aria-hidden="true" style={{color:featured?"#F0CE7A":"#234A3D",fontWeight:800}}>✓</span><span>{p}</span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="gd-btn" disabled aria-disabled="true" style={{background:featured?"rgba(244,237,223,.14)":"#EFE7D7",color:featured?"#F4EDDF":GD_SOFT,borderColor:featured?"rgba(244,237,223,.25)":"#D9CFBC"}}>Checkout opens soon</button>
+    </div>
+  );
+}
+
+const GUIDE_AI_NOTE = "Steadwell's buyer guides are researched and written with AI assistance and reviewed for accuracy before publication. They are general information, not legal, tax, insurance, financial or real estate advice. Laws, programs and prices change, so confirm details with the responsible agency and licensed professionals before you act.";
+
+function guideFaq(g) {
+  const pv = g.preview;
+  const pages = pv ? pv.pages[1] - pv.pages[0] + 1 : 0;
+  const list = [
+    ["Who is this guide for?", g.kind === "state"
+      ? `People buying a home to live in, especially first-time buyers. It walks through the whole process in order, with the ${g.stateName}-specific parts in depth.`
+      : `People buying a home to live in in ${g.countyName} County, especially first-time buyers. It covers what is specific to ${g.countyName}: local risk maps, programs, taxes and offices.`],
+    ["How current is it?", `Information is current as of ${g.currentAsOf}. Program funding, income limits, insurance rules and tax rates change, so every figure in the guide is dated and sourced. Confirm anything you rely on with the agency or your lender.`],
+  ];
+  if (g.kind === "county") {
+    const b = bundleFor(g.id);
+    list.push(["Do I need the Florida state guide too?", `This guide is designed to sit alongside the ${g.stateName} state guide, which explains the statewide topics in depth: loans, inspections, contracts, insurance law, condo rules and homestead. Buying both as a bundle costs ${usd(GUIDE_PRICES.bundle)} instead of ${b ? usd(b.separate) : usd(GUIDE_PRICES.state + GUIDE_PRICES.county)}.`]);
+  } else {
+    list.push(["Does it cover my county?", `The state guide covers the statewide rules. County guides cover the local details, and ${countyGuides(g.stateSlug).map((c) => c.countyName + " County").join(", ") || "more counties"} ${countyGuides(g.stateSlug).length ? "is available now. More counties are planned." : "are planned."}`]);
+  }
+  list.push(
+    ["What do I get with the free preview?", `${pages} pages of the real guide, as a PDF. It includes: ${pv ? pv.includes.map((x) => x.replace(/\.$/, "")).join("; ") : ""}. You'll give us an email address and answer one question about where you are in the process.`],
+    ["How is the full guide delivered?", "As a PDF you can read on any device and print. Checkout isn't open yet. The free preview is available now."],
+    ["Can I get a refund?", "All guide sales are final. Because the file is available for download immediately after purchase, we don't offer refunds for change of mind or content preference. If your file is corrupted, blank, or unreadable, email hello@trysteadwell.app within 48 hours of purchase and we'll send a working replacement."],
+    ["Was this guide written by AI?", GUIDE_AI_NOTE],
+  );
+  return list;
+}
+
+function GuideDetailPage({ guide: g }) {
+  const trail = [{ name: "Steadwell", path: "/" }, { name: "Buyer guides", path: "/guides" }];
+  if (g.kind === "county") trail.push({ name: g.stateName, path: "/guides/" + g.stateSlug });
+  trail.push({ name: g.kind === "state" ? g.stateName : g.countyName + " County", path: g.path });
+  const faq = guideFaq(g);
+  const pv = g.preview;
+  const pvPages = pv ? pv.pages[1] - pv.pages[0] + 1 : 0;
+  const stateG = g.kind === "county" ? stateGuide(g.stateSlug) : null;
+  const counties = g.kind === "state" ? countyGuides(g.stateSlug) : [];
+  const bundles = g.kind === "county" ? [bundleFor(g.id)].filter(Boolean) : counties.map((c) => bundleFor(c.id)).filter(Boolean);
+
+  useSEO({
+    title: g.seo.title,
+    description: g.seo.description,
+    canonical: `${SEO_SITE_URL}${g.path}`,
+    jsonLd: guideJsonLd({ name: g.title, path: g.path, description: g.seo.description, trail, faq }),
+  });
+
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK}}>
+      <style>{GUIDE_CSS}</style>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/guides",label:"Buyer guides"},{href:"/blog",label:"Blog"},{href:"/pricing",label:"Pricing"}]}/>
+      <GuideCrumbs trail={trail}/>
+
+      <section style={{background:"#234A3D",padding:"clamp(44px,7vw,72px) 24px clamp(52px,7vw,80px)",textAlign:"center"}}>
+        <div style={{maxWidth:720,margin:"0 auto"}}>
+          <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".82rem",color:"rgba(244,237,223,.85)",fontWeight:600,marginBottom:18}}>{g.kind === "state" ? "State guide" : "County guide"} · {g.edition} edition</div>
+          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.1rem,5vw,3.3rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 18px"}}>{g.title}</h1>
+          <p style={{fontSize:"1.08rem",color:"rgba(244,237,223,.75)",maxWidth:"34rem",margin:"0 auto 28px",lineHeight:1.6}}>{g.tagline}</p>
+          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:18}}>
+            <a className="gd-btn" href="#preview" style={{background:"#C16140",color:"#fff"}}>Get the free preview</a>
+            <a className="gd-btn" href="#inside" style={{background:"transparent",color:"#F4EDDF",borderColor:"rgba(244,237,223,.4)"}}>See what's inside</a>
           </div>
+          <div style={{fontSize:".88rem",color:"rgba(244,237,223,.65)"}}>{g.pages}-page PDF · Checked {g.currentAsOf} · {usd(g.kind === "state" ? GUIDE_PRICES.state : GUIDE_PRICES.county)} one-time</div>
         </div>
       </section>
 
-      {/* ── MAIN ── */}
-      <main id="guides-main" tabIndex={-1}>
-
-        {/* ── STATE PICKER + PRODUCT CARDS ── */}
-        <section style={S.section}>
-          <div style={S.wrap}>
-            <h2 style={S.h2}>Pick your state</h2>
-            <p style={S.h2sub}>Each guide is researched and written specifically for that state — programs, laws, climate, and county data are all local.</p>
-
-            <div style={S.stateBar}>
-              <div style={S.stateLabel}>Select your state</div>
-              <select
-                style={S.stateSelect}
-                value={selectedState}
-                onChange={e=>setSelectedState(e.target.value)}
-                aria-label="Select state"
-              >
-                {STATES.map(s=><option key={s} value={s}>{s}</option>)}
-              </select>
-              <div style={S.stateFactBox}>
-                <span style={S.stateEmoji}>{fact.emoji}</span>
-                <span style={S.stateFactText}><strong style={{color:"#234A3D"}}>{selectedState}:</strong> {fact.tagline}</span>
-              </div>
-            </div>
-
-            {/* Product cards */}
-            <div style={S.cards}>
-              {tiers.map(t => {
-                const isFeat = t.featured;
-                return (
-                  <div key={t.key}
-                    style={isFeat ? S.cardFeatured : S.card}
-                    onMouseEnter={e=>{ if(!isFeat){ e.currentTarget.style.boxShadow="0 8px 28px rgba(35,74,61,.1)"; e.currentTarget.style.transform="translateY(-2px)"; }}}
-                    onMouseLeave={e=>{ if(!isFeat){ e.currentTarget.style.boxShadow=""; e.currentTarget.style.transform=""; }}}
-                  >
-                    <div style={isFeat ? S.cardTopFeatured : S.cardTop}>
-                      {t.badgeText && (
-                        <div style={{marginBottom:12}}>
-                          <span style={{...S.badge,background:t.badgeBg,color:"#fff"}}>{t.badgeText}</span>
-                        </div>
-                      )}
-                      <div style={isFeat ? S.tierFeatured : S.tier}>{t.label}</div>
-                      <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                        <div style={isFeat ? S.priceFeatured : S.price}>{t.price}</div>
-                        {t.wasPrice && <div style={{fontSize:".9rem",color:"rgba(244,237,223,.4)",textDecoration:"line-through"}}>{t.wasPrice}</div>}
-                      </div>
-                      <div style={isFeat ? S.priceNoteFeatured : S.priceNote}>{t.note}</div>
-                    </div>
-                    <div style={isFeat ? S.dividerFeatured : S.divider}/>
-                    <div style={S.feats}>
-                      {t.features.map((f,i)=>(
-                        <div key={i} style={isFeat ? S.featFeatured : S.feat}>
-                          <div style={isFeat ? S.checkFeatured : S.check}>✓</div>
-                          <span>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={S.cardFoot}>
-                      <button
-                        style={{...S.btn,...(isFeat ? S.btnFeatured : t.key==="state" ? S.btnPrimary : S.btnOutline)}}
-                        onClick={()=>handleBuy(t.key)}
-                        disabled={purchasing===t.key}
-                        onMouseEnter={e=>{ e.currentTarget.style.opacity=".88"; e.currentTarget.style.transform="translateY(-1px)"; }}
-                        onMouseLeave={e=>{ e.currentTarget.style.opacity="1"; e.currentTarget.style.transform=""; }}
-                      >
-                        {purchasing===t.key ? "Loading…" : `Get the ${t.label} →`}
-                      </button>
-                      <div style={isFeat ? S.includesFeatured : S.includes}>📄 {t.includes}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* ── APP UPSELL ── */}
-        <section style={{background:"#234A3D",padding:"48px 24px"}}>
-          <div style={{maxWidth:960,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,420px),1fr))",gap:"2.5rem",alignItems:"center"}}>
-            <div>
-              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#D2876A",marginBottom:12}}>After you close</div>
-              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#F4EDDF",lineHeight:1.15,letterSpacing:"-.02em",marginBottom:12}}>Then track your home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>for free.</em></h2>
-              <p style={{fontSize:"1rem",color:"rgba(244,237,223,.6)",lineHeight:1.7,marginBottom:24}}>Once you close, Steadwell keeps your home running. Warranties, maintenance, contractors, documents, and costs — all in one place. Free to start, no credit card required.</p>
-              <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-                <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:700,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Try Steadwell free →</a>
-                <a href="/pricing" style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"#F4EDDF",textDecoration:"none",padding:".8rem 1.75rem",borderRadius:10,fontWeight:600,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>See Plus & Pro plans</a>
-              </div>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {[
-                {icon:"🔖",title:"Warranty tracking",desc:"Scan your first receipt and we track the warranty automatically"},
-                {icon:"🔔",title:"Safety recall alerts",desc:"Every appliance checked against the CPSC recall database"},
-                {icon:"📋",title:"Maintenance schedules",desc:"Reminders 3 days before anything is due"},
-                {icon:"💸",title:"5-year cost forecast",desc:"Know what your home will cost before it surprises you"},
-              ].map((f,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 16px",background:"rgba(244,237,223,.05)",borderRadius:10,border:"1px solid rgba(244,237,223,.08)"}}>
-                  <span style={{fontSize:"1.1rem",flexShrink:0,marginTop:2}}>{f.icon}</span>
-                  <div>
-                    <div style={{fontSize:".88rem",fontWeight:700,color:"#F4EDDF",marginBottom:2}}>{f.title}</div>
-                    <div style={{fontSize:".78rem",color:"rgba(244,237,223,.45)",lineHeight:1.5}}>{f.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── WHY THESE GUIDES ── */}
-        <section style={S.sectionDark}>
-          <div style={S.wrap}>
-            <h2 style={S.h2}>Why these guides exist</h2>
-            <p style={S.h2sub}>Most homebuyer resources are generic. These aren't.</p>
-            <div style={S.whyGrid}>
-              {[
-                { icon:"📍", title:"State-specific, not generic", text:"Every guide covers the programs, laws, climate risks, and inspection requirements specific to that state. Florida's sinkhole guidance doesn't belong in a Texas guide." },
-                { icon:"💰", title:"Every assistance program listed", text:"State housing finance programs, SHIP funds, down payment assistance, and mortgage credit certificates — all sourced and explained for your state." },
-                { icon:"🔍", title:"County-level intelligence", text:"The county pack goes deeper — median prices, local programs, school district overviews, flood zones, and neighborhood notes for every county in the state." },
-                { icon:"📋", title:"Checklists you'll actually use", text:"Property viewing sheets, inspection checklists, comparison tables, and disclosure law summaries. Print them, bring them, use them." },
-                { icon:"⚖️", title:"Disclosure laws explained plainly", text:"Know exactly what sellers are required to tell you — and what they aren't. Translated from legalese into plain language." },
-                { icon:"🏡", title:"Bridges to homeownership", text:"After you close, Steadwell tracks your maintenance, warranties, and costs automatically. Every guide ends with a walkthrough of what comes next." },
-              ].map((w,i)=>(
-                <div key={i} style={S.whyCard}>
-                  <div style={S.whyIcon}>{w.icon}</div>
-                  <div style={S.whyTitle}>{w.title}</div>
-                  <div style={S.whyText}>{w.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── WHAT'S INSIDE ── */}
-        <section style={S.section}>
-          <div style={S.wrap}>
-            <h2 style={S.h2}>What's inside every state guide</h2>
-            <p style={S.h2sub}>17 pages of state-specific content — not filler.</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
-              {[
-                ["01","Housing Market Overview","Median prices, regional breakdowns & state-specific challenges"],
-                ["02","Loan Types & Finances","FHA, VA, USDA, Conventional — limits & requirements for your state"],
-                ["03","Assistance Programs","Every state & local down payment program, grant & MCC available"],
-                ["04","The Buying Process","Step-by-step closing timeline, title vs. attorney states, cost breakdown"],
-                ["05","Disclosure Laws","What sellers must tell you — and what they don't have to"],
-                ["06","Climate & Maintenance","Seasonal maintenance calendar, natural hazard guidance"],
-                ["07","Pests & Hazards","State-specific environmental risks, species guides"],
-                ["08","Inspection Checklist","Room-by-room checklist tailored to your state's common issues"],
-                ["09","Tax Benefits","Homestead exemption, property tax caps, portability rules"],
-                ["10","Property Notes","5 viewing sheets + comparison table — print and bring"],
-              ].map(([num,title,desc])=>(
-                <div key={num} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:12,padding:"16px 18px",display:"flex",gap:14,alignItems:"flex-start"}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:".85rem",color:"#C16140",flexShrink:0,marginTop:1}}>{num}</div>
-                  <div>
-                    <div style={{fontWeight:600,fontSize:".88rem",color:"#2A2723",marginBottom:3}}>{title}</div>
-                    <div style={{fontSize:".78rem",color:"#9E9690",lineHeight:1.5}}>{desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FAQ ── */}
-        <section style={S.sectionDark}>
-          <div style={{...S.wrap,maxWidth:720}}>
-            <h2 style={S.h2}>Common questions</h2>
-            <p style={S.h2sub}>Everything you need to know before buying.</p>
-            {[
-              ["How do I receive my guide?","Immediately after purchase you'll receive an email with a secure download link. The link is valid for 24 hours. If you need it re-sent, email hello@trysteadwell.app."],
-              ["Are these guides updated for 2026?","Yes. Every guide reflects 2026 program limits, income thresholds, and state law changes — including new flood disclosure requirements and updated FHA loan limits."],
-              ["What's the difference between the State Guide and County Pack?","The State Guide covers statewide programs, laws, and processes. The County Intelligence Pack goes deeper — covering every county individually with local market data, county-specific assistance programs, and neighborhood notes."],
-              ["Can I get a refund?","All guide sales are final. Because the file is available for download immediately after purchase, we don't offer refunds for change of mind or content preference. If your file is corrupted, blank, or unreadable, email hello@trysteadwell.app within 48 hours of purchase and we'll send a working replacement."],
-              ["Do I need a Steadwell account to buy?","No. You can purchase any guide as a guest. A Steadwell account isn't required — though we think you'll want one once you close on your home."],
-              ["Is this legal or financial advice?","No. These guides are educational resources. For legal advice consult a licensed real estate attorney. For financial advice consult a licensed advisor or HUD-approved housing counselor."],
-            ].map(([q,a],i)=>(
-              <div key={i} style={S.faqItem}>
-                <div style={S.faqQ}>{q}</div>
-                <div style={S.faqA}>{a}</div>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="A few numbers from the guide" sub={`Dated and sourced. Everything is checked as of ${g.currentAsOf}.`}/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,230px),1fr))",gap:14}}>
+            {g.facts.map((f) => (
+              <div key={f.value} style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"20px 22px",textAlign:"left"}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(1.5rem,3vw,1.9rem)",color:"#234A3D",lineHeight:1.1,letterSpacing:"-.02em",marginBottom:8,overflowWrap:"anywhere"}}>{f.value}</div>
+                <div style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.5,marginBottom:10}}>{f.label}</div>
+                <div style={{fontSize:".78rem",color:"#8A8279"}}>Source: {f.source}</div>
               </div>
             ))}
           </div>
-        </section>
+        </LPSection>
 
-        {/* ── STEADWELL CTA ── */}
-        <section style={S.cta}>
-          <div style={{maxWidth:580,margin:"0 auto"}}>
-            <div style={{fontSize:"2rem",marginBottom:16}}>🏠</div>
-            <h2 style={S.ctaH}>After you close,<br/>Steadwell keeps you covered.</h2>
-            <p style={S.ctaSub}>Track maintenance schedules, warranties, repair costs, and documents — all in one place. Built for homeowners who want to stay ahead, not catch up.</p>
-            <a href="/" style={S.ctaBtn}>Try Steadwell free →</a>
-            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>Free to start · No credit card required</div>
+        <LPSection alt id="inside">
+          <LPSectionHead h2="What's inside" sub={`${g.chapters.length} chapters, plus checklists you can print.`}/>
+          <div className="gd-split">
+            <div>
+              <ul style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column",gap:14}}>
+                {g.inside.map((t) => (
+                  <li key={t} style={{display:"flex",gap:12,fontSize:"1rem",lineHeight:1.5,color:GD_INK}}>
+                    <span aria-hidden="true" style={{width:22,height:22,borderRadius:"50%",background:"#234A3D",color:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".72rem",fontWeight:800,flexShrink:0,marginTop:2}}>✓</span><span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <ol style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column"}}>
+              {g.chapters.map((c) => (
+                <li key={c.n} style={{display:"flex",gap:14,padding:"14px 0",borderTop:"1px solid "+GD_LINE}}>
+                  <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1rem",color:"#C16140",minWidth:24}}>{c.n}</span>
+                  <span>
+                    <span style={{display:"block",fontWeight:700,fontSize:".98rem",color:"#234A3D",marginBottom:2}}>{c.title}</span>
+                    <span style={{display:"block",fontSize:".9rem",color:GD_SOFT,lineHeight:1.5}}>{c.summary}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
-        </section>
-      </main>
+        </LPSection>
 
-      {/* ── FOOTER ── */}
-      <footer role="contentinfo" style={S.foot}>
-        <span>© 2026 Steadwell, LLC. All rights reserved.</span>
-        <div style={S.footLinks}>
-          <a href="/terms" style={S.footA}>Terms</a>
-          <a href="/privacy" style={S.footA}>Privacy</a>
-          <a href="/ada" style={S.footA}>Accessibility</a>
-          <a href="mailto:hello@trysteadwell.app" style={S.footA}>Contact</a>
-        </div>
-      </footer>
+        {pv && (
+          <LPSection id="preview">
+            <div className="gd-split">
+              <div>
+                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 10px"}}>Read the first {pvPages} pages free</h2>
+                <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.65,margin:"0 0 18px"}}>These are real pages from the guide, not a summary. You'll see how the full guide is written before you decide.</p>
+                <ul style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column",gap:10}}>
+                  {pv.includes.map((t) => (
+                    <li key={t} style={{display:"flex",gap:10,fontSize:".95rem",lineHeight:1.5,color:GD_INK}}>
+                      <span aria-hidden="true" style={{color:"#234A3D",fontWeight:800}}>✓</span><span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"clamp(20px,4vw,28px)",boxShadow:"0 8px 28px rgba(35,74,61,.08)"}}>
+                <GuideLeadForm guide={g}/>
+              </div>
+            </div>
+          </LPSection>
+        )}
+
+        <LPSection alt id="buy">
+          <LPSectionHead h2="Get the full guide" sub="One-time purchase. Instant PDF download. No subscription."/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:18}}>
+            {g.kind === "state" ? (
+              <GuideBuyCard title={g.shortName} price={usd(GUIDE_PRICES.state)} note="One-time purchase · PDF download"
+                points={[`${g.chapters.length} chapters covering the whole ${g.stateName} buying process`, "Checklists, glossary and sources you can print", `Checked ${g.currentAsOf}`]}/>
+            ) : (
+              <GuideBuyCard title={g.shortName} price={usd(GUIDE_PRICES.county)} note="One-time purchase · PDF download"
+                points={[`${g.chapters.length} chapters on ${g.countyName} County: risk maps, programs, taxes and offices`, "Local checklists and phone numbers", `Checked ${g.currentAsOf}`]}/>
+            )}
+            {bundles.map((b) => (
+              <GuideBuyCard key={b.county.id} featured title={`${b.state.stateName} guide + ${b.county.countyName} County guide`} price={usd(b.price)} was={usd(b.separate)}
+                note={`Save ${usd(b.saves)} · PDF downloads`}
+                points={["The state guide for the statewide rules", `The ${b.county.countyName} County guide for the local details`, "Designed to be read together"]}/>
+            ))}
+          </div>
+          {BUNDLE_TRIAL.enabled && bundles.length > 0 && (
+            <p style={{fontSize:".9rem",color:GD_SOFT,lineHeight:1.55,margin:"18px 0 0"}}>Bundle buyers can add {Math.round(BUNDLE_TRIAL.days / 30)} months of Steadwell Plus free. A card is required, and Plus renews at its regular price unless you cancel before the trial ends.</p>
+          )}
+          <p style={{fontSize:".9rem",color:GD_SOFT,lineHeight:1.55,margin:"16px 0 0"}}>Checkout isn't open yet. <a className="gd-link" href="#preview" style={{color:"#A5472A",fontWeight:700}}>Get the free preview</a> to read the first pages now.</p>
+        </LPSection>
+
+        {(stateG || counties.length > 0) && (
+          <LPSection>
+            <LPSectionHead h2={g.kind === "county" ? `Part of the ${g.stateName} guides` : `${g.stateName} county guides`} sub={g.kind === "county" ? "Read the statewide rules alongside the local details." : "The local details the state guide points to."}/>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16}}>
+              {(stateG ? [stateG] : counties).map((o) => (
+                <a key={o.id} className="gd-link" href={o.path} style={{display:"block",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"20px 22px",textDecoration:"none",color:GD_INK}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",marginBottom:6}}>{o.title}</div>
+                  <div style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.5,marginBottom:10}}>{o.tagline}</div>
+                  <span style={{fontWeight:700,fontSize:".9rem",color:"#A5472A"}}>View the guide</span>
+                </a>
+              ))}
+            </div>
+          </LPSection>
+        )}
+
+        <LPSection alt narrow id="faq">
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={faq}/>
+        </LPSection>
+
+        <LPCTA h2="After you close, keep your home on track." sub="Steadwell tracks your warranties, maintenance, insurance and documents in one place. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
+      </main>
+      <LPFooter/>
     </div>
   );
+}
+
+const GUIDES_HUB_FAQ = [
+  ["Which guides are available?", "The Florida First-Time Buyer Guide and the Pinellas County guide are ready now. More states and counties are planned. Tell us your state below and we'll write guides in the order people ask for them."],
+  ["What's the difference between a state guide and a county guide?", "The state guide covers the statewide rules: loans, inspections, contracts, insurance, closing costs and property taxes. A county guide covers the local details: risk maps, down payment programs, tax rates, local offices and what to watch for in that county."],
+  ["How current are the guides?", "Each guide says when it was checked, and every figure is dated and sourced. Program funding, income limits, insurance rules and tax rates change, so confirm anything you rely on with the agency or your lender."],
+  ["Is this legal or financial advice?", GUIDE_AI_NOTE],
+];
+
+function GuidesPage() {
+  const states = guideStates();
+  const trail = [{ name: "Steadwell", path: "/" }, { name: "Buyer guides", path: "/guides" }];
+  const description = `First-time buyer guides with local detail: flood zones, inspections, insurance, closing costs and down payment help. Florida and Pinellas County are ready, checked ${GUIDE_CURRENT_AS_OF}.`;
+  useSEO({
+    title: "First-Time Buyer Guides: Florida and Pinellas County",
+    description,
+    canonical: `${SEO_SITE_URL}/guides`,
+    jsonLd: guideJsonLd({ name: "Steadwell first-time buyer guides", path: "/guides", description, trail, faq: GUIDES_HUB_FAQ, list: liveGuides() }),
+  });
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK}}>
+      <style>{GUIDE_CSS}</style>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={[{href:"/blog",label:"Blog"},{href:"/pricing",label:"Pricing"}]}/>
+      <LPHero eyebrow={`First-time buyer guides · ${GUIDE_EDITION} edition`} h1="Buy your first home" h1em="with confidence." sub="Plain-English guides with the local detail your state and county add: flood zones, inspections, insurance, closing costs and down payment help." badge={`Checked ${GUIDE_CURRENT_AS_OF} · Instant PDF download · One-time purchase`}/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <LPSectionHead h2="Available now" sub="Start with the free preview of any guide."/>
+          {states.map((s) => (
+            <div key={s.stateSlug} style={{marginBottom:24}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16}}>
+                {[s.state, ...s.counties].filter(Boolean).map((g) => (
+                  <a key={g.id} className="gd-link" href={g.path} style={{display:"flex",flexDirection:"column",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"24px 22px",textDecoration:"none",color:GD_INK}}>
+                    <div style={{fontSize:".82rem",fontWeight:700,color:"#A5472A",marginBottom:8}}>{g.kind === "state" ? `${g.stateName} state guide` : `${g.countyName} County guide`}</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.3rem",color:"#234A3D",lineHeight:1.2,marginBottom:8}}>{g.title}</div>
+                    <div style={{fontSize:".95rem",color:GD_SOFT,lineHeight:1.5,flex:1,marginBottom:14}}>{g.tagline}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                      <span style={{fontSize:".88rem",color:GD_SOFT}}>{g.pages} pages · {usd(g.kind === "state" ? GUIDE_PRICES.state : GUIDE_PRICES.county)}</span>
+                      <span style={{fontWeight:700,fontSize:".9rem",color:"#A5472A"}}>View the guide</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+              {s.counties.length > 0 && <p style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.55,margin:"16px 0 0"}}>Buy a {s.stateName} state guide and a county guide together for {usd(GUIDE_PRICES.bundle)} instead of {usd(GUIDE_PRICES.state + GUIDE_PRICES.county)}.</p>}
+            </div>
+          ))}
+        </LPSection>
+
+        <LPSection alt>
+          <div className="gd-split">
+            <div>
+              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 10px"}}>Not in Florida?</h2>
+              <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.65,margin:0}}>Tell us your state. We write guides in the order people ask for them, and we'll email you when yours is ready.</p>
+            </div>
+            <div style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"clamp(20px,4vw,28px)"}}>
+              <GuideWaitlistForm/>
+            </div>
+          </div>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="What makes these different"/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,260px),1fr))",gap:16}}>
+            {[
+              ["Local, not generic", "A state guide covers statewide rules. A county guide covers the details that change your decision: risk maps, programs, tax rates and offices."],
+              ["Dated and sourced", `Every guide says when it was checked, and its figures are dated and sourced so you can confirm them.`],
+              ["Made to use", "Checklists, a glossary and a first-year plan you can print and bring to showings, inspections and closing."],
+            ].map(([t, d]) => (
+              <div key={t} style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"22px"}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",marginBottom:8}}>{t}</div>
+                <div style={{fontSize:".95rem",color:GD_SOFT,lineHeight:1.6}}>{d}</div>
+              </div>
+            ))}
+          </div>
+        </LPSection>
+
+        <LPSection alt narrow id="faq">
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={GUIDES_HUB_FAQ}/>
+        </LPSection>
+
+        <LPCTA h2="After you close, keep your home on track." sub="Steadwell tracks your warranties, maintenance, insurance and documents in one place. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
+      </main>
+      <LPFooter/>
+    </div>
+  );
+}
+
+// One component for every /guides URL. It reads the path itself so the build-time prerender and the
+// browser both land on the right page. An unknown /guides/... URL is a 404 page marked noindex.
+function GuideRoute() {
+  const raw = typeof window !== "undefined" ? window.location.pathname : (globalThis.__SW_PATH__ || "/guides");
+  const p = (raw.replace(/\/+$/, "") || "/").toLowerCase();
+  if (p === "/guides") return <GuidesPage />;
+  const g = guideByPath(p);
+  return g ? <GuideDetailPage guide={g} /> : <NotFoundPage what="guide" />;
 }
 
 function TermsPage() {
@@ -32141,7 +32298,8 @@ export const PRERENDER_PAGES = {
   "/terms": TermsPage,
   "/privacy": PrivacyPage,
   "/ada": ADAPage,
-  "/guides": GuidesPage,
+  "/guides": GuideRoute,
+  ...Object.fromEntries(guidePagePaths().filter((p) => p !== "/guides").map((p) => [p, GuideRoute])),
   "/affiliates": AffiliatesPage,
   "/affiliate-agreement": AffiliateAgreementPage,
   "/for-agents": ForAgentsPage,

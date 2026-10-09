@@ -27,7 +27,7 @@ const PAGES = [
   ["/home-health-score", "2026-10-06"],
   ["/calendar-sync", "2026-10-06"],
   ["/shared-household-access", "2026-10-06"],
-  ["/guides", "2026-07-09"],
+  ["/guides", "2026-10-09"],
   ["/affiliates", "2026-09-16"],
   ["/affiliate-agreement", "2026-09-16"],
   ["/terms", "2026-09-22"],
@@ -74,8 +74,16 @@ export default async function handler(req, res) {
     });
   } catch (e) { console.error("[sitemap] overrides not applied:", e && e.message); }
 
+  // Buyer guide pages come from src/guides-registry.js, so a new guide is listed without editing this file.
+  let guidePages = [];
+  try {
+    const reg = await import("../src/guides-registry.js");
+    guidePages = reg.liveGuides().filter((g) => g.path && g.path !== "/guides").map((g) => [g.path, day(g.updated)]);
+  } catch (e) { console.error("[sitemap] guides not added:", e && e.message); }
+
   const urls = [
     ...PAGES.map(([p, lastmod]) => ({ loc: SITE + (p === "/" ? "/" : p), lastmod })),
+    ...guidePages.map(([p, lastmod]) => ({ loc: SITE + p, lastmod })),
     ...posts.filter((p) => !EXCLUDE_SLUGS.has(p.slug)).map((p) => ({ loc: `${SITE}/blog/${p.slug}`, lastmod: p.lastmod })),
   ];
   const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
