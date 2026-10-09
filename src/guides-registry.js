@@ -77,6 +77,13 @@ export const GUIDES = [
     title: "The Florida First-Time Buyer Guide",
     shortName: "Florida State Guide",
     tagline: "What to check, what to watch for, and what it really costs to buy your first home in Florida.",
+    images: {
+      cover: { src: "/guide-img/florida-cover.jpg", w: 720, h: 932, alt: "Cover of The Florida First-Time Buyer Guide" },
+      pages: [
+        { src: "/guide-img/florida-start.jpg", w: 720, h: 932, alt: "Start here page: how the guide works, dates that matter and the ten-step Florida buying timeline", label: "Start here" },
+        { src: "/guide-img/florida-dates.jpg", w: 720, h: 932, alt: "Dates that matter right now, how to use the guide, and the ten-step Florida buying timeline", label: "Dates and timeline" },
+      ],
+    },
     edition: GUIDE_EDITION,
     currentAsOf: GUIDE_CURRENT_AS_OF,
     pages: 30,
@@ -146,6 +153,13 @@ export const GUIDES = [
     title: "Buying Your First Home in Pinellas County",
     shortName: "Pinellas County Guide",
     tagline: "St. Petersburg, Clearwater, Largo, the beaches and everywhere in between.",
+    images: {
+      cover: { src: "/guide-img/pinellas-cover.jpg", w: 720, h: 932, alt: "Cover of Buying Your First Home in Pinellas County" },
+      pages: [
+        { src: "/guide-img/pinellas-start.jpg", w: 720, h: 932, alt: "Start here page: the Pinellas County market at a glance and which jurisdiction an address is in", label: "Start here" },
+        { src: "/guide-img/pinellas-offices.jpg", w: 720, h: 932, alt: "Local offices and tools page with phone numbers for Pinellas County", label: "Local offices" },
+      ],
+    },
     edition: GUIDE_EDITION,
     currentAsOf: GUIDE_CURRENT_AS_OF,
     pages: 23,
@@ -289,6 +303,9 @@ export function validateRegistry() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(g.updated || "")) out.push(tag + ": updated must be YYYY-MM-DD");
     if (!g.facts || g.facts.length < 3 || g.facts.some((f) => !f.value || !f.label || !f.source)) out.push(tag + ": facts need at least 3 entries, each with value, label and source");
     if (g.preview && (!Array.isArray(g.preview.includes) || !g.preview.includes.length)) out.push(tag + ": preview.includes missing");
+    const im = g.images;
+    if (!im || !im.cover || !Array.isArray(im.pages) || im.pages.length < 1) out.push(tag + ": images.cover and at least one images.pages entry needed");
+    else for (const x of [im.cover, ...im.pages]) if (!/^\/guide-img\/[a-z0-9-]+\.(jpg|webp|png)$/.test(x.src || "") || !(x.w > 0 && x.h > 0) || !x.alt) out.push(tag + ": image " + (x.src || "?") + " needs a /guide-img/ path, w, h and alt text");
   }
   if (!(GUIDE_PRICES.bundle < GUIDE_PRICES.state + GUIDE_PRICES.county)) out.push("bundle price must be lower than buying separately");
   if (BUNDLE_TRIAL.enabled && (!BUNDLE_TRIAL.plan || !(BUNDLE_TRIAL.days > 0) || BUNDLE_TRIAL.cardRequired !== true)) out.push("BUNDLE_TRIAL enabled without a plan, a number of days and cardRequired: true");

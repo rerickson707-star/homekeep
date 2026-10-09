@@ -1,4 +1,4 @@
-// Steadwell v345 — 2026-10-09
+// Steadwell v346 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -29286,19 +29286,51 @@ const STATES = [
 ];
 
 const GUIDE_CSS = `
-.gd-chip{min-height:44px;padding:8px 14px;border-radius:999px;border:1.5px solid #CFC5B0;background:#fff;color:#2A2723;font:600 .9rem/1.2 'Hanken Grotesk',sans-serif;cursor:pointer;text-align:left}
+.gd-chip{min-height:44px;padding:8px 16px;border-radius:999px;border:1.5px solid #CFC5B0;background:#fff;color:#2A2723;font:600 1rem/1.2 'Hanken Grotesk',sans-serif;cursor:pointer;text-align:left}
 .gd-chip[aria-checked="true"]{background:#234A3D;border-color:#234A3D;color:#F4EDDF}
 .gd-chip:hover:not([aria-checked="true"]){border-color:#234A3D}
-.gd-chip:focus-visible,.gd-box:focus-visible,.gd-btn:focus-visible,.gd-in:focus-visible,.gd-link:focus-visible{outline:3px solid #C16140;outline-offset:2px}
-.gd-in{box-sizing:border-box;width:100%;min-height:48px;padding:0 14px;border:1.5px solid #CFC5B0;border-radius:12px;background:#fff;color:#2A2723;font:400 16px 'Hanken Grotesk',sans-serif}
-.gd-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:12px;border:2px solid transparent;font:700 .95rem 'Hanken Grotesk',sans-serif;text-decoration:none;cursor:pointer;text-align:center}
+.gd-chip:focus-visible,.gd-box:focus-visible,.gd-btn:focus-visible,.gd-in:focus-visible,.gd-link:focus-visible,.gd-strip:focus-visible{outline:3px solid #C16140;outline-offset:2px}
+.gd-in{box-sizing:border-box;width:100%;min-height:50px;padding:0 14px;border:1.5px solid #CFC5B0;border-radius:12px;background:#fff;color:#2A2723;font:400 16px 'Hanken Grotesk',sans-serif}
+.gd-btn{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 26px;border-radius:12px;border:2px solid transparent;font:700 1.02rem 'Hanken Grotesk',sans-serif;text-decoration:none;cursor:pointer;text-align:center}
 .gd-btn:disabled{cursor:not-allowed}
-.gd-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,48px);align-items:start}
-@media (max-width:760px){.gd-split{grid-template-columns:minmax(0,1fr)}}
+.gd-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:start}
+.gd-sec{padding:clamp(40px,6vw,76px) 20px;scroll-margin-top:76px}
+.gd-wrap{max-width:1120px;margin:0 auto}
+.gd-h2{font:500 clamp(1.75rem,3.6vw,2.5rem)/1.1 'Fraunces',serif;color:#234A3D;letter-spacing:-.02em;margin:0 0 10px}
+.gd-sub{font-size:1.1rem;line-height:1.6;color:#4A443D;margin:0 0 28px;max-width:44rem}
+.gd-hero{background:#234A3D;color:#F4EDDF;padding:clamp(28px,5vw,64px) 20px clamp(40px,6vw,76px);overflow:hidden}
+.gd-hero-in{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:clamp(28px,5vw,72px);align-items:center;max-width:1120px;margin:0 auto}
+.gd-h1{font:500 clamp(2.15rem,5.4vw,3.6rem)/1.06 'Fraunces',serif;letter-spacing:-.025em;margin:0 0 16px;color:#F4EDDF}
+.gd-art{position:relative;width:100%;max-width:380px;margin:0 auto;aspect-ratio:720/860}
+.gd-art img{display:block;position:absolute;height:auto;border-radius:6px;box-shadow:0 26px 54px rgba(0,0,0,.38)}
+.gd-art .gd-back{width:80%;left:20%;top:9%;transform:rotate(5deg)}
+.gd-art .gd-front{width:80%;left:0;top:0;transform:rotate(-2deg)}
+.gd-actions{display:flex;gap:12px;flex-wrap:wrap}
+.gd-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2.4vw,28px)}
+.gd-strip>*{margin:0}
+.gd-strip img{display:block;width:100%;height:auto;border-radius:6px;border:1px solid #E6DECF;box-shadow:0 10px 28px rgba(35,74,61,.14);background:#fff}
+.gd-chapters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(24px,4vw,56px);margin:0;padding:0;list-style:none}
+.gd-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.gd-bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:150;background:#fff;border-top:1px solid #E6DECF;box-shadow:0 -8px 24px rgba(35,74,61,.14);padding:10px 16px calc(10px + env(safe-area-inset-bottom));align-items:center;justify-content:space-between;gap:12px;transition:transform .2s}
+.gd-bar-pad{display:none}
+@media (max-width:900px){.gd-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.gd-facts{grid-template-columns:minmax(0,1fr)}.gd-gcard{flex-direction:column;align-items:flex-start!important}.gd-gcard>img{width:120px!important}}
+@media (max-width:760px){
+  .gd-split{grid-template-columns:minmax(0,1fr)}
+  .gd-hero-in{grid-template-columns:minmax(0,1fr)}
+  .gd-art{max-width:270px}
+  .gd-actions .gd-btn{width:100%}
+  .gd-chapters{grid-template-columns:minmax(0,1fr)}
+  .gd-strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding:4px 2px 18px;-webkit-overflow-scrolling:touch}
+  .gd-strip>*{flex:0 0 72%;scroll-snap-align:start;margin:0}
+  .gd-bar{display:flex}
+  .gd-bar-pad{display:block;height:76px}
+}
+@media (prefers-reduced-motion:reduce){.gd-bar{transition:none}}
 `;
 
 const GD_INK = "#2A2723";
-const GD_SOFT = "#5E574F";
+const GD_SOFT = "#4A443D";
 const GD_LINE = "#E6DECF";
 
 const usd = (n) => "$" + Number(n).toFixed(2);
@@ -29359,7 +29391,7 @@ function GuideConsent({ checked, onChange, children, id }) {
         </span>
       </button>
       <span id={id} onClick={(e) => { if (!e.target.closest("a")) onChange(!checked); }}
-        style={{fontSize:".88rem",color:GD_SOFT,lineHeight:1.5,paddingTop:11,cursor:"pointer"}}>{children}</span>
+        style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.5,paddingTop:10,cursor:"pointer"}}>{children}</span>
     </div>
   );
 }
@@ -29432,23 +29464,23 @@ function GuideLeadForm({ guide }) {
   };
 
   const toggleConcern = (c) => setConcerns((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : cur.length < 3 ? [...cur, c] : cur));
-  const qLabel = {fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:8,display:"block"};
+  const qLabel = {fontWeight:700,fontSize:"1rem",color:"#234A3D",marginBottom:8,display:"block"};
 
   if (done) {
     return (
       <div>
-        <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.4rem",color:"#234A3D",margin:"0 0 8px"}}>Your free preview is ready</h3>
-        <p style={{fontSize:".95rem",color:GD_SOFT,lineHeight:1.6,margin:"0 0 16px"}}>
+        <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.55rem",color:"#234A3D",margin:"0 0 8px"}}>Your free preview is ready</h3>
+        <p style={{fontSize:"1.02rem",color:GD_SOFT,lineHeight:1.6,margin:"0 0 16px"}}>
           {done.emailed ? "We also emailed you a copy of the link." : done.recentlySent ? "We emailed this link a few minutes ago." : "We couldn't send the email, so save the PDF from this link. It works for 7 days."}
         </p>
         <a className="gd-btn" href={done.url} target="_blank" rel="noopener noreferrer" style={{background:"#C16140",color:"#fff"}}>Open the free preview (PDF)</a>
         <div style={{borderTop:"1px solid "+GD_LINE,marginTop:24,paddingTop:20}}>
           {saved ? (
-            <p role="status" style={{fontSize:".95rem",color:"#234A3D",fontWeight:600,margin:0}}>Thanks. We'll use your answers to keep what we send useful.</p>
+            <p role="status" style={{fontSize:"1.02rem",color:"#234A3D",fontWeight:600,margin:0}}>Thanks. We'll use your answers to keep what we send useful.</p>
           ) : (
             <>
               <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",marginBottom:4}}>A few quick questions (optional)</div>
-              <p style={{fontSize:".88rem",color:GD_SOFT,lineHeight:1.5,margin:"0 0 16px"}}>They help us decide what to write next and what to send you.</p>
+              <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.5,margin:"0 0 16px"}}>They help us decide what to write next and what to send you.</p>
               <div style={{display:"flex",flexDirection:"column",gap:18}}>
                 <div>
                   <span style={qLabel} id="gd-q-timeline">When do you expect to buy?</span>
@@ -29477,8 +29509,8 @@ function GuideLeadForm({ guide }) {
 
   return (
     <form onSubmit={submit} noValidate>
-      <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.4rem",color:"#234A3D",margin:"0 0 6px"}}>Get the free preview</h3>
-      <p style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.55,margin:"0 0 18px"}}>We'll show you the link right away and email a copy.</p>
+      <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.55rem",color:"#234A3D",margin:"0 0 6px"}}>Get the free preview</h3>
+      <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.55,margin:"0 0 18px"}}>We'll show you the link right away and email a copy.</p>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
         <div>
           <label htmlFor="gd-email" style={qLabel}>Your email</label>
@@ -29493,7 +29525,7 @@ function GuideLeadForm({ guide }) {
           {GUIDE_CONSENT_TEXT} <a href="/privacy" style={{color:"#A5472A",fontWeight:600}}>Privacy Policy</a>
         </GuideConsent>
       </div>
-      {err && <div role="alert" style={{marginTop:14,padding:"10px 14px",borderRadius:10,background:"#F9E4DC",color:"#7E3419",fontSize:".9rem",fontWeight:600,lineHeight:1.45}}>{err}</div>}
+      {err && <div role="alert" style={{marginTop:14,padding:"10px 14px",borderRadius:10,background:"#F9E4DC",color:"#7E3419",fontSize:"1rem",fontWeight:600,lineHeight:1.45}}>{err}</div>}
       <button type="submit" className="gd-btn" disabled={busy} style={{marginTop:18,width:"100%",background:"#C16140",color:"#fff"}}>{busy ? "Sending…" : "Send me the free preview"}</button>
     </form>
   );
@@ -29529,21 +29561,21 @@ function GuideWaitlistForm() {
   return (
     <form onSubmit={submit} noValidate style={{display:"flex",flexDirection:"column",gap:16}}>
       <div>
-        <label htmlFor="gw-state" style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:8,display:"block"}}>Your state</label>
+        <label htmlFor="gw-state" style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",marginBottom:8,display:"block"}}>Your state</label>
         <select id="gw-state" className="gd-in" value={state} onChange={(e) => setState(e.target.value)} style={{appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 5 4.5-5' stroke='%232A2723' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center",paddingRight:36}}>
           <option value="">Choose a state</option>
           {STATES.filter((s) => !guideStates().some((g) => g.stateName === s)).map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
       <div>
-        <label htmlFor="gw-email" style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",marginBottom:8,display:"block"}}>Your email</label>
+        <label htmlFor="gw-email" style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",marginBottom:8,display:"block"}}>Your email</label>
         <input id="gw-email" className="gd-in" type="email" inputMode="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}/>
       </div>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={hp} onChange={(e) => setHp(e.target.value)} style={{position:"absolute",left:"-9999px",width:1,height:1,opacity:0}}/>
       <GuideConsent id="gw-consent" checked={consent} onChange={setConsent}>
         Email me when my state's guide is ready, plus occasional home-buying tips from Steadwell. I can unsubscribe at any time. <a href="/privacy" style={{color:"#A5472A",fontWeight:600}}>Privacy Policy</a>
       </GuideConsent>
-      {err && <div role="alert" style={{padding:"10px 14px",borderRadius:10,background:"#F9E4DC",color:"#7E3419",fontSize:".9rem",fontWeight:600,lineHeight:1.45}}>{err}</div>}
+      {err && <div role="alert" style={{padding:"10px 14px",borderRadius:10,background:"#F9E4DC",color:"#7E3419",fontSize:"1rem",fontWeight:600,lineHeight:1.45}}>{err}</div>}
       <button type="submit" className="gd-btn" disabled={busy} style={{background:"#C16140",color:"#fff"}}>{busy ? "Saving…" : "Tell me when it's ready"}</button>
     </form>
   );
@@ -29552,7 +29584,7 @@ function GuideWaitlistForm() {
 function GuideCrumbs({ trail }) {
   return (
     <nav aria-label="Breadcrumb" style={{background:"#1D3D32",padding:"10px 24px"}}>
-      <ol style={{listStyle:"none",margin:"0 auto",padding:0,maxWidth:1080,display:"flex",flexWrap:"wrap",gap:"2px 8px",fontSize:".82rem",color:"rgba(244,237,223,.7)"}}>
+      <ol style={{listStyle:"none",margin:"0 auto",padding:0,maxWidth:1080,display:"flex",flexWrap:"wrap",gap:"2px 8px",fontSize:".92rem",color:"rgba(244,237,223,.7)"}}>
         {trail.map((t, i) => (
           <li key={t.path} style={{display:"flex",alignItems:"center",gap:8}}>
             {i > 0 && <span aria-hidden="true">/</span>}
@@ -29566,26 +29598,46 @@ function GuideCrumbs({ trail }) {
   );
 }
 
+function GdHead({ h2, sub, id }) {
+  return (
+    <>
+      <h2 id={id} className="gd-h2">{h2}</h2>
+      {sub && <p className="gd-sub">{sub}</p>}
+    </>
+  );
+}
+
+function GdFaq({ items }) {
+  return items.map(([q, a], i) => (
+    <div key={i} style={{borderBottom:"1px solid "+GD_LINE,padding:"22px 0",textAlign:"left"}}>
+      <h3 style={{fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:700,fontSize:"1.12rem",lineHeight:1.35,color:GD_INK,margin:"0 0 8px"}}>{q}</h3>
+      <p style={{fontSize:"1.05rem",color:"#3A352F",lineHeight:1.65,margin:0,overflowWrap:"anywhere"}}>{a}</p>
+    </div>
+  ));
+}
+
 function GuideBuyCard({ title, price, was, note, points, featured = false }) {
   const bg = featured ? "#234A3D" : "#fff";
   const fg = featured ? "#F4EDDF" : GD_INK;
-  const soft = featured ? "rgba(244,237,223,.72)" : GD_SOFT;
+  const soft = featured ? "rgba(244,237,223,.82)" : GD_SOFT;
   return (
-    <div style={{boxSizing:"border-box",background:bg,color:fg,border:"1px solid "+(featured?"#234A3D":GD_LINE),borderRadius:18,padding:"24px 22px",display:"flex",flexDirection:"column",textAlign:"left"}}>
-      <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.2rem",lineHeight:1.25}}>{title}</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap",margin:"10px 0 4px"}}>
-        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"2.4rem",lineHeight:1,letterSpacing:"-.02em"}}>{price}</span>
-        {was && <span style={{fontSize:".95rem",color:soft,textDecoration:"line-through"}}>{was}</span>}
+    <div style={{boxSizing:"border-box",position:"relative",background:bg,color:fg,border:"1px solid "+(featured?"#234A3D":GD_LINE),borderRadius:18,padding:"26px 24px",display:"flex",flexDirection:"column",textAlign:"left",boxShadow:featured?"0 14px 36px rgba(35,74,61,.28)":"none"}}>
+      {featured && <span style={{alignSelf:"flex-start",background:"#F0CE7A",color:"#2A2723",fontWeight:700,fontSize:".85rem",padding:"4px 12px",borderRadius:999,marginBottom:12}}>Best value</span>}
+      <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.3rem",lineHeight:1.25}}>{title}</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap",margin:"12px 0 4px"}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"2.8rem",lineHeight:1,letterSpacing:"-.02em"}}>{price}</span>
+        {was && <span style={{fontSize:"1.05rem",color:soft,textDecoration:"line-through"}}>{was}</span>}
       </div>
-      <div style={{fontSize:".85rem",color:soft,marginBottom:16}}>{note}</div>
-      <ul style={{listStyle:"none",margin:"0 0 20px",padding:0,display:"flex",flexDirection:"column",gap:9,flex:1}}>
+      <div style={{fontSize:"1rem",color:soft,marginBottom:18}}>{note}</div>
+      <ul style={{listStyle:"none",margin:"0 0 22px",padding:0,display:"flex",flexDirection:"column",gap:10,flex:1}}>
         {points.map((p) => (
-          <li key={p} style={{display:"flex",gap:10,fontSize:".92rem",lineHeight:1.45,color:featured?"rgba(244,237,223,.9)":GD_SOFT}}>
+          <li key={p} style={{display:"flex",gap:10,fontSize:"1.02rem",lineHeight:1.45,color:featured?"#F4EDDF":"#3A352F"}}>
             <span aria-hidden="true" style={{color:featured?"#F0CE7A":"#234A3D",fontWeight:800}}>✓</span><span>{p}</span>
           </li>
         ))}
       </ul>
-      <button type="button" className="gd-btn" disabled aria-disabled="true" style={{background:featured?"rgba(244,237,223,.14)":"#EFE7D7",color:featured?"#F4EDDF":GD_SOFT,borderColor:featured?"rgba(244,237,223,.25)":"#D9CFBC"}}>Checkout opens soon</button>
+      <a className="gd-btn" href="#preview" style={{background:"#C16140",color:"#fff"}}>Read the free preview</a>
+      <div style={{fontSize:".95rem",color:soft,textAlign:"center",marginTop:10}}>Checkout opens soon</div>
     </div>
   );
 }
@@ -29623,9 +29675,13 @@ function GuideDetailPage({ guide: g }) {
   const faq = guideFaq(g);
   const pv = g.preview;
   const pvPages = pv ? pv.pages[1] - pv.pages[0] + 1 : 0;
+  const price = g.kind === "state" ? GUIDE_PRICES.state : GUIDE_PRICES.county;
   const stateG = g.kind === "county" ? stateGuide(g.stateSlug) : null;
   const counties = g.kind === "state" ? countyGuides(g.stateSlug) : [];
   const bundles = g.kind === "county" ? [bundleFor(g.id)].filter(Boolean) : counties.map((c) => bundleFor(c.id)).filter(Boolean);
+  const im = g.images;
+  const heroRef = useRef(null);
+  const [showBar, setShowBar] = useState(false);
 
   useSEO({
     title: g.seo.title,
@@ -29634,132 +29690,191 @@ function GuideDetailPage({ guide: g }) {
     jsonLd: guideJsonLd({ name: g.title, path: g.path, description: g.seo.description, trail, faq }),
   });
 
+  // The mobile price bar shows only while the hero, the preview form and the buy cards are all off screen.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return undefined;
+    const els = [heroRef.current, document.getElementById("preview"), document.getElementById("buy")].filter(Boolean);
+    const seen = new Map();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => seen.set(e.target, e.isIntersecting));
+      setShowBar(![...seen.values()].some(Boolean));
+    });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK,fontSize:"1.05rem"}}>
       <style>{GUIDE_CSS}</style>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/guides",label:"Buyer guides"},{href:"/blog",label:"Blog"},{href:"/pricing",label:"Pricing"}]}/>
       <GuideCrumbs trail={trail}/>
 
-      <section style={{background:"#234A3D",padding:"clamp(44px,7vw,72px) 24px clamp(52px,7vw,80px)",textAlign:"center"}}>
-        <div style={{maxWidth:720,margin:"0 auto"}}>
-          <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".82rem",color:"rgba(244,237,223,.85)",fontWeight:600,marginBottom:18}}>{g.kind === "state" ? "State guide" : "County guide"} · {g.edition} edition</div>
-          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.1rem,5vw,3.3rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 18px"}}>{g.title}</h1>
-          <p style={{fontSize:"1.08rem",color:"rgba(244,237,223,.75)",maxWidth:"34rem",margin:"0 auto 28px",lineHeight:1.6}}>{g.tagline}</p>
-          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:18}}>
-            <a className="gd-btn" href="#preview" style={{background:"#C16140",color:"#fff"}}>Get the free preview</a>
-            <a className="gd-btn" href="#inside" style={{background:"transparent",color:"#F4EDDF",borderColor:"rgba(244,237,223,.4)"}}>See what's inside</a>
-          </div>
-          <div style={{fontSize:".88rem",color:"rgba(244,237,223,.65)"}}>{g.pages}-page PDF · Checked {g.currentAsOf} · {usd(g.kind === "state" ? GUIDE_PRICES.state : GUIDE_PRICES.county)} one-time</div>
-        </div>
-      </section>
-
-      <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="A few numbers from the guide" sub={`Dated and sourced. Everything is checked as of ${g.currentAsOf}.`}/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,230px),1fr))",gap:14}}>
-            {g.facts.map((f) => (
-              <div key={f.value} style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"20px 22px",textAlign:"left"}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(1.5rem,3vw,1.9rem)",color:"#234A3D",lineHeight:1.1,letterSpacing:"-.02em",marginBottom:8,overflowWrap:"anywhere"}}>{f.value}</div>
-                <div style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.5,marginBottom:10}}>{f.label}</div>
-                <div style={{fontSize:".78rem",color:"#8A8279"}}>Source: {f.source}</div>
-              </div>
-            ))}
-          </div>
-        </LPSection>
-
-        <LPSection alt id="inside">
-          <LPSectionHead h2="What's inside" sub={`${g.chapters.length} chapters, plus checklists you can print.`}/>
-          <div className="gd-split">
-            <div>
-              <ul style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column",gap:14}}>
-                {g.inside.map((t) => (
-                  <li key={t} style={{display:"flex",gap:12,fontSize:"1rem",lineHeight:1.5,color:GD_INK}}>
-                    <span aria-hidden="true" style={{width:22,height:22,borderRadius:"50%",background:"#234A3D",color:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".72rem",fontWeight:800,flexShrink:0,marginTop:2}}>✓</span><span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <ol style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column"}}>
-              {g.chapters.map((c) => (
-                <li key={c.n} style={{display:"flex",gap:14,padding:"14px 0",borderTop:"1px solid "+GD_LINE}}>
-                  <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1rem",color:"#C16140",minWidth:24}}>{c.n}</span>
-                  <span>
-                    <span style={{display:"block",fontWeight:700,fontSize:".98rem",color:"#234A3D",marginBottom:2}}>{c.title}</span>
-                    <span style={{display:"block",fontSize:".9rem",color:GD_SOFT,lineHeight:1.5}}>{c.summary}</span>
-                  </span>
+      <header className="gd-hero" ref={heroRef}>
+        <div className="gd-hero-in">
+          <div>
+            <div style={{display:"inline-block",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:999,padding:"6px 16px",fontSize:".92rem",color:"#F4EDDF",fontWeight:600,marginBottom:18}}>{g.kind === "state" ? "State guide" : "County guide"} · {g.edition} edition</div>
+            <h1 className="gd-h1">{g.title}</h1>
+            <p style={{fontSize:"clamp(1.1rem,2.2vw,1.3rem)",lineHeight:1.55,color:"rgba(244,237,223,.94)",margin:"0 0 22px",maxWidth:"34rem"}}>{g.tagline}</p>
+            <ul style={{listStyle:"none",margin:"0 0 26px",padding:0,display:"flex",flexDirection:"column",gap:10}}>
+              {g.inside.slice(0, 3).map((t) => (
+                <li key={t} style={{display:"flex",gap:12,fontSize:"1.08rem",lineHeight:1.45,color:"#F4EDDF"}}>
+                  <span aria-hidden="true" style={{color:"#F0CE7A",fontWeight:800}}>✓</span><span>{t}</span>
                 </li>
               ))}
-            </ol>
+            </ul>
+            <div style={{display:"flex",alignItems:"baseline",gap:"6px 14px",flexWrap:"wrap",marginBottom:18}}>
+              <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"2.9rem",lineHeight:1,letterSpacing:"-.02em"}}>{usd(price)}</span>
+              <span style={{fontSize:"1.02rem",color:"rgba(244,237,223,.9)"}}>one-time · {g.pages}-page PDF · checked {g.currentAsOf}</span>
+            </div>
+            <div className="gd-actions">
+              <a className="gd-btn" href="#preview" style={{background:"#C16140",color:"#fff"}}>{pv ? `Read the first ${pvPages} pages free` : "See what's inside"}</a>
+              <a className="gd-btn" href="#buy" style={{background:"transparent",color:"#F4EDDF",borderColor:"rgba(244,237,223,.55)"}}>See the price options</a>
+            </div>
+            <p style={{fontSize:".98rem",color:"rgba(244,237,223,.85)",margin:"14px 0 0"}}>Checkout opens soon. The free preview is available now.</p>
           </div>
-        </LPSection>
+          <div className="gd-art">
+            <img className="gd-back" src={im.pages[0].src} width={im.pages[0].w} height={im.pages[0].h} alt="" aria-hidden="true"/>
+            <img className="gd-front" src={im.cover.src} width={im.cover.w} height={im.cover.h} alt={im.cover.alt}/>
+          </div>
+        </div>
+      </header>
+
+      <main id="main" tabIndex={-1}>
+        <section className="gd-sec" id="look-inside">
+          <div className="gd-wrap">
+            <GdHead h2="Look inside" sub="Real pages from the guide, not mockups. You can read these and more in the free preview."/>
+            <div className="gd-strip" role="region" aria-label="Sample pages from the guide" tabIndex={0}>
+              {im.pages.map((p) => (
+                <figure key={p.src}>
+                  <img src={p.src} width={p.w} height={p.h} alt={p.alt} loading="lazy"/>
+                  <figcaption style={{fontSize:"1rem",fontWeight:600,color:"#234A3D",marginTop:10}}>{p.label}</figcaption>
+                </figure>
+              ))}
+              <div style={{boxSizing:"border-box",background:"#234A3D",color:"#F4EDDF",borderRadius:6,padding:"clamp(18px,3vw,28px)",display:"flex",flexDirection:"column",justifyContent:"center",aspectRatio:"720/932"}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.1rem)",lineHeight:1.12,marginBottom:10}}>{g.pages - pvPages} more pages in the full guide</div>
+                <p style={{fontSize:"1.05rem",lineHeight:1.5,color:"rgba(244,237,223,.9)",margin:"0 0 18px"}}>{g.chapters.length} chapters, plus checklists and sources you can print.</p>
+                <a className="gd-btn" href="#preview" style={{background:"#C16140",color:"#fff",padding:"0 18px"}}>Get the free preview</a>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {pv && (
-          <LPSection id="preview">
-            <div className="gd-split">
+          <section className="gd-sec" id="preview" style={{background:"#EFE7D7"}}>
+            <div className="gd-wrap gd-split">
               <div>
-                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 10px"}}>Read the first {pvPages} pages free</h2>
-                <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.65,margin:"0 0 18px"}}>These are real pages from the guide, not a summary. You'll see how the full guide is written before you decide.</p>
-                <ul style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column",gap:10}}>
+                <h2 className="gd-h2">Read the first {pvPages} pages free</h2>
+                <p className="gd-sub" style={{marginBottom:20}}>Enter your email and you'll get the link right away, plus a copy by email. No payment needed.</p>
+                <ul style={{listStyle:"none",margin:0,padding:0,display:"flex",flexDirection:"column",gap:12}}>
                   {pv.includes.map((t) => (
-                    <li key={t} style={{display:"flex",gap:10,fontSize:".95rem",lineHeight:1.5,color:GD_INK}}>
+                    <li key={t} style={{display:"flex",gap:12,fontSize:"1.08rem",lineHeight:1.5,color:GD_INK}}>
                       <span aria-hidden="true" style={{color:"#234A3D",fontWeight:800}}>✓</span><span>{t}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"clamp(20px,4vw,28px)",boxShadow:"0 8px 28px rgba(35,74,61,.08)"}}>
+              <div style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"clamp(20px,4vw,30px)",boxShadow:"0 12px 32px rgba(35,74,61,.12)"}}>
                 <GuideLeadForm guide={g}/>
               </div>
             </div>
-          </LPSection>
+          </section>
         )}
 
-        <LPSection alt id="buy">
-          <LPSectionHead h2="Get the full guide" sub="One-time purchase. Instant PDF download. No subscription."/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:18}}>
-            {g.kind === "state" ? (
-              <GuideBuyCard title={g.shortName} price={usd(GUIDE_PRICES.state)} note="One-time purchase · PDF download"
-                points={[`${g.chapters.length} chapters covering the whole ${g.stateName} buying process`, "Checklists, glossary and sources you can print", `Checked ${g.currentAsOf}`]}/>
-            ) : (
-              <GuideBuyCard title={g.shortName} price={usd(GUIDE_PRICES.county)} note="One-time purchase · PDF download"
-                points={[`${g.chapters.length} chapters on ${g.countyName} County: risk maps, programs, taxes and offices`, "Local checklists and phone numbers", `Checked ${g.currentAsOf}`]}/>
-            )}
-            {bundles.map((b) => (
-              <GuideBuyCard key={b.county.id} featured title={`${b.state.stateName} guide + ${b.county.countyName} County guide`} price={usd(b.price)} was={usd(b.separate)}
-                note={`Save ${usd(b.saves)} · PDF downloads`}
-                points={["The state guide for the statewide rules", `The ${b.county.countyName} County guide for the local details`, "Designed to be read together"]}/>
-            ))}
-          </div>
-          {BUNDLE_TRIAL.enabled && bundles.length > 0 && (
-            <p style={{fontSize:".9rem",color:GD_SOFT,lineHeight:1.55,margin:"18px 0 0"}}>Bundle buyers can add {Math.round(BUNDLE_TRIAL.days / 30)} months of Steadwell Plus free. A card is required, and Plus renews at its regular price unless you cancel before the trial ends.</p>
-          )}
-          <p style={{fontSize:".9rem",color:GD_SOFT,lineHeight:1.55,margin:"16px 0 0"}}>Checkout isn't open yet. <a className="gd-link" href="#preview" style={{color:"#A5472A",fontWeight:700}}>Get the free preview</a> to read the first pages now.</p>
-        </LPSection>
-
-        {(stateG || counties.length > 0) && (
-          <LPSection>
-            <LPSectionHead h2={g.kind === "county" ? `Part of the ${g.stateName} guides` : `${g.stateName} county guides`} sub={g.kind === "county" ? "Read the statewide rules alongside the local details." : "The local details the state guide points to."}/>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16}}>
-              {(stateG ? [stateG] : counties).map((o) => (
-                <a key={o.id} className="gd-link" href={o.path} style={{display:"block",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"20px 22px",textDecoration:"none",color:GD_INK}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",marginBottom:6}}>{o.title}</div>
-                  <div style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.5,marginBottom:10}}>{o.tagline}</div>
-                  <span style={{fontWeight:700,fontSize:".9rem",color:"#A5472A"}}>View the guide</span>
-                </a>
+        <section className="gd-sec" id="buy">
+          <div className="gd-wrap">
+            <GdHead h2="Get the full guide" sub="One-time purchase. A PDF you can read on any device and print. No subscription."/>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:20}}>
+              {g.kind === "state" ? (
+                <GuideBuyCard title={g.shortName} price={usd(GUIDE_PRICES.state)} note="One-time purchase · PDF download"
+                  points={[`${g.chapters.length} chapters covering the whole ${g.stateName} buying process`, "Checklists, glossary and sources you can print", `Checked ${g.currentAsOf}`]}/>
+              ) : (
+                <GuideBuyCard title={g.shortName} price={usd(GUIDE_PRICES.county)} note="One-time purchase · PDF download"
+                  points={[`${g.chapters.length} chapters on ${g.countyName} County: risk maps, programs, taxes and offices`, "Local checklists and phone numbers", `Checked ${g.currentAsOf}`]}/>
+              )}
+              {bundles.map((b) => (
+                <GuideBuyCard key={b.county.id} featured title={`${b.state.stateName} guide + ${b.county.countyName} County guide`} price={usd(b.price)} was={usd(b.separate)}
+                  note={`Save ${usd(b.saves)} · PDF downloads`}
+                  points={["The state guide for the statewide rules", `The ${b.county.countyName} County guide for the local details`, "Designed to be read together"]}/>
               ))}
             </div>
-          </LPSection>
+            {BUNDLE_TRIAL.enabled && bundles.length > 0 && (
+              <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.55,margin:"18px 0 0"}}>Bundle buyers can add {Math.round(BUNDLE_TRIAL.days / 30)} months of Steadwell Plus free. A card is required, and Plus renews at its regular price unless you cancel before the trial ends.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="gd-sec" id="inside" style={{background:"#EFE7D7"}}>
+          <div className="gd-wrap">
+            <GdHead h2="What's inside" sub={`${g.chapters.length} chapters, plus checklists you can print.`}/>
+            <ol className="gd-chapters">
+              {g.chapters.map((c) => (
+                <li key={c.n} style={{display:"flex",gap:14,padding:"13px 0",borderTop:"1px solid #D9CFBC"}}>
+                  <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.15rem",color:"#A5472A",minWidth:26}}>{c.n}</span>
+                  <span>
+                    <span style={{display:"block",fontWeight:700,fontSize:"1.1rem",color:"#234A3D",marginBottom:3,lineHeight:1.3}}>{c.title}</span>
+                    <span style={{display:"block",fontSize:"1rem",color:"#3A352F",lineHeight:1.5}}>{c.summary}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="gd-sec">
+          <div className="gd-wrap">
+            <GdHead h2="A few numbers from the guide" sub={`Dated and sourced. Everything is checked as of ${g.currentAsOf}.`}/>
+            <div className="gd-facts">
+              {g.facts.map((f) => (
+                <div key={f.value} style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"20px 18px",textAlign:"left"}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(1.45rem,3vw,2rem)",color:"#234A3D",lineHeight:1.1,letterSpacing:"-.02em",marginBottom:8,overflowWrap:"anywhere"}}>{f.value}</div>
+                  <div style={{fontSize:"1rem",color:"#3A352F",lineHeight:1.45,marginBottom:10}}>{f.label}</div>
+                  <div style={{fontSize:".85rem",color:"#6B645B"}}>Source: {f.source}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {(stateG || counties.length > 0) && (
+          <section className="gd-sec" style={{background:"#EFE7D7"}}>
+            <div className="gd-wrap">
+              <GdHead h2={g.kind === "county" ? `Part of the ${g.stateName} guides` : `${g.stateName} county guides`} sub={g.kind === "county" ? "Read the statewide rules alongside the local details." : "The local details the state guide points to."}/>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16}}>
+                {(stateG ? [stateG] : counties).map((o) => (
+                  <a key={o.id} className="gd-link gd-gcard" href={o.path} style={{display:"flex",gap:16,alignItems:"center",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"18px",textDecoration:"none",color:GD_INK}}>
+                    <img src={o.images.cover.src} width={o.images.cover.w} height={o.images.cover.h} alt="" loading="lazy" style={{width:84,height:"auto",borderRadius:4,flexShrink:0,boxShadow:"0 6px 16px rgba(35,74,61,.2)"}}/>
+                    <span>
+                      <span style={{display:"block",fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.2rem",color:"#234A3D",marginBottom:6,lineHeight:1.25}}>{o.title}</span>
+                      <span style={{display:"block",fontSize:"1rem",color:"#3A352F",lineHeight:1.45,marginBottom:8}}>{o.tagline}</span>
+                      <span style={{fontWeight:700,fontSize:"1rem",color:"#A5472A"}}>View the guide</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
 
-        <LPSection alt narrow id="faq">
-          <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={faq}/>
-        </LPSection>
+        <section className="gd-sec" id="faq">
+          <div className="gd-wrap" style={{maxWidth:780}}>
+            <GdHead h2="Common questions"/>
+            <GdFaq items={faq}/>
+          </div>
+        </section>
 
         <LPCTA h2="After you close, keep your home on track." sub="Steadwell tracks your warranties, maintenance, insurance and documents in one place. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
       </main>
       <LPFooter/>
+
+      <div className="gd-bar-pad" aria-hidden="true"/>
+      <div className="gd-bar" role="region" aria-label={`${g.shortName} price`} style={{transform:showBar?"translateY(0)":"translateY(110%)",visibility:showBar?"visible":"hidden"}}>
+        <div style={{lineHeight:1.15}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.5rem",color:"#234A3D"}}>{usd(price)}</div>
+          <div style={{fontSize:".88rem",color:GD_SOFT}}>one-time PDF</div>
+        </div>
+        <a className="gd-btn" href="#preview" style={{background:"#C16140",color:"#fff",minHeight:48,padding:"0 20px"}}>{pv ? "Read it free" : "See inside"}</a>
+      </div>
     </div>
   );
 }
@@ -29781,67 +29896,103 @@ function GuidesPage() {
     canonical: `${SEO_SITE_URL}/guides`,
     jsonLd: guideJsonLd({ name: "Steadwell first-time buyer guides", path: "/guides", description, trail, faq: GUIDES_HUB_FAQ, list: liveGuides() }),
   });
+  const lead = states[0];
+  const front = lead && lead.state ? lead.state : liveGuides()[0];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK,fontSize:"1.05rem"}}>
       <style>{GUIDE_CSS}</style>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/blog",label:"Blog"},{href:"/pricing",label:"Pricing"}]}/>
-      <LPHero eyebrow={`First-time buyer guides · ${GUIDE_EDITION} edition`} h1="Buy your first home" h1em="with confidence." sub="Plain-English guides with the local detail your state and county add: flood zones, inspections, insurance, closing costs and down payment help." badge={`Checked ${GUIDE_CURRENT_AS_OF} · Instant PDF download · One-time purchase`}/>
-      <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="Available now" sub="Start with the free preview of any guide."/>
-          {states.map((s) => (
-            <div key={s.stateSlug} style={{marginBottom:24}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16}}>
-                {[s.state, ...s.counties].filter(Boolean).map((g) => (
-                  <a key={g.id} className="gd-link" href={g.path} style={{display:"flex",flexDirection:"column",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"24px 22px",textDecoration:"none",color:GD_INK}}>
-                    <div style={{fontSize:".82rem",fontWeight:700,color:"#A5472A",marginBottom:8}}>{g.kind === "state" ? `${g.stateName} state guide` : `${g.countyName} County guide`}</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.3rem",color:"#234A3D",lineHeight:1.2,marginBottom:8}}>{g.title}</div>
-                    <div style={{fontSize:".95rem",color:GD_SOFT,lineHeight:1.5,flex:1,marginBottom:14}}>{g.tagline}</div>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".88rem",color:GD_SOFT}}>{g.pages} pages · {usd(g.kind === "state" ? GUIDE_PRICES.state : GUIDE_PRICES.county)}</span>
-                      <span style={{fontWeight:700,fontSize:".9rem",color:"#A5472A"}}>View the guide</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-              {s.counties.length > 0 && <p style={{fontSize:".92rem",color:GD_SOFT,lineHeight:1.55,margin:"16px 0 0"}}>Buy a {s.stateName} state guide and a county guide together for {usd(GUIDE_PRICES.bundle)} instead of {usd(GUIDE_PRICES.state + GUIDE_PRICES.county)}.</p>}
-            </div>
-          ))}
-        </LPSection>
 
-        <LPSection alt>
-          <div className="gd-split">
-            <div>
-              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 10px"}}>Not in Florida?</h2>
-              <p style={{fontSize:"1rem",color:GD_SOFT,lineHeight:1.65,margin:0}}>Tell us your state. We write guides in the order people ask for them, and we'll email you when yours is ready.</p>
-            </div>
-            <div style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"clamp(20px,4vw,28px)"}}>
-              <GuideWaitlistForm/>
+      <header className="gd-hero">
+        <div className="gd-hero-in">
+          <div>
+            <div style={{display:"inline-block",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:999,padding:"6px 16px",fontSize:".92rem",color:"#F4EDDF",fontWeight:600,marginBottom:18}}>First-time buyer guides · {GUIDE_EDITION} edition</div>
+            <h1 className="gd-h1">Buy your first home with confidence.</h1>
+            <p style={{fontSize:"clamp(1.1rem,2.2vw,1.3rem)",lineHeight:1.55,color:"rgba(244,237,223,.94)",margin:"0 0 22px",maxWidth:"34rem"}}>Plain-English guides with the local detail your state and county add: flood zones, inspections, insurance, closing costs and down payment help.</p>
+            <div style={{fontSize:"1.05rem",color:"#F4EDDF",lineHeight:1.5,margin:"0 0 24px"}}>State guide {usd(GUIDE_PRICES.state)} · County guide {usd(GUIDE_PRICES.county)} · Both {usd(GUIDE_PRICES.bundle)}<br/><span style={{color:"rgba(244,237,223,.85)"}}>PDFs checked {GUIDE_CURRENT_AS_OF}. Every guide has a free preview.</span></div>
+            <div className="gd-actions">
+              <a className="gd-btn" href="#guides" style={{background:"#C16140",color:"#fff"}}>Browse the guides</a>
+              <a className="gd-btn" href="#waitlist" style={{background:"transparent",color:"#F4EDDF",borderColor:"rgba(244,237,223,.55)"}}>Not in Florida?</a>
             </div>
           </div>
-        </LPSection>
+          {front && front.images && (
+            <div className="gd-art">
+              <img className="gd-back" src={front.images.pages[0].src} width={front.images.pages[0].w} height={front.images.pages[0].h} alt="" aria-hidden="true"/>
+              <img className="gd-front" src={front.images.cover.src} width={front.images.cover.w} height={front.images.cover.h} alt={front.images.cover.alt}/>
+            </div>
+          )}
+        </div>
+      </header>
 
-        <LPSection>
-          <LPSectionHead h2="What makes these different"/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,260px),1fr))",gap:16}}>
-            {[
-              ["Local, not generic", "A state guide covers statewide rules. A county guide covers the details that change your decision: risk maps, programs, tax rates and offices."],
-              ["Dated and sourced", `Every guide says when it was checked, and its figures are dated and sourced so you can confirm them.`],
-              ["Made to use", "Checklists, a glossary and a first-year plan you can print and bring to showings, inspections and closing."],
-            ].map(([t, d]) => (
-              <div key={t} style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"22px"}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",marginBottom:8}}>{t}</div>
-                <div style={{fontSize:".95rem",color:GD_SOFT,lineHeight:1.6}}>{d}</div>
+      <main id="main" tabIndex={-1}>
+        <section className="gd-sec" id="guides">
+          <div className="gd-wrap">
+            <GdHead h2="Available now" sub="Open any guide to read the first pages free."/>
+            {states.map((s) => (
+              <div key={s.stateSlug} style={{marginBottom:28}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:18}}>
+                  {[s.state, ...s.counties].filter(Boolean).map((g) => (
+                    <a key={g.id} className="gd-link gd-gcard" href={g.path} style={{display:"flex",gap:18,alignItems:"stretch",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"20px",textDecoration:"none",color:GD_INK}}>
+                      <img src={g.images.cover.src} width={g.images.cover.w} height={g.images.cover.h} alt={g.images.cover.alt} loading="lazy" style={{width:"clamp(96px,26%,130px)",height:"auto",alignSelf:"flex-start",borderRadius:5,flexShrink:0,boxShadow:"0 10px 24px rgba(35,74,61,.25)"}}/>
+                      <span style={{display:"flex",flexDirection:"column",flex:1,minWidth:0}}>
+                        <span style={{fontSize:".95rem",fontWeight:700,color:"#A5472A",marginBottom:6}}>{g.kind === "state" ? `${g.stateName} state guide` : `${g.countyName} County guide`}</span>
+                        <span style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.3rem",color:"#234A3D",lineHeight:1.2,marginBottom:8}}>{g.title}</span>
+                        <span style={{fontSize:"1.02rem",color:"#3A352F",lineHeight:1.5,flex:1,marginBottom:12}}>{g.tagline}</span>
+                        <span style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                          <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.5rem",color:"#234A3D"}}>{usd(g.kind === "state" ? GUIDE_PRICES.state : GUIDE_PRICES.county)} <span style={{fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:400,fontSize:".95rem",color:GD_SOFT}}>{g.pages} pages</span></span>
+                          <span style={{fontWeight:700,fontSize:"1rem",color:"#A5472A"}}>Read free</span>
+                        </span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+                {s.counties.length > 0 && (
+                  <div style={{marginTop:18,background:"#234A3D",color:"#F4EDDF",borderRadius:14,padding:"18px 22px",fontSize:"1.08rem",lineHeight:1.5}}>
+                    <strong>Best value:</strong> buy the {s.stateName} state guide and a county guide together for {usd(GUIDE_PRICES.bundle)} instead of {usd(GUIDE_PRICES.state + GUIDE_PRICES.county)}.
+                  </div>
+                )}
               </div>
             ))}
           </div>
-        </LPSection>
+        </section>
 
-        <LPSection alt narrow id="faq">
-          <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={GUIDES_HUB_FAQ}/>
-        </LPSection>
+        <section className="gd-sec" id="waitlist" style={{background:"#EFE7D7"}}>
+          <div className="gd-wrap gd-split">
+            <div>
+              <h2 className="gd-h2">Not in Florida?</h2>
+              <p className="gd-sub" style={{marginBottom:0}}>Tell us your state. We write guides in the order people ask for them, and we'll email you when yours is ready.</p>
+            </div>
+            <div style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:18,padding:"clamp(20px,4vw,30px)",boxShadow:"0 12px 32px rgba(35,74,61,.12)"}}>
+              <GuideWaitlistForm/>
+            </div>
+          </div>
+        </section>
+
+        <section className="gd-sec">
+          <div className="gd-wrap">
+            <GdHead h2="What makes these different"/>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:18}}>
+              {[
+                ["Local, not generic", "A state guide covers statewide rules. A county guide covers the details that change your decision: risk maps, programs, tax rates and offices."],
+                ["Dated and sourced", "Every guide says when it was checked, and its figures are dated and sourced so you can confirm them."],
+                ["Made to use", "Checklists, a glossary and a first-year plan you can print and bring to showings, inspections and closing."],
+              ].map(([t, d]) => (
+                <div key={t} style={{boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"24px 22px"}}>
+                  <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.3rem",color:"#234A3D",margin:"0 0 8px"}}>{t}</h3>
+                  <p style={{fontSize:"1.05rem",color:"#3A352F",lineHeight:1.6,margin:0}}>{d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="gd-sec" id="faq" style={{background:"#EFE7D7"}}>
+          <div className="gd-wrap" style={{maxWidth:780}}>
+            <GdHead h2="Common questions"/>
+            <GdFaq items={GUIDES_HUB_FAQ}/>
+          </div>
+        </section>
 
         <LPCTA h2="After you close, keep your home on track." sub="Steadwell tracks your warranties, maintenance, insurance and documents in one place. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
       </main>

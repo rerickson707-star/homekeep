@@ -38,6 +38,12 @@ if (fs.existsSync(fnPath)) {
   console.log("(skipped edge function check: " + fnPath + " not in this repo)");
 }
 
+// Every page image named in the registry must exist in public/guide-img/ (a missing file is a broken picture).
+for (const g of GUIDES) for (const x of [g.images.cover, ...g.images.pages]) {
+  if (!fs.existsSync("public" + x.src)) { console.error("Missing image file: public" + x.src + " (" + g.shortName + ")"); process.exit(1); }
+}
+console.log("Guide images present");
+
 const due = guidesDueForReview();
 if (due.length) {
   console.warn("\nREVIEW DUE:");
