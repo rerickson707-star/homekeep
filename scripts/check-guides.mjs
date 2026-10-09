@@ -18,6 +18,26 @@ for (const g of GUIDES.filter((x) => x.kind === "county")) {
 }
 console.log("Prices: state $" + GUIDE_PRICES.state + ", county $" + GUIDE_PRICES.county + ", bundle $" + GUIDE_PRICES.bundle);
 
+// The guide-preview edge function keeps its own copy of the guide ids, preview files, consent wording
+// and answer codes. Fail if the copy has drifted from the registry (skipped if the file is not in the repo).
+import fs from "node:fs";
+import { GUIDE_CONSENT_VERSION, GUIDE_CONSENT_TEXT, GUIDE_LEAD_OPTIONS } from "../src/guides-registry.js";
+const fnPath = "supabase/functions/guide-preview/index.ts";
+if (fs.existsSync(fnPath)) {
+  const src = fs.readFileSync(fnPath, "utf8");
+  const drift = [];
+  for (const g of GUIDES) {
+    if (!src.includes('"' + g.id + '"')) drift.push("guide id " + g.id + " missing in " + fnPath);
+    if (g.preview && !src.includes(g.preview.storageKey)) drift.push("preview " + g.preview.storageKey + " missing in " + fnPath);
+  }
+  if (!src.includes('"' + GUIDE_CONSENT_VERSION + '"') || !src.includes(GUIDE_CONSENT_TEXT)) drift.push("consent version or wording differs in " + fnPath);
+  for (const list of Object.values(GUIDE_LEAD_OPTIONS)) for (const o of list) if (!src.includes('"' + o.code + '"')) drift.push("answer code " + o.code + " missing in " + fnPath);
+  if (drift.length) { console.error("Edge function out of step with the registry:"); for (const d of drift) console.error("  - " + d); process.exit(1); }
+  console.log("Edge function matches the registry");
+} else {
+  console.log("(skipped edge function check: " + fnPath + " not in this repo)");
+}
+
 const due = guidesDueForReview();
 if (due.length) {
   console.warn("\nREVIEW DUE:");
