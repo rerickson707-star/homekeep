@@ -1,4 +1,4 @@
-// Steadwell v342 — 2026-10-08
+// Steadwell v344 — 2026-10-08
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2477,29 +2477,45 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .hero-micro{font-size:.86rem;color:rgba(244,237,223,.55)}
 .lp-root .hero-micro b{color:rgba(244,237,223,.85);font-weight:600}
 
-/* product preview card */
+/* product preview card: a sample of the real dashboard, with the things Steadwell catches */
 .lp-root .hero-vis{position:relative}
 .lp-root .hero-vis .blob{position:absolute;inset:-8% -6% -12% -4%;background:radial-gradient(120% 120% at 70% 20%,rgba(167,191,168,.22),transparent 60%);border-radius:30px;z-index:-1}
-.lp-root .pv{background:var(--card);border-radius:20px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);overflow:hidden;transform:perspective(1600px) rotateY(-6deg) rotateX(2.5deg);transform-origin:center;transition:transform .5s cubic-bezier(.22,1,.36,1)}
-.lp-root .hero-vis:hover .pv{transform:perspective(1600px) rotateY(-2deg) rotateX(1deg)}
-.lp-root .pv-bar{display:flex;align-items:center;gap:8px;padding:.7rem .9rem;background:var(--linen-2);border-bottom:1px solid var(--line)}
-.lp-root .pv-bar i{width:9px;height:9px;border-radius:50%;background:rgba(42,39,35,.16)}
-.lp-root .pv-url{margin-left:8px;font-size:.7rem;color:var(--ink-soft);background:var(--card);border-radius:20px;padding:.2rem .8rem}
-.lp-root .pv-body{padding:1.2rem 1.3rem 1.4rem}
-.lp-root .pv-greet{font-family:var(--display);font-size:1.25rem;font-weight:500;color:var(--pine);letter-spacing:-.01em}
-.lp-root .pv-sub{font-size:.78rem;color:var(--ink-soft);margin:.2rem 0 1rem}
-.lp-root .pv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-bottom:1rem}
-.lp-root .pv-stat{border-radius:12px;padding:.7rem .75rem;background:var(--linen);border:1px solid var(--line)}
-.lp-root .pv-stat.accent{background:rgba(193,97,64,.1);border-color:rgba(193,97,64,.2)}
-.lp-root .pv-stat.amber{background:rgba(184,134,30,.1);border-color:rgba(184,134,30,.22)}
-.lp-root .pv-stat .k{font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600}
-.lp-root .pv-stat .v{font-family:var(--display);font-size:1.35rem;font-weight:600;color:var(--pine);margin-top:2px}
-.lp-root .pv-stat.accent .v{color:var(--terracotta)}
-.lp-root .pv-stat.amber .v{color:var(--gold)}
-.lp-root .pv-row{display:flex;align-items:center;gap:.7rem;padding:.6rem .2rem;border-top:1px solid var(--line)}
-.lp-root .pv-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.lp-root .pv-row .tl{flex:1;font-size:.82rem;color:var(--ink);font-weight:500}
-.lp-root .pv-row .tr{font-size:.72rem;color:var(--ink-soft);font-weight:600}
+.lp-root .pv{background:var(--card);border-radius:22px;padding:8px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05)}
+.lp-root .pv-hero{position:relative;overflow:hidden;background:linear-gradient(150deg,var(--pine-deep),var(--pine-soft));border-radius:16px;padding:1.15rem 1.15rem 1.1rem;color:var(--linen)}
+.lp-root .pv-hero::after{content:"";position:absolute;right:-40px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
+.lp-root .pv-tag{position:relative;display:inline-block;max-width:100%;font-size:.72rem;font-weight:600;color:rgba(244,237,223,.72);background:rgba(255,255,255,.1);border-radius:20px;padding:.2rem .7rem;margin-bottom:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-root .pv-main{position:relative;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.lp-root .pv-txt{min-width:0}
+.lp-root .pv-eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,237,223,.55);margin-bottom:.35rem}
+.lp-root .pv-status{font-family:var(--display);font-size:1.75rem;font-weight:500;line-height:1.1;letter-spacing:-.01em;color:var(--linen)}
+.lp-root .pv-sub{font-size:.8rem;line-height:1.4;color:rgba(244,237,223,.72);margin-top:.4rem}
+.lp-root .pv-score{flex-shrink:0;text-align:center}
+.lp-root .pv-ring{position:relative;width:92px;height:92px;margin:0 auto}
+.lp-root .pv-ring svg{display:block;width:100%;height:100%;transform:rotate(-90deg)}
+.lp-root .pv-ring .arc{animation:pv-sweep 1.3s cubic-bezier(.22,1,.36,1) .35s both}
+.lp-root .pv-ring span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:1.8rem;font-weight:600;letter-spacing:-.02em;color:var(--linen)}
+.lp-root .pv-grade{font-size:.7rem;font-weight:700;color:#F0CE7A;margin-top:.45rem}
+.lp-root .pv-of{font-size:.66rem;color:rgba(244,237,223,.55);margin-top:1px}
+.lp-root .pv-counts{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-top:1.05rem}
+.lp-root .pv-count{background:rgba(255,255,255,.07);border-radius:12px;padding:.65rem .7rem}
+.lp-root .pv-count b{display:block;font-family:var(--display);font-size:1.35rem;font-weight:600;line-height:1;color:var(--linen)}
+.lp-root .pv-count.hot b{color:#F0A57F}
+.lp-root .pv-count span{display:block;font-size:.68rem;font-weight:600;line-height:1.3;color:rgba(244,237,223,.7);margin-top:.3rem}
+.lp-root .pv-list{padding:.8rem .8rem .4rem}
+.lp-root .pv-lh{font-size:.78rem;font-weight:700;color:var(--ink-soft);margin-bottom:.2rem}
+.lp-root .pv-item{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-top:1px solid var(--line);animation:pv-in .55s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0s)}
+.lp-root .pv-lh + .pv-item{border-top:0}
+.lp-root .pv-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;background:#FBF3DE}
+.lp-root .pv-item.ok .pv-ic{background:#E7EDE7}
+.lp-root .pv-it{flex:1;min-width:0}
+.lp-root .pv-it b{display:block;font-size:.86rem;font-weight:600;line-height:1.25;color:var(--ink)}
+.lp-root .pv-it span{display:block;font-size:.74rem;line-height:1.3;color:var(--ink-soft);margin-top:1px}
+.lp-root .pv-bd{flex-shrink:0;font-size:.72rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;background:rgba(184,134,30,.15);color:#7A5510}
+.lp-root .pv-item.ok .pv-bd{background:rgba(35,74,61,.1);color:var(--pine)}
+.lp-root .pv-clear{display:flex;align-items:center;gap:.6rem;margin:.3rem 0 .5rem;padding:.65rem .8rem;border-radius:12px;background:rgba(35,74,61,.08);font-size:.78rem;font-weight:600;line-height:1.35;color:var(--pine);animation:pv-in .55s cubic-bezier(.22,1,.36,1) 1.1s both}
+.lp-root .pv-clear i{font-style:normal;flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--pine);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem}
+@keyframes pv-sweep{from{stroke-dasharray:0 251.3}}
+@keyframes pv-in{from{opacity:0;transform:translateY(12px)}}
 
 /* ---------- STATS BAND ---------- */
 .lp-root .stats{display:block;background:var(--linen);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -2732,7 +2748,6 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .foot-copy{justify-content:flex-start;flex-direction:column;gap:4px}
   .lp-root .hero-btns{gap:10px}
   .lp-root .hero-btns .btn{flex:1 1 100%}
-  .lp-root .pv{transform:none}
   .lp-root::before{display:none}
 }
 @media(max-width:430px){
@@ -2745,16 +2760,13 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .steps{grid-template-columns:1fr}
   .lp-root .hero-addr{padding:.6rem .6rem .6rem .9rem;gap:9px}
   .lp-root .hero-addr .go{padding:.55rem .7rem;font-size:.8rem}
-  .lp-root .pv-stats{grid-template-columns:1fr 1fr}
-  .lp-root .pv-stat:nth-child(3){grid-column:span 2}
+  .lp-root .pv-counts{display:none}
   .lp-root .pcard{padding:30px 24px}
   .lp-root .wrap{padding:0 18px}
-  .lp-root .pv{transform:none !important}
   .lp-root .hero-vis{width:100%;max-width:100%}
 }
 /* touch devices: disable 3D tilt + cursor glow (can shimmer/alias on mobile GPUs) */
 @media(hover:none){
-  .lp-root .pv,.lp-root .hero-vis:hover .pv{transform:none}
   .lp-root .feat::after{display:none}
   .lp-root::before{display:none}
 }
@@ -2769,7 +2781,7 @@ img,.lp-root img{max-width:100%;height:auto}
   .lp-root .rv{opacity:1;transform:none;transition:none}
   .lp-root .qs-track{animation:none}
   .lp-root .hero-badge .pdot,.lp-root .hero-addr .typed .caret{animation:none}
-  .lp-root .pv{transform:none}
+  .lp-root .pv-ring .arc,.lp-root .pv-item,.lp-root .pv-clear{animation:none}
 }
 
 /* ── AUTH SCREEN ── */
@@ -4906,19 +4918,40 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
           <div className="hero-vis rv" style={{ transitionDelay: ".14s" }}>
             <div className="blob" aria-hidden="true"/>
-            <div className="pv">
-              <div className="pv-bar"><i/><i/><i/><span className="pv-url">trysteadwell.app</span></div>
-              <div className="pv-body">
-                <div className="pv-greet">Good morning, Alex.</div>
-                <div className="pv-sub">Your home is in good shape — 2 things coming up this week.</div>
-                <div className="pv-stats">
-                  <div className="pv-stat"><div className="k">Home value</div><div className="v">$418k</div></div>
-                  <div className="pv-stat accent"><div className="k">Tasks due</div><div className="v">2</div></div>
-                  <div className="pv-stat amber"><div className="k">This year</div><div className="v">$3.2k</div></div>
+            <div className="pv" role="img" aria-label="Sample Steadwell dashboard for an example home at 88 Lakeview Ave: home health score 74 out of 100 and attention needed on two things. The water heater warranty ends in 24 days and home insurance renews in 62 days. One maintenance task is due in 5 days, and 14 items were checked against federal recalls with no matches.">
+              <div className="pv-hero" aria-hidden="true">
+                <span className="pv-tag">Sample home · 88 Lakeview Ave</span>
+                <div className="pv-main">
+                  <div className="pv-txt">
+                    <div className="pv-eyebrow">Home status</div>
+                    <div className="pv-status">Attention needed</div>
+                    <div className="pv-sub">2 things to take care of soon</div>
+                  </div>
+                  <div className="pv-score">
+                    <div className="pv-ring">
+                      <svg viewBox="0 0 104 104">
+                        <circle cx="52" cy="52" r="40" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="8"/>
+                        <circle className="arc" cx="52" cy="52" r="40" fill="none" stroke="#F0CE7A" strokeWidth="8" strokeLinecap="round" strokeDasharray="186 251.3"/>
+                      </svg>
+                      <span>74</span>
+                    </div>
+                    <div className="pv-grade">Home Health · Fair</div>
+                    <div className="pv-of">out of 100</div>
+                  </div>
                 </div>
-                <div className="pv-row"><span className="dot" style={{ background: "var(--terracotta)" }}/><span className="tl">Service HVAC filter</span><span className="tr">in 5 days</span></div>
-                <div className="pv-row"><span className="dot" style={{ background: "var(--sage-deep)" }}/><span className="tl">Roof inspection due</span><span className="tr">in 12 days</span></div>
-                <div className="pv-row"><span className="dot" style={{ background: "var(--pine)" }}/><span className="tl">Water heater warranty</span><span className="tr">3 yrs left</span></div>
+                <div className="pv-counts">
+                  <div className="pv-count"><b>0</b><span>Overdue tasks</span></div>
+                  <div className="pv-count"><b>1</b><span>Due in 30 days</span></div>
+                  <div className="pv-count hot"><b>1</b><span>Warranties ending</span></div>
+                  <div className="pv-count"><b>0</b><span>Open recalls</span></div>
+                </div>
+              </div>
+              <div className="pv-list" aria-hidden="true">
+                <div className="pv-lh">Coming up</div>
+                <div className="pv-item" style={{ "--d": ".75s" }}><span className="pv-ic">🛡️</span><div className="pv-it"><b>Water heater warranty ends</b><span>Warranty coverage ending soon</span></div><span className="pv-bd">24 days</span></div>
+                <div className="pv-item" style={{ "--d": ".9s" }}><span className="pv-ic">🏠</span><div className="pv-it"><b>Home insurance renews</b><span>Review your policy</span></div><span className="pv-bd">62 days</span></div>
+                <div className="pv-item ok" style={{ "--d": "1.05s" }}><span className="pv-ic">🔧</span><div className="pv-it"><b>Replace HVAC filter</b><span>Maintenance</span></div><span className="pv-bd">5 days</span></div>
+                <div className="pv-clear"><i>✓</i><span>14 items checked against federal recalls. No matches.</span></div>
               </div>
             </div>
           </div>
