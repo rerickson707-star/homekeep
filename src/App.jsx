@@ -1,4 +1,4 @@
-// Steadwell v353 — 2026-10-09
+// Steadwell v354 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12375,6 +12375,24 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
     setSaving(true);
     const finalData = { ...editData };
 
+    // A combined city bill may carry a split by service. It must add up to the bill total.
+    let billSplit = null;
+    if (selected.extracted_type === "utility_bill" && finalData.utility_type === "bundle") {
+      const clean = {};
+      UTIL_SPLIT.forEach(sp => { const n = Number(finalData.line_items && finalData.line_items[sp.k]); if (Number.isFinite(n) && n > 0) clean[sp.k] = Math.round(n * 100) / 100; });
+      if (Object.keys(clean).length) {
+        const sum = Math.round(utilSplitSum(clean) * 100) / 100;
+        const total = Number(finalData.amount || 0);
+        if (Math.abs(sum - total) > 0.009) {
+          setSaving(false);
+          window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: `The split adds up to $${sum.toFixed(2)}, but the bill total is $${total.toFixed(2)}. Adjust a line or the total.`, type: "error" } }));
+          return;
+        }
+        billSplit = clean;
+      }
+    }
+    if (billSplit) finalData.line_items = billSplit; else delete finalData.line_items;
+
     // Write to the appropriate table based on type
     if (selected.extracted_type === "warranty") {
       await supabase.from("warranties").insert({
@@ -12404,7 +12422,8 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
     } else if (selected.extracted_type === "utility_bill") {
       // Find or create a matching utility record for this property
       const utilityName = finalData.vendor || finalData.item || "Unknown Utility";
-      const utilityType = finalData.utility_type || "electric";
+      // The review screen now shows the type, so a bill is no longer filed as Electric by default.
+      const utilityType = UTIL_TYPES[finalData.utility_type] ? finalData.utility_type : "other";
       const { data: existingUtils } = await supabase
         .from("utilities")
         .select("id")
@@ -12430,6 +12449,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
           usage:       finalData.usage || null,
           usage_unit:  finalData.usage_unit || null,
           notes:       finalData.notes || null,
+          ...(billSplit ? { line_items: billSplit } : {}),
         });
       }
     }
@@ -12581,10 +12601,26 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                 {selected.extracted_type==="utility_bill" && (
                   <>
                     <FieldRow label="Utility / Provider" field="vendor" />
+                    <div style={{marginBottom:".75rem"}}>
+                      <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".3rem"}}>Utility type</div>
+                      <select value={UTIL_TYPES[editData.utility_type] ? editData.utility_type : "other"}
+                        onChange={e => setEditData(d => ({ ...d, utility_type: e.target.value }))}
+                        style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}>
+                        {Object.entries(UTIL_TYPES).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
+                      </select>
+                    </div>
                     <FieldRow label="Bill date" field="bill_date" type="date" />
                     <FieldRow label="Amount ($)" field="amount" type="number" />
                     <FieldRow label="Usage" field="usage" type="number" />
                     <FieldRow label="Usage unit (kWh, therms, gal…)" field="usage_unit" />
+                    {editData.utility_type === "bundle" && (
+                      <>
+                        {editData.split_status === "mismatch" && !editData.line_items && (
+                          <p style={{margin:"0 0 .6rem",fontSize:".8rem",lineHeight:1.45,color:"#8A6410"}}>Steadwell found separate charges on this bill, but they did not add up to the total. Enter the split by hand if you want it.</p>
+                        )}
+                        <UtilSplitEditor data={editData} onChange={setEditData} />
+                      </>
+                    )}
                   </>
                 )}
                 <FieldRow label="Notes" field="notes" />
@@ -16259,38 +16295,7 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
       {ut.unit && (
         <div className="field s2"><label>{utility?.type==="bundle"?"Water used":"Usage"} ({data.usage_unit||ut.unit}, optional)</label><input type="number" min="0" inputMode="decimal" value={data.usage||""} onChange={e=>f("usage",e.target.value)} placeholder={`From the bill, in ${data.usage_unit||ut.unit}`} /></div>
       )}
-      {utility?.type==="bundle" && (() => {
-        const li = data.line_items && typeof data.line_items === "object" ? data.line_items : {};
-        const sum = Math.round(utilSplitSum(li) * 100) / 100;
-        const total = Number(data.amount);
-        const hasTotal = Number.isFinite(total) && total > 0;
-        const left = Math.round((total - sum) * 100) / 100;
-        const setLine = (k, v) => onChange({ ...data, line_items: { ...li, [k]: v } });
-        const money = v => "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        let status = null;
-        if (sum > 0 && !hasTotal) status = { tone: "info", text: `The parts add up to ${money(sum)}.`, act: "Use as the bill total", fn: () => onChange({ ...data, amount: String(sum) }) };
-        else if (sum > 0 && Math.abs(left) < 0.005) status = { tone: "ok", text: "The parts add up to the bill total." };
-        else if (sum > 0 && left > 0) status = { tone: "warn", text: `${money(left)} of the bill is not assigned yet.`, act: "Put the rest in Other charges", fn: () => setLine("other", String(Math.round(((Number(li.other) || 0) + left) * 100) / 100)) };
-        else if (sum > 0 && left < 0) status = { tone: "bad", text: `The parts are ${money(left)} over the bill total.`, act: "Set the bill total to " + money(sum), fn: () => onChange({ ...data, amount: String(sum) }) };
-        return (
-          <div className="field s2 ut-split">
-            <label>Split by service (optional)</label>
-            <p className="ut-split-help">Enter what each service cost to track them separately. The parts must add up to the bill total. Leave it blank to track only the total.</p>
-            <div className="ut-split-grid">
-              {UTIL_SPLIT.map(sp => (
-                <div key={sp.k} className="ut-split-f">
-                  <label htmlFor={"ut-split-" + sp.k}>{sp.label} ($)</label>
-                  <input id={"ut-split-" + sp.k} type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00"
-                    value={li[sp.k] ?? ""} onChange={e => setLine(sp.k, e.target.value)} />
-                </div>
-              ))}
-            </div>
-            <div className={"ut-split-status " + (status ? status.tone : "")} role="status" aria-live="polite">
-              {status && <><span>{status.text}</span>{status.act && <button type="button" onClick={status.fn}>{status.act}</button>}</>}
-            </div>
-          </div>
-        );
-      })()}
+      {utility?.type==="bundle" && <UtilSplitEditor data={data} onChange={onChange} />}
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Billing period, account notes…" /></div>
       {onDelete && (
         <div className="field s2"><button type="button" className="btn btn-ghost btn-sm" style={{color:"var(--red)",alignSelf:"flex-start"}} onClick={onDelete}>Delete this bill</button></div>
@@ -16344,6 +16349,40 @@ const utilItemsOf = b => {
   if (!li || typeof li !== "object") return [];
   return UTIL_SPLIT.map(sp => ({ ...sp, v: Number(li[sp.k]) })).filter(x => Number.isFinite(x.v) && x.v > 0);
 };
+
+// The "split by service" boxes for a combined city bill. Used by the bill form and the Email Inbox review.
+function UtilSplitEditor({ data, onChange }) {
+  const li = data.line_items && typeof data.line_items === "object" ? data.line_items : {};
+  const sum = Math.round(utilSplitSum(li) * 100) / 100;
+  const total = Number(data.amount);
+  const hasTotal = Number.isFinite(total) && total > 0;
+  const left = Math.round((total - sum) * 100) / 100;
+  const setLine = (k, v) => onChange({ ...data, line_items: { ...li, [k]: v } });
+  const money = v => "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  let status = null;
+  if (sum > 0 && !hasTotal) status = { tone: "info", text: `The parts add up to ${money(sum)}.`, act: "Use as the bill total", fn: () => onChange({ ...data, amount: String(sum) }) };
+  else if (sum > 0 && Math.abs(left) < 0.005) status = { tone: "ok", text: "The parts add up to the bill total." };
+  else if (sum > 0 && left > 0) status = { tone: "warn", text: `${money(left)} of the bill is not assigned yet.`, act: "Put the rest in Other charges", fn: () => setLine("other", String(Math.round(((Number(li.other) || 0) + left) * 100) / 100)) };
+  else if (sum > 0 && left < 0) status = { tone: "bad", text: `The parts are ${money(left)} over the bill total.`, act: "Set the bill total to " + money(sum), fn: () => onChange({ ...data, amount: String(sum) }) };
+  return (
+    <div className="field s2 ut-split">
+      <label>Split by service (optional)</label>
+      <p className="ut-split-help">Enter what each service cost to track them separately. The parts must add up to the bill total. Leave it blank to track only the total.</p>
+      <div className="ut-split-grid">
+        {UTIL_SPLIT.map(sp => (
+          <div key={sp.k} className="ut-split-f">
+            <label htmlFor={"ut-split-" + sp.k}>{sp.label} ($)</label>
+            <input id={"ut-split-" + sp.k} type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00"
+              value={li[sp.k] ?? ""} onChange={e => setLine(sp.k, e.target.value)} />
+          </div>
+        ))}
+      </div>
+      <div className={"ut-split-status " + (status ? status.tone : "")} role="status" aria-live="polite">
+        {status && <><span>{status.text}</span>{status.act && <button type="button" onClick={status.fn}>{status.act}</button>}</>}
+      </div>
+    </div>
+  );
+}
 
 function UtilIcon({ type, size = 20 }) {
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };

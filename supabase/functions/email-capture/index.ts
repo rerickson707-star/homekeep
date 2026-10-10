@@ -206,6 +206,34 @@ const toNum = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+// ── Utility bills: validate what the AI returned ────────────────────────────
+// utility_type must be one the app knows. A split by service (line_items) is kept only when it is
+// a real split (two or more services) and the parts add up to the bill total to the cent; otherwise it
+// is dropped and split_status says why, so the review screen never shows numbers that do not add up.
+const UTILITY_TYPES = ["electric", "gas", "water", "internet", "trash", "sewer", "bundle", "other"];
+const SPLIT_KEYS = ["water", "sewer", "trash", "stormwater", "other"];
+
+function cleanUtilityBill(data: Record<string, any>) {
+  const raw = data.line_items;
+  delete data.line_items;
+  let status = "none";
+  if (raw && typeof raw === "object") {
+    const clean: Record<string, number> = {};
+    for (const k of SPLIT_KEYS) {
+      const n = Number(raw[k]);
+      if (Number.isFinite(n) && n > 0 && n < 1_000_000) clean[k] = Math.round(n * 100) / 100;
+    }
+    const sum = Math.round(Object.values(clean).reduce((a, b) => a + b, 0) * 100) / 100;
+    const total = Number(data.amount);
+    if (Object.keys(clean).length >= 2 && Number.isFinite(total) && total > 0) {
+      if (Math.abs(sum - total) <= 0.011) { data.line_items = clean; data.utility_type = "bundle"; status = "ok"; }
+      else status = "mismatch";
+    }
+  }
+  data.split_status = status;
+  if (!UTILITY_TYPES.includes(String(data.utility_type))) data.utility_type = "other";
+}
+
 async function extractWithAI(subject: string, body: string, from: string, files: AiFile[], attachmentNames: string[]): Promise<{
   type: string; confidence: string; data: Record<string, any>; summary: string;
 }> {
@@ -245,6 +273,8 @@ Respond with ONLY valid JSON in this exact format:
     "category": "HVAC | Appliance | Electronics | Vehicle | Tools | Roofing | Plumbing | Electrical | Structure | Safety | Landscaping | Jewelry & Valuables | Outdoor | Other",
     "notes": "any other relevant details",
     "vendor": "store, utility provider, or company name if present",
+    "utility_type": "electric | gas | water | internet | trash | sewer | bundle | other — utility_bill type only. Use bundle when ONE bill charges for two or more of water, sewer, trash and stormwater, as many city utility bills do",
+    "line_items": {"water": 0.00, "sewer": 0.00, "trash": 0.00, "stormwater": 0.00, "other": 0.00} or null — utility_bill type only, see the line_items rules below,
     "warranty_years": null
   }
 }
@@ -252,6 +282,7 @@ Respond with ONLY valid JSON in this exact format:
 Rules:
 - type "warranty": receipt for a purchased item with warranty info, or warranty registration
 - type "utility_bill": a recurring utility statement — electric, gas, water, sewer, or trash billing. Use "vendor" for the utility company name (e.g. "Duke Energy"), "amount" for the total due, "bill_date" for the statement date, and "usage"/"usage_unit" if consumption is shown (e.g. usage: 812, usage_unit: "kWh"). Do NOT classify these as "expense".
+- line_items (utility_bill only): fill it only when this one bill charges for two or more of water, sewer (wastewater), trash (garbage, recycling, sanitation, solid waste) and stormwater (drainage). Otherwise null. Use only the charges for THIS billing period and ignore any previous balance, payments, credits and carried-over late fees. water = water service or usage. sewer = sewer or wastewater. trash = trash, garbage, recycling, sanitation or solid waste. stormwater = stormwater or drainage. other = every other charge, such as reclaimed water, taxes, franchise or public service fees, and other fees. Leave out a key when the bill has no such charge. Plain dollar numbers, no symbols. The values must add up to "amount"; if you cannot make them add up, use null.
 - type "expense": a one-time contractor invoice, service call, or repair cost — not a recurring utility bill
 - type "document": inspection report, insurance policy, permit, manual, HOA document
 - type "asset": notification about a new home system or appliance being installed
@@ -296,6 +327,8 @@ Rules:
     const data = (parsed.data && typeof parsed.data === "object") ? parsed.data : {};
     data.amount = toNum(data.amount);
     data.usage = toNum(data.usage);
+    if (type === "utility_bill") cleanUtilityBill(data);
+    else { delete data.utility_type; delete data.line_items; }
     return {
       type,
       confidence: ["high", "medium", "low"].includes(parsed.confidence) ? parsed.confidence : "low",
