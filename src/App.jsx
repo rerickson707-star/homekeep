@@ -1,4 +1,4 @@
-// Steadwell v355 — 2026-10-09
+// Steadwell v356 — 2026-10-10
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3607,6 +3607,10 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .fc-amt b{display:block;font-family:'Fraunces',Georgia,serif;font-size:1.05rem;font-weight:600}
 .fc-amt span{font-size:.74rem;color:#6E665D}
 .fc-go{color:#8A8178;font-size:1.3rem;flex-shrink:0}
+.fc-from{display:inline-block;margin-left:.45rem;font-size:.68rem;font-weight:700;border-radius:999px;padding:2px 8px;background:#E3EDE8;color:#234A3D;vertical-align:1px;max-width:100%}
+@media(max-width:420px){.fc-from{display:table;margin:.25rem 0 .15rem}}
+.fc-dupe{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin:0 0 1rem;padding:.75rem .9rem;border-radius:var(--r-sm);background:#FBF6EC;border:1px solid var(--stone);font-size:.84rem;line-height:1.5;color:#4A443E}
+.fc-dupe span{flex:1 1 14rem;min-width:0}
 .fc-pill{font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:#FBEFCF;color:#8A6410}
 .fc-look{display:block;width:100%;box-sizing:border-box;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:1rem;padding:.9rem 1.1rem;border:1px solid #EBD79A;border-radius:var(--r);background:#FBEFCF;color:#5E4608}
 .fc-look b{display:block;font-size:.92rem}
@@ -16442,16 +16446,20 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
 const FC_KINDS = {
   mortgage:       { label: "Home loan",            seg: "loan",     group: "home",     freq: "monthly",   hint: "Principal and interest" },
   property_tax:   { label: "Property tax",         seg: "tax",      group: "home",     freq: "yearly",    hint: "From your tax bill" },
-  home_insurance: { label: "Homeowners insurance", seg: "tax",      group: "home",     freq: "yearly",    hint: "Your yearly premium" },
-  flood:          { label: "Flood insurance",      seg: "tax",      group: "home",     freq: "yearly",    hint: "Your yearly premium" },
+  home_insurance: { label: "Homeowners insurance", seg: "tax",      group: "home",     freq: "yearly",    hint: "Add it once, in Insurance" },
+  flood:          { label: "Flood insurance",      seg: "tax",      group: "home",     freq: "yearly",    hint: "Add it once, in Insurance" },
+  other_insurance:{ label: "Other insurance",      seg: "tax",      group: "home",     freq: "yearly",    hint: "", linkedOnly: true },
   hoa:            { label: "HOA dues",             seg: "services", group: "home",     freq: "monthly",   hint: "Dues to your association" },
   lawn:           { label: "Lawn care",            seg: "services", group: "services", freq: "monthly",   hint: "Mowing and yard service" },
   pest:           { label: "Pest control",         seg: "services", group: "services", freq: "quarterly", hint: "Regular treatments" },
   security:       { label: "Security system",      seg: "services", group: "services", freq: "monthly",   hint: "Monitoring and alarm" },
-  warranty:       { label: "Home warranty",        seg: "services", group: "services", freq: "yearly",    hint: "Your plan fee" },
+  warranty:       { label: "Home warranty",        seg: "services", group: "services", freq: "yearly",    hint: "Add it once, in Insurance" },
   other:          { label: "Something else",       seg: "services", group: "services", freq: "monthly",   hint: "Any other regular cost" },
 };
 const FC_ESCROW_KINDS = ["property_tax", "home_insurance", "flood"];
+// Costs that already live in Insurance (v356). They are read from there, never typed in again.
+const FC_POLICY_KINDS = ["home_insurance", "flood", "warranty"];
+const FC_KIND_ORDER = Object.keys(FC_KINDS);
 const FC_SEGS = [
   { k: "loan",     label: "Home loan",            color: "#234A3D" },
   { k: "tax",      label: "Taxes and insurance",  color: "#C16140" },
@@ -16469,6 +16477,7 @@ const FC_PATHS = {
   mortgage: "M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
   property_tax: "M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18",
   home_insurance: "M12 3 5 6v5.5c0 4.2 2.8 7.4 7 9 4.2-1.6 7-4.8 7-9V6z",
+  other_insurance: "M12 3 5 6v5.5c0 4.2 2.8 7.4 7 9 4.2-1.6 7-4.8 7-9V6z",
   flood: "M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.3 6-10.5 6-10.5z",
   hoa: "M5 20V5h9v15M14 9h5v11M8 8.5h3M8 12h3M8 15.5h3M3 20h18",
   lawn: "M5 19c0-8 5-13 14-14 0 9-5 14-13 14M5 19l7-7",
@@ -16566,6 +16575,44 @@ async function fcSyncTaxCost({ userId, propertyId, bills, costs }) {
   return data;
 }
 
+// ── v356: costs the app already knows from Insurance and the home profile ────
+// Read-only rows built from data the person entered or scanned once elsewhere. Nothing here is copied into fixed_costs.
+const fcParseList = v => { try { const x = typeof v === "string" ? JSON.parse(v) : v; return Array.isArray(x) ? x : []; } catch { return []; } };
+const fcRecYear = t => {
+  const y = Number(t && t.year);
+  if (Number.isFinite(y) && y >= 1990 && y <= 2100) return Math.round(y);
+  let tm = t && t.time; if (tm == null || tm === "") return null;
+  if (typeof tm === "string" && /^\d{10,}$/.test(tm)) tm = Number(tm);
+  const d = new Date(tm); const yy = d.getUTCFullYear();
+  return Number.isFinite(yy) && yy >= 1990 && yy <= 2100 ? yy : null;
+};
+// Property tax paid per year from public records on the home profile (newest first).
+function fcTaxRecords(profile) {
+  const out = {};
+  fcParseList(profile && profile.tax_history).forEach(t => {
+    const total = fcNum(t && (t.taxPaid != null ? t.taxPaid : t.tax_paid)); const yr = fcRecYear(t || {});
+    if (total != null && total > 0 && yr) out[yr] = fcR2(total);
+  });
+  return Object.entries(out).map(([y, v]) => ({ year: +y, total: v })).sort((a, b) => b.year - a.year);
+}
+// The insurance premium, extra policies and HOA fee as cost rows. `ref` is a stable key for the escrow tick.
+function fcLinked(profile) {
+  const rows = [];
+  if (!profile) return rows;
+  const prem = fcNum(profile.ins_premium);
+  if (prem != null && prem > 0) rows.push({ id: "link:ins", ref: "ins:home", linked: "insurance", kind: "home_insurance", name: "Homeowners insurance", provider: String(profile.ins_company || "").trim(), amount: fcR2(prem), frequency: "yearly", next_due: String(profile.ins_renewal_date || "").slice(0, 10), in_escrow: false });
+  fcParseList(profile.additional_policies).forEach((p, i) => {
+    const a = fcNum(p && p.premium); if (a == null || a <= 0) return;
+    const t = POLICY_TYPES.find(x => x.key === p.type) || POLICY_TYPES[POLICY_TYPES.length - 1];
+    const kind = p.type === "flood" ? "flood" : p.type === "home_warranty" ? "warranty" : "other_insurance";
+    const name = p.type === "home_warranty" ? "Home warranty" : p.type === "other" || !p.type ? "Other insurance" : `${t.label} insurance`;
+    rows.push({ id: "link:pol:" + (p.id != null ? p.id : "i" + i), ref: "pol:" + (p.id != null ? p.id : "i" + i), linked: "insurance", kind, name, provider: String(p.company || "").trim(), amount: fcR2(a), frequency: "yearly", next_due: String(p.renewal_date || "").slice(0, 10), in_escrow: false });
+  });
+  const hoa = fcNum(profile.hoa_fee);
+  if (hoa != null && hoa > 0) rows.push({ id: "link:hoa", ref: "hoa", linked: "profile", kind: "hoa", name: "HOA dues", provider: "", amount: fcR2(hoa), frequency: "monthly", next_due: "", in_escrow: false });
+  return rows;
+}
+
 const FC_SCAN_ERRORS = {
   plan_required: "Tax bill scanning is included with Plus and Pro. You can still type the numbers in.",
   limit_reached: "You've used today's tax bill scans. Try again tomorrow, or type the numbers in.",
@@ -16602,7 +16649,7 @@ function FcCheck({ checked, onChange, label, help }) {
 }
 
 // ── Add / edit a fixed cost ──────────────────────────────────────────────────
-function FixedCostForm({ data, onChange, onPickTax }) {
+function FixedCostForm({ data, onChange, onPickTax, onPickInsurance }) {
   const f = (k, v) => onChange({ ...data, [k]: v });
   const kind = FC_KINDS[data.kind] ? data.kind : "other";
   const defaultNames = Object.values(FC_KINDS).map(x => x.label);
@@ -16611,10 +16658,11 @@ function FixedCostForm({ data, onChange, onPickTax }) {
       <div className="field s2">
         <label id="fc-kind-l">What kind of cost is it?</label>
         <div className="fc-chips" role="group" aria-labelledby="fc-kind-l">
-          {Object.entries(FC_KINDS).map(([k, t]) => (
+          {Object.entries(FC_KINDS).filter(([, t]) => !t.linkedOnly).map(([k, t]) => (
             <button key={k} type="button" aria-pressed={kind === k} className={"fc-chip" + (kind === k ? " on" : "")}
               onClick={() => {
                 if (k === "property_tax") { onPickTax(); return; }
+                if (FC_POLICY_KINDS.includes(k) && onPickInsurance) { onPickInsurance(); return; }
                 const cur = String(data.name || "").trim();
                 const isDefault = !cur || defaultNames.includes(cur);
                 onChange({ ...data, kind: k, ...(isDefault ? { name: t.label } : {}), ...(data.ft ? {} : { frequency: t.freq }) });
@@ -16856,7 +16904,7 @@ function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, to
 }
 
 // ── The property tax page: what the bill says and what changed ───────────────
-function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, onDelete, onEscrow }) {
+function TaxScreen({ bills, costs, history, planData, onUpgrade, onBack, onAdd, onEdit, onDelete, onEscrow }) {
   const today = localISO();
   const sorted = [...bills].sort((a, b) => b.tax_year - a.tax_year);
   const cur = sorted[0] || null;
@@ -16865,7 +16913,9 @@ function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, o
   const cost = costs.find(c => c.kind === "property_tax") || null;
   const story = cur ? fcTaxStory(cur, prev) : null;
   const lines = cur && prev ? fcTaxLines(cur, prev) : [];
-  const series = [...bills].sort((a, b) => a.tax_year - b.tax_year).slice(-5);
+  const firstBill = bills.length ? Math.min(...bills.map(b => b.tax_year)) : 9999;
+  const recs = (history || []).filter(h => h.year < firstBill).map(h => ({ id: "rec-" + h.year, tax_year: h.year, total: h.total, source: "record" }));
+  const series = [...recs, ...bills].sort((a, b) => a.tax_year - b.tax_year).slice(-5);
   const maxT = Math.max(1, ...series.map(b => Number(b.total)));
   const dl = lines.filter(l => l.delta != null);
   const totalDelta = cur && prev ? fcR2(Number(cur.total) - Number(prev.total)) : 0;
@@ -16893,7 +16943,7 @@ function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, o
       </div>
 
       {!cur && (
-        <div className="ut-card"><p className="ut-quiet">No tax bill yet. Add your latest bill to count your property tax in your monthly cost{planData?.aiScan ? ", and Steadwell will read it for you" : ""}.</p></div>
+        <div className="ut-card"><p className="ut-quiet">No tax bill yet. {history && history.length > 0 ? `County records on your home show ${fmt$(history[0].total)} for ${history[0].year}. ` : ""}Add your latest bill to count your exact property tax in your monthly cost{planData?.aiScan ? ", and Steadwell will read it for you" : ""}.</p></div>
       )}
 
       {cur && canInsights && story && (
@@ -16917,9 +16967,9 @@ function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, o
                   const p = series[i - 1];
                   const yoy = p && p.tax_year === b.tax_year - 1 && Number(p.total) > 0 ? (Number(b.total) - Number(p.total)) / Number(p.total) * 100 : null;
                   return (
-                    <div className="fc-chart-c" key={b.id}>
+                    <div className="fc-chart-c" key={b.tax_year}>
                       <span className="fc-chart-v">{fmt$(b.total)}</span>
-                      <i style={{ height: h, background: b.source === "scan" ? "#234A3D" : "#B9CFC5" }} />
+                      <i style={{ height: h, background: b.source === "scan" ? "#234A3D" : b.source === "record" ? "#DDD2BC" : "#B9CFC5" }} />
                       <span className="fc-chart-x">{b.tax_year}</span>
                       <span className={"fc-chart-y" + (yoy != null && yoy > 0 ? " up" : "")}>{yoy != null ? (yoy > 0 ? "+" : "−") + fcPctText(yoy) : " "}</span>
                     </div>
@@ -16929,6 +16979,7 @@ function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, o
               <div className="uc-leg" style={{ marginTop: ".8rem" }}>
                 <span><i style={{ background: "#234A3D" }} />Read from a bill</span>
                 <span><i style={{ background: "#B9CFC5" }} />Typed in</span>
+                {series.some(b => b.source === "record") && <span><i style={{ background: "#DDD2BC" }} />County records</span>}
               </div>
             </div>
           )}
@@ -17020,7 +17071,7 @@ function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, o
 }
 
 // ── The Fixed costs tab ──────────────────────────────────────────────────────
-function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilities, bills, expenses, yr, onOpenUtilities, pendingAdd, onPendingAddHandled }) {
+function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilities, bills, expenses, yr, onOpenUtilities, pendingAdd, onPendingAddHandled, profile, onOpenInsurance, onOpenProfile }) {
   const [costs, setCosts] = useState([]);
   const [taxBills, setTaxBills] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -17030,6 +17081,8 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   const [costConfirm, setCostConfirm] = useState(null);
   const [taxModal, setTaxModal] = useState(null);     // { bill }
   const [billConfirm, setBillConfirm] = useState(null);
+  const [linkId, setLinkId] = useState(null);          // a row read from Insurance or the home profile
+  const [dupeConfirm, setDupeConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const today = localISO();
   const canInsights = !!planData?.taxInsights;
@@ -17048,6 +17101,51 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
     });
     return () => { live = false; };
   }, [userId, propertyId]);
+
+  // Rows with a source_ref only remember the escrow tick for a cost that lives in Insurance. They are never costs themselves.
+  const realCosts = useMemo(() => costs.filter(c => !c.source_ref), [costs]);
+  const overrides = useMemo(() => { const m = {}; costs.forEach(c => { if (c.source_ref) m[c.source_ref] = c; }); return m; }, [costs]);
+  const taxRecords = useMemo(() => fcTaxRecords(profile), [profile]);
+  const linkedRaw = useMemo(() => fcLinked(profile), [profile]);
+  // A cost typed in by hand that Insurance or the home profile already has is skipped, so nothing is counted twice.
+  const dupes = useMemo(() => realCosts.filter(c => linkedRaw.some(l => l.kind === c.kind)), [realCosts, linkedRaw]);
+  const rows = useMemo(() => {
+    const typed = realCosts.filter(c => !dupes.includes(c));
+    const linked = linkedRaw.map(l => {
+      const o = overrides[l.ref];
+      return { ...l, in_escrow: o ? !!o.in_escrow : dupes.some(d => d.kind === l.kind && d.in_escrow) };
+    });
+    const out = [...typed, ...linked];
+    if (taxRecords.length > 0 && !realCosts.some(c => c.kind === "property_tax")) {
+      out.push({ id: "link:tax", ref: "tax:records", linked: "records", kind: "property_tax", name: "Property tax", provider: "", amount: taxRecords[0].total, frequency: "yearly", next_due: "", in_escrow: false, recYear: taxRecords[0].year });
+    }
+    return out.map((r, i) => ({ r, i })).sort((a, b) => (FC_KIND_ORDER.indexOf(a.r.kind) - FC_KIND_ORDER.indexOf(b.r.kind)) || (a.i - b.i)).map(x => x.r);
+  }, [realCosts, dupes, linkedRaw, overrides, taxRecords]);
+  const linkRow = linkId ? rows.find(r => r.id === linkId) || null : null;
+
+  const saveEscrowFor = async (l, v) => {
+    const { data, error } = await supabase.from("fixed_costs").upsert([{ user_id: userId, property_id: propertyId, source_ref: l.ref, kind: l.kind, name: l.name, amount: 0, frequency: "yearly", in_escrow: v }], { onConflict: "property_id,source_ref" }).select().single();
+    if (error || !data) throw error || new Error("no row");
+    setCosts(prev => prev.some(c => c.id === data.id) ? prev.map(c => c.id === data.id ? data : c) : [...prev, data]);
+  };
+  const setLinkedEscrow = async (l, v) => {
+    try { await saveEscrowFor(l, v); } catch (e) { console.error("Escrow save error:", e && e.message); toast("Could not save that change. Try again.", "error"); }
+  };
+  const removeDupes = async () => {
+    setDupeConfirm(false);
+    try {
+      for (const d of dupes) {
+        if (!d.in_escrow) continue;
+        const l = rows.find(r => r.linked && r.kind === d.kind && !overrides[r.ref]);
+        if (l) await saveEscrowFor(l, true);
+      }
+      const ids = dupes.map(d => d.id);
+      const { error } = await supabase.from("fixed_costs").delete().in("id", ids).eq("user_id", userId);
+      if (error) throw error;
+      setCosts(prev => prev.filter(c => !ids.includes(c.id)));
+      toast("Removed the costs you typed in");
+    } catch (e) { console.error("Remove duplicates error:", e && e.message); toast("Could not remove them. Try again.", "error"); }
+  };
 
   const openNewCost = kind => setCostModal({ id: null, data: { kind, name: FC_KINDS[kind].label, provider: "", amount: "", frequency: FC_KINDS[kind].freq, next_due: "", in_escrow: false } });
   const openTax = bill => setTaxModal({ bill: bill || null });
@@ -17097,14 +17195,14 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
     if (error) { toast("Could not delete this bill. Try again.", "error"); return; }
     const nb = taxBills.filter(x => x.id !== b.id);
     try {
-      const cost = await fcSyncTaxCost({ userId, propertyId, bills: nb, costs });
+      const cost = await fcSyncTaxCost({ userId, propertyId, bills: nb, costs: realCosts });
       setCosts(prev => cost ? prev.map(c => c.id === cost.id ? cost : c) : prev.filter(c => c.kind !== "property_tax"));
     } catch { toast("The bill was deleted, but the property tax cost could not be updated.", "error"); }
     setTaxBills(nb);
     toast("Bill deleted");
   };
   const setTaxEscrow = async v => {
-    const c = costs.find(x => x.kind === "property_tax"); if (!c) return;
+    const c = realCosts.find(x => x.kind === "property_tax"); if (!c) return;
     const { data, error } = await supabase.from("fixed_costs").update({ in_escrow: v }).eq("id", c.id).eq("user_id", userId).select().single();
     if (error || !data) { toast("Could not save that change. Try again.", "error"); return; }
     setCosts(prev => prev.map(x => x.id === data.id ? data : x));
@@ -17118,7 +17216,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
     const from = localISO(d);
     return (expenses || []).filter(e => !e.project_id && String(e.date || "").slice(0, 10) >= from && String(e.date || "").slice(0, 10) <= today).reduce((s, e) => s + (Number(e.amount) || 0), 0) / 12;
   }, [expenses, today]);
-  const counted = costs.filter(c => !c.in_escrow);
+  const counted = rows.filter(c => !c.in_escrow);
   const segSum = { loan: 0, tax: 0, services: 0, util: utilMonthly, repairs: repairsMonthly };
   counted.forEach(c => { segSum[fcKindOf(c).seg] += fcMonthly(c); });
   const monthly = Object.values(segSum).reduce((s, v) => s + v, 0);
@@ -17126,7 +17224,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   const prevTax = latestTax ? [...taxBills].sort((a, b) => b.tax_year - a.tax_year).find(b => b.tax_year < latestTax.tax_year) || null : null;
   const taxChangePct = latestTax && prevTax && Number(prevTax.total) > 0 ? (Number(latestTax.total) - Number(prevTax.total)) / Number(prevTax.total) * 100 : null;
 
-  const upcoming = costs.map(c => {
+  const upcoming = rows.map(c => {
     let date = fcNextDue(c, today), amount = Number(c.amount), note = "";
     if (c.kind === "property_tax" && latestTax && latestTax.discount_pct && latestTax.discount_by && latestTax.discount_by >= today && (!date || latestTax.discount_by <= date)) {
       date = latestTax.discount_by; amount = fcR2(Number(latestTax.total) * (1 - Number(latestTax.discount_pct) / 100)); note = `Pay by this date for the ${Number(latestTax.discount_pct)}% discount`;
@@ -17134,7 +17232,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
     return { c, date, amount, note };
   }).filter(x => x.date && x.date <= localISO(new Date(Date.now() + 90 * 86400000))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
 
-  const addCostAt = kind => { if (kind === "property_tax") openTax(null); else openNewCost(kind); };
+  const addCostAt = kind => { if (kind === "property_tax") openTax(null); else if (FC_POLICY_KINDS.includes(kind) && onOpenInsurance) onOpenInsurance(); else openNewCost(kind); };
 
   if (!loaded) return <div className="ut-wrap"><p className="ut-quiet" role="status">Loading your fixed costs…</p></div>;
   if (loadErr) return <div className="ut-wrap"><div className="ut-card"><p className="ut-quiet" role="alert">Fixed costs could not be loaded. Refresh the page to try again.</p></div></div>;
@@ -17150,11 +17248,37 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               <button className="btn btn-primary" onClick={saveCost} disabled={saving}>{saving ? "Saving…" : "Save cost"}</button>
             </div>
           )}>
-          <FixedCostForm data={costModal.data} onChange={d => setCostModal(m => ({ ...m, data: d }))} onPickTax={() => { setCostModal(null); openTax(null); }} />
+          <FixedCostForm data={costModal.data} onChange={d => setCostModal(m => ({ ...m, data: d }))} onPickTax={() => { setCostModal(null); openTax(null); }} onPickInsurance={onOpenInsurance ? () => { setCostModal(null); onOpenInsurance(); } : null} />
         </Modal>
       )}
       {costConfirm && <Confirm message="This fixed cost will be permanently deleted." onConfirm={deleteCost} onCancel={() => setCostConfirm(null)} />}
-      {taxModal && <TaxBillModal bill={taxModal.bill} bills={taxBills} costs={costs} userId={userId} propertyId={propertyId} planData={planData} onUpgrade={onUpgrade} toast={toast} onClose={() => setTaxModal(null)} onSaved={onTaxSaved} />}
+      {dupeConfirm && <Confirm message={`${fcJoin(dupes.map(d => d.name))} will be deleted from your typed-in costs. The linked version stays.`} onConfirm={removeDupes} onCancel={() => setDupeConfirm(false)} />}
+      {linkRow && linkRow.linked !== "records" && (() => {
+        const fromIns = linkRow.linked === "insurance";
+        const nd = fcNextDue(linkRow, today);
+        return (
+          <Modal title={linkRow.name} onClose={() => setLinkId(null)}
+            footer={(
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={() => setLinkId(null)}>Close</button>
+                <button className="btn btn-primary" onClick={() => { setLinkId(null); (fromIns ? onOpenInsurance : onOpenProfile)?.(); }}>{fromIns ? "Edit in Insurance" : "Edit home details"}</button>
+              </div>
+            )}>
+            <p className="fc-quiet" style={{ marginTop: 0 }}>{fromIns ? "This comes from your Insurance tab." : "This comes from your home details."} Change it there and it updates here, so you never type it twice.</p>
+            <div className="fc-facts" style={{ marginBottom: "1rem" }}>
+              <div><span>{linkRow.frequency === "monthly" ? "Paid monthly" : "Paid yearly"}</span><b>{fcMoney2(linkRow.amount)}</b></div>
+              <div><span>Counts as</span><b>{linkRow.in_escrow ? "Nothing extra" : fcMoney2(fcMonthly(linkRow)) + " a month"}</b></div>
+              {linkRow.provider && <div><span>Company</span><b>{linkRow.provider}</b></div>}
+              {nd && <div><span>Renews</span><b>{fcDay(nd)}</b></div>}
+            </div>
+            {FC_ESCROW_KINDS.includes(linkRow.kind) && (
+              <FcCheck checked={!!linkRow.in_escrow} onChange={v => setLinkedEscrow(linkRow, v)} label="My lender pays this from my mortgage escrow"
+                help="Steadwell still keeps the details, but counts it once so your total is not doubled." />
+            )}
+          </Modal>
+        );
+      })()}
+      {taxModal && <TaxBillModal bill={taxModal.bill} bills={taxBills} costs={realCosts} userId={userId} propertyId={propertyId} planData={planData} onUpgrade={onUpgrade} toast={toast} onClose={() => setTaxModal(null)} onSaved={onTaxSaved} />}
       {billConfirm && <Confirm message={`The ${billConfirm.tax_year} tax bill will be permanently deleted.`} onConfirm={deleteBill} onCancel={() => setBillConfirm(null)} />}
     </>
   );
@@ -17162,21 +17286,21 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   if (screen === "tax") {
     return (
       <>
-        <TaxScreen bills={taxBills} costs={costs} planData={planData} onUpgrade={onUpgrade} onBack={() => setScreen("list")} onAdd={() => openTax(null)} onEdit={b => openTax(b)} onDelete={b => setBillConfirm(b)} onEscrow={setTaxEscrow} />
+        <TaxScreen bills={taxBills} costs={realCosts} history={taxRecords} planData={planData} onUpgrade={onUpgrade} onBack={() => setScreen("list")} onAdd={() => openTax(null)} onEdit={b => openTax(b)} onDelete={b => setBillConfirm(b)} onEscrow={setTaxEscrow} />
         {modals}
       </>
     );
   }
 
   // First run: pick what to add.
-  if (costs.length === 0) {
+  if (rows.length === 0) {
     return (
       <>
         <div className="ue">
           <h2 className="ue-h">See what your home costs to own</h2>
           <p className="ue-sub">Add what you pay to keep the home: the loan, property tax, insurance, HOA and regular services. Steadwell adds them to your utilities and repairs to show a typical month, and reminds you what is coming up.</p>
           <div className="ue-grid" role="group" aria-label="Choose a cost to add">
-            {Object.entries(FC_KINDS).map(([k, t]) => (
+            {Object.entries(FC_KINDS).filter(([, t]) => !t.linkedOnly).map(([k, t]) => (
               <button key={k} type="button" className="ue-tile" onClick={() => addCostAt(k)}>
                 <span className="ue-ico"><FcIcon kind={k} /></span>
                 <span className="ue-name">{t.label}</span>
@@ -17192,11 +17316,11 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   }
 
   // ── Overview ──
-  const nFixed = costs.length;
+  const nFixed = rows.length;
   const parts = [`${nFixed} fixed cost${nFixed === 1 ? "" : "s"}`]; if (utilMonthly > 0) parts.push("your utility bills"); if (repairsMonthly > 0) parts.push("your repair average");
   const groups = [
-    { k: "home", label: "Home and property", items: costs.filter(c => fcKindOf(c).group === "home") },
-    { k: "services", label: "Services and plans", items: costs.filter(c => fcKindOf(c).group === "services") },
+    { k: "home", label: "Home and property", items: rows.filter(c => fcKindOf(c).group === "home") },
+    { k: "services", label: "Services and plans", items: rows.filter(c => fcKindOf(c).group === "services") },
   ].filter(g => g.items.length > 0);
 
   return (
@@ -17228,18 +17352,21 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               {g.items.map(c => {
                 const t = fcKindOf(c), tone = FC_ICON_TONE[t.seg];
                 const isTax = c.kind === "property_tax";
+                const isRec = c.linked === "records";
                 const nd = fcNextDue(c, today);
-                const sub = c.in_escrow ? "Paid from your loan payment" : [
+                const sub = c.in_escrow ? "Paid from your loan payment" : isRec ? `About ${fmt$(c.amount)} a year, from county records for ${c.recYear}. Add your bill for the exact amount.` : [
                   c.frequency === "monthly" ? "Paid monthly" : `${fmt$(c.amount)} ${c.frequency === "yearly" ? "a year" : "each quarter"}`,
-                  nd ? `${isTax ? "due" : "next"} ${fcDay(nd)}` : "",
+                  c.linked === "insurance" && c.provider ? c.provider : "",
+                  nd ? `${c.linked === "insurance" ? "renews" : isTax ? "due" : "next"} ${fcDay(nd)}` : "",
                   isTax && latestTax ? (latestTax.source === "scan" ? "read from your bill" : "from your bill") : "",
                 ].filter(Boolean).join(" · ");
+                const tag = c.linked === "insurance" ? "From Insurance" : c.linked === "profile" ? "From home details" : isRec ? "County records" : "";
                 return (
-                  <button key={c.id} type="button" className="fc-row" onClick={() => isTax ? setScreen("tax") : setCostModal({ id: c.id, data: { kind: c.kind, name: c.name, provider: c.provider || "", amount: c.amount, frequency: c.frequency, next_due: c.next_due || "", in_escrow: !!c.in_escrow, ft: true } })}
-                    aria-label={`${c.name}, ${fmt$(fcMonthly(c))} a month. ${isTax ? "Open property tax details" : "Edit"}`}>
+                  <button key={c.id} type="button" className="fc-row" onClick={() => isRec ? openTax(null) : c.linked ? setLinkId(c.id) : isTax ? setScreen("tax") : setCostModal({ id: c.id, data: { kind: c.kind, name: c.name, provider: c.provider || "", amount: c.amount, frequency: c.frequency, next_due: c.next_due || "", in_escrow: !!c.in_escrow, ft: true } })}
+                    aria-label={`${c.name}, ${fmt$(fcMonthly(c))} a month.${tag ? " " + tag + "." : ""} ${isRec ? "Add your tax bill" : c.linked ? "Open details" : isTax ? "Open property tax details" : "Edit"}`}>
                     <span className="fc-ico" style={{ background: tone[0], color: tone[1] }}><FcIcon kind={c.kind} /></span>
                     <span className="fc-main">
-                      <span className="fc-name">{c.name}{isTax && canInsights && taxChangePct != null && Math.abs(taxChangePct) >= 3 && <span className="fc-pill">{taxChangePct > 0 ? "Up" : "Down"} {fcPctText(taxChangePct)} this year</span>}</span>
+                      <span className="fc-name">{c.name}{tag && <span className="fc-from">{tag}</span>}{isTax && !isRec && canInsights && taxChangePct != null && Math.abs(taxChangePct) >= 3 && <span className="fc-pill">{taxChangePct > 0 ? "Up" : "Down"} {fcPctText(taxChangePct)} this year</span>}</span>
                       <span className="fc-sub">{sub}</span>
                     </span>
                     <span className="fc-amt" style={c.in_escrow ? { opacity: .55 } : undefined}><b>{fmt$(fcMonthly(c))}</b><span>a month</span></span>
@@ -17249,6 +17376,12 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               })}
             </div>
           ))}
+          {dupes.length > 0 && (
+            <div className="fc-dupe">
+              <span>You also typed in {fcJoin(dupes.map(d => d.name))}. Your Insurance tab or home details already has {dupes.length === 1 ? "it" : "them"}, so Steadwell counts that version and skips yours.</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDupeConfirm(true)}>Remove mine</button>
+            </div>
+          )}
           {(utilMonthly > 0 || repairsMonthly > 0) && (
             <div className="fc-group">
               <div className="fc-group-h"><h3 className="ut-card-t">Already tracked</h3><span className="fc-group-s"><b>{fmt$(utilMonthly + repairsMonthly)}</b> a month</span></div>
@@ -17268,7 +17401,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               )}
             </div>
           )}
-          {!taxBills.length && !costs.some(c => c.kind === "property_tax") && (
+          {!taxBills.length && !rows.some(c => c.kind === "property_tax") && (
             <button type="button" className="fc-addtax" onClick={() => openTax(null)}>
               <span className="fc-ico" style={{ background: FC_ICON_TONE.tax[0], color: FC_ICON_TONE.tax[1] }}><FcIcon kind="property_tax" /></span>
               <span className="fc-main"><span className="fc-name">Add your property tax</span><span className="fc-sub">{planData?.aiScan ? "Upload the bill and Steadwell fills it in." : "Type in your latest bill."}</span></span>
@@ -18109,7 +18242,7 @@ function ProjectAIReview({ project: p, roiData, homeValue, propertyAddress, spen
   );
 }
 
-function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress, pendingSelectedExpense=null, onClearPendingSelectedExpense }) {
+function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLogs=[], planData, onUpgrade, contractors=[], projects=[], setProjects, warranties=[], onNavigate, onOpenAsset, homeValue=0, propertyAddress, pendingSelectedExpense=null, onClearPendingSelectedExpense, profile=null, onOpenInsurance }) {
   const { roiData } = useProjectROIData();
   const [view, setView] = useState("expenses");
   const [modal, setModal] = useState(false);
@@ -19233,6 +19366,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           utilities={utilities} bills={bills} expenses={expenses} yr={yr}
           onOpenUtilities={()=>setView("utilities")}
           pendingAdd={fcPending} onPendingAddHandled={()=>setFcPending(null)}
+          profile={profile} onOpenInsurance={onOpenInsurance} onOpenProfile={()=>onNavigate?.("profile")}
         />
       )}
 
@@ -25430,7 +25564,7 @@ export default function App() {
               <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
-              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)}/></div>
+              <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
