@@ -71,7 +71,7 @@ const OPT = {
 
 const ALLOWED_ORIGINS = [
   /^https:\/\/(www\.)?trysteadwell\.app$/,
-  /^https:\/\/homekeep-git-[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/homekeep-[a-z0-9-]+-rerickson707-star1\.vercel\.app$/,   // dev branch + per-deployment preview URLs
   /^http:\/\/localhost:\d+$/,
 ];
 
