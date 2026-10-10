@@ -1,4 +1,4 @@
-// Steadwell v348 — 2026-10-09
+// Steadwell v349 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -19546,8 +19546,37 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const { roiData } = useProjectROIData();
+  // ── Remove one home (Pro, owner only). The server decides what is allowed; see delete-property.
+  const [homeToRemove, setHomeToRemove] = useState(null);
+  const [removeTyped, setRemoveTyped] = useState("");
+  const [removingHome, setRemovingHome] = useState(false);
+  const homeLabelOf = (h) => h?.name || h?.address?.split(",")[0] || "My Home";
+  const closeRemoveHome = () => { if (removingHome) return; setHomeToRemove(null); setRemoveTyped(""); };
+  const confirmRemoveHome = async () => {
+    if (!homeToRemove || removingHome) return;
+    setRemovingHome(true);
+    const label = homeLabelOf(homeToRemove);
+    const { error } = await supabase.functions.invoke("delete-property", { body: { propertyId: homeToRemove.id } });
+    if (error) {
+      let code = "";
+      try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
+      const msg = code === "primary_home" ? "This is your first home. It holds your plan, so it can't be removed."
+        : code === "last_home" ? "You need at least one home."
+        : code === "not_owner" ? "Only the owner of a home can remove it."
+        : "Could not remove this home. Nothing was deleted. Try again.";
+      toast(msg, "error");
+      setRemovingHome(false);
+      return;
+    }
+    const removedId = homeToRemove.id;
+    setRemovingHome(false);
+    setHomeToRemove(null);
+    setRemoveTyped("");
+    toast(`${label} removed`);
+    onHomeRemoved?.(removedId);
+  };
   // Shares the "sw_recall_cache" localStorage cache with Dashboard/Assets'
   // own useRecallAlerts calls -- so the System Health cards below agree
   // with what those screens show for the same linked asset.
@@ -20974,8 +21003,46 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                   <div style={{fontSize:".72rem",color:"#9E9690",marginTop:1}}>{p.address?.split(",").slice(1,3).join(",").trim()||""}{p.year?` · ${p.year}`:""}</div>
                 </div>
                 {p.id===propertyId&&<span style={{fontSize:".68rem",fontWeight:700,color:"var(--rust)",flexShrink:0}}>Active</span>}
+                {!p._shared && p.id!==allProfiles.find(h=>!h._shared)?.id && (
+                  <button type="button" onClick={e=>{e.stopPropagation();setRemoveTyped("");setHomeToRemove(p);}}
+                    aria-label={"Remove "+homeLabelOf(p)}
+                    style={{flexShrink:0,minHeight:40,padding:"0 .6rem",fontSize:".74rem",fontWeight:700,color:"var(--red)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    Remove
+                  </button>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {homeToRemove && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&closeRemoveHome()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Remove this home">
+            <div className="modal-hdr">
+              <span className="modal-title">Remove {homeLabelOf(homeToRemove)}?</span>
+              <button className="btn btn-ghost btn-sm" onClick={closeRemoveHome} disabled={removingHome} aria-label="Close">✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{background:"var(--cream)",borderRadius:12,padding:"1rem",marginBottom:"1rem",fontSize:".85rem",color:"var(--dark)",lineHeight:1.55}}>
+                <div style={{fontWeight:700,marginBottom:".35rem"}}>This permanently deletes, for this home only:</div>
+                <div>Its tasks, assets and warranties, service history, expenses, projects, utilities and bills, condition assessments, and the photos and files attached to them. People you shared this home with lose access.</div>
+                <div style={{fontWeight:700,margin:".75rem 0 .35rem"}}>Not affected:</div>
+                <div>Your other homes, your plan, your document vault and your contractors.</div>
+                <div style={{marginTop:".75rem"}}>This can't be undone. To keep a copy first, close this and choose Export My Data in the account menu.</div>
+              </div>
+              <div className="field" style={{marginBottom:".9rem"}}>
+                <label htmlFor="sw-remove-home-name">Type <strong>{homeLabelOf(homeToRemove)}</strong> to confirm</label>
+                <input id="sw-remove-home-name" value={removeTyped} autoComplete="off" autoCapitalize="off" spellCheck={false}
+                  onChange={e=>setRemoveTyped(e.target.value)} disabled={removingHome} />
+              </div>
+              <button className="btn btn-danger" style={{width:"100%",marginBottom:".65rem"}}
+                disabled={removingHome || removeTyped.trim().toLowerCase()!==homeLabelOf(homeToRemove).trim().toLowerCase()}
+                onClick={confirmRemoveHome}>
+                {removingHome ? "Removing…" : "Remove this home"}
+              </button>
+              <button className="btn btn-ghost" style={{width:"100%"}} disabled={removingHome} onClick={closeRemoveHome}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
@@ -23875,6 +23942,16 @@ export default function App() {
     setDataLoading(false);
   };
 
+  // ── A home was removed on the server: drop it here and land on another owned home
+  const handleHomeRemoved = async (removedId) => {
+    const remaining = allProfiles.filter(p => p.id !== removedId);
+    setAllProfiles(remaining);
+    if (removedId === activePropertyId) {
+      const next = remaining.find(p => !p._shared) || remaining[0];
+      if (next) await switchProperty(next.id);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setTab("dashboard");
@@ -24161,7 +24238,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
