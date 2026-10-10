@@ -1,4 +1,4 @@
-// Steadwell v354 — 2026-10-09
+// Steadwell v355 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3575,6 +3575,136 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 }
 @media(prefers-reduced-motion:reduce){.ut-chev{transition:none}}
 
+/* ── Fixed costs v355 ── */
+@media(max-width:420px){.money-sub>button{font-size:.76rem!important;padding-left:0!important;padding-right:0!important;min-width:0;white-space:nowrap}.money-sub>button span{margin-left:3px!important;padding:1px 5px!important}}
+.fc-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;align-items:start}
+.fc-cols>*{min-width:0}
+@media(min-width:1024px){.fc-cols{grid-template-columns:minmax(0,1fr) 20rem}}
+.fc-bar{display:flex;height:16px;gap:3px;border-radius:8px;overflow:hidden}
+.fc-bar i{display:block;min-width:4px}
+.fc-leg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem 1rem;margin-top:.95rem}
+@media(min-width:760px){.fc-leg{display:flex;flex-wrap:wrap;gap:.8rem 2rem}}
+.fc-leg-k{display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:#4A443E}
+.fc-leg-k i{width:10px;height:10px;border-radius:3px;flex-shrink:0;display:inline-block}
+.fc-leg-v{font-family:'Fraunces',Georgia,serif;font-size:1.2rem;font-weight:600;color:var(--dark);margin-top:.1rem}
+.fc-leg-p{font-size:.76rem;color:#6E665D}
+.fc-group{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.fc-group-h{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem;padding:.9rem 1.1rem .65rem}
+.fc-group-h .ut-card-t{margin:0}
+.fc-group-s{font-size:.84rem;color:#6E665D;white-space:nowrap}
+.fc-group-s b{color:var(--dark)}
+.fc-row,.fc-addtax{display:flex;align-items:center;gap:.8rem;width:100%;box-sizing:border-box;padding:.8rem 1.1rem;min-height:60px;border:none;border-top:1px solid var(--stone);background:none;font-family:inherit;text-align:left;cursor:pointer;color:var(--dark)}
+.fc-row:hover,.fc-addtax:hover{background:var(--cream)}
+.fc-row:focus-visible,.fc-addtax:focus-visible,.fc-look:focus-visible,.fc-upload:focus-visible,.fc-chip:focus-visible,.fc-check:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.fc-row.static{cursor:default}
+.fc-row.static:hover{background:none}
+.fc-addtax{background:var(--white);border:1.5px dashed var(--stone);border-radius:var(--r);margin-bottom:1rem}
+.fc-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fc-main{flex:1;min-width:0;display:block}
+.fc-name{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-weight:700;font-size:.95rem;line-height:1.3}
+.fc-sub{display:block;font-size:.8rem;color:#6E665D;margin-top:.1rem;line-height:1.4}
+.fc-amt{text-align:right;flex-shrink:0}
+.fc-amt b{display:block;font-family:'Fraunces',Georgia,serif;font-size:1.05rem;font-weight:600}
+.fc-amt span{font-size:.74rem;color:#6E665D}
+.fc-go{color:#8A8178;font-size:1.3rem;flex-shrink:0}
+.fc-pill{font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:#FBEFCF;color:#8A6410}
+.fc-look{display:block;width:100%;box-sizing:border-box;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:1rem;padding:.9rem 1.1rem;border:1px solid #EBD79A;border-radius:var(--r);background:#FBEFCF;color:#5E4608}
+.fc-look b{display:block;font-size:.92rem}
+.fc-look span{display:block;font-size:.84rem;line-height:1.45;margin-top:.15rem}
+.fc-look u{display:inline-block;margin-top:.4rem;font-size:.84rem;font-weight:700}
+.fc-up{list-style:none;margin:0;padding:0}
+.fc-up li{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-top:1px solid var(--stone);font-size:.9rem}
+.fc-up li:first-child{border-top:none;padding-top:0}
+.fc-up-d{width:2.6rem;text-align:center;flex-shrink:0;font-family:'Fraunces',Georgia,serif;font-size:1.25rem;font-weight:600;line-height:1}
+.fc-up-d small{display:block;font-family:'Hanken Grotesk',sans-serif;font-size:.68rem;font-weight:700;color:#6E665D;margin-bottom:.15rem}
+.fc-up-n{flex:1;min-width:0}
+.fc-up-n b{display:block;font-weight:600}
+.fc-up-n small{display:block;font-size:.76rem;color:#6E665D;line-height:1.35;margin-top:.1rem}
+.fc-chips{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:6px}
+.fc-chip{min-height:44px;padding:.5rem .9rem;border-radius:999px;border:1.5px solid var(--stone);background:var(--white);font-family:inherit;font-size:.86rem;font-weight:600;color:var(--dark);cursor:pointer}
+.fc-chip.on{background:var(--pine);border-color:var(--pine);color:var(--cream)}
+.fc-seg{display:flex;gap:4px;background:var(--cream2);border-radius:12px;padding:4px;margin-top:6px}
+.fc-seg button{flex:1;min-height:40px;border:none;border-radius:9px;background:none;font-family:inherit;font-size:.84rem;font-weight:600;color:#5E574F;cursor:pointer}
+.fc-seg button.on{background:var(--white);color:var(--pine);font-weight:700;box-shadow:0 1px 2px rgba(38,33,28,.08)}
+.fc-seg button:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
+.fc-check{display:flex;align-items:flex-start;gap:.7rem;width:100%;text-align:left;background:none;border:none;padding:.2rem 0;font-family:inherit;cursor:pointer;color:var(--dark)}
+.fc-check-box{width:26px;height:26px;min-width:26px;border-radius:8px;border:1.5px solid #B9AE9E;background:var(--white);display:flex;align-items:center;justify-content:center;color:var(--cream);margin-top:1px}
+.fc-check-box.on{background:var(--pine);border-color:var(--pine)}
+.fc-check-t b{display:block;font-size:.9rem;line-height:1.35}
+.fc-check-t span{display:block;font-size:.8rem;line-height:1.45;color:#6E665D;margin-top:.15rem}
+.fc-priv{margin:.2rem 0 0;font-size:.8rem;line-height:1.5;color:#6E665D}
+.fc-lead{margin:0 0 1rem;font-size:.92rem;line-height:1.55;color:#4A443E}
+.fc-upload{display:flex;flex-direction:column;align-items:center;gap:.35rem;width:100%;box-sizing:border-box;padding:1.5rem 1rem;border:2px dashed #9DBBAE;border-radius:var(--r);background:#EAF2EE;font-family:inherit;cursor:pointer;color:var(--dark)}
+.fc-upload:disabled{cursor:progress}
+.fc-upload-i{width:48px;height:48px;border-radius:14px;background:var(--white);color:var(--pine);display:flex;align-items:center;justify-content:center}
+.fc-upload-t{font-weight:700;font-size:1rem}
+.fc-upload-s{font-size:.82rem;color:#4A443E}
+.fc-spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--stone);border-top-color:var(--pine);display:block;animation:fcspin .9s linear infinite}
+@keyframes fcspin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.fc-spin{animation-duration:2.4s}}
+.fc-err{margin:.8rem 0 0;padding:.65rem .8rem;border-radius:var(--r-sm);background:rgba(176,67,43,.08);border:1px solid rgba(176,67,43,.25);color:#B0432B;font-size:.86rem;line-height:1.45}
+.fc-warn{margin:.2rem 0 0;font-size:.82rem;line-height:1.45;color:#8A6410;font-weight:600}
+.fc-ok{margin:.2rem 0 0;font-size:.82rem;line-height:1.45;color:#2F6A49;font-weight:600}
+.fc-quiet{margin:.2rem 0 .6rem;font-size:.8rem;line-height:1.45;color:#6E665D}
+.fc-note{padding:.75rem .9rem;border-radius:var(--r-sm);background:#EAF2EE;border:1px solid #CFE0D7;color:#33493F;font-size:.86rem;line-height:1.5}
+.fc-flag{border-color:#C48100!important;box-shadow:0 0 0 3px rgba(196,129,0,.16)}
+.fc-flag-t{display:block;margin-top:.25rem;font-size:.76rem;font-weight:700;color:#8A6410}
+.fc-lock{padding:1rem 1.1rem;border:1.5px dashed #BFB5A8;border-radius:var(--r);background:var(--white)}
+.fc-lock-t{font-family:'Fraunces',Georgia,serif;font-size:1.08rem;font-weight:500;line-height:1.3;margin-bottom:.4rem}
+.fc-lock p{margin:0 0 .75rem;font-size:.86rem;line-height:1.5;color:#4A443E}
+.fc-tag{display:inline-block;font-family:'Hanken Grotesk',sans-serif;font-size:.7rem;font-weight:700;color:var(--pine);background:#E3EDE8;border-radius:999px;padding:2px 9px;margin-right:.35rem;vertical-align:middle}
+.fc-comp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.5rem;padding:.7rem;margin-bottom:.55rem;border:1px solid var(--stone);border-radius:var(--r-sm);background:var(--cream)}
+.fc-comp input:first-child{grid-column:1 / -1}
+.fc-comp .fc-link{grid-column:1 / -1;justify-self:start}
+.fc-link{background:none;border:none;padding:.4rem 0;min-height:36px;font-family:inherit;font-size:.84rem;font-weight:700;color:var(--pine);text-decoration:underline;cursor:pointer}
+.fc-link.del{color:#B0432B}
+.fc-back{display:inline-flex;align-items:center;gap:.3rem;min-height:44px;margin:0 0 .3rem;padding:0;background:none;border:none;font-family:inherit;font-size:.92rem;font-weight:700;color:var(--pine);cursor:pointer}
+.fc-back span{font-size:1.3rem;line-height:1}
+.fc-story{margin:0 0 1rem;padding:1.1rem 1.2rem;border-radius:var(--r);background:var(--pine);color:var(--cream)}
+.fc-story-k{font-size:.78rem;font-weight:700;color:#BFD6CB;margin-bottom:.35rem}
+.fc-story p{margin:0;font-family:'Fraunces',Georgia,serif;font-size:1.2rem;line-height:1.45;font-weight:400}
+@media(min-width:760px){.fc-story p{font-size:1.4rem}}
+.fc-stats{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;margin-bottom:1rem}
+@media(min-width:760px){.fc-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.fc-stat-k{font-size:.82rem;color:#6E665D}
+.fc-stat-v{font-family:'Fraunces',Georgia,serif;font-size:1.55rem;font-weight:600;color:var(--dark);margin-top:.15rem}
+.fc-stat-d{font-size:.82rem;font-weight:700;margin-top:.1rem;color:#6E665D}
+.fc-stat-d.up{color:#8A6410}
+.fc-stat-d.dn{color:#2F6A49}
+.fc-stat-n{font-size:.74rem;color:#6E665D;margin-top:.2rem}
+.fc-chart{display:flex;align-items:flex-end;gap:.5rem;padding-top:.5rem}
+.fc-chart-c{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:.25rem}
+.fc-chart-c i{display:block;width:100%;max-width:56px;border-radius:6px 6px 0 0}
+.fc-chart-v{font-size:.7rem;font-weight:700;color:var(--dark);white-space:nowrap}
+.fc-chart-x{font-size:.78rem;font-weight:700;color:var(--dark);border-top:1px solid var(--dark);width:100%;text-align:center;padding-top:.3rem}
+.fc-chart-y{font-size:.7rem;color:#6E665D;min-height:1em}
+.fc-chart-y.up{color:#8A6410;font-weight:700}
+.fc-tbl{font-size:.88rem}
+.fc-tr{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));gap:.4rem;align-items:center;padding:.6rem .2rem;border-top:1px solid var(--stone)}
+.fc-tr>span{text-align:right;font-variant-numeric:tabular-nums}
+.fc-tr>span.n{text-align:left;font-weight:600;overflow-wrap:anywhere}
+.fc-tr.h{border-top:none;font-size:.76rem;font-weight:700;color:#6E665D}
+.fc-tr.hi{background:#FBF6EC}
+.fc-tr.t{border-top:2px solid var(--dark);font-weight:700}
+.fc-tr .up{color:#8A6410;font-weight:700}
+.fc-tr .dn{color:#2F6A49;font-weight:700}
+@media(max-width:480px){.fc-tr{grid-template-columns:minmax(0,1.2fr) repeat(3,minmax(0,1fr));font-size:.76rem;gap:.25rem}.fc-tbl{font-size:.78rem}}
+.fc-split{display:flex;height:14px;gap:3px;border-radius:7px;overflow:hidden}
+.fc-split i{display:block;min-width:4px}
+.fc-why{list-style:none;margin:.9rem 0 0;padding:0;display:flex;flex-direction:column;gap:.7rem;font-size:.9rem;line-height:1.5}
+.fc-why li{display:flex;gap:.6rem}
+.fc-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;margin-top:.4rem}
+.fc-todo{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.8rem;font-size:.9rem;line-height:1.5}
+.fc-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+.fc-facts div span{display:block;font-size:.8rem;color:#6E665D}
+.fc-facts div b{display:block;font-family:'Fraunces',Georgia,serif;font-size:1.1rem;font-weight:600;overflow-wrap:anywhere}
+.fc-bill{display:flex;align-items:center;gap:.6rem;padding:.55rem 1.1rem;border-top:1px solid var(--stone)}
+.fc-bill .fc-link{flex-shrink:0}
+.fc-bill-m{flex:1 1 3rem;min-width:0}
+.fc-bill-m b{display:block;font-size:.95rem}
+.fc-bill-m span{display:block;font-size:.76rem;color:#6E665D}
+.fc-bill-a{font-family:'Fraunces',Georgia,serif;font-weight:600}
+
 /* ── Money v310 ── */
 .ms-card{background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:1rem 1.1rem .95rem;height:100%;box-sizing:border-box}
 .uc.sm{--uch:120px}
@@ -4668,6 +4798,7 @@ const LANDING_FAQ = [
   ["What is Steadwell?","Steadwell is a home management app for homeowners. It tracks maintenance, warranties, safety recalls, utility bills, expenses, insurance, contractors and documents for your home in one place, and uses AI to scan receipts, appliance nameplates and bills and to assess the condition of appliances and systems from photos."],
   ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex and essential document storage for one property. Plus is $7.99 a month ($63.99 a year) and Pro is $14.99 a month ($119.99 a year)."],
   ["Can Steadwell track my utility bills?","Yes. Track electric, gas, water, sewer, internet and trash bills with usage, a six-month average and spike alerts. Add bills by scanning them with AI (Plus and Pro), forwarding the email, or typing them in. Utility bills also count toward your yearly and all-time home spend. If your city puts water, sewer and trash on one bill, add it as a single utility and, if you like, split each bill by service."],
+  ["Can Steadwell show what my home costs to own?","Yes. The Fixed costs tab on the Money page adds your home loan, property tax, insurance, HOA dues and regular services to your utilities and repairs, and shows a typical month, where the money goes and what is due soon. Typing costs in is free on every plan. With Plus or Pro, you can upload your property tax bill and Steadwell reads it, explains it in plain English and shows how your tax has changed from year to year. You check every number before it is saved."],
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
@@ -5198,7 +5329,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Property tax bill reading & comparison","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $7.99/mo</button>
             </div>
@@ -16304,6 +16435,877 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
   );
 }
 
+// ─── FIXED COSTS + PROPERTY TAX (v355) ───────────────────────────────────────
+// What it costs to own the home, beyond the bills and repairs tracked elsewhere: loan, property tax,
+// insurance, HOA and services. Property tax can be read from a bill (Plus and Pro) and compared year to year.
+// The plan for scanning is decided on the server (tax-bill-scan); the flags in PLANS only decide what the screens offer.
+const FC_KINDS = {
+  mortgage:       { label: "Home loan",            seg: "loan",     group: "home",     freq: "monthly",   hint: "Principal and interest" },
+  property_tax:   { label: "Property tax",         seg: "tax",      group: "home",     freq: "yearly",    hint: "From your tax bill" },
+  home_insurance: { label: "Homeowners insurance", seg: "tax",      group: "home",     freq: "yearly",    hint: "Your yearly premium" },
+  flood:          { label: "Flood insurance",      seg: "tax",      group: "home",     freq: "yearly",    hint: "Your yearly premium" },
+  hoa:            { label: "HOA dues",             seg: "services", group: "home",     freq: "monthly",   hint: "Dues to your association" },
+  lawn:           { label: "Lawn care",            seg: "services", group: "services", freq: "monthly",   hint: "Mowing and yard service" },
+  pest:           { label: "Pest control",         seg: "services", group: "services", freq: "quarterly", hint: "Regular treatments" },
+  security:       { label: "Security system",      seg: "services", group: "services", freq: "monthly",   hint: "Monitoring and alarm" },
+  warranty:       { label: "Home warranty",        seg: "services", group: "services", freq: "yearly",    hint: "Your plan fee" },
+  other:          { label: "Something else",       seg: "services", group: "services", freq: "monthly",   hint: "Any other regular cost" },
+};
+const FC_ESCROW_KINDS = ["property_tax", "home_insurance", "flood"];
+const FC_SEGS = [
+  { k: "loan",     label: "Home loan",            color: "#234A3D" },
+  { k: "tax",      label: "Taxes and insurance",  color: "#C16140" },
+  { k: "services", label: "HOA and services",     color: "#C48100" },
+  { k: "util",     label: "Utilities",            color: "#3A7CC0" },
+  { k: "repairs",  label: "Repairs and upkeep",   color: "#7B66B5" },
+];
+const FC_FREQ = [
+  { k: "monthly",   label: "Monthly",   word: "a month" },
+  { k: "quarterly", label: "Quarterly", word: "a quarter" },
+  { k: "yearly",    label: "Yearly",    word: "a year" },
+];
+const FC_ICON_TONE = { loan: ["#E3EDE8", "#234A3D"], tax: ["#F6E9E1", "#A5472A"], services: ["#F1ECDD", "#7A5C3E"] };
+const FC_PATHS = {
+  mortgage: "M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+  property_tax: "M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18",
+  home_insurance: "M12 3 5 6v5.5c0 4.2 2.8 7.4 7 9 4.2-1.6 7-4.8 7-9V6z",
+  flood: "M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.3 6-10.5 6-10.5z",
+  hoa: "M5 20V5h9v15M14 9h5v11M8 8.5h3M8 12h3M8 15.5h3M3 20h18",
+  lawn: "M5 19c0-8 5-13 14-14 0 9-5 14-13 14M5 19l7-7",
+  pest: "M12 8c2.2 0 4 1.8 4 4v2a4 4 0 0 1-8 0v-2c0-2.2 1.8-4 4-4zM12 8V5M8 12H4M16 12h4M8.5 16 5.5 18.5M15.5 16l3 2.5M9 6 7 4M15 6l2-2",
+  security: "M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0",
+  warranty: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
+  other: "M3 11.5 12 4l9 7.5M5.5 10v10h13V10M10 20v-5h4v5",
+};
+function FcIcon({ kind, size = 22 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={FC_PATHS[kind] || FC_PATHS.other} /></svg>;
+}
+const fcKindOf = c => FC_KINDS[c && c.kind] || FC_KINDS.other;
+const fcR2 = n => Math.round(n * 100) / 100;
+const fcMoney2 = v => "$" + Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fcPctText = p => (Math.abs(p) < 10 ? Math.abs(p).toFixed(1) : String(Math.round(Math.abs(p)))) + "%";
+const fcMonthly = c => { const a = Number(c.amount) || 0; return c.frequency === "yearly" ? a / 12 : c.frequency === "quarterly" ? a / 3 : a; };
+const fcWord = f => (FC_FREQ.find(x => x.k === f) || FC_FREQ[0]).word;
+const fcNum = v => { if (v === "" || v == null) return null; const x = Number(String(v).replace(/[$,\s]/g, "")); return Number.isFinite(x) ? x : null; };
+const fcDay = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); } catch { return iso; } };
+const fcJoin = list => list.length <= 1 ? (list[0] || "") : list.slice(0, -1).join(", ") + " and " + list[list.length - 1];
+
+// The next date this cost is due, rolled forward by its schedule when the saved date has passed.
+function fcNextDue(c, today) {
+  const s = String(c.next_due || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  if (s >= today) return s;
+  const step = c.frequency === "yearly" ? 12 : c.frequency === "quarterly" ? 3 : 1;
+  const y = +s.slice(0, 4), m = +s.slice(5, 7) - 1, day = +s.slice(8, 10);
+  for (let k = 1; k <= 1200; k++) {
+    const first = new Date(y, m + k * step, 1, 12);
+    const dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    first.setDate(Math.min(day, dim));
+    const iso = localISO(first);
+    if (iso >= today) return iso;
+  }
+  return null;
+}
+
+// ── Plain-English reading of a tax bill against the year before ──────────────
+// Everything here is worked out from the numbers on the bills. No AI is involved at this step.
+function fcTaxStory(cur, prev) {
+  const t1 = Number(cur.total), t0 = prev ? Number(prev.total) : null;
+  const tv1 = Number(cur.taxable_value) || 0, tv0 = prev ? Number(prev.taxable_value) || 0 : 0;
+  const av1 = Number(cur.assessed_value) || 0, av0 = prev ? Number(prev.assessed_value) || 0 : 0;
+  const s = { delta: null, pct: null, vp: null, rp: null, mills1: tv1 > 0 ? t1 / tv1 * 1000 : null, mills0: tv0 > 0 && t0 ? t0 / tv0 * 1000 : null,
+    tvPct: tv1 > 0 && tv0 > 0 ? (tv1 - tv0) / tv0 * 100 : null, avPct: av1 > 0 && av0 > 0 ? (av1 - av0) / av0 * 100 : null, headline: "", detail: "" };
+  if (!prev || !t0) { s.headline = `Your ${cur.tax_year} property tax bill is ${fcMoney2(t1)}.`; s.detail = "Add last year's bill to see what changed."; return s; }
+  const delta = fcR2(t1 - t0);
+  s.delta = delta; s.pct = t0 > 0 ? delta / t0 * 100 : null;
+  if (Math.abs(delta) < 0.5) { s.headline = `Your property tax stayed about the same at ${fcMoney2(t1)}.`; return s; }
+  const up = delta > 0;
+  s.headline = `Your property tax went ${up ? "up" : "down"} ${fcMoney2(Math.abs(delta))}${s.pct != null ? `, or ${fcPctText(s.pct)}` : ""}, to ${fcMoney2(t1)}.`;
+  if (tv1 > 0 && tv0 > 0) {
+    const vp = (tv1 - tv0) * (t0 / tv0), rp = delta - vp;
+    s.vp = vp; s.rp = rp;
+    const vWord = vp > 0 ? "rose" : "fell";
+    if (up) {
+      if (vp > 0 && rp > 0) s.detail = `About ${Math.round(vp / delta * 100)}% of that is because your taxable value rose ${fcPctText(s.tvPct)}. The rest is because the tax rate went up.`;
+      else if (vp > 0) s.detail = `It comes from a higher taxable value (up ${fcPctText(s.tvPct)}). A lower tax rate took back about ${fcMoney2(Math.abs(rp))}.`;
+      else s.detail = `Your taxable value ${vWord} ${fcPctText(s.tvPct)}, but a higher tax rate more than made up for it.`;
+    } else {
+      if (vp < 0 && rp < 0) s.detail = `About ${Math.round(vp / delta * 100)}% of the drop is because your taxable value fell ${fcPctText(s.tvPct)}. The rest is because the tax rate went down.`;
+      else if (rp < 0) s.detail = `It comes from a lower tax rate. Your taxable value ${vWord} ${fcPctText(s.tvPct)}, which gave back about ${fcMoney2(Math.abs(vp))}.`;
+      else s.detail = `Your taxable value fell ${fcPctText(s.tvPct)}, which more than covered a higher tax rate.`;
+    }
+  }
+  return s;
+}
+// Year-over-year change for each taxing authority that appears on both bills.
+function fcTaxLines(cur, prev) {
+  const a = Array.isArray(cur && cur.components) ? cur.components : [], b = Array.isArray(prev && prev.components) ? prev.components : [];
+  if (!a.length || !b.length) return [];
+  const key = n => String(n || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const before = {}; b.forEach(x => { before[key(x.name)] = (before[key(x.name)] || 0) + Number(x.amount || 0); });
+  const rows = a.map(x => { const p = before[key(x.name)]; const c = Number(x.amount || 0); return { name: x.name, cur: c, prev: p == null ? null : p, delta: p == null ? null : fcR2(c - p) }; });
+  return rows;
+}
+
+// Keeps the "Property tax" cost in step with the newest tax bill. Returns the cost row (or null when no bills remain).
+async function fcSyncTaxCost({ userId, propertyId, bills, costs }) {
+  const latest = [...bills].sort((a, b) => b.tax_year - a.tax_year)[0];
+  const existing = costs.find(c => c.kind === "property_tax");
+  if (!latest) {
+    if (existing) { const { error } = await supabase.from("fixed_costs").delete().eq("id", existing.id).eq("user_id", userId); if (error) throw error; }
+    return null;
+  }
+  const row = { kind: "property_tax", name: "Property tax", amount: latest.total, frequency: "yearly", next_due: latest.due_date || null, tax_bill_id: latest.id };
+  if (existing) {
+    const { data, error } = await supabase.from("fixed_costs").update(row).eq("id", existing.id).eq("user_id", userId).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase.from("fixed_costs").insert([{ ...row, user_id: userId, property_id: propertyId, in_escrow: false }]).select().single();
+  if (error) throw error;
+  return data;
+}
+
+const FC_SCAN_ERRORS = {
+  plan_required: "Tax bill scanning is included with Plus and Pro. You can still type the numbers in.",
+  limit_reached: "You've used today's tax bill scans. Try again tomorrow, or type the numbers in.",
+  not_a_tax_bill: "That doesn't look like a property tax bill. Try the bill from your county or city.",
+  no_total: "We couldn't find the total on this bill. Try a clearer photo, or type the numbers in.",
+  too_large: "That file is too large. Try a smaller photo or PDF.",
+  not_signed_in: "Your session has expired. Sign in again to scan a bill.",
+};
+const fcReadB64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = () => rej(new Error("read")); r.readAsDataURL(file); });
+const fcToJpeg = file => new Promise((resolve, reject) => {
+  const img = new Image(); const url = URL.createObjectURL(file);
+  img.onload = () => {
+    const MAX = 2000; let { width, height } = img;
+    if (width > MAX || height > MAX) { if (width > height) { height = Math.round(height * MAX / width); width = MAX; } else { width = Math.round(width * MAX / height); height = MAX; } }
+    const cv = document.createElement("canvas"); cv.width = width; cv.height = height;
+    const ctx = cv.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, width, height); ctx.drawImage(img, 0, 0, width, height);
+    URL.revokeObjectURL(url);
+    cv.toBlob(b => b ? resolve(new File([b], "bill.jpg", { type: "image/jpeg" })) : reject(new Error("convert")), "image/jpeg", 0.92);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load")); };
+  img.src = url;
+});
+
+// A tick box that does not rely on the browser's native look (global CSS strips it).
+function FcCheck({ checked, onChange, label, help }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={checked} className="fc-check" onClick={() => onChange(!checked)}>
+      <span className={"fc-check-box" + (checked ? " on" : "")} aria-hidden="true">
+        {checked && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
+      </span>
+      <span className="fc-check-t"><b>{label}</b>{help && <span>{help}</span>}</span>
+    </button>
+  );
+}
+
+// ── Add / edit a fixed cost ──────────────────────────────────────────────────
+function FixedCostForm({ data, onChange, onPickTax }) {
+  const f = (k, v) => onChange({ ...data, [k]: v });
+  const kind = FC_KINDS[data.kind] ? data.kind : "other";
+  const defaultNames = Object.values(FC_KINDS).map(x => x.label);
+  return (
+    <div className="fg">
+      <div className="field s2">
+        <label id="fc-kind-l">What kind of cost is it?</label>
+        <div className="fc-chips" role="group" aria-labelledby="fc-kind-l">
+          {Object.entries(FC_KINDS).map(([k, t]) => (
+            <button key={k} type="button" aria-pressed={kind === k} className={"fc-chip" + (kind === k ? " on" : "")}
+              onClick={() => {
+                if (k === "property_tax") { onPickTax(); return; }
+                const cur = String(data.name || "").trim();
+                const isDefault = !cur || defaultNames.includes(cur);
+                onChange({ ...data, kind: k, ...(isDefault ? { name: t.label } : {}), ...(data.ft ? {} : { frequency: t.freq }) });
+              }}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="field"><label htmlFor="fc-name">Name *</label><input id="fc-name" value={data.name || ""} onChange={e => f("name", e.target.value)} placeholder={FC_KINDS[kind].label} maxLength={120} /></div>
+      <div className="field"><label htmlFor="fc-prov">Who you pay (optional)</label><input id="fc-prov" value={data.provider || ""} onChange={e => f("provider", e.target.value)} placeholder="Company name" maxLength={120} /></div>
+      <div className="field"><label htmlFor="fc-amt">Amount ($) *</label><input id="fc-amt" type="number" min="0" step="0.01" inputMode="decimal" value={data.amount ?? ""} onChange={e => f("amount", e.target.value)} placeholder="0.00" /></div>
+      <div className="field">
+        <label id="fc-freq-l">How often</label>
+        <div className="fc-seg" role="group" aria-labelledby="fc-freq-l">
+          {FC_FREQ.map(x => <button key={x.k} type="button" aria-pressed={data.frequency === x.k} className={data.frequency === x.k ? "on" : ""} onClick={() => onChange({ ...data, frequency: x.k, ft: true })}>{x.label}</button>)}
+        </div>
+      </div>
+      <div className="field s2"><label htmlFor="fc-due">Next payment due (optional)</label><input id="fc-due" type="date" value={data.next_due || ""} onChange={e => f("next_due", e.target.value)} /></div>
+      {FC_ESCROW_KINDS.includes(kind) && (
+        <div className="field s2">
+          <FcCheck checked={!!data.in_escrow} onChange={v => f("in_escrow", v)} label="My lender pays this from my mortgage escrow"
+            help="Steadwell still keeps the details, but counts it once so your total is not doubled." />
+        </div>
+      )}
+      <p className="field s2 fc-priv">Steadwell never asks for loan numbers, account numbers or logins. Just the amount and the date.</p>
+    </div>
+  );
+}
+
+// ── Tax bill: upload (Plus and Pro) or type in, check, save ──────────────────
+function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, toast, onClose, onSaved, costs }) {
+  const canScan = !!planData?.aiScan;
+  const fromBill = b => ({
+    tax_year: String(b.tax_year ?? ""), total: b.total ?? "", due_date: b.due_date || "", assessed_value: b.assessed_value ?? "",
+    exemptions: b.exemptions ?? "", taxable_value: b.taxable_value ?? "", discount_pct: b.discount_pct ?? "", discount_by: b.discount_by || "",
+    components: Array.isArray(b.components) ? b.components.map(c => ({ name: c.name || "", mills: c.mills ?? "", amount: c.amount ?? "" })) : [],
+  });
+  const blank = { tax_year: String(new Date().getFullYear()), total: "", due_date: "", assessed_value: "", exemptions: "", taxable_value: "", discount_pct: "", discount_by: "", components: [] };
+  const [form, setForm] = useState(bill ? fromBill(bill) : blank);
+  const [phase, setPhase] = useState(bill || !canScan ? "form" : "choose");
+  const [file, setFile] = useState(null);
+  const [keepCopy, setKeepCopy] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState("");
+  const [uncertain, setUncertain] = useState([]);
+  const [installments, setInstallments] = useState("");
+  const [fromScan, setFromScan] = useState(bill?.source === "scan");
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef(null);
+  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const flag = k => uncertain.includes(k);
+  const editing = !!bill;
+
+  const handleFile = async e => {
+    let pick = e.target.files?.[0];
+    e.target.value = "";
+    if (!pick) return;
+    setScanError("");
+    const isImage = pick.type.startsWith("image/") || /\.(heic|heif|jpg|jpeg|png|webp|gif)$/i.test(pick.name);
+    const isPdf = pick.type === "application/pdf";
+    if (!isPdf && !isImage) { setScanError("Please choose a photo or a PDF."); return; }
+    if (pick.size > 15 * 1024 * 1024) { setScanError(FC_SCAN_ERRORS.too_large); return; }
+    setScanning(true);
+    try {
+      if (isPdf) {
+        const pages = await countPdfPages(pick);
+        if (pages !== null && pages > 30) { setScanError(`This PDF has ${pages} pages. Upload just the bill, usually the first 1 to 4 pages.`); setScanning(false); return; }
+      } else {
+        pick = await prepareImageFile(pick);
+        if (!/^image\/(jpeg|png|webp|gif)$/i.test(pick.type || "")) pick = await fcToJpeg(pick);
+      }
+      const mimeType = isPdf ? "application/pdf" : pick.type;
+      const fileBase64 = await fcReadB64(pick);
+      const { data, error } = await supabase.functions.invoke("tax-bill-scan", { body: { fileBase64, mimeType } });
+      if (error) {
+        let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
+        if (code === "plan_required" && onUpgrade) onUpgrade();
+        setScanError(FC_SCAN_ERRORS[code] || "We couldn't read this bill. Try a clearer photo, or type the numbers in.");
+        setScanning(false);
+        return;
+      }
+      if (!data?.ok || !data.fields) { setScanError("We couldn't read this bill. Try a clearer photo, or type the numbers in."); setScanning(false); return; }
+      const x = data.fields;
+      setForm({
+        tax_year: x.tax_year ? String(x.tax_year) : blank.tax_year, total: x.total ?? "", due_date: x.due_date || "",
+        assessed_value: x.assessed_value ?? "", exemptions: x.exemptions ?? "", taxable_value: x.taxable_value ?? "",
+        discount_pct: x.discount_pct ?? "", discount_by: x.discount_by || "",
+        components: Array.isArray(x.components) ? x.components.map(c => ({ name: c.name, mills: c.mills ?? "", amount: c.amount })) : [],
+      });
+      const unsure = Array.isArray(data.uncertain) ? [...data.uncertain] : [];
+      if (!x.tax_year && !unsure.includes("tax_year")) unsure.push("tax_year");
+      setUncertain(unsure);
+      setInstallments(x.installments || "");
+      setFile(pick); setFromScan(true); setPhase("form");
+    } catch (err) {
+      setScanError(/HEIC|Apple photo/i.test(String(err?.message)) ? err.message : "We couldn't read this file. Try a clearer photo, or type the numbers in.");
+    }
+    setScanning(false);
+  };
+
+  // Live checks the person can see.
+  const total = fcNum(form.total);
+  const compSum = fcR2(form.components.reduce((s, c) => s + (fcNum(c.amount) || 0), 0));
+  const compDiff = total != null && form.components.length > 0 ? fcR2(total - compSum) : null;
+  const av = fcNum(form.assessed_value), ex = fcNum(form.exemptions), tv = fcNum(form.taxable_value);
+  const taxableOff = av != null && tv != null && Math.abs(av - (ex || 0) - tv) > 1;
+  const yearNum = Math.round(Number(form.tax_year));
+  const clash = bills.find(b => b.tax_year === yearNum && (!bill || b.id !== bill.id));
+  const setComp = (i, k, v) => setForm(p => ({ ...p, components: p.components.map((c, j) => j === i ? { ...c, [k]: v } : c) }));
+
+  const save = async () => {
+    if (!Number.isInteger(yearNum) || yearNum < 1990 || yearNum > 2100) { toast("Enter the tax year, like 2026.", "error"); return; }
+    if (total == null || total <= 0) { toast("Enter the total on the bill.", "error"); return; }
+    const disc = fcNum(form.discount_pct);
+    if (disc != null && (disc <= 0 || disc >= 50)) { toast("The early-payment discount should be between 0 and 50 percent.", "error"); return; }
+    for (const k of ["assessed_value", "exemptions", "taxable_value"]) { const n = fcNum(form[k]); if (form[k] !== "" && (n == null || n < 0)) { toast("Check the values. They should be plain positive numbers.", "error"); return; } }
+    const comps = form.components.map(c => ({ name: String(c.name || "").trim().slice(0, 80), mills: fcNum(c.mills), amount: fcNum(c.amount) })).filter(c => c.name && c.amount != null && c.amount >= 0);
+    setSaving(true);
+    try {
+      let documentId = bill?.document_id || null;
+      if (file && keepCopy) {
+        // Keep the original in Documents, the same way an insurance scan does. Best effort: a storage problem never blocks the save.
+        try {
+          const lim = await checkFileLimit(userId, planData);
+          if (lim.ok) {
+            const ext = file.type === "application/pdf" ? "pdf" : (file.name.split(".").pop() || "jpg");
+            const path = `${userId}/documents/${Date.now()}-tax-bill-${yearNum}.${ext}`;
+            const { error: upErr } = await supabase.storage.from("expense-files").upload(path, file, { upsert: true, contentType: file.type });
+            if (!upErr) {
+              const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
+              const { data: docRow, error: docErr } = await supabase.from("home_documents").insert([{
+                user_id: userId, name: `${yearNum} property tax bill`, category: "tax", description: "Saved from a tax bill scan",
+                file_url: urlData.publicUrl + "?t=" + Date.now(), file_type: file.type,
+              }]).select().single();
+              if (!docErr && docRow) documentId = docRow.id;
+            }
+          } else toast("Your document storage is full, so the bill file was not kept. The numbers were saved.", "error");
+        } catch { /* best effort */ }
+      }
+      const row = {
+        user_id: userId, property_id: propertyId, tax_year: yearNum, total: fcR2(total),
+        assessed_value: av, exemptions: ex, taxable_value: tv, due_date: form.due_date || null,
+        discount_pct: disc, discount_by: disc != null ? (form.discount_by || null) : null,
+        components: comps.length ? comps : null, document_id: documentId, source: fromScan ? "scan" : "manual",
+      };
+      const { data, error } = await supabase.from("tax_bills").upsert(row, { onConflict: "property_id,tax_year" }).select().single();
+      if (error) throw error;
+      const nextBills = [data, ...bills.filter(b => b.id !== data.id && b.tax_year !== data.tax_year)];
+      const cost = await fcSyncTaxCost({ userId, propertyId, bills: nextBills, costs });
+      onSaved({ bills: nextBills, cost });
+    } catch (e) {
+      console.error("Tax bill save error:", e?.message);
+      toast("Could not save this bill. Try again.", "error");
+      setSaving(false);
+    }
+  };
+
+  const footer = (
+    <div className="modal-footer">
+      <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+      {phase === "form" && <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save tax bill"}</button>}
+    </div>
+  );
+
+  return (
+    <Modal title={editing ? `Edit ${bill.tax_year} tax bill` : "Add a property tax bill"} onClose={() => { if (!saving && !scanning) onClose(); }} footer={footer}>
+      <input ref={fileRef} type="file" accept={IMAGE_ACCEPT + ",.pdf,application/pdf"} style={{ display: "none" }} onChange={handleFile} />
+      {phase === "choose" && (
+        <div>
+          <p className="fc-lead">Upload the bill your county or city mailed you. A photo or a PDF both work. Steadwell reads it, and you check every number before anything is saved.</p>
+          <button type="button" className="fc-upload" onClick={() => fileRef.current?.click()} disabled={scanning}>
+            <span className="fc-upload-i" aria-hidden="true">{scanning ? <span className="fc-spin" /> : <FcIcon kind="warranty" size={26} />}</span>
+            <span className="fc-upload-t">{scanning ? "Reading your bill…" : "Upload your tax bill"}</span>
+            <span className="fc-upload-s">{scanning ? "This usually takes under a minute." : "Photo or PDF, up to 15 MB"}</span>
+          </button>
+          <div role="status" aria-live="polite">{scanError && <p className="fc-err">{scanError}</p>}</div>
+          <p className="fc-priv" style={{ marginTop: ".9rem" }}>The bill is read by a third-party AI provider to pull out the numbers. Your bill is not used for advertising.</p>
+          <button type="button" className="btn btn-ghost" style={{ marginTop: ".6rem" }} onClick={() => setPhase("form")} disabled={scanning}>Type the numbers in instead</button>
+        </div>
+      )}
+      {phase === "form" && (
+        <div className="fg">
+          {!canScan && !editing && (
+            <div className="field s2">
+              <div className="fc-lock">
+                <div className="fc-lock-t"><span className="fc-tag">Plus and Pro</span> Skip the typing. Upload the bill.</div>
+                <p>With Plus, Steadwell reads your tax bill and fills this in. It then explains the bill in plain English and shows how your tax has changed from year to year.</p>
+                {onUpgrade && <button type="button" className="btn btn-primary btn-sm" onClick={onUpgrade}>See Plus</button>}
+              </div>
+            </div>
+          )}
+          {fromScan && file && (
+            <div className="field s2">
+              <div className="fc-note" role="status">
+                <b>Check what we read.</b> AI can misread a number. Compare these with your bill and fix anything that looks off.
+                {uncertain.length > 0 && <> Fields marked below were hard to read.</>}
+              </div>
+            </div>
+          )}
+          <div className="field"><label htmlFor="tb-year">Tax year *</label><input id="tb-year" type="number" inputMode="numeric" value={form.tax_year} onChange={e => f("tax_year", e.target.value)} disabled={editing} className={flag("tax_year") ? "fc-flag" : ""} />{flag("tax_year") && <small className="fc-flag-t">Please check this one.</small>}</div>
+          <div className="field"><label htmlFor="tb-total">Total for the year ($) *</label><input id="tb-total" type="number" min="0" step="0.01" inputMode="decimal" value={form.total} onChange={e => f("total", e.target.value)} placeholder="0.00" className={flag("total") ? "fc-flag" : ""} />{flag("total") && <small className="fc-flag-t">Please check this one.</small>}</div>
+          {clash && <div className="field s2"><p className="fc-warn">You already saved a {yearNum} bill. Saving this one replaces it.</p></div>}
+          <div className="field"><label htmlFor="tb-due">Due date</label><input id="tb-due" type="date" value={form.due_date} onChange={e => f("due_date", e.target.value)} className={flag("due_date") ? "fc-flag" : ""} />{flag("due_date") && <small className="fc-flag-t">Please check this one.</small>}</div>
+          <div className="field"><label htmlFor="tb-av">Assessed value ($)</label><input id="tb-av" type="number" min="0" inputMode="decimal" value={form.assessed_value} onChange={e => f("assessed_value", e.target.value)} className={flag("assessed_value") ? "fc-flag" : ""} />{flag("assessed_value") && <small className="fc-flag-t">Please check this one.</small>}</div>
+          {installments && <div className="field s2"><p className="fc-quiet">The bill mentions: {installments}. Steadwell tracks the first due date.</p></div>}
+          <div className="field"><label htmlFor="tb-ex">Exemptions ($ of value)</label><input id="tb-ex" type="number" min="0" inputMode="decimal" value={form.exemptions} onChange={e => f("exemptions", e.target.value)} className={flag("exemptions") ? "fc-flag" : ""} />{flag("exemptions") && <small className="fc-flag-t">Please check this one.</small>}</div>
+          <div className="field"><label htmlFor="tb-tv">Taxable value ($)</label><input id="tb-tv" type="number" min="0" inputMode="decimal" value={form.taxable_value} onChange={e => f("taxable_value", e.target.value)} className={flag("taxable_value") ? "fc-flag" : ""} />{flag("taxable_value") && <small className="fc-flag-t">Please check this one.</small>}</div>
+          {av != null && tv != null && (
+            <div className="field s2"><p className={taxableOff ? "fc-warn" : "fc-ok"} role="status">{taxableOff ? "The assessed value minus exemptions does not match the taxable value. Check these three numbers." : "Assessed value minus exemptions matches the taxable value."}</p></div>
+          )}
+          <div className="field"><label htmlFor="tb-dp">Early-payment discount (%)</label><input id="tb-dp" type="number" min="0" max="50" step="0.1" inputMode="decimal" value={form.discount_pct} onChange={e => f("discount_pct", e.target.value)} placeholder="None" /></div>
+          <div className="field"><label htmlFor="tb-db">Discount deadline</label><input id="tb-db" type="date" value={form.discount_by} onChange={e => f("discount_by", e.target.value)} /></div>
+
+          <div className="field s2 fc-comps">
+            <label>Where your tax goes (optional)</label>
+            <p className="fc-quiet">One line per taxing authority, such as the county, the school district or the city.</p>
+            {form.components.map((c, i) => (
+              <div className="fc-comp" key={i}>
+                <input aria-label={`Taxing authority ${i + 1}`} value={c.name} onChange={e => setComp(i, "name", e.target.value)} placeholder="Taxing authority" maxLength={80} />
+                <input aria-label="Rate in mills" type="number" min="0" step="0.0001" inputMode="decimal" value={c.mills} onChange={e => setComp(i, "mills", e.target.value)} placeholder="Rate (mills)" />
+                <input aria-label="Amount in dollars" type="number" min="0" step="0.01" inputMode="decimal" value={c.amount} onChange={e => setComp(i, "amount", e.target.value)} placeholder="Amount ($)" />
+                <button type="button" className="fc-link" onClick={() => setForm(p => ({ ...p, components: p.components.filter((_, j) => j !== i) }))}>Remove line</button>
+              </div>
+            ))}
+            {form.components.length < 12 && <button type="button" className="fc-link" onClick={() => setForm(p => ({ ...p, components: [...p.components, { name: "", mills: "", amount: "" }] }))}>+ Add a line</button>}
+            {compDiff != null && (
+              <p className={Math.abs(compDiff) <= 1 ? "fc-ok" : "fc-warn"} role="status">
+                {Math.abs(compDiff) <= 1 ? "The lines add up to the total." : `The lines add up to ${fcMoney2(compSum)}, which is ${fcMoney2(Math.abs(compDiff))} ${compDiff > 0 ? "less" : "more"} than the total.`}
+              </p>
+            )}
+          </div>
+
+          {file && (
+            <div className="field s2"><FcCheck checked={keepCopy} onChange={setKeepCopy} label="Also save this bill in Documents" help="Counts toward your document storage." /></div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── The property tax page: what the bill says and what changed ───────────────
+function TaxScreen({ bills, costs, planData, onUpgrade, onBack, onAdd, onEdit, onDelete, onEscrow }) {
+  const today = localISO();
+  const sorted = [...bills].sort((a, b) => b.tax_year - a.tax_year);
+  const cur = sorted[0] || null;
+  const prev = cur ? sorted.find(b => b.tax_year < cur.tax_year) || null : null;
+  const canInsights = !!planData?.taxInsights;
+  const cost = costs.find(c => c.kind === "property_tax") || null;
+  const story = cur ? fcTaxStory(cur, prev) : null;
+  const lines = cur && prev ? fcTaxLines(cur, prev) : [];
+  const series = [...bills].sort((a, b) => a.tax_year - b.tax_year).slice(-5);
+  const maxT = Math.max(1, ...series.map(b => Number(b.total)));
+  const dl = lines.filter(l => l.delta != null);
+  const totalDelta = cur && prev ? fcR2(Number(cur.total) - Number(prev.total)) : 0;
+  const biggest = dl.length > 0 && Math.abs(totalDelta) >= 1 ? [...dl].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0] : null;
+  const todos = [];
+  if (cur && cur.discount_pct && cur.discount_by && cur.discount_by >= today) {
+    const save = fcR2(Number(cur.total) * Number(cur.discount_pct) / 100);
+    todos.push({ k: "d", t: `Pay by ${fcDay(cur.discount_by)} to save ${fcMoney2(save)}.`, s: `That is the ${Number(cur.discount_pct)}% early-payment discount, which brings the bill to ${fcMoney2(Number(cur.total) - save)}.` });
+  }
+  if (cur && Number(cur.assessed_value) > 0 && (!prev || Number(cur.assessed_value) > Number(prev.assessed_value || 0))) {
+    todos.push({ k: "a", t: "Check the assessed value.", s: "If it looks higher than your home would sell for, many counties let you appeal for a limited time. The deadline is usually on your notice." });
+  }
+  if (cost && cost.in_escrow) todos.push({ k: "e", t: "Watch your mortgage payment.", s: "Your lender pays this from escrow. A higher bill can raise your monthly payment at the next escrow review." });
+  if (cur && !prev) todos.push({ k: "p", t: "Add last year's bill.", s: "With two years side by side, Steadwell can show what changed and why." });
+
+  return (
+    <div className="ut-wrap">
+      <button type="button" className="fc-back" onClick={onBack}><span aria-hidden="true">‹</span> Fixed costs</button>
+      <div className="ut-sum" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: ".75rem", flexWrap: "wrap" }}>
+        <div>
+          <h2 className="ut-head">Your property tax{canInsights && cur ? ", explained" : ""}</h2>
+          {cur && <p className="ut-sub">{cur.tax_year} bill{prev ? `, compared with ${prev.tax_year}` : ""}</p>}
+        </div>
+        <button type="button" className="btn btn-primary" onClick={onAdd}>{cur ? "Add a bill" : "Add your tax bill"}</button>
+      </div>
+
+      {!cur && (
+        <div className="ut-card"><p className="ut-quiet">No tax bill yet. Add your latest bill to count your property tax in your monthly cost{planData?.aiScan ? ", and Steadwell will read it for you" : ""}.</p></div>
+      )}
+
+      {cur && canInsights && story && (
+        <>
+          <div className="fc-story">
+            <div className="fc-story-k">In plain English</div>
+            <p>{story.headline}{story.detail ? " " + story.detail : ""}</p>
+          </div>
+          <div className="fc-stats">
+            <div className="ut-card"><div className="fc-stat-k">Total bill</div><div className="fc-stat-v">{fcMoney2(cur.total)}</div>{story.delta != null && Math.abs(story.delta) >= 0.5 && <div className={"fc-stat-d" + (story.delta > 0 ? " up" : " dn")}>{story.delta > 0 ? "Up" : "Down"} {fcMoney2(Math.abs(story.delta))}{story.pct != null ? ` (${fcPctText(story.pct)})` : ""}</div>}</div>
+            {Number(cur.assessed_value) > 0 && <div className="ut-card"><div className="fc-stat-k">Assessed value</div><div className="fc-stat-v">{fmt$(cur.assessed_value)}</div>{story.avPct != null && Math.abs(story.avPct) >= 0.05 && <div className={"fc-stat-d" + (story.avPct > 0 ? " up" : " dn")}>{story.avPct > 0 ? "Up" : "Down"} {fcPctText(story.avPct)} from {fmt$(prev.assessed_value)}</div>}</div>}
+            {story.mills1 != null && <div className="ut-card"><div className="fc-stat-k">Effective tax rate</div><div className="fc-stat-v">{story.mills1.toFixed(2)} mills</div>{story.mills0 != null && Math.abs(story.mills1 - story.mills0) >= 0.005 && <div className={"fc-stat-d" + (story.mills1 > story.mills0 ? " up" : " dn")}>{story.mills1 > story.mills0 ? "Up" : "Down"} from {story.mills0.toFixed(2)}</div>}<div className="fc-stat-n">Total tax divided by taxable value</div></div>}
+          </div>
+
+          {series.length >= 2 && (
+            <div className="ut-card" style={{ marginBottom: "1rem" }}>
+              <div className="ut-card-h"><h3 className="ut-card-t">Property tax by year</h3></div>
+              <div className="fc-chart" role="img" aria-label={"Property tax by year: " + series.map(b => `${b.tax_year}, ${fcMoney2(b.total)}`).join("; ")}>
+                {series.map((b, i) => {
+                  const h = Math.max(6, Math.round(Number(b.total) / maxT * 150));
+                  const p = series[i - 1];
+                  const yoy = p && p.tax_year === b.tax_year - 1 && Number(p.total) > 0 ? (Number(b.total) - Number(p.total)) / Number(p.total) * 100 : null;
+                  return (
+                    <div className="fc-chart-c" key={b.id}>
+                      <span className="fc-chart-v">{fmt$(b.total)}</span>
+                      <i style={{ height: h, background: b.source === "scan" ? "#234A3D" : "#B9CFC5" }} />
+                      <span className="fc-chart-x">{b.tax_year}</span>
+                      <span className={"fc-chart-y" + (yoy != null && yoy > 0 ? " up" : "")}>{yoy != null ? (yoy > 0 ? "+" : "−") + fcPctText(yoy) : " "}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="uc-leg" style={{ marginTop: ".8rem" }}>
+                <span><i style={{ background: "#234A3D" }} />Read from a bill</span>
+                <span><i style={{ background: "#B9CFC5" }} />Typed in</span>
+              </div>
+            </div>
+          )}
+
+          {dl.length > 0 && (
+            <div className="ut-card" style={{ marginBottom: "1rem" }}>
+              <div className="ut-card-h"><h3 className="ut-card-t">What changed, line by line</h3></div>
+              <div className="fc-tbl" role="table" aria-label="Change by taxing authority">
+                <div className="fc-tr h" role="row"><span role="columnheader" className="n">Who gets it</span><span role="columnheader">{prev.tax_year}</span><span role="columnheader">{cur.tax_year}</span><span role="columnheader">Change</span></div>
+                {lines.map((l, i) => (
+                  <div className={"fc-tr" + (biggest && l.name === biggest.name ? " hi" : "")} role="row" key={i}>
+                    <span role="cell" className="n">{l.name}</span>
+                    <span role="cell">{l.prev == null ? "—" : fcMoney2(l.prev)}</span>
+                    <span role="cell">{fcMoney2(l.cur)}</span>
+                    <span role="cell" className={l.delta == null ? "" : l.delta > 0 ? "up" : l.delta < 0 ? "dn" : ""}>{l.delta == null ? "New" : (l.delta > 0 ? "+" : l.delta < 0 ? "−" : "") + fcMoney2(Math.abs(l.delta))}</span>
+                  </div>
+                ))}
+                <div className="fc-tr t" role="row"><span role="cell" className="n">Total</span><span role="cell">{fcMoney2(prev.total)}</span><span role="cell">{fcMoney2(cur.total)}</span><span role="cell">{(totalDelta > 0 ? "+" : totalDelta < 0 ? "−" : "") + fcMoney2(Math.abs(totalDelta))}</span></div>
+              </div>
+              {biggest && Math.sign(biggest.delta) === Math.sign(totalDelta) && <p className="ut-quiet" style={{ marginTop: ".8rem" }}>{biggest.name} is the biggest piece: {fcMoney2(Math.abs(biggest.delta))} of the {fcMoney2(Math.abs(totalDelta))} change, or about {Math.round(Math.abs(biggest.delta) / Math.abs(totalDelta) * 100)}%.</p>}
+            </div>
+          )}
+
+          {story.vp != null && Math.abs(story.delta) >= 1 && (() => {
+            const vAbs = Math.abs(story.vp), rAbs = Math.abs(story.rp), sum = vAbs + rAbs || 1;
+            return (
+              <div className="ut-card" style={{ marginBottom: "1rem" }}>
+                <div className="ut-card-h"><h3 className="ut-card-t">Why it changed</h3></div>
+                <div className="fc-split" aria-hidden="true"><i style={{ flex: vAbs / sum, background: "#234A3D" }} /><i style={{ flex: rAbs / sum, background: "#C16140" }} /></div>
+                <ul className="fc-why">
+                  <li><span className="fc-dot" style={{ background: "#234A3D" }} /><span><b>About {fcMoney2(vAbs)} {story.vp >= 0 ? "from a higher" : "from a lower"} taxable value.</b> It went from {fmt$(prev.taxable_value)} to {fmt$(cur.taxable_value)}.</span></li>
+                  <li><span className="fc-dot" style={{ background: "#C16140" }} /><span><b>About {fcMoney2(rAbs)} {story.rp >= 0 ? "from a higher" : "from a lower"} tax rate.</b> The effective rate went from {story.mills0.toFixed(2)} to {story.mills1.toFixed(2)} mills.</span></li>
+                </ul>
+              </div>
+            );
+          })()}
+
+          {todos.length > 0 && (
+            <div className="ut-card" style={{ marginBottom: "1rem" }}>
+              <div className="ut-card-h"><h3 className="ut-card-t">Worth considering</h3></div>
+              <ul className="fc-todo">{todos.map(t => <li key={t.k}><b>{t.t}</b> {t.s}</li>)}</ul>
+            </div>
+          )}
+        </>
+      )}
+
+      {cur && !canInsights && (
+        <>
+          <div className="ut-card" style={{ marginBottom: "1rem" }}>
+            <div className="ut-card-h"><h3 className="ut-card-t">{cur.tax_year} bill</h3></div>
+            <div className="fc-facts">
+              <div><span>Total</span><b>{fcMoney2(cur.total)}</b></div>
+              {cur.due_date && <div><span>Due</span><b>{fcDay(cur.due_date)}</b></div>}
+              {Number(cur.assessed_value) > 0 && <div><span>Assessed value</span><b>{fmt$(cur.assessed_value)}</b></div>}
+              <div><span>Counts as</span><b>{fcMoney2(Number(cur.total) / 12)} a month</b></div>
+            </div>
+          </div>
+          <div className="fc-lock" style={{ marginBottom: "1rem" }}>
+            <div className="fc-lock-t"><span className="fc-tag">Plus and Pro</span> See what your tax bill says and how it changed</div>
+            <p>With Plus, Steadwell reads your bill, explains it in plain English and charts your property tax year by year.</p>
+            {onUpgrade && <button type="button" className="btn btn-primary btn-sm" onClick={onUpgrade}>See Plus</button>}
+          </div>
+        </>
+      )}
+
+      {cost && (
+        <div className="ut-card" style={{ marginBottom: "1rem" }}>
+          <FcCheck checked={!!cost.in_escrow} onChange={onEscrow} label="My lender pays this from my mortgage escrow" help="Steadwell keeps the bill details but counts it once, inside your loan payment." />
+        </div>
+      )}
+
+      {sorted.length > 0 && (
+        <div className="ut-card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
+          <div className="ut-card-h" style={{ padding: ".9rem 1.1rem 0", marginBottom: ".5rem" }}><h3 className="ut-card-t">Your saved bills</h3></div>
+          {sorted.map(b => (
+            <div className="fc-bill" key={b.id}>
+              <div className="fc-bill-m"><b>{b.tax_year}</b><span>{b.source === "scan" ? "Read from a bill" : "Typed in"}</span></div>
+              <div className="fc-bill-a">{fcMoney2(b.total)}</div>
+              <button type="button" className="fc-link" onClick={() => onEdit(b)} aria-label={`Edit ${b.tax_year} bill`}>Edit</button>
+              <button type="button" className="fc-link del" onClick={() => onDelete(b)} aria-label={`Delete ${b.tax_year} bill`}>Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {cur && canInsights && <p className="fc-priv">The numbers on scanned bills were read by a third-party AI provider, and you checked them before saving. The explanations above are worked out from those numbers. They are general information, not tax or legal advice.</p>}
+    </div>
+  );
+}
+
+// ── The Fixed costs tab ──────────────────────────────────────────────────────
+function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilities, bills, expenses, yr, onOpenUtilities, pendingAdd, onPendingAddHandled }) {
+  const [costs, setCosts] = useState([]);
+  const [taxBills, setTaxBills] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loadErr, setLoadErr] = useState(false);
+  const [screen, setScreen] = useState("list");
+  const [costModal, setCostModal] = useState(null);   // { id, data }
+  const [costConfirm, setCostConfirm] = useState(null);
+  const [taxModal, setTaxModal] = useState(null);     // { bill }
+  const [billConfirm, setBillConfirm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const today = localISO();
+  const canInsights = !!planData?.taxInsights;
+
+  useEffect(() => {
+    if (!userId || !propertyId) return;
+    let live = true;
+    setLoaded(false); setLoadErr(false); setScreen("list");
+    Promise.all([
+      supabase.from("fixed_costs").select("*").eq("user_id", userId).eq("property_id", propertyId).order("created_at", { ascending: true }),
+      supabase.from("tax_bills").select("*").eq("user_id", userId).eq("property_id", propertyId).order("tax_year", { ascending: false }),
+    ]).then(([a, b]) => {
+      if (!live) return;
+      if (a.error || b.error) { console.error("Fixed costs load error:", (a.error || b.error).message); setLoadErr(true); }
+      setCosts(a.data || []); setTaxBills(b.data || []); setLoaded(true);
+    });
+    return () => { live = false; };
+  }, [userId, propertyId]);
+
+  const openNewCost = kind => setCostModal({ id: null, data: { kind, name: FC_KINDS[kind].label, provider: "", amount: "", frequency: FC_KINDS[kind].freq, next_due: "", in_escrow: false } });
+  const openTax = bill => setTaxModal({ bill: bill || null });
+  useEffect(() => {
+    if (!pendingAdd || !loaded) return;
+    if (pendingAdd === "tax") openTax(null); else openNewCost("mortgage");
+    onPendingAddHandled?.();
+  }, [pendingAdd, loaded]);
+
+  const saveCost = async () => {
+    const d = costModal.data;
+    const name = String(d.name || "").trim();
+    const amount = fcNum(d.amount);
+    if (!name) { toast("Give this cost a name.", "error"); return; }
+    if (amount == null || amount < 0) { toast("Enter the amount.", "error"); return; }
+    const kind = FC_KINDS[d.kind] ? d.kind : "other";
+    const row = { kind, name, provider: String(d.provider || "").trim() || null, amount: fcR2(amount), frequency: d.frequency || "monthly", next_due: d.next_due || null, in_escrow: FC_ESCROW_KINDS.includes(kind) ? !!d.in_escrow : false };
+    setSaving(true);
+    const q = costModal.id
+      ? supabase.from("fixed_costs").update(row).eq("id", costModal.id).eq("user_id", userId).select().single()
+      : supabase.from("fixed_costs").insert([{ ...row, user_id: userId, property_id: propertyId }]).select().single();
+    const { data, error } = await q;
+    setSaving(false);
+    if (error || !data) { console.error("Fixed cost save error:", error?.message); toast("Could not save this cost. Try again.", "error"); return; }
+    setCosts(prev => costModal.id ? prev.map(c => c.id === data.id ? data : c) : [...prev, data]);
+    setCostModal(null);
+    toast(costModal.id ? "Cost updated ✓" : "Cost added ✓");
+  };
+  const deleteCost = async () => {
+    const id = costConfirm;
+    const { error } = await supabase.from("fixed_costs").delete().eq("id", id).eq("user_id", userId);
+    setCostConfirm(null);
+    if (error) { toast("Could not delete this cost. Try again.", "error"); return; }
+    setCosts(prev => prev.filter(c => c.id !== id)); setCostModal(null);
+    toast("Cost deleted");
+  };
+  const onTaxSaved = ({ bills: nb, cost }) => {
+    setTaxBills(nb);
+    setCosts(prev => cost ? (prev.some(c => c.id === cost.id) ? prev.map(c => c.id === cost.id ? cost : c) : [...prev, cost]) : prev.filter(c => c.kind !== "property_tax"));
+    setTaxModal(null);
+    setScreen("tax");
+    toast("Tax bill saved ✓");
+  };
+  const deleteBill = async () => {
+    const b = billConfirm; setBillConfirm(null);
+    const { error } = await supabase.from("tax_bills").delete().eq("id", b.id).eq("user_id", userId);
+    if (error) { toast("Could not delete this bill. Try again.", "error"); return; }
+    const nb = taxBills.filter(x => x.id !== b.id);
+    try {
+      const cost = await fcSyncTaxCost({ userId, propertyId, bills: nb, costs });
+      setCosts(prev => cost ? prev.map(c => c.id === cost.id ? cost : c) : prev.filter(c => c.kind !== "property_tax"));
+    } catch { toast("The bill was deleted, but the property tax cost could not be updated.", "error"); }
+    setTaxBills(nb);
+    toast("Bill deleted");
+  };
+  const setTaxEscrow = async v => {
+    const c = costs.find(x => x.kind === "property_tax"); if (!c) return;
+    const { data, error } = await supabase.from("fixed_costs").update({ in_escrow: v }).eq("id", c.id).eq("user_id", userId).select().single();
+    if (error || !data) { toast("Could not save that change. Try again.", "error"); return; }
+    setCosts(prev => prev.map(x => x.id === data.id ? data : x));
+  };
+
+  // ── Numbers for the overview ──
+  const nb = useMemo(() => bills.map(b => ({ ...b, bill_date: String(b.bill_date || "").slice(0, 10) })).filter(b => b.bill_date), [bills]);
+  const utilMonthly = useMemo(() => utilities.reduce((s, u) => { const a = analyzeUtility(u, nb, today, yr); return s + (a.last ? a.monthly : 0); }, 0), [utilities, nb, yr, today]);
+  const repairsMonthly = useMemo(() => {
+    const d = new Date(); d.setFullYear(d.getFullYear() - 1);
+    const from = localISO(d);
+    return (expenses || []).filter(e => !e.project_id && String(e.date || "").slice(0, 10) >= from && String(e.date || "").slice(0, 10) <= today).reduce((s, e) => s + (Number(e.amount) || 0), 0) / 12;
+  }, [expenses, today]);
+  const counted = costs.filter(c => !c.in_escrow);
+  const segSum = { loan: 0, tax: 0, services: 0, util: utilMonthly, repairs: repairsMonthly };
+  counted.forEach(c => { segSum[fcKindOf(c).seg] += fcMonthly(c); });
+  const monthly = Object.values(segSum).reduce((s, v) => s + v, 0);
+  const latestTax = [...taxBills].sort((a, b) => b.tax_year - a.tax_year)[0] || null;
+  const prevTax = latestTax ? [...taxBills].sort((a, b) => b.tax_year - a.tax_year).find(b => b.tax_year < latestTax.tax_year) || null : null;
+  const taxChangePct = latestTax && prevTax && Number(prevTax.total) > 0 ? (Number(latestTax.total) - Number(prevTax.total)) / Number(prevTax.total) * 100 : null;
+
+  const upcoming = costs.map(c => {
+    let date = fcNextDue(c, today), amount = Number(c.amount), note = "";
+    if (c.kind === "property_tax" && latestTax && latestTax.discount_pct && latestTax.discount_by && latestTax.discount_by >= today && (!date || latestTax.discount_by <= date)) {
+      date = latestTax.discount_by; amount = fcR2(Number(latestTax.total) * (1 - Number(latestTax.discount_pct) / 100)); note = `Pay by this date for the ${Number(latestTax.discount_pct)}% discount`;
+    }
+    return { c, date, amount, note };
+  }).filter(x => x.date && x.date <= localISO(new Date(Date.now() + 90 * 86400000))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
+
+  const addCostAt = kind => { if (kind === "property_tax") openTax(null); else openNewCost(kind); };
+
+  if (!loaded) return <div className="ut-wrap"><p className="ut-quiet" role="status">Loading your fixed costs…</p></div>;
+  if (loadErr) return <div className="ut-wrap"><div className="ut-card"><p className="ut-quiet" role="alert">Fixed costs could not be loaded. Refresh the page to try again.</p></div></div>;
+
+  const modals = (
+    <>
+      {costModal && (
+        <Modal title={costModal.id ? "Edit fixed cost" : "Add a fixed cost"} onClose={() => { if (!saving) setCostModal(null); }}
+          footer={(
+            <div className="modal-footer">
+              {costModal.id && <button className="btn btn-ghost" style={{ color: "var(--red)", marginRight: "auto" }} onClick={() => setCostConfirm(costModal.id)} disabled={saving}>Delete</button>}
+              <button className="btn btn-ghost" onClick={() => setCostModal(null)} disabled={saving}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveCost} disabled={saving}>{saving ? "Saving…" : "Save cost"}</button>
+            </div>
+          )}>
+          <FixedCostForm data={costModal.data} onChange={d => setCostModal(m => ({ ...m, data: d }))} onPickTax={() => { setCostModal(null); openTax(null); }} />
+        </Modal>
+      )}
+      {costConfirm && <Confirm message="This fixed cost will be permanently deleted." onConfirm={deleteCost} onCancel={() => setCostConfirm(null)} />}
+      {taxModal && <TaxBillModal bill={taxModal.bill} bills={taxBills} costs={costs} userId={userId} propertyId={propertyId} planData={planData} onUpgrade={onUpgrade} toast={toast} onClose={() => setTaxModal(null)} onSaved={onTaxSaved} />}
+      {billConfirm && <Confirm message={`The ${billConfirm.tax_year} tax bill will be permanently deleted.`} onConfirm={deleteBill} onCancel={() => setBillConfirm(null)} />}
+    </>
+  );
+
+  if (screen === "tax") {
+    return (
+      <>
+        <TaxScreen bills={taxBills} costs={costs} planData={planData} onUpgrade={onUpgrade} onBack={() => setScreen("list")} onAdd={() => openTax(null)} onEdit={b => openTax(b)} onDelete={b => setBillConfirm(b)} onEscrow={setTaxEscrow} />
+        {modals}
+      </>
+    );
+  }
+
+  // First run: pick what to add.
+  if (costs.length === 0) {
+    return (
+      <>
+        <div className="ue">
+          <h2 className="ue-h">See what your home costs to own</h2>
+          <p className="ue-sub">Add what you pay to keep the home: the loan, property tax, insurance, HOA and regular services. Steadwell adds them to your utilities and repairs to show a typical month, and reminds you what is coming up.</p>
+          <div className="ue-grid" role="group" aria-label="Choose a cost to add">
+            {Object.entries(FC_KINDS).map(([k, t]) => (
+              <button key={k} type="button" className="ue-tile" onClick={() => addCostAt(k)}>
+                <span className="ue-ico"><FcIcon kind={k} /></span>
+                <span className="ue-name">{t.label}</span>
+                <span className="ue-hint">{t.hint}</span>
+              </button>
+            ))}
+          </div>
+          <p className="ue-note">{planData?.aiScan ? "Have your property tax bill? Add it and Steadwell reads it for you, explains it in plain English and tracks how it changes each year." : "Property tax on the Free plan is typed in by hand. Plus and Pro read the bill for you and show how it changes each year."}</p>
+        </div>
+        {modals}
+      </>
+    );
+  }
+
+  // ── Overview ──
+  const nFixed = costs.length;
+  const parts = [`${nFixed} fixed cost${nFixed === 1 ? "" : "s"}`]; if (utilMonthly > 0) parts.push("your utility bills"); if (repairsMonthly > 0) parts.push("your repair average");
+  const groups = [
+    { k: "home", label: "Home and property", items: costs.filter(c => fcKindOf(c).group === "home") },
+    { k: "services", label: "Services and plans", items: costs.filter(c => fcKindOf(c).group === "services") },
+  ].filter(g => g.items.length > 0);
+
+  return (
+    <div className="ut-wrap">
+      <div className="ut-sum" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: ".75rem", flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0, flex: "1 1 18rem" }}>
+          <h2 className="ut-head">Owning this home costs about <b>{fmt$(monthly)}</b> a month.</h2>
+          <p className="ut-sub">That is {fmt$(monthly * 12)} a year across {fcJoin(parts)}. These are estimates based on what you have added.</p>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => openNewCost("mortgage")}>+ Add a fixed cost</button>
+      </div>
+
+      <div className="ut-card" style={{ marginBottom: "1rem" }}>
+        <div className="fc-bar" role="img" aria-label={"Where your monthly cost goes: " + FC_SEGS.filter(s => segSum[s.k] > 0).map(s => `${s.label} ${fmt$(segSum[s.k])}`).join(", ")}>
+          {FC_SEGS.filter(s => segSum[s.k] > 0).map(s => <i key={s.k} style={{ flex: segSum[s.k], background: s.color }} />)}
+        </div>
+        <div className="fc-leg">
+          {FC_SEGS.filter(s => segSum[s.k] > 0).map(s => (
+            <div key={s.k}><div className="fc-leg-k"><i style={{ background: s.color }} />{s.label}</div><div className="fc-leg-v">{fmt$(segSum[s.k])}</div><div className="fc-leg-p">{monthly > 0 ? Math.round(segSum[s.k] / monthly * 100) : 0}% of the total</div></div>
+          ))}
+        </div>
+      </div>
+
+      <div className="fc-cols">
+        <div>
+          {groups.map(g => (
+            <div className="fc-group" key={g.k}>
+              <div className="fc-group-h"><h3 className="ut-card-t">{g.label}</h3><span className="fc-group-s"><b>{fmt$(g.items.filter(c => !c.in_escrow).reduce((s, c) => s + fcMonthly(c), 0))}</b> a month</span></div>
+              {g.items.map(c => {
+                const t = fcKindOf(c), tone = FC_ICON_TONE[t.seg];
+                const isTax = c.kind === "property_tax";
+                const nd = fcNextDue(c, today);
+                const sub = c.in_escrow ? "Paid from your loan payment" : [
+                  c.frequency === "monthly" ? "Paid monthly" : `${fmt$(c.amount)} ${c.frequency === "yearly" ? "a year" : "each quarter"}`,
+                  nd ? `${isTax ? "due" : "next"} ${fcDay(nd)}` : "",
+                  isTax && latestTax ? (latestTax.source === "scan" ? "read from your bill" : "from your bill") : "",
+                ].filter(Boolean).join(" · ");
+                return (
+                  <button key={c.id} type="button" className="fc-row" onClick={() => isTax ? setScreen("tax") : setCostModal({ id: c.id, data: { kind: c.kind, name: c.name, provider: c.provider || "", amount: c.amount, frequency: c.frequency, next_due: c.next_due || "", in_escrow: !!c.in_escrow, ft: true } })}
+                    aria-label={`${c.name}, ${fmt$(fcMonthly(c))} a month. ${isTax ? "Open property tax details" : "Edit"}`}>
+                    <span className="fc-ico" style={{ background: tone[0], color: tone[1] }}><FcIcon kind={c.kind} /></span>
+                    <span className="fc-main">
+                      <span className="fc-name">{c.name}{isTax && canInsights && taxChangePct != null && Math.abs(taxChangePct) >= 3 && <span className="fc-pill">{taxChangePct > 0 ? "Up" : "Down"} {fcPctText(taxChangePct)} this year</span>}</span>
+                      <span className="fc-sub">{sub}</span>
+                    </span>
+                    <span className="fc-amt" style={c.in_escrow ? { opacity: .55 } : undefined}><b>{fmt$(fcMonthly(c))}</b><span>a month</span></span>
+                    <span className="fc-go" aria-hidden="true">›</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          {(utilMonthly > 0 || repairsMonthly > 0) && (
+            <div className="fc-group">
+              <div className="fc-group-h"><h3 className="ut-card-t">Already tracked</h3><span className="fc-group-s"><b>{fmt$(utilMonthly + repairsMonthly)}</b> a month</span></div>
+              {utilMonthly > 0 && (
+                <button type="button" className="fc-row" onClick={onOpenUtilities}>
+                  <span className="fc-ico" style={{ background: "#E4EEF7", color: "#2D6199" }}><FcIcon kind="flood" /></span>
+                  <span className="fc-main"><span className="fc-name">Utilities</span><span className="fc-sub">Your typical month from your bills. Open Utilities to see them.</span></span>
+                  <span className="fc-amt"><b>{fmt$(utilMonthly)}</b><span>a month</span></span><span className="fc-go" aria-hidden="true">›</span>
+                </button>
+              )}
+              {repairsMonthly > 0 && (
+                <div className="fc-row static">
+                  <span className="fc-ico" style={{ background: "#EEEAF6", color: "#5D4C94" }}><FcIcon kind="security" /></span>
+                  <span className="fc-main"><span className="fc-name">Repairs and upkeep</span><span className="fc-sub">Average of the last 12 months of expenses you logged, not counting projects.</span></span>
+                  <span className="fc-amt"><b>{fmt$(repairsMonthly)}</b><span>a month</span></span>
+                </div>
+              )}
+            </div>
+          )}
+          {!taxBills.length && !costs.some(c => c.kind === "property_tax") && (
+            <button type="button" className="fc-addtax" onClick={() => openTax(null)}>
+              <span className="fc-ico" style={{ background: FC_ICON_TONE.tax[0], color: FC_ICON_TONE.tax[1] }}><FcIcon kind="property_tax" /></span>
+              <span className="fc-main"><span className="fc-name">Add your property tax</span><span className="fc-sub">{planData?.aiScan ? "Upload the bill and Steadwell fills it in." : "Type in your latest bill."}</span></span>
+              <span className="fc-go" aria-hidden="true">›</span>
+            </button>
+          )}
+        </div>
+
+        <div>
+          {canInsights && latestTax && prevTax && taxChangePct != null && Math.abs(taxChangePct) >= 3 && (
+            <button type="button" className="fc-look" onClick={() => setScreen("tax")}>
+              <b>Property tax is {taxChangePct > 0 ? "up" : "down"} {fcPctText(taxChangePct)} this year</b>
+              <span>About {fmt$(Math.abs(Number(latestTax.total) - Number(prevTax.total)))} {taxChangePct > 0 ? "more" : "less"} than last year.</span>
+              <u>See what changed</u>
+            </button>
+          )}
+          <div className="ut-card">
+            <div className="ut-card-h"><h3 className="ut-card-t">Coming up</h3></div>
+            {upcoming.length === 0 ? <p className="ut-quiet">Nothing due in the next 90 days. Add a due date to a cost to see it here.</p> : (
+              <ul className="fc-up">
+                {upcoming.map(x => (
+                  <li key={x.c.id}>
+                    <span className="fc-up-d"><small>{new Date(x.date + "T12:00:00").toLocaleDateString("en-US", { month: "short" })}</small>{+x.date.slice(8, 10)}</span>
+                    <span className="fc-up-n"><b>{x.c.name}</b>{x.note && <small>{x.note}</small>}</span>
+                    <b>{fmt$(x.amount)}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+      {modals}
+    </div>
+  );
+}
+
 // First-run screen: pick what to track and the form opens already set to that type.
 const UTIL_HINTS = {
   electric: "Cost and kWh", gas: "Cost and therms", water: "Cost and gallons", internet: "Monthly cost",
@@ -17139,6 +18141,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const [billEditId, setBillEditId] = useState(null);
   const [billConfirm, setBillConfirm] = useState(null);
   const [activeUtil, setActiveUtil] = useState(null);
+  const [fcPending, setFcPending] = useState(null); // "cost" | "tax" — asks the Fixed costs tab to open an add form
 
   // Load projects, utilities, bills — scoped to current property
   useEffect(() => {
@@ -17565,6 +18568,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
           {id:"expenses",  label:"Expenses"},
           {id:"projects",  label:"Projects",  count:projects.length},
           {id:"utilities", label:"Utilities", count:utilities.length},
+          {id:"fixed",     label:"Fixed costs"},
         ].map(t=>(
           <button key={t.id} onClick={()=>{setView(t.id);if(t.id!=="projects")setSelectedProject(null);}} style={{
             flex:1,padding:".75rem 0",border:"none",background:"none",
@@ -18220,6 +19224,18 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
         </div>
       )}
 
+      {/* ══════════════════════════════════════════════════════════════
+          FIXED COSTS VIEW
+      ══════════════════════════════════════════════════════════════ */}
+      {view==="fixed" && (
+        <FixedCostsView
+          userId={userId} propertyId={propertyId} planData={planData} onUpgrade={onUpgrade} toast={toast}
+          utilities={utilities} bills={bills} expenses={expenses} yr={yr}
+          onOpenUtilities={()=>setView("utilities")}
+          pendingAdd={fcPending} onPendingAddHandled={()=>setFcPending(null)}
+        />
+      )}
+
       {/* ── Unified Add action sheet ── */}
       {addSheet && (
         <div className="overlay money-add-overlay" onClick={()=>setAddSheet(false)} style={{alignItems:"flex-end",zIndex:999}}>
@@ -18235,6 +19251,8 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
                   else if(utilities.length===1){openNewBill(utilities[0].id);}
                   else{setView("utilities");}
                 }},
+                { icon:"🏠", label:"Fixed cost",     sub:"Loan, insurance, HOA or a service", action:()=>{setAddSheet(false);setView("fixed");setFcPending("cost");} },
+                { icon:"🏛️", label:"Property tax bill", sub:"Upload or enter your tax bill",   action:()=>{setAddSheet(false);setView("fixed");setFcPending("tax");} },
                 { icon:"🏗️", label:"New project",    sub:"Track a renovation or improvement", action:()=>{setAddSheet(false);openNewProject();} },
                 { icon:"🔨", label:"Project expense", sub:"Link a cost to an existing project", action:()=>{
                   setAddSheet(false);
@@ -27512,12 +28530,12 @@ function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home 
 const PRICING_FAQ = [
   ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex, email capture and essential document storage for one property. No credit card is needed to start."],
   ["How much do Plus and Pro cost?","Plus is $7.99 a month or $63.99 a year. Pro is $14.99 a month or $119.99 a year. Paying yearly saves about 33% compared with paying monthly."],
-  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator and a home history report."],
+  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, property tax bills read and explained in plain English with a year-by-year comparison, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator and a home history report."],
   ["What do I get with Pro?","Pro includes everything in Plus with higher AI limits (25 condition assessments, 150 Ask Steadwell questions and 15 project reviews a month), up to three properties, shared access so you can invite a spouse or team member and assign tasks, the full document vault, larger file uploads and priority support."],
   ["Can I cancel any time?","Yes. Cancel from Account Settings whenever you like. Cancelling stops future renewals right away, and you keep access until the end of the period you already paid for. Paid plans renew automatically until you cancel, and the Terms of Service have the full billing details."],
   ["Do I need a credit card to try Steadwell?","No. You can create a free account and use it for as long as you like without entering a card. A card is only needed if you choose Plus or Pro, and payments are handled by Stripe, so Steadwell never stores your card details."],
   ["Which plan do I need if I own more than one property?","Pro. Free and Plus cover one property, and Pro covers up to three, each with its own assets, tasks, documents and bills."],
-  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Every account can see its overall home health score. Everything you track on Free stays yours if you ever change plans."],
+  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, reading and comparing property tax bills, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Typing in your fixed costs and property tax is free. Every account can see its overall home health score. Everything you track on Free stays yours if you ever change plans."],
 ];
 
 // [feature, free, plus, pro]; true renders a check, false a dash, strings render as text
@@ -27538,6 +28556,7 @@ const PRICING_ROWS = [
   ["Ask Steadwell AI assistant", "3 to try", "30 a month", "150 a month"],
   ["AI before and after project review", false, "3 a month", "15 a month"],
   ["Smart Fill from a model number", false, true, true],
+  ["Read your property tax bill and see how it changed", false, true, true],
   { group:"Plan ahead" },
   ["Overall home health score", true, true, true],
   ["Home health score breakdown by factor", false, true, true],
@@ -27557,7 +28576,7 @@ function PricingPage() {
     { plan:"Free", price:"$0", period:" / month", annual:"No time limit, no card", desc:"Everything you need to get organized.", cta:"Get started free",
       features:["Unlimited tasks, assets and expenses","Warranty and recall alerts","Utility and bill tracking","Email capture and calendar sync","Contractor rolodex","Essential document storage, 1 property"] },
     { plan:"Plus", price:"$7.99", period:" / month", annual:"or $63.99 a year, save 33%", desc:"AI tools and planning for the serious homeowner.", cta:"Start Plus", popular:true,
-      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review"] },
+      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Property tax bill reading and year-by-year comparison","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review"] },
     { plan:"Pro", price:"$14.99", period:" / month", annual:"or $119.99 a year, save 33%", desc:"More properties, shared access and higher limits.", cta:"Start Pro",
       features:["Everything in Plus","Up to 3 properties","Shared access, invite and assign tasks","25 assessments and 150 questions a month","Full document vault and larger uploads","Priority support"] },
   ];
@@ -31554,6 +32573,7 @@ const PLANS = {
     healthScore: false,
     costForecast: false,
     aiScan: false,
+    taxInsights: false,
     sharedAccess: false,
   },
   plus: {
@@ -31563,6 +32583,7 @@ const PLANS = {
     healthScore: true,
     costForecast: true,
     aiScan: true,
+    taxInsights: true,
     sharedAccess: false,
   },
   pro: {
@@ -31572,6 +32593,7 @@ const PLANS = {
     healthScore: true,
     costForecast: true,
     aiScan: true,
+    taxInsights: true,
     sharedAccess: true,
   },
 };
