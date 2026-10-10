@@ -24,7 +24,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: 
 
 const ALLOWED_ORIGINS = [
   /^https:\/\/(www\.)?trysteadwell\.app$/,
-  /^https:\/\/homekeep-git-[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/homekeep-[a-z0-9-]+-rerickson707-star1\.vercel\.app$/,
   /^http:\/\/localhost:\d+$/,
 ];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
