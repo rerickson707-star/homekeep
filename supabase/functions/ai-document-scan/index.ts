@@ -52,20 +52,28 @@ Return only the JSON. No markdown, no explanation.`,
 
     case "utility_bill":
       return {
-        max_tokens: 400,
+        max_tokens: 600,
         prompt: `You are reading a utility bill (electric, gas, water, internet, etc).
 
 Return ONLY a JSON object:
 {
   "utility_name": "name of the utility company (e.g. Duke Energy, Florida City Gas)",
-  "utility_type": "electric | gas | water | internet | trash | sewer | other",
+  "utility_type": "electric | gas | water | internet | trash | sewer | bundle | other — use bundle when ONE bill charges for two or more of water, sewer, trash and stormwater, as many city utility bills do",
   "bill_date": "YYYY-MM-DD — use the statement date, due date, or billing period end date. Must be a full date.",
   "amount": total amount due as a number (not string),
   "usage": usage amount as a number if shown (kWh, therms, gallons, etc) or null,
   "usage_unit": "kWh | therms | gallons | Mcf | other unit shown" or null,
   "account_number": "account number if visible" or null,
-  "notes": "billing period if shown, e.g. Apr 1 – Apr 30"
+  "notes": "billing period if shown, e.g. Apr 1 – Apr 30",
+  "line_items": {"water": number, "sewer": number, "trash": number, "stormwater": number, "other": number} or null
 }
+
+Rules for line_items:
+- Fill it only when this one bill charges for two or more of water, sewer (wastewater), trash (garbage, recycling, sanitation, solid waste) and stormwater (drainage). Otherwise use null.
+- Use only the charges for THIS billing period. Ignore any previous balance, payments, credits and carried-over late fees.
+- water = water service or usage charges. sewer = sewer or wastewater. trash = trash, garbage, recycling, sanitation or solid waste. stormwater = stormwater or drainage. other = every other charge on the bill, such as reclaimed water, taxes, franchise or public service fees, and other fees.
+- Leave out a key when the bill has no such charge. Use plain dollar amounts as numbers, with no symbols.
+- The values must add up to "amount". If you cannot make them add up, use null.
 
 Return only the JSON. No markdown, no explanation.`,
       };
@@ -195,6 +203,34 @@ Return only the JSON. No markdown, no explanation.`,
   }
 }
 
+// ── Utility bills: validate what the AI returned before the app sees it ────────
+// The split by service is only passed on when it really is a split (two or more services) and the
+// parts add up to the bill total to the cent. Anything else is dropped, and split_status says why,
+// so the app can tell the person to enter the split by hand instead of showing numbers that do not add up.
+const UTILITY_TYPES = ["electric", "gas", "water", "internet", "trash", "sewer", "bundle", "other"];
+const SPLIT_KEYS = ["water", "sewer", "trash", "stormwater", "other"];
+
+function cleanUtilityBill(fields: Record<string, unknown>) {
+  const raw = fields.line_items;
+  delete fields.line_items;
+  let status = "none";
+  if (raw && typeof raw === "object") {
+    const clean: Record<string, number> = {};
+    for (const k of SPLIT_KEYS) {
+      const n = Number((raw as Record<string, unknown>)[k]);
+      if (Number.isFinite(n) && n > 0 && n < 1_000_000) clean[k] = Math.round(n * 100) / 100;
+    }
+    const sum = Math.round(Object.values(clean).reduce((a, b) => a + b, 0) * 100) / 100;
+    const total = Number(fields.amount);
+    if (Object.keys(clean).length >= 2 && Number.isFinite(total) && total > 0) {
+      if (Math.abs(sum - total) <= 0.011) { fields.line_items = clean; fields.utility_type = "bundle"; status = "ok"; }
+      else status = "mismatch";
+    }
+  }
+  fields.split_status = status;
+  if (!UTILITY_TYPES.includes(String(fields.utility_type))) fields.utility_type = "other";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
@@ -306,6 +342,8 @@ serve(async (req) => {
         });
       }
     }
+
+    if (scanType === "utility_bill") cleanUtilityBill(fields);
 
     return new Response(JSON.stringify({ ok: true, fields }), {
       headers: { ...CORS, "Content-Type": "application/json" },

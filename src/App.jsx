@@ -1,4 +1,4 @@
-// Steadwell v352 — 2026-10-09
+// Steadwell v353 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -16221,6 +16221,19 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
     if (fields.usage)       updates.usage      = fields.usage;
     if (fields.usage_unit)  updates.usage_unit = fields.usage_unit;
     if (fields.notes)       updates.notes      = fields.notes;
+    // A combined city bill: fill the split by service. The person still reviews it and presses Save.
+    const say = (msg, type) => window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg, type } }));
+    const parts = utilItemsOf({ line_items: fields.line_items });
+    if (parts.length >= 2) {
+      if (utility?.type === "bundle") {
+        updates.line_items = Object.fromEntries(parts.map(x => [x.k, x.v]));
+        say(`Found ${parts.length} charges (${parts.map(x => x.label.toLowerCase()).join(", ")}). Check them before saving.`);
+      } else {
+        say("This looks like a combined bill. Change this utility to Water, sewer & trash to track each service.");
+      }
+    } else if (fields.split_status === "mismatch" && utility?.type === "bundle") {
+      say("Steadwell found separate charges, but they did not add up to the bill total. Enter the split by hand if you want it.", "error");
+    }
     if (Object.keys(updates).length > 0) onChange({...data, ...updates});
   };
 
