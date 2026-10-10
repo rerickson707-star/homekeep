@@ -1,4 +1,4 @@
-// Steadwell v350 — 2026-10-09
+// Steadwell v352 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3546,6 +3546,26 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ut-bill-a{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1rem;min-width:3.8rem;text-align:right;color:var(--dark)}
 .ut-more{display:block;width:100%;padding:.7rem;background:var(--cream);border:none;border-top:1px solid var(--cream2);font-family:inherit;font-size:.84rem;font-weight:700;color:var(--pine);cursor:pointer}
 .ut-add{margin-top:.9rem}
+.ut-bill-li{display:block;margin-top:.15rem;font-size:.76rem;line-height:1.4;color:#6E665D}
+.ut-split{border-top:1px solid var(--cream2);padding-top:.85rem;margin-top:.15rem}
+.ut-split-help{margin:.2rem 0 .65rem;font-size:.8rem;line-height:1.45;color:#6E665D}
+.ut-split-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.ut-split-f label{display:block;margin-bottom:.25rem;font-size:.78rem;font-weight:600;color:var(--dark)}
+.ut-split-status{min-height:1.3rem;margin-top:.6rem;font-size:.8rem;line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .6rem;color:#6E665D}
+.ut-split-status.ok{color:#2F6A49;font-weight:600}
+.ut-split-status.warn{color:#8A6410}
+.ut-split-status.bad{color:#B0432B}
+.ut-split-status button{background:none;border:none;padding:.35rem 0;min-height:32px;font-family:inherit;font-size:.8rem;font-weight:700;color:var(--pine);text-decoration:underline;cursor:pointer}
+.ut-where{margin:0 0 .9rem;padding:.8rem .9rem;background:var(--cream);border-radius:var(--r-sm)}
+.ut-where-t{font-size:.84rem;font-weight:700;color:var(--dark);margin-bottom:.55rem}
+.ut-where-r{display:grid;grid-template-columns:6.2rem minmax(0,1fr) auto;align-items:center;gap:.6rem;padding:.2rem 0;font-size:.84rem}
+.ut-where-n{color:var(--dark)}
+.ut-where-bar{height:7px;border-radius:4px;background:var(--stone);overflow:hidden;display:block}
+.ut-where-bar i{display:block;height:100%;background:var(--pine);border-radius:4px}
+.ut-where-v{font-weight:700;color:var(--dark);text-align:right;white-space:nowrap}
+.ut-where-v em{font-style:normal;font-weight:400;color:#6E665D;margin-left:.45rem}
+.ut-where-note{margin:.55rem 0 0;font-size:.78rem;line-height:1.4;color:#6E665D}
+@media(max-width:480px){.ut-where-r{grid-template-columns:5.2rem minmax(0,1fr) auto;gap:.45rem}}
 @media(max-width:480px){
   .ut-row{padding:.8rem .85rem;gap:.7rem}
   .ut-side{min-width:6.2rem}
@@ -4647,7 +4667,7 @@ function useSEO({ title, description, canonical, jsonLd, noindex, image, ogType 
 const LANDING_FAQ = [
   ["What is Steadwell?","Steadwell is a home management app for homeowners. It tracks maintenance, warranties, safety recalls, utility bills, expenses, insurance, contractors and documents for your home in one place, and uses AI to scan receipts, appliance nameplates and bills and to assess the condition of appliances and systems from photos."],
   ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex and essential document storage for one property. Plus is $7.99 a month ($63.99 a year) and Pro is $14.99 a month ($119.99 a year)."],
-  ["Can Steadwell track my utility bills?","Yes. Track electric, gas, water, sewer, internet and trash bills with usage, a six-month average and spike alerts. Add bills by scanning them with AI (Plus and Pro), forwarding the email, or typing them in. Utility bills also count toward your yearly and all-time home spend."],
+  ["Can Steadwell track my utility bills?","Yes. Track electric, gas, water, sewer, internet and trash bills with usage, a six-month average and spike alerts. Add bills by scanning them with AI (Plus and Pro), forwarding the email, or typing them in. Utility bills also count toward your yearly and all-time home spend. If your city puts water, sewer and trash on one bill, add it as a single utility and, if you like, split each bill by service."],
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
@@ -16148,6 +16168,7 @@ const UTIL_TYPES = {
   internet: { icon:"📡", label:"Internet",  color:"#B8D9CC", bg:"#EAF2EE", unit:""       },
   trash:    { icon:"🗑️", label:"Trash",     color:"#C2B8AE", bg:"var(--cream2)", unit:"" },
   sewer:    { icon:"🪣", label:"Sewer",     color:"#B8D0C8", bg:"#EAF2EE", unit:"CCF"   },
+  bundle:   { icon:"🧾", label:"Water, sewer & trash", color:"#B8D0C8", bg:"#EAF2EE", unit:"gallons" },
   other:    { icon:"🏠", label:"Other",     color:"#C2B8AE", bg:"var(--cream2)", unit:"" },
 };
 
@@ -16180,7 +16201,7 @@ function UtilityForm({ data, onChange }) {
       </div>
       <div className="fg">
         <div className="field s2"><label>Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder={`e.g. Home ${UTIL_TYPES[data.type||"electric"]?.label||"Electric"}`} /></div>
-        <div className="field s2"><label>Provider / Company</label><input value={data.provider||""} onChange={e=>f("provider",e.target.value)} placeholder="e.g. Duke Energy" /></div>
+        <div className="field s2"><label>Provider / Company</label><input value={data.provider||""} onChange={e=>f("provider",e.target.value)} placeholder={data.type==="bundle"?"e.g. your city utilities department":"e.g. Duke Energy"} /></div>
         <div className="field s2"><label>Account Number (optional)</label><input value={data.account_number||""} onChange={e=>f("account_number",e.target.value)} placeholder="For reference only" /></div>
         <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any details about this utility…" /></div>
       </div>
@@ -16223,8 +16244,40 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
       <div className="field"><label>Bill Date *</label><input type="date" value={data.bill_date||""} onChange={e=>f("bill_date",e.target.value)} /></div>
       <div className="field"><label>Amount ($) *</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0.00" step="0.01" /></div>
       {ut.unit && (
-        <div className="field s2"><label>Usage ({data.usage_unit||ut.unit}, optional)</label><input type="number" min="0" inputMode="decimal" value={data.usage||""} onChange={e=>f("usage",e.target.value)} placeholder={`From the bill, in ${data.usage_unit||ut.unit}`} /></div>
+        <div className="field s2"><label>{utility?.type==="bundle"?"Water used":"Usage"} ({data.usage_unit||ut.unit}, optional)</label><input type="number" min="0" inputMode="decimal" value={data.usage||""} onChange={e=>f("usage",e.target.value)} placeholder={`From the bill, in ${data.usage_unit||ut.unit}`} /></div>
       )}
+      {utility?.type==="bundle" && (() => {
+        const li = data.line_items && typeof data.line_items === "object" ? data.line_items : {};
+        const sum = Math.round(utilSplitSum(li) * 100) / 100;
+        const total = Number(data.amount);
+        const hasTotal = Number.isFinite(total) && total > 0;
+        const left = Math.round((total - sum) * 100) / 100;
+        const setLine = (k, v) => onChange({ ...data, line_items: { ...li, [k]: v } });
+        const money = v => "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let status = null;
+        if (sum > 0 && !hasTotal) status = { tone: "info", text: `The parts add up to ${money(sum)}.`, act: "Use as the bill total", fn: () => onChange({ ...data, amount: String(sum) }) };
+        else if (sum > 0 && Math.abs(left) < 0.005) status = { tone: "ok", text: "The parts add up to the bill total." };
+        else if (sum > 0 && left > 0) status = { tone: "warn", text: `${money(left)} of the bill is not assigned yet.`, act: "Put the rest in Other charges", fn: () => setLine("other", String(Math.round(((Number(li.other) || 0) + left) * 100) / 100)) };
+        else if (sum > 0 && left < 0) status = { tone: "bad", text: `The parts are ${money(left)} over the bill total.`, act: "Set the bill total to " + money(sum), fn: () => onChange({ ...data, amount: String(sum) }) };
+        return (
+          <div className="field s2 ut-split">
+            <label>Split by service (optional)</label>
+            <p className="ut-split-help">Enter what each service cost to track them separately. The parts must add up to the bill total. Leave it blank to track only the total.</p>
+            <div className="ut-split-grid">
+              {UTIL_SPLIT.map(sp => (
+                <div key={sp.k} className="ut-split-f">
+                  <label htmlFor={"ut-split-" + sp.k}>{sp.label} ($)</label>
+                  <input id={"ut-split-" + sp.k} type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00"
+                    value={li[sp.k] ?? ""} onChange={e => setLine(sp.k, e.target.value)} />
+                </div>
+              ))}
+            </div>
+            <div className={"ut-split-status " + (status ? status.tone : "")} role="status" aria-live="polite">
+              {status && <><span>{status.text}</span>{status.act && <button type="button" onClick={status.fn}>{status.act}</button>}</>}
+            </div>
+          </div>
+        );
+      })()}
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Billing period, account notes…" /></div>
       {onDelete && (
         <div className="field s2"><button type="button" className="btn btn-ghost btn-sm" style={{color:"var(--red)",alignSelf:"flex-start"}} onClick={onDelete}>Delete this bill</button></div>
@@ -16236,7 +16289,7 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
 // First-run screen: pick what to track and the form opens already set to that type.
 const UTIL_HINTS = {
   electric: "Cost and kWh", gas: "Cost and therms", water: "Cost and gallons", internet: "Monthly cost",
-  trash: "Monthly cost", sewer: "Cost and CCF", other: "Anything else you pay monthly",
+  trash: "Monthly cost", sewer: "Cost and CCF", bundle: "One city bill, split if you like", other: "Anything else you pay monthly",
 };
 function UtilitiesEmpty({ onPick }) {
   return (
@@ -16264,6 +16317,21 @@ const UTIL_SERIES = ["#1F7F55", "#C48100", "#3A7CC0", "#C65A3A", "#7B66B5"];
 const UTIL_OTHER = "#A8A09A";
 const utilSeriesColor = i => (i < UTIL_SERIES.length ? UTIL_SERIES[i] : UTIL_OTHER);
 
+// A combined city bill can be split by service. Stored on the bill as { water: 41.2, sewer: 30, ... }.
+const UTIL_SPLIT = [
+  { k: "water", label: "Water" },
+  { k: "sewer", label: "Sewer" },
+  { k: "trash", label: "Trash" },
+  { k: "stormwater", label: "Stormwater" },
+  { k: "other", label: "Other charges" },
+];
+const utilSplitSum = li => UTIL_SPLIT.reduce((t, sp) => { const n = Number(li && li[sp.k]); return t + (Number.isFinite(n) && n > 0 ? n : 0); }, 0);
+const utilItemsOf = b => {
+  const li = b && b.line_items;
+  if (!li || typeof li !== "object") return [];
+  return UTIL_SPLIT.map(sp => ({ ...sp, v: Number(li[sp.k]) })).filter(x => Number.isFinite(x.v) && x.v > 0);
+};
+
 function UtilIcon({ type, size = 20 }) {
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
   const paths = {
@@ -16273,6 +16341,7 @@ function UtilIcon({ type, size = 20 }) {
     internet: <><path {...p} d="M2.5 9a15 15 0 0 1 19 0M5.5 12.5a10.5 10.5 0 0 1 13 0M8.8 16a5.5 5.5 0 0 1 6.4 0" /><circle cx="12" cy="19.2" r="1.1" fill="currentColor" /></>,
     trash: <path {...p} d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.9 12.5h9.2L17.5 7M10 11v5.5M14 11v5.5" />,
     sewer: <path {...p} d="M3 7h10a4 4 0 0 1 4 4v9.5M3 11.5h5M14.5 20.5h5" />,
+    bundle: <path {...p} d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9.5 8h5M9.5 12h5" />,
     other: <path {...p} d="M3 11.5 12 4l9 7.5M5.5 10v10h13V10M10 20v-5h4v5" />,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">{paths[type] || paths.other}</svg>;
@@ -16315,13 +16384,19 @@ function analyzeUtility(u, allBills, today, yr) {
   const usual = priorAvg != null ? priorAvg : avgBill;
   const ytd = list.filter(b => b.bill_date.startsWith(String(yr))).reduce((s, b) => s + Number(b.amount || 0), 0);
   const unit = (last && last.usage_unit) || (UTIL_TYPES[u.type] || {}).unit || "";
-  const lastRate = last ? utilRate(last) : null;
-  const priorRates = prior.map(utilRate).filter(r => r != null);
+  // On a combined bill only the water line has a meaningful cost per unit, so the rate uses it when the bill is split.
+  const waterOnly = u.type === "bundle";
+  const rateOf = b => { if (!waterOnly) return utilRate(b); const w = Number(b.line_items && b.line_items.water), us = Number(b.usage); return w > 0 && us > 0 ? w / us : null; };
+  const lastRate = last ? rateOf(last) : null;
+  const priorRates = prior.map(rateOf).filter(r => r != null);
+  const ytdList = list.filter(b => b.bill_date.startsWith(String(yr)));
+  const splitYtd = {}; let splitN = 0;
+  ytdList.forEach(b => { const it = utilItemsOf(b); if (it.length) { splitN++; it.forEach(x => { splitYtd[x.k] = (splitYtd[x.k] || 0) + x.v; }); } });
   const avgRate = priorRates.length >= 2 ? priorRates.reduce((s, r) => s + r, 0) / priorRates.length : null;
   const rateDelta = lastRate != null && avgRate ? lastRate / avgRate - 1 : null;
   const daysSince = last ? utilDaysBetween(last.bill_date, today) : null;
   const stale = last ? daysSince > freq * 30.4 + 20 : false;
-  return { list, last, priorAvg, yoy, baseAmt, delta, freq, usual, monthly: usual / freq, ytd, unit, lastRate, avgRate, rateDelta, daysSince, stale };
+  return { list, last, priorAvg, yoy, baseAmt, delta, freq, usual, monthly: usual / freq, ytd, unit, lastRate, avgRate, rateDelta, daysSince, stale, waterOnly, splitYtd, splitN, ytdCount: ytdList.length };
 }
 
 function utilStatus(a) {
@@ -16395,7 +16470,7 @@ function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil
     const a = an[u.id];
     if (a.rateDelta != null && Math.abs(a.rateDelta) >= 0.1) {
       const up = a.rateDelta > 0;
-      items.push({ k: u.id + "-rate", dot: up ? "#D9A93E" : "#3E7D5A", text: `${u.name} now costs ${utilFmtRate(a.lastRate, a.unit)} all in, ${up ? "up" : "down"} ${Math.round(Math.abs(a.rateDelta) * 100)}% from your usual ${utilFmtRate(a.avgRate, a.unit)}.` });
+      items.push({ k: u.id + "-rate", dot: up ? "#D9A93E" : "#3E7D5A", text: `${a.waterOnly ? "Water on " + u.name : u.name} now costs ${utilFmtRate(a.lastRate, a.unit)}${a.waterOnly ? "" : " all in"}, ${up ? "up" : "down"} ${Math.round(Math.abs(a.rateDelta) * 100)}% from your usual ${utilFmtRate(a.avgRate, a.unit)}.` });
     }
   });
   utilities.forEach(u => {
@@ -16554,10 +16629,27 @@ function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil
                   <div className="ut-facts">
                     {a.last && <div><div className="ut-fact-v">{fmt$(a.usual)}</div><div className="ut-fact-l">{a.freq === 1 ? "Usual monthly bill" : `Usual bill, every ${a.freq} months`}</div></div>}
                     <div><div className="ut-fact-v">{a.ytd > 0 ? fmt$(a.ytd) : "None yet"}</div><div className="ut-fact-l">{yr} so far</div></div>
-                    {a.lastRate != null && <div><div className="ut-fact-v">{utilFmtRate(a.lastRate, a.unit)}</div><div className="ut-fact-l">Latest cost per unit, all in</div></div>}
+                    {a.lastRate != null && <div><div className="ut-fact-v">{utilFmtRate(a.lastRate, a.unit)}</div><div className="ut-fact-l">{a.waterOnly ? "Latest water cost per unit" : "Latest cost per unit, all in"}</div></div>}
                     {u.account_number && <div><div className="ut-fact-v" style={{ fontFamily: "inherit", fontSize: ".95rem", fontWeight: 700 }}>{u.account_number}</div><div className="ut-fact-l">Account</div></div>}
                   </div>
                   {u.notes && <p className="ut-notes">{u.notes}</p>}
+                  {a.waterOnly && a.splitN > 0 && (() => {
+                    const rows = UTIL_SPLIT.map(sp => ({ ...sp, v: a.splitYtd[sp.k] || 0 })).filter(x => x.v > 0);
+                    const tot = rows.reduce((t, x) => t + x.v, 0);
+                    return (
+                      <div className="ut-where">
+                        <div className="ut-where-t">Where it goes, {yr} so far</div>
+                        {rows.map(x => (
+                          <div key={x.k} className="ut-where-r">
+                            <span className="ut-where-n">{x.label}</span>
+                            <span className="ut-where-bar" aria-hidden="true"><i style={{ width: Math.max(2, Math.round(x.v / tot * 100)) + "%" }} /></span>
+                            <span className="ut-where-v">{fmt$(x.v)}<em>{Math.round(x.v / tot * 100)}%</em></span>
+                          </div>
+                        ))}
+                        {a.splitN < a.ytdCount && <p className="ut-where-note">Based on the {a.splitN} of {a.ytdCount} bills this year that are split by service.</p>}
+                      </div>
+                    );
+                  })()}
                   <div className="ut-btns">
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => onAddBill(u.id)}>Add bill</button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => onEditUtil(u)}>Edit utility</button>
@@ -16568,13 +16660,17 @@ function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil
                   ) : (
                     <div className="ut-bills">
                       {bl.map(b => {
-                        const r = utilRate(b);
+                        const wOnly = u.type === "bundle";
+                        const wAmt = Number(b.line_items && b.line_items.water);
+                        const r = wOnly ? (wAmt > 0 && Number(b.usage) > 0 ? wAmt / Number(b.usage) : null) : utilRate(b);
+                        const items = utilItemsOf(b);
                         const unit = b.usage_unit || a.unit;
                         return (
                           <button type="button" key={b.id} className="ut-bill" onClick={() => onEditBill(b)} aria-label={`Edit the bill from ${fmtD(b.bill_date)}, ${fmt$(b.amount)}`}>
                             <span className="ut-bill-d">{fmtD(b.bill_date)}</span>
                             <span className="ut-bill-u">
                               {Number(b.usage) > 0 ? <>{Number(b.usage).toLocaleString()} {unit}{r != null && <em>{utilFmtRate(r, unit)}</em>}</> : ""}
+                              {items.length > 0 && <span className="ut-bill-li">{items.map(x => x.label + " " + fmt$(x.v)).join(" · ")}</span>}
                             </span>
                             <span className="ut-bill-f" title={b.file_url ? "Bill attached" : undefined}>
                               {b.file_url && (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="Bill attached"><path d="M21 11.5 12.5 20a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.9 1.9 0 0 1-2.6-2.6l8.3-8.3" /></svg>)}
@@ -17141,9 +17237,23 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const saveBill = async () => {
-    if(!billEditData.amount || !billEditData.bill_date) { toast("Amount and bill date are required","error"); return; }
-    if(Number(billEditData.amount) < 0) { toast("Amount can't be negative","error"); return; }
-    const payload = {...billEditData, amount: Number(billEditData.amount)};
+    const isBundle = activeUtil?.type === "bundle";
+    // Combined bill: if only the split was filled in, the bill total is the sum of the parts.
+    const splitSum = isBundle ? Math.round(utilSplitSum(billEditData.line_items) * 100) / 100 : 0;
+    const billEditData_ = (!billEditData.amount && splitSum > 0) ? { ...billEditData, amount: String(splitSum) } : billEditData;
+    if(!billEditData_.amount || !billEditData_.bill_date) { toast("Amount and bill date are required","error"); return; }
+    if(Number(billEditData_.amount) < 0) { toast("Amount can't be negative","error"); return; }
+    const payload = {...billEditData_, amount: Number(billEditData_.amount)};
+    if(isBundle) {
+      const src = billEditData_.line_items && typeof billEditData_.line_items === "object" ? billEditData_.line_items : {};
+      const clean = {};
+      UTIL_SPLIT.forEach(sp => { const n = Number(src[sp.k]); if(Number.isFinite(n) && n > 0) clean[sp.k] = Math.round(n * 100) / 100; });
+      if(Object.keys(clean).length) {
+        const sum = Math.round(utilSplitSum(clean) * 100) / 100;
+        if(Math.abs(sum - payload.amount) > 0.009) { toast(`The split adds up to $${sum.toFixed(2)}, but the bill total is $${payload.amount.toFixed(2)}. Adjust a line or the total.`,"error"); return; }
+        payload.line_items = clean;
+      } else payload.line_items = null;
+    } else delete payload.line_items;
     // An emptied usage box arrives as "" and a number column rejects that; the unit follows the utility type.
     const usageNum = billEditData.usage === "" || billEditData.usage == null ? null : Number(billEditData.usage);
     payload.usage = Number.isFinite(usageNum) ? usageNum : null;
@@ -27554,7 +27664,8 @@ function NotFoundPage({ what = "page" }) {
 // ─── UTILITY & BILL TRACKER PAGE ──────────────────────────────────────────────
 const UTILITY_FAQ = [
   ["Is utility bill tracking free?","Yes. Adding utilities, logging bills, usage, trends and spike alerts are free on every plan. Scanning a bill with AI needs Plus or Pro. Forwarding a bill by email and typing one in are both free."],
-  ["Which utilities can I track?","Electric, gas, water, sewer, internet and trash, plus an Other type for anything else, such as propane or a security service. Each one has its own provider name, optional account number and bill history."],
+  ["Which utilities can I track?","Electric, gas, water, sewer, internet and trash, plus a combined water, sewer and trash type for cities that send one bill, and an Other type for anything else, such as propane or a security service. Each one has its own provider name, optional account number and bill history."],
+  ["My city sends one bill for water, sewer and trash. Can I track that?","Yes. Add it as a Water, sewer & trash utility and log the total of each bill. To see where the money goes, you can also split a bill into water, sewer, trash, stormwater and other charges. The parts must add up to the total. Steadwell then shows each service's share for the year and works out your water cost per gallon from the water part."],
   ["How do I log a bill?","Three ways: scan a photo or PDF of the bill with AI (Plus and Pro), forward the bill email to your Steadwell capture address, or enter the date, amount and usage by hand. Whichever you choose, you review the details before anything is saved."],
   ["Does Steadwell connect to my utility company account?","No. Steadwell never asks for your utility login. You add bills by scanning, forwarding or typing, so your account credentials stay with your provider."],
   ["How does the spike alert work?","When your latest bill is more than 40% above the average of your recent bills (up to the last six) for that utility, Steadwell shows a warning on that utility with the percentage. It is a prompt to look closer, such as for a leak or a struggling system, not a diagnosis."],
@@ -27573,7 +27684,7 @@ function UtilityBillTrackerPage() {
     jsonLd: lpJsonLd({
       name:"Steadwell Utility & Bill Tracker",
       path, description,
-      features:["Electric, gas, water, sewer, internet and trash tracking","AI bill scanning from a photo or PDF","Email-forward bill capture","Usage tracking in kWh, therms, gallons and CCF","Six-month average and spike alerts","Utility costs rolled into total home spend"],
+      features:["Electric, gas, water, sewer, internet and trash tracking","AI bill scanning from a photo or PDF","Email-forward bill capture","Usage tracking in kWh, therms, gallons and CCF","Combined water, sewer and trash bills, with an optional split by service","Six-month average and spike alerts","Utility costs rolled into total home spend"],
       faq: UTILITY_FAQ,
       offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"}],
     }),
@@ -27582,13 +27693,13 @@ function UtilityBillTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Utility & Bill Tracking" cta="Start tracking free" h1="Know what your home" h1em="costs to run." sub="Keep your electric, gas, water, internet and trash bills in one place. Scan a bill or forward it by email, and Steadwell shows the trend and flags the month something spikes." badge="Tracking is free · AI bill scan on Plus & Pro" stats={[{num:"7",lbl:"Utility types"},{num:"Free",lbl:"Bill tracking"},{num:"6-mo",lbl:"Average & spike alerts"}]}/>
+      <LPHero eyebrow="Utility & Bill Tracking" cta="Start tracking free" h1="Know what your home" h1em="costs to run." sub="Keep your electric, gas, water, internet and trash bills in one place. Scan a bill or forward it by email, and Steadwell shows the trend and flags the month something spikes." badge="Tracking is free · AI bill scan on Plus & Pro" stats={[{num:"8",lbl:"Utility types"},{num:"Free",lbl:"Bill tracking"},{num:"6-mo",lbl:"Average & spike alerts"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every utility, every bill, one timeline" sub="Utilities are the one home cost that arrives every month and almost never gets reviewed. Steadwell makes the pattern visible."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            <LPFieldCard icon="⚡" title="Utility accounts" badge="All plans" fields={["Electric, gas, water, sewer, internet, trash and other","Provider or company name","Account number, kept for your reference","Notes on each account","Separate accounts for each property"]}/>
-            <LPFieldCard icon="🧾" title="Bills & usage" badge="All plans" fields={["Bill date and amount","Usage in kWh, therms, gallons or CCF","Billing-period notes","Scanned bills saved to your document vault","Edit or delete any bill later"]}/>
+            <LPFieldCard icon="⚡" title="Utility accounts" badge="All plans" fields={["Electric, gas, water, sewer, internet, trash and other","One account for a combined city bill (water, sewer and trash)","Provider or company name","Account number, kept for your reference","Notes on each account","Separate accounts for each property"]}/>
+            <LPFieldCard icon="🧾" title="Bills & usage" badge="All plans" fields={["Bill date and amount","Usage in kWh, therms, gallons or CCF","Split a combined bill by service (optional)","Billing-period notes","Scanned bills saved to your document vault","Edit or delete any bill later"]}/>
             <LPFieldCard icon="📈" title="Trends & spike alerts" badge="All plans" fields={["Last bill, 6-month average and year-to-date total","Bar chart of your last six bills","Spike warning when a bill jumps well above average","Full bill history for each utility","Utilities total for the year at a glance"]}/>
           </LPGrid>
         </LPSection>
