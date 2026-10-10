@@ -1,4 +1,4 @@
-// Steadwell v349 — 2026-10-09
+// Steadwell v350 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -19553,6 +19553,8 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   const [removeTyped, setRemoveTyped] = useState("");
   const [removingHome, setRemovingHome] = useState(false);
   const homeLabelOf = (h) => h?.name || h?.address?.split(",")[0] || "My Home";
+  const removeMatches = !!homeToRemove && removeTyped.trim().toLowerCase() === homeLabelOf(homeToRemove).trim().toLowerCase();
+  const removeMismatch = !!homeToRemove && removeTyped.trim().length > 0 && !removeMatches;
   const closeRemoveHome = () => { if (removingHome) return; setHomeToRemove(null); setRemoveTyped(""); };
   const confirmRemoveHome = async () => {
     if (!homeToRemove || removingHome) return;
@@ -21034,12 +21036,23 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               <div className="field" style={{marginBottom:".9rem"}}>
                 <label htmlFor="sw-remove-home-name">Type <strong>{homeLabelOf(homeToRemove)}</strong> to confirm</label>
                 <input id="sw-remove-home-name" value={removeTyped} autoComplete="off" autoCapitalize="off" spellCheck={false}
+                  aria-invalid={removeMismatch} aria-describedby="sw-remove-home-msg"
+                  style={removeMismatch?{borderColor:"var(--red)"}:undefined}
                   onChange={e=>setRemoveTyped(e.target.value)} disabled={removingHome} />
+                <div id="sw-remove-home-msg" role="status" aria-live="polite" style={{minHeight:"1.2rem",marginTop:".35rem",fontSize:".78rem",lineHeight:1.4,color:"var(--red)"}}>
+                  {removeMismatch && <>That doesn't match. Type <strong>{homeLabelOf(homeToRemove)}</strong> exactly as shown.</>}
+                </div>
               </div>
-              <button className="btn btn-danger" style={{width:"100%",marginBottom:".65rem"}}
-                disabled={removingHome || removeTyped.trim().toLowerCase()!==homeLabelOf(homeToRemove).trim().toLowerCase()}
+              {removingHome && (
+                <div role="status" aria-live="polite" style={{display:"flex",alignItems:"center",gap:".6rem",background:"var(--cream)",borderRadius:12,padding:".75rem .9rem",marginBottom:".75rem",fontSize:".84rem",color:"var(--dark)",lineHeight:1.45}}>
+                  <span className="spinner" style={{width:18,height:18,borderWidth:2,flexShrink:0}}/>
+                  <span>Removing {homeLabelOf(homeToRemove)} and its files. This can take a few seconds. Please keep this window open.</span>
+                </div>
+              )}
+              <button className="btn btn-danger" style={{width:"100%",marginBottom:".65rem",display:"flex",alignItems:"center",justifyContent:"center",gap:".5rem"}}
+                disabled={removingHome || !removeMatches}
                 onClick={confirmRemoveHome}>
-                {removingHome ? "Removing…" : "Remove this home"}
+                {removingHome ? <><span className="spinner" style={{width:14,height:14,borderWidth:2}}/> Removing…</> : "Remove this home"}
               </button>
               <button className="btn btn-ghost" style={{width:"100%"}} disabled={removingHome} onClick={closeRemoveHome}>Cancel</button>
             </div>
