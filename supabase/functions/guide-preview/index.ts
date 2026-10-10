@@ -37,9 +37,25 @@ const MAX_SENDS      = 10;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-const GUIDES: Record<string, { name: string; path: string; preview: string }> = {
-  "fl-state-2026":   { name: "The Florida First-Time Buyer Guide",    path: "/guides/florida",                 preview: "florida/florida-state-2026-preview.pdf" },
-  "fl-pinellas-2026": { name: "Buying Your First Home in Pinellas County", path: "/guides/florida/pinellas-county", preview: "florida/pinellas-county-2026-preview.pdf" },
+// Prices shown in the preview email. scripts/check-guides.mjs fails if these differ from src/guides-registry.js.
+const PRICE = { state: "14.99", county: "29.99", bundle: "37.99" };
+
+const GUIDES: Record<string, {
+  name: string; path: string; preview: string; cover: string; pages: number; price: string;
+  points: string[]; pairNote: string;
+}> = {
+  "fl-state-2026": {
+    name: "The Florida First-Time Buyer Guide", path: "/guides/florida", preview: "florida/florida-state-2026-preview.pdf",
+    cover: "/guide-img/florida-cover.jpg", pages: 30, price: PRICE.state,
+    points: ["Every inspection you may need, what it finds and what it costs", "Flood zones vs. evacuation zones, explained in plain English", "Down payment help, closing costs, insurance and property taxes, worked out"],
+    pairNote: `Buying in Pinellas County? Add the Pinellas County guide and get both for $${PRICE.bundle}.`,
+  },
+  "fl-pinellas-2026": {
+    name: "Buying Your First Home in Pinellas County", path: "/guides/florida/pinellas-county", preview: "florida/pinellas-county-2026-preview.pdf",
+    cover: "/guide-img/pinellas-cover.jpg", pages: 23, price: PRICE.county,
+    points: ["Pinellas flood zones vs. evacuation zones, and what storm surge does in each", "What to look out for after Helene and Milton, and which inspections to add", "Up to $75,000 in county down payment help, plus HFA, city and recovery programs"],
+    pairNote: `Pair it with the Florida state guide and get both for $${PRICE.bundle}.`,
+  },
 };
 
 const CONSENT_TEXTS: Record<string, string> = {
@@ -84,20 +100,65 @@ function cleanText(v: unknown, max: number): string | null {
   return t || null;
 }
 
-function previewEmail(guideName: string, url: string): { subject: string; html: string; text: string } {
-  const subject = `Your free preview: ${guideName}`;
-  const text =
-    `Here is your free preview of ${guideName}:\n\n${url}\n\n` +
-    `The link works for 7 days. Open it on any device and save the PDF.\n\n` +
-    `Reply to this email if you have a question.\n\nSteadwell, LLC, St. Petersburg, Florida`;
+function previewEmail(g: { name: string; path: string; cover: string; pages: number; price: string; points: string[]; pairNote: string }, url: string): { subject: string; html: string; text: string } {
+  const subject = `Your free preview: ${g.name}`;
+  const guideUrl = `${SITE}${g.path}#buy`;
+  const signupUrl = `${SITE}/?action=signup`;
+  const pine = "#234A3D", cream = "#F4EDDF", terra = "#C16140", ink = "#2A2723", soft = "#4A443D";
+  const btn = (href: string, label: string, bg: string) =>
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${bg}" style="border-radius:10px"><a href="${esc(href)}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px">${esc(label)}</a></td></tr></table>`;
+  const points = g.points.map((p) => `<tr><td valign="top" style="padding:0 10px 8px 0;color:${pine};font-weight:700;font-size:16px;font-family:Arial,Helvetica,sans-serif">&#10003;</td><td style="padding:0 0 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.45;color:${ink}">${esc(p)}</td></tr>`).join("");
   const html =
-    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1E2A25">` +
-    `<p style="font-size:20px;font-weight:700;color:#234A3D;margin:0 0 16px">Steadwell</p>` +
-    `<p style="font-size:16px;line-height:1.5;margin:0 0 20px">Here is your free preview of <strong>${esc(guideName)}</strong>.</p>` +
-    `<p style="margin:0 0 24px"><a href="${esc(url)}" style="display:inline-block;background:#C16140;color:#fff;text-decoration:none;font-weight:700;padding:14px 24px;border-radius:10px">Open the free preview</a></p>` +
-    `<p style="font-size:14px;line-height:1.5;color:#52605A;margin:0 0 8px">The link works for 7 days. Open it on any device and save the PDF.</p>` +
-    `<p style="font-size:14px;line-height:1.5;color:#52605A;margin:0 0 24px">Reply to this email if you have a question.</p>` +
-    `<p style="font-size:12px;color:#7A8680;margin:0">Steadwell, LLC &middot; St. Petersburg, Florida</p></div>`;
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>` +
+    `<body style="margin:0;padding:0;background:${cream}">` +
+    `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${cream}">Your free preview of ${esc(g.name)} is ready to open.</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${cream}"><tr><td align="center" style="padding:24px 12px">` +
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px">` +
+      // brand header
+      `<tr><td bgcolor="${pine}" style="padding:22px 28px;border-radius:14px 14px 0 0"><a href="${SITE}" style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:${cream};text-decoration:none;letter-spacing:-.3px">Steadwell</a><div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#C9D6CC;margin-top:4px">Your home, kept well.</div></td></tr>` +
+      // preview
+      `<tr><td bgcolor="#ffffff" style="padding:32px 28px 8px;font-family:Arial,Helvetica,sans-serif;color:${ink}">` +
+        `<h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.15;color:${pine};font-weight:700">Your free preview is ready</h1>` +
+        `<p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:${soft}">Here are the first pages of <strong style="color:${ink}">${esc(g.name)}</strong>. These are real pages from the guide, not a summary.</p>` +
+        btn(url, "Open the free preview (PDF)", terra) +
+        `<p style="margin:14px 0 0;font-size:14px;line-height:1.5;color:${soft}">The link works for 7 days. Open it on any device and save the PDF to keep it.</p>` +
+      `</td></tr>` +
+      // full guide
+      `<tr><td bgcolor="#ffffff" style="padding:8px 28px 8px"><div style="border-top:1px solid #E6DECF;height:1px;line-height:1px;font-size:1px">&nbsp;</div></td></tr>` +
+      `<tr><td bgcolor="#ffffff" style="padding:20px 28px 8px;font-family:Arial,Helvetica,sans-serif;color:${ink}">` +
+        `<h2 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.2;color:${pine}">Want the whole guide?</h2>` +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>` +
+          `<td width="112" valign="top" style="padding:0 18px 0 0"><a href="${esc(guideUrl)}"><img src="${SITE}${g.cover}" width="112" alt="Cover of ${esc(g.name)}" style="display:block;width:112px;height:auto;border-radius:4px;border:1px solid #E6DECF"></a></td>` +
+          `<td valign="top"><p style="margin:0 0 6px;font-size:17px;font-weight:700;color:${ink}">${g.pages}-page PDF &middot; $${esc(g.price)} one-time</p><p style="margin:0 0 12px;font-size:14px;line-height:1.5;color:${soft}">No subscription. Checkout is opening soon.</p></td>` +
+        `</tr></table>` +
+        `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 14px">${points}</table>` +
+        `<p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:${soft}">${esc(g.pairNote)}</p>` +
+        btn(guideUrl, "See the full guide", pine) +
+      `</td></tr>` +
+      // account
+      `<tr><td bgcolor="#ffffff" style="padding:24px 28px 8px"><div style="border-top:1px solid #E6DECF;height:1px;line-height:1px;font-size:1px">&nbsp;</div></td></tr>` +
+      `<tr><td bgcolor="#ffffff" style="padding:20px 28px 32px;font-family:Arial,Helvetica,sans-serif;color:${ink};border-radius:0 0 14px 14px">` +
+        `<h2 style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.2;color:${pine}">Keep your home on track after you close</h2>` +
+        `<p style="margin:0 0 18px;font-size:15px;line-height:1.55;color:${soft}">Steadwell keeps your maintenance schedule, warranties, insurance and home documents in one place. The free plan has no time limit and needs no credit card.</p>` +
+        btn(signupUrl, "Create a free Steadwell account", terra) +
+      `</td></tr>` +
+      // footer
+      `<tr><td style="padding:20px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6B645B;text-align:center">` +
+        `You are getting this because you asked for the free preview at trysteadwell.app. Reply to this email with &ldquo;unsubscribe&rdquo; and we will stop sending you guide emails.<br>` +
+        `Steadwell, LLC &middot; St. Petersburg, Florida &middot; <a href="${SITE}/privacy" style="color:#6B645B">Privacy</a> &middot; <a href="${SITE}/terms" style="color:#6B645B">Terms</a><br>` +
+        `Guides are general information, not legal, tax, insurance, financial or real estate advice.` +
+      `</td></tr>` +
+    `</table></td></tr></table></body></html>`;
+  const text =
+    `Your free preview is ready\n\n` +
+    `Here are the first pages of ${g.name}. These are real pages from the guide.\n\n` +
+    `Open the free preview (PDF): ${url}\n` +
+    `The link works for 7 days. Open it on any device and save the PDF to keep it.\n\n` +
+    `WANT THE WHOLE GUIDE?\n${g.pages}-page PDF, $${g.price} one-time, no subscription. Checkout is opening soon.\n` +
+    g.points.map((x) => `- ${x}`).join("\n") + `\n${g.pairNote}\nSee the full guide: ${guideUrl}\n\n` +
+    `KEEP YOUR HOME ON TRACK AFTER YOU CLOSE\nSteadwell keeps your maintenance schedule, warranties, insurance and home documents in one place. The free plan has no time limit and needs no credit card.\nCreate a free account: ${signupUrl}\n\n` +
+    `You are getting this because you asked for the free preview at trysteadwell.app. Reply with "unsubscribe" and we will stop sending you guide emails.\n` +
+    `Steadwell, LLC, St. Petersburg, Florida\nGuides are general information, not legal, tax, insurance, financial or real estate advice.`;
   return { subject, html, text };
 }
 
@@ -108,7 +169,13 @@ async function sendEmail(to: string, msg: { subject: string; html: string; text:
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json", "User-Agent": "Steadwell/1.0" },
       body: JSON.stringify({ from: FROM, to: [to], subject: msg.subject, html: msg.html, text: msg.text, reply_to: "hello@trysteadwell.app" }),
     });
-    if (!res.ok) { console.error("[guide-preview] resend status", res.status); return false; }
+    if (!res.ok) {
+      // Resend explains the problem in its response body (for example an unverified sending domain or a bad key).
+      let detail = "";
+      try { detail = (await res.text()).slice(0, 300); } catch { /* ignore */ }
+      console.error("[guide-preview] resend status", res.status, detail);
+      return false;
+    }
     return true;
   } catch (e) {
     console.error("[guide-preview] resend error", (e as Error)?.message);
@@ -210,7 +277,7 @@ serve(async (req) => {
     const recent = lead.last_sent_at && Date.now() - new Date(lead.last_sent_at).getTime() < COOLDOWN_MS;
     let emailed = false;
     if (!recent && lead.send_count < MAX_SENDS) {
-      emailed = await sendEmail(email, previewEmail(guide.name, url));
+      emailed = await sendEmail(email, previewEmail(guide, url));
       if (emailed) {
         await supabase.from("guide_leads").update({ send_count: lead.send_count + 1, last_sent_at: new Date().toISOString() }).eq("id", lead.id);
       }

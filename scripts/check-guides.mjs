@@ -32,6 +32,8 @@ if (fs.existsSync(fnPath)) {
   }
   if (!src.includes('"' + GUIDE_CONSENT_VERSION + '"') || !src.includes(GUIDE_CONSENT_TEXT)) drift.push("consent version or wording differs in " + fnPath);
   for (const list of Object.values(GUIDE_LEAD_OPTIONS)) for (const o of list) if (!src.includes('"' + o.code + '"')) drift.push("answer code " + o.code + " missing in " + fnPath);
+  for (const k of ["state", "county", "bundle"]) if (!src.includes('"' + GUIDE_PRICES[k].toFixed(2) + '"')) drift.push("price " + k + " $" + GUIDE_PRICES[k].toFixed(2) + " missing in " + fnPath);
+  for (const g of GUIDES) { const m = src.match(new RegExp(JSON.stringify(g.id).slice(1, -1) + '"[^]*?pages: (\\d+)')); if (!m || Number(m[1]) !== g.pages) drift.push("page count for " + g.id + " differs in " + fnPath); }
   if (drift.length) { console.error("Edge function out of step with the registry:"); for (const d of drift) console.error("  - " + d); process.exit(1); }
   console.log("Edge function matches the registry");
 } else {
