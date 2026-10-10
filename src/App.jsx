@@ -1,4 +1,4 @@
-// Steadwell v347 — 2026-10-09
+// Steadwell v348 — 2026-10-09
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -83,8 +83,24 @@ function getClimateRegion(profile) {
   return { state, zip3 };
 }
 
+// Steadwell's property, climate and hazard data are U.S. only. This spots an address that is clearly in
+// Canada (postal code, the word Canada, or a province after a comma) so the app can say so and not guess.
+// A U.S. ZIP always wins, so U.S. cities that share a name with a province ("Ontario, CA 91761") stay U.S.
+const CA_POSTAL_RE = /\b[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d\b/i;
+const CA_PROVINCE_RE = /,\s*(AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)\b\.?(?:\s*,|\s+[A-Z]\d|\s*$)/i;
+function addressRegion(addr) {
+  const a = String(addr || "");
+  if (/\b\d{5}(?:-\d{4})?\b/.test(a)) return "us";
+  if (/\bcanada\b/i.test(a) || CA_POSTAL_RE.test(a) || CA_PROVINCE_RE.test(a)) return "ca";
+  return "unknown";
+}
+const ADDR_REGION_TITLE = "Steadwell is built for U.S. homes";
+const ADDR_REGION_BODY = "You can still use everything in Steadwell. Some address and regional data, such as property details, climate-based maintenance tips and local hazards, may be limited or incorrect for homes outside the U.S. Check anything that looks off against what you know about your home.";
+const ADDR_REGION_SHORT = "Steadwell is built for U.S. addresses. If your home is outside the U.S., you can still use everything, but some address and regional data may be limited or incorrect.";
+
 function getClimateZone(profile) {
   if (!profile) return 2; // default to zone 2 (hot/humid) since app is FL-based
+  if (addressRegion(profile.address) === "ca") return 6; // a cold-climate default beats hot/humid for a Canadian address
   const { state, zip3 } = getClimateRegion(profile);
   if (zip3 != null) {
     const ov = ZIP3_ZONE_OVERRIDES.find(([lo, hi]) => zip3 >= lo && zip3 <= hi);
@@ -2132,6 +2148,8 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .lookup-suggestion-icon{font-size:.9rem;flex-shrink:0;opacity:.6}
 .lookup-suggestion-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lookup-suggestion-sub{font-size:.72rem;color:#A8A09A;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lookup-region{background:#FFF8F0;border:1px solid #F0C090;border-left:3px solid #C16140;border-radius:var(--r-sm);padding:.8rem 1rem;margin-top:.55rem;font-size:.84rem;color:#4A443D;line-height:1.55}
+.lookup-region strong{color:var(--dark);display:block;margin-bottom:3px}
 .lookup-not-found{background:var(--cream2);border:1px solid var(--stone);border-radius:var(--r-sm);padding:.8rem 1rem;margin-top:.55rem;font-size:.8rem;color:#7A7370;line-height:1.55}
 .lookup-not-found strong{color:var(--dark);display:block;margin-bottom:3px}
 
@@ -2849,6 +2867,8 @@ img,.lp-root img{max-width:100%;height:auto}
 .onb-found-ok{font-size:.75rem;font-weight:700;color:#7DCF9E;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
 .onb-found-chips{display:flex;flex-wrap:wrap;gap:.35rem}
 .onb-found-chip{background:rgba(244,237,223,.08);border:1px solid rgba(244,237,223,.12);border-radius:8px;padding:.28rem .65rem;font-size:.72rem;font-weight:600;color:rgba(244,237,223,.7)}
+.onb-region{background:rgba(244,237,223,.07);border:1px solid rgba(244,237,223,.16);border-left:3px solid var(--terracotta-soft,#D2876A);border-radius:12px;padding:.85rem 1rem;margin-top:.6rem;font-size:.84rem;color:rgba(244,237,223,.8);line-height:1.55;text-align:left}
+.onb-region strong{display:block;color:#F4EDDF;margin-bottom:3px;font-size:.9rem}
 .onb-notfound{background:rgba(244,237,223,.05);border:1px solid rgba(244,237,223,.1);border-radius:12px;padding:.85rem 1rem;margin-top:.5rem;font-size:.8rem;color:rgba(244,237,223,.45);line-height:1.55}
 .onb-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1E3D30;border:1.5px solid rgba(244,237,223,.15);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.4);z-index:500;overflow:hidden;max-height:220px;overflow-y:auto}
 .onb-suggestion{padding:.7rem 1rem;font-size:.85rem;cursor:pointer;border-bottom:1px solid rgba(244,237,223,.07);color:#F4EDDF;display:flex;align-items:flex-start;gap:.65rem;transition:background .12s}
@@ -5925,9 +5945,16 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
           </div>
         )}
 
-        {lookupState === "notfound" && (
+        {addressRegion(selectedAddress || address) === "ca" && (address.trim().length >= 5) && lookupState !== "loading" && (
+          <div className="onb-region" role="note">
+            <strong>{ADDR_REGION_TITLE}</strong>
+            {ADDR_REGION_BODY}
+          </div>
+        )}
+
+        {lookupState === "notfound" && addressRegion(selectedAddress || address) !== "ca" && (
           <div className="onb-notfound">
-            We couldn't find property data for this address — no problem. You can add details manually later.
+            We couldn't find property data for this address, no problem. You can add details manually later. {ADDR_REGION_SHORT}
           </div>
         )}
 
@@ -10703,10 +10730,17 @@ function ProfileForm({ data, onChange, userId, photoPos=40, onPhotoPos, planData
         )}
 
         {/* Not found — friendly message */}
-        {lookupState === "notfound" && (
+        {(addressRegion(lookupAddr) === "ca" || addressRegion(data.address) === "ca") && lookupState !== "loading" && (
+          <div className="lookup-region" role="note">
+            <strong>{ADDR_REGION_TITLE}</strong>
+            {ADDR_REGION_BODY}
+          </div>
+        )}
+
+        {lookupState === "notfound" && addressRegion(lookupAddr) !== "ca" && (
           <div className="lookup-not-found">
             <strong>No property data found for this address</strong>
-            This can happen with older homes, rural properties, or addresses not yet indexed. Your address has been saved — fill in the details below manually. Everything is editable.
+            This can happen with older homes, rural properties, or addresses not yet indexed. Your address has been saved, so fill in the details below manually. Everything is editable. {ADDR_REGION_SHORT}
           </div>
         )}
 
