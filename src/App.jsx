@@ -1,4 +1,4 @@
-// Steadwell v359 — 2026-10-12
+// Steadwell v360 — 2026-10-12
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -5379,6 +5379,20 @@ function LandingPage({ onSignIn, onSignUp }) {
             </div>
           </div>
           <p style={{textAlign:"center",marginTop:"1.5rem"}}><a href="/pricing" style={{color:"var(--terracotta)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>Compare every plan in detail →</a></p>
+        </div>
+      </section>
+
+      {/* ── FREE FORECAST TOOL ── */}
+      <section className="block" id="free-forecast" style={{paddingTop:0}}>
+        <div className="wrap">
+          <div style={{background:"var(--pine)",borderRadius:20,padding:"clamp(1.5rem,4vw,2.25rem) clamp(1.25rem,4vw,2.5rem)",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"1.25rem 2rem"}}>
+            <div style={{flex:"1 1 320px",minWidth:0}}>
+              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#D2876A",marginBottom:8}}>Free tool</div>
+              <h2 style={{fontFamily:"var(--display)",fontWeight:500,fontSize:"clamp(1.4rem,3.4vw,1.9rem)",color:"#F4EDDF",lineHeight:1.2,margin:"0 0 .5rem",letterSpacing:"-.01em"}}>What will your home need in the next 5 years?</h2>
+              <p style={{fontSize:".95rem",color:"rgba(244,237,223,.72)",lineHeight:1.6,margin:0,maxWidth:"34rem"}}>Enter the age of your roof, heating and cooling and appliances to see what may need replacing and about what it costs. No account needed.</p>
+            </div>
+            <a href="/home-replacement-forecast" style={{flexShrink:0,display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 1.6rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>Try the free forecast →</a>
+          </div>
         </div>
       </section>
 
