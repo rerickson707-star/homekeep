@@ -1,4 +1,4 @@
-// Steadwell v360 — 2026-10-12
+// Steadwell v361 — 2026-10-12
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -25674,7 +25674,7 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
@@ -28775,198 +28775,419 @@ function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home 
 }
 
 // ─── FREE HOME FORECAST TOOL ──────────────────────────────────────────────────
-// Public page, no account. It feeds the ages a visitor types in to the same lifespan and replacement-cost
-// logic the in-app cost forecast uses (computeCostForecast). Nothing entered here is saved or sent anywhere.
+// Public page, no account. It feeds the ages a visitor sets to the same lifespan and replacement-cost logic the
+// in-app cost forecast uses (computeCostForecast). The answers stay in the visitor's browser: they are never sent
+// to Steadwell unless the visitor later creates an account and chooses to add them (ForecastImportCard).
 const HOME_FORECAST_ITEMS = [
-  { key:"roof",   label:"Roof",                       icon:"🏠", category:"Roofing",   item:"Roof" },
-  { key:"hvac",   label:"Heating and cooling system", icon:"🌡️", category:"HVAC",      item:"Heating and cooling system" },
-  { key:"heater", label:"Water heater",               icon:"🚿", category:"Plumbing",  item:"Water heater" },
-  { key:"fridge", label:"Refrigerator",               icon:"🧊", category:"Appliance", item:"Refrigerator" },
-  { key:"range",  label:"Range or oven",              icon:"🍳", category:"Appliance", item:"Range or oven" },
-  { key:"dish",   label:"Dishwasher",                 icon:"🍽️", category:"Appliance", item:"Dishwasher" },
-  { key:"washer", label:"Washing machine",            icon:"🧺", category:"Appliance", item:"Washing machine" },
-  { key:"dryer",  label:"Dryer",                      icon:"♨️", category:"Appliance", item:"Dryer" },
+  { key:"roof",   q:"r", label:"Roof",                       icon:"🏠", category:"Roofing",   item:"Roof",                       ex:22, tip:"Check for curled, cracked or missing shingles after storms, and keep gutters clear so water drains away from the edge.", link:{ href:"/blog/roof-lifespan-when-to-replace", label:"Roof lifespan guide" } },
+  { key:"hvac",   q:"h", label:"Heating and cooling system", icon:"🌡️", category:"HVAC",      item:"Heating and cooling system", ex:17, tip:"Change the filter on schedule and book a tune-up each year before the busy season.", link:{ href:"/blog/hvac-maintenance-schedule", label:"HVAC maintenance schedule" } },
+  { key:"heater", q:"w", label:"Water heater",               icon:"🚿", category:"Plumbing",  item:"Water heater",               ex:11, tip:"Flush the tank once a year and test the pressure relief valve. A puddle at the base means it is time to plan.", link:{ href:"/blog/how-old-is-my-water-heater", label:"How to find its age" } },
+  { key:"fridge", q:"f", label:"Refrigerator",               icon:"🧊", category:"Appliance", item:"Refrigerator",               ex:12, tip:"Vacuum the condenser coils twice a year and check that the door seals close tightly.", link:{ href:"/blog/find-appliance-serial-number", label:"Find the age from the serial number" } },
+  { key:"range",  q:"o", label:"Range or oven",              icon:"🍳", category:"Appliance", item:"Range or oven",              ex:11, tip:"Keep burners and vents clean and check that the oven door gasket seals all the way around.", link:{ href:"/blog/find-appliance-serial-number", label:"Find the age from the serial number" } },
+  { key:"dish",   q:"d", label:"Dishwasher",                 icon:"🍽️", category:"Appliance", item:"Dishwasher",                 ex:9,  tip:"Clean the filter monthly and run a cleaning cycle now and then to clear buildup.", link:{ href:"/blog/find-appliance-serial-number", label:"Find the age from the serial number" } },
+  { key:"washer", q:"m", label:"Washing machine",            icon:"🧺", category:"Appliance", item:"Washing machine",            ex:10, tip:"Inspect the supply hoses for bulges or cracks, and leave the door open between loads so it dries out.", link:{ href:"/blog/find-appliance-serial-number", label:"Find the age from the serial number" } },
+  { key:"dryer",  q:"y", label:"Dryer",                      icon:"♨️", category:"Appliance", item:"Dryer",                      ex:10, tip:"Clean the lint trap every load and the vent duct every year. It prevents fires and keeps drying times short.", link:{ href:"/blog/find-appliance-serial-number", label:"Find the age from the serial number" } },
 ];
-const HOME_FORECAST_EXAMPLE = { roof:"14", hvac:"12", heater:"9", fridge:"8", range:"10", dish:"7", washer:"7", dryer:"7" };
 const HOME_FORECAST_FAQ = [
-  ["How does the home forecast work?","Each item gets a typical lifespan: 25 years for a roof, 20 for a heating and cooling system, and 12 for a water heater, refrigerator, range, dishwasher, washer or dryer. We subtract the age you enter to estimate how many years are left, then add the item to the year it is likely to need replacing. Anything due within five years is counted."],
+  ["How does the home forecast work?","Each item gets a typical lifespan: 25 years for a roof, 20 for a heating and cooling system, and 12 for a water heater, refrigerator, range, dishwasher, washer or dryer. We subtract the age you set to estimate how many years are left, then place the item in the year it is likely to need replacing. Anything due within five years is counted."],
   ["What replacement costs does it use?","Round planning figures: $16,000 for a roof, $10,000 for a heating and cooling system, $1,200 for a water heater and $900 for each major appliance. They are a starting point for a savings plan, not a quote. Size, brand, region and local labor all move the real price."],
-  ["Do I need an account, and is my information saved?","No account is needed and the tool is free. The ages you choose stay in your browser while the page is open. Nothing you enter is saved or sent to Steadwell."],
+  ["Do I need an account, and is my information saved?","No account is needed and the tool is free. Your answers stay in your browser on this device and are not sent to Steadwell. If you create an account later, you can choose to add these items to it."],
+  ["Can I share my forecast?","Yes. The Share button gives you a link that rebuilds your results for whoever opens it. The link holds only the ages you chose, nothing about you."],
   ["How accurate is it?","It is a budgeting guide built on typical lifespans. A well-maintained system can outlast the average and a neglected one can fail early, and climate and usage matter too. For a real answer on a roof, a heating and cooling system or a water heater, ask a licensed pro to inspect it."],
   ["What does a Steadwell account add?","A free account tracks the actual items in your home with their warranties, recall alerts and maintenance reminders. On Plus and Pro, the 5-year cost forecast is built from the items you save, and a photo-based condition assessment can replace the age-only guess with what the item actually looks like."],
 ];
+const HF_COL = { past:"#B0432B", soon:"#C16140", ok:"#3E7D5A" };
 const hfMoney = (n) => "$" + Math.round(n).toLocaleString("en-US");
 const hfCompact = (n) => n >= 1000 ? "$" + ((n / 1000) % 1 === 0 ? (n / 1000) : (n / 1000).toFixed(1)) + "k" : "$" + Math.round(n);
-const hfAgeLabel = (n) => n === 0 ? "Less than 1 year" : n === 1 ? "1 year" : n + " years";
-const hfAgeOptions = Array.from({ length: 41 }, (_, i) => i);
+const hfLife = (it) => getDefaultLifespan({ category: it.category, item: it.item });
+const hfMax = (it) => Math.round(hfLife(it) * 1.5);
+const hfYears = (n) => n === 1 ? "1 year" : n + " years";
+const hfLeftText = (left) => left <= 0 ? "Past its typical life" : left < 1 ? "Less than a year left" : left < 5 ? "About " + hfYears(Math.round(left)) + " left" : hfYears(Math.round(left)) + " left";
+
+// Starting state: the URL if it carries a shared forecast, else an example home.
+function hfInitial() {
+  const ages = {}, off = {};
+  HOME_FORECAST_ITEMS.forEach(i => { ages[i.key] = i.ex; off[i.key] = false; });
+  let custom = false;
+  try {
+    const p = new URLSearchParams(window.location.search);
+    HOME_FORECAST_ITEMS.forEach(i => {
+      const v = p.get(i.q);
+      if (v === null) return;
+      custom = true;
+      if (v === "x") { off[i.key] = true; return; }
+      const n = parseInt(v, 10);
+      if (Number.isFinite(n) && n >= 0) ages[i.key] = Math.min(n, hfMax(i));
+    });
+  } catch { /* no window while pre-rendering */ }
+  return { ages, off, custom };
+}
+function hfQuery(ages, off) {
+  return HOME_FORECAST_ITEMS.map(i => i.q + "=" + (off[i.key] ? "x" : ages[i.key])).join("&");
+}
+
+// Eases a number toward its new value so the headline total feels alive. Instant when reduced motion is on.
+function useCountUp(target, ms = 450) {
+  const [v, setV] = useState(target);
+  const cur = useRef(target);
+  useEffect(() => {
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || cur.current === target) { cur.current = target; setV(target); return undefined; }
+    const from = cur.current, t0 = performance.now();
+    let raf = 0;
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / ms);
+      cur.current = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
+      setV(cur.current);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return v;
+}
+
+function HFItem({ it, age, off, onAge, onToggle }) {
+  const life = hfLife(it), max = hfMax(it);
+  const a = Math.min(age, max), left = life - a;
+  const tone = left <= 0 ? HF_COL.past : left < 5 ? HF_COL.soon : HF_COL.ok;
+  const status = hfLeftText(left);
+  const box = { boxSizing:"border-box", background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"14px 16px", minWidth:0, opacity: off ? .62 : 1 };
+  const linkBtn = { background:"none", border:"none", padding:"8px 0", minHeight:36, color:"#7A7370", fontSize:".76rem", textDecoration:"underline", cursor:"pointer", fontFamily:"inherit" };
+  return (
+    <div style={box}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+          <span aria-hidden="true" style={{fontSize:"1.3rem",flexShrink:0}}>{it.icon}</span>
+          <span style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",overflowWrap:"anywhere"}}>{it.label}</span>
+        </div>
+        {off
+          ? <button type="button" onClick={onToggle} style={{...linkBtn,color:"#C16140",fontWeight:700,textDecoration:"none",flexShrink:0}}>Add back</button>
+          : <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:600,color:tone,whiteSpace:"nowrap",flexShrink:0}}>{a === 0 ? "New" : hfYears(a)}</span>}
+      </div>
+      {!off && (
+        <>
+          <div style={{position:"relative",marginTop:6}}>
+            <input type="range" className="hf-range" min={0} max={max} step={1} value={a}
+              aria-label={it.label + " age in years"} aria-valuetext={(a === 0 ? "Under 1 year old" : hfYears(a) + " old") + ", " + status}
+              onChange={e => onAge(Number(e.target.value))}
+              style={{"--p": a / max, "--c": tone}}/>
+            <span aria-hidden="true" className="hf-mark" style={{left:`calc(14px + (100% - 28px) * ${life / max})`}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:".78rem",marginTop:2,flexWrap:"wrap"}}>
+            <span style={{color:tone,fontWeight:700}}>{status}</span>
+            <span style={{color:"#8A8178"}}>Typical life {hfYears(life)}</span>
+          </div>
+          <button type="button" onClick={onToggle} style={linkBtn}>I don&#39;t have this</button>
+        </>
+      )}
+    </div>
+  );
+}
 
 function HomeForecastPage() {
   const seoPath = "/home-replacement-forecast";
   const seoDesc = "See what your roof, heating and cooling, water heater and appliances may cost to replace in the next 5 years. Free, no signup.";
-  useSEO({
-    title: "Free Home Replacement Forecast (5 Years)",
-    description: seoDesc,
-    canonical: `https://www.trysteadwell.app${seoPath}`,
-    jsonLd: lpJsonLd({
-      name: "Steadwell Home Replacement Forecast",
-      path: seoPath, description: seoDesc,
-      features: ["Free 5-year replacement forecast", "Roof, heating and cooling, water heater and appliances", "Typical lifespans and planning-level replacement costs", "No account needed"],
-      faq: HOME_FORECAST_FAQ,
-      offers: [{ name: "Free", price: "0" }],
-    }),
+  const ld = lpJsonLd({
+    name: "Steadwell Home Replacement Forecast",
+    path: seoPath, description: seoDesc,
+    features: ["Free 5-year replacement forecast", "Roof, heating and cooling, water heater and appliances", "Typical lifespans and planning-level replacement costs", "Shareable results link", "No account needed"],
+    faq: HOME_FORECAST_FAQ,
+    offers: [{ name: "Free", price: "0" }],
   });
+  ld["@graph"][0]["@type"] = ["WebApplication", "SoftwareApplication"];
+  ld["@graph"][0].isAccessibleForFree = true;
+  ld["@graph"][0].dateModified = "2026-10-12";
+  useSEO({ title: "Free Home Replacement Forecast (5 Years)", description: seoDesc, canonical: `https://www.trysteadwell.app${seoPath}`, jsonLd: ld });
 
-  const [ages, setAges] = useState(() => Object.fromEntries(HOME_FORECAST_ITEMS.map(i => [i.key, ""])));
+  const init = useMemo(() => hfInitial(), []);
+  const [ages, setAges] = useState(init.ages);
+  const [off, setOff] = useState(init.off);
+  const [custom, setCustom] = useState(init.custom);
+  const [msg, setMsg] = useState("");
+  const touched = useRef(new Set());
   const started = useRef(false);
-  const markStarted = () => { if (!started.current) { started.current = true; trackEvent("forecast_tool_start"); } };
-  const setAge = (key, val) => { markStarted(); setAges(a => ({ ...a, [key]: val })); };
-  const useExample = () => { markStarted(); trackEvent("forecast_tool_example"); setAges({ ...HOME_FORECAST_EXAMPLE }); };
-  const clearAll = () => setAges(Object.fromEntries(HOME_FORECAST_ITEMS.map(i => [i.key, ""])));
+  const engaged = useRef(false);
 
-  const picked = HOME_FORECAST_ITEMS.filter(i => ages[i.key] !== "");
+  const touch = (key) => {
+    if (!started.current) { started.current = true; trackEvent("forecast_tool_start"); }
+    touched.current.add(key);
+    if (!engaged.current && touched.current.size >= 3) { engaged.current = true; trackEvent("forecast_tool_engaged"); }
+    setCustom(true);
+  };
+  const setAge = (key, v) => { touch(key); setAges(a => ({ ...a, [key]: v })); };
+  const toggle = (key) => { touch(key); setOff(o => ({ ...o, [key]: !o[key] })); };
+  const resetExample = () => { const f = hfInitial(); setAges(f.ages); setOff(f.off); setCustom(false); touched.current = new Set(); engaged.current = false; try { localStorage.removeItem("sw_forecast_draft"); window.history.replaceState(null, "", window.location.pathname); } catch { /* storage unavailable */ } };
+
+  const picked = HOME_FORECAST_ITEMS.filter(i => !off[i.key]);
+  // Keep the visitor's answers on this device (so a new account can offer to add them) and in the address bar (so the URL is shareable).
+  useEffect(() => {
+    if (!custom) return;
+    try {
+      localStorage.setItem("sw_forecast_draft", JSON.stringify({ v: 1, ts: Date.now(), items: picked.map(i => ({ key: i.key, age: ages[i.key] })) }));
+      window.history.replaceState(null, "", window.location.pathname + "?" + hfQuery(ages, off));
+    } catch { /* storage unavailable */ }
+  }, [ages, off, custom]);
+
   const result = useMemo(() => {
     const thisYear = new Date().getFullYear();
-    const assets = HOME_FORECAST_ITEMS.filter(i => ages[i.key] !== "").map(i => ({
-      key: i.key, category: i.category, item: i.item,
-      install_date: `${thisYear - Number(ages[i.key])}-07-01`,
-    }));
+    const assets = HOME_FORECAST_ITEMS.filter(i => !off[i.key]).map(i => ({ category: i.category, item: i.item, install_date: `${thisYear - ages[i.key]}-07-01` }));
     const { yearBuckets } = computeCostForecast(assets, 5);
     const years = yearBuckets.map(b => ({ year: b.year, items: b.items, total: b.items.reduce((s, x) => s + x.cost, 0) }));
     const total = years.reduce((s, y) => s + y.total, 0);
     const pastLife = new Set();
-    const later = [];
-    assets.forEach(a => {
-      const life = getDefaultLifespan(a);
-      const age = (Date.now() - new Date(a.install_date + "T00:00:00")) / (365.25 * 86400000);
-      if (age >= life) pastLife.add(a.item);
-      const left = life - age;
-      if (left >= 5) later.push({ name: a.item, left: Math.round(left) });
-    });
-    return { years, total, count: years.reduce((s, y) => s + y.items.length, 0), pastLife, later };
-  }, [ages]);
+    assets.forEach(a => { const age = (Date.now() - new Date(a.install_date + "T00:00:00")) / (365.25 * 86400000); if (age >= getDefaultLifespan(a)) pastLife.add(a.item); });
+    let big = null;
+    years.forEach(y => y.items.forEach(x => { if (!big || x.cost > big.cost) big = { ...x, year: y.year }; }));
+    return { years, total, count: years.reduce((s, y) => s + y.items.length, 0), pastLife, big };
+  }, [ages, off]);
 
+  const shown = useCountUp(Math.round(result.total));
   const maxTotal = Math.max(...result.years.map(y => y.total), 1);
-  const dueYears = result.years.filter(y => y.items.length > 0);
-  const card = { boxSizing:"border-box", background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"20px 22px", textAlign:"left", minWidth:0 };
-  const btnLine = { background:"#fff", border:"1.5px solid #234A3D", color:"#234A3D", borderRadius:10, padding:"9px 14px", minHeight:40, fontWeight:700, fontSize:".84rem", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif" };
-  const sel = { flex:"1 1 140px", maxWidth:220, minWidth:0, boxSizing:"border-box", padding:"9px 10px", minHeight:44, borderRadius:10, border:"1px solid #D8CFBD", background:"#FBF8F1", color:"#2A2723", fontSize:".9rem", fontFamily:"'Hanken Grotesk',sans-serif" };
+  const lastYear = result.years[4].year;
+
+  // Sticky total on phones: only while the sliders are on screen and the main summary is not.
+  const toolRef = useRef(null), panelRef = useRef(null);
+  const [inTool, setInTool] = useState(false);
+  const [inPanel, setInPanel] = useState(true);
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return undefined;
+    const a = new IntersectionObserver(([e]) => setInTool(e.isIntersecting));
+    const b = new IntersectionObserver(([e]) => setInPanel(e.isIntersecting));
+    if (toolRef.current) a.observe(toolRef.current);
+    if (panelRef.current) b.observe(panelRef.current);
+    return () => { a.disconnect(); b.disconnect(); };
+  }, []);
+  const showBar = inTool && !inPanel;
+
+  const share = async () => {
+    const url = window.location.origin + seoPath + "?" + hfQuery(ages, off);
+    trackEvent("forecast_tool_share", { items_selected: picked.length });
+    try {
+      if (navigator.share) { await navigator.share({ title: "My 5-year home forecast", url }); return; }
+      await navigator.clipboard.writeText(url);
+      setMsg("Link copied");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      setMsg("Copy the link from your address bar");
+    }
+    setTimeout(() => setMsg(""), 2500);
+  };
+  const print = () => { trackEvent("forecast_tool_print"); window.print(); };
+
+  const verdict = picked.length === 0
+    ? "Add back at least one item to see a forecast."
+    : result.total === 0
+      ? `Nothing on this list is likely due before ${lastYear + 1}. Keep up the maintenance and check back each year.`
+      : `Your biggest bill is the ${result.big.name.toLowerCase()}, around ${result.big.year} (${hfMoney(result.big.cost)}).`;
+  const pastCount = result.pastLife.size;
+  const ctaLabel = custom && picked.length > 0 ? `Save these ${picked.length} ${picked.length === 1 ? "item" : "items"} to a free account` : "Create a free account";
+  const ctaNote = custom && picked.length > 0 ? "We add them to your account for you. Free to start, no credit card." : "Free to start. No credit card required.";
+
+  const card = { boxSizing:"border-box", background:"#fff", border:"1px solid #E6DECF", borderRadius:16, padding:"20px 22px", textAlign:"left", minWidth:0 };
+  const h2s = { fontFamily:"'Fraunces',serif", fontWeight:500, color:"#234A3D", margin:0, letterSpacing:"-.01em" };
+  const ghost = { background:"#fff", border:"1.5px solid #D8CFBD", color:"#234A3D", borderRadius:10, padding:"9px 14px", minHeight:44, fontWeight:700, fontSize:".84rem", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif", flex:"1 1 130px" };
 
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <style>{`
+        .hf-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+        .hf-panel{order:-1;min-width:0}
+        .hf-bar{display:flex}
+        .hf-range{-webkit-appearance:none;appearance:none;width:100%;height:36px;margin:0;padding:0;border:0;background:transparent;cursor:pointer;touch-action:pan-y;display:block}
+        .hf-range::-webkit-slider-runnable-track{height:10px;border-radius:6px;background:linear-gradient(to right,var(--c) 0,var(--c) calc(14px + (100% - 28px) * var(--p)),#E6DECF calc(14px + (100% - 28px) * var(--p)),#E6DECF 100%)}
+        .hf-range::-moz-range-track{height:10px;border-radius:6px;background:#E6DECF}
+        .hf-range::-moz-range-progress{height:10px;border-radius:6px;background:var(--c)}
+        .hf-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid var(--c);margin-top:-9px;box-shadow:0 1px 4px rgba(42,39,35,.3)}
+        .hf-range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--c);box-shadow:0 1px 4px rgba(42,39,35,.3)}
+        .hf-range:focus-visible{outline:2px solid #234A3D;outline-offset:2px;border-radius:8px}
+        .hf-mark{position:absolute;top:7px;width:2px;height:22px;margin-left:-1px;background:#2A2723;opacity:.4;border-radius:1px;pointer-events:none}
+        @media (prefers-reduced-motion:no-preference){.hf-fill{transition:height .35s ease}}
+        @media (min-width:900px){.hf-grid{grid-template-columns:minmax(0,1fr) 390px;align-items:start}.hf-panel{order:0;position:sticky;top:76px}.hf-bar{display:none!important}}
+        @media print{nav,footer,.hf-noprint,.hf-bar{display:none!important}body{background:#fff!important}}
+      `}</style>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Free home forecast" h1="What will your home" h1em="need in the next 5 years?" sub="Tell us how old your roof, heating and cooling and appliances are. See what may need replacing and about what it will cost. No account needed."/>
+
+      <section style={{background:"#234A3D",padding:"clamp(36px,6vw,56px) 20px clamp(40px,6vw,60px)",textAlign:"center"}}>
+        <div style={{maxWidth:720,margin:"0 auto"}}>
+          <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:14}}>Free home forecast</div>
+          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2rem,5.4vw,3.2rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 16px",textWrap:"balance"}}>What will your home need in the next 5 years?</h1>
+          <p style={{fontSize:"1.02rem",color:"rgba(244,237,223,.7)",maxWidth:"34rem",margin:"0 auto 20px",lineHeight:1.6,textWrap:"balance"}}>Slide each system to its age and watch the bill take shape, year by year.</p>
+          <div style={{display:"flex",gap:"6px 18px",justifyContent:"center",flexWrap:"wrap",fontSize:".82rem",color:"rgba(244,237,223,.8)",fontWeight:600}}>
+            {["Free","No account needed","About a minute"].map(t => <span key={t}><span aria-hidden="true" style={{color:"#D2876A"}}>✓ </span>{t}</span>)}
+          </div>
+        </div>
+      </section>
+
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:16,alignItems:"start"}}>
-            {/* Inputs */}
-            <div style={card}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:6}}>
-                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.25rem",color:"#234A3D",margin:0}}>How old is each one?</h2>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <button type="button" onClick={useExample} style={btnLine}>Try an example home</button>
-                  {picked.length > 0 && <button type="button" onClick={clearAll} style={{...btnLine,border:"1.5px solid #D8CFBD",color:"#7A7370"}}>Clear</button>}
+        <section style={{padding:"clamp(24px,4vw,44px) 20px"}}>
+          <div ref={toolRef} className="hf-grid" style={{maxWidth:1080,margin:"0 auto"}}>
+            {/* Sliders */}
+            <div style={{minWidth:0}}>
+              <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:"6px 12px",flexWrap:"wrap",marginBottom:10}}>
+                <div>
+                  <h2 style={{...h2s,fontSize:"1.35rem"}}>{custom ? "Your home" : "An example older home"}</h2>
+                  <p style={{fontSize:".84rem",color:"#7A7370",lineHeight:1.5,margin:"4px 0 0",maxWidth:"34rem"}}>{custom ? "The tick on each slider marks its typical life. Past the tick means it is overdue." : "Slide each one to match yours. The tick marks its typical life, and past it means overdue."}</p>
                 </div>
+                {custom && <button type="button" onClick={resetExample} className="hf-noprint" style={{background:"none",border:"none",color:"#7A7370",textDecoration:"underline",fontSize:".8rem",cursor:"pointer",padding:"8px 0",minHeight:36,fontFamily:"inherit"}}>Reset to the example</button>}
               </div>
-              <p style={{fontSize:".84rem",color:"#7A7370",lineHeight:1.55,margin:"0 0 10px"}}>Pick an age for each one you have and skip the rest. A guess within a few years is fine. A nameplate, closing documents or an inspection report usually show the install date.</p>
-              {HOME_FORECAST_ITEMS.map(it => {
-                const life = getDefaultLifespan({ category: it.category, item: it.item });
-                const id = "hf-" + it.key;
-                return (
-                  <div key={it.key} style={{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:"6px 12px",padding:"12px 0",borderTop:"1px solid #EFE7D7"}}>
-                    <label htmlFor={id} style={{flex:"1 1 150px",minWidth:0,cursor:"pointer"}}>
-                      <span style={{display:"block",fontWeight:700,fontSize:".92rem",color:"#234A3D"}}><span aria-hidden="true" style={{marginRight:8}}>{it.icon}</span>{it.label}</span>
-                      <span style={{display:"block",fontSize:".74rem",color:"#8A8178",marginTop:2,marginLeft:26}}>Typically lasts about {life} years</span>
-                    </label>
-                    <select id={id} value={ages[it.key]} onChange={e => setAge(it.key, e.target.value)} style={sel}>
-                      <option value="">Skip, I don&#39;t have one</option>
-                      {hfAgeOptions.map(n => <option key={n} value={String(n)}>{hfAgeLabel(n)}</option>)}
-                    </select>
-                  </div>
-                );
-              })}
-              {picked.length > 0 && <a href="#hf-results" style={{display:"inline-block",marginTop:6,padding:"10px 0",color:"#C16140",fontWeight:700,fontSize:".9rem",textDecoration:"none"}}>See my forecast ↓</a>}
+              <div style={{display:"grid",gap:10}}>
+                {HOME_FORECAST_ITEMS.map(it => <HFItem key={it.key} it={it} age={ages[it.key]} off={off[it.key]} onAge={v => setAge(it.key, v)} onToggle={() => toggle(it.key)}/>)}
+              </div>
             </div>
 
-            {/* Results */}
-            <div style={{display:"flex",flexDirection:"column",gap:16,minWidth:0}}>
-              <div id="hf-results" style={{...card,scrollMarginTop:76}} aria-live="polite">
-                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.25rem",color:"#234A3D",margin:"0 0 12px"}}>Your 5-year forecast</h2>
-                {picked.length === 0 ? (
-                  <p style={{fontSize:".92rem",color:"#7A7370",lineHeight:1.6,margin:0}}>Choose an age for any item on the left and your forecast appears here. Want to see how it looks first? Tap <strong>Try an example home</strong>.</p>
-                ) : (
-                  <>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(2rem,9vw,2.6rem)",fontWeight:600,color:result.total > 0 ? "#C16140" : "#234A3D",lineHeight:1.05,letterSpacing:"-.02em"}}>{hfMoney(result.total)}</div>
-                    <div style={{fontSize:".88rem",color:"#5E574F",margin:"6px 0 16px",lineHeight:1.5}}>
-                      {result.count > 0
-                        ? <>in replacements likely by {result.years[4].year}, across {result.count} {result.count === 1 ? "item" : "items"}.</>
-                        : <>Nothing on your list is likely to need replacing before {result.years[4].year + 1}. Keep up the maintenance and check back each year.</>}
-                    </div>
-                    <div role="img" aria-label={"Replacement costs by year: " + result.years.map(y => y.year + " " + hfMoney(y.total)).join(", ")} style={{display:"flex",alignItems:"flex-end",gap:6,height:150,borderBottom:"1px solid #E6DECF",paddingBottom:0}}>
-                      {result.years.map(y => (
-                        <div key={y.year} style={{flex:"1 1 0",minWidth:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%"}}>
-                          <div style={{fontSize:".7rem",fontWeight:700,color:y.total > 0 ? "#5A534B" : "#B8B0A6",marginBottom:4,whiteSpace:"nowrap"}}>{y.total > 0 ? hfCompact(y.total) : "$0"}</div>
-                          <div style={{width:"72%",maxWidth:44,height:Math.max(Math.round((y.total / maxTotal) * 104), 3),background:y.total > 0 ? "#C16140" : "#A7BFA8",borderRadius:"4px 4px 0 0"}}/>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{display:"flex",gap:6,marginTop:6}} aria-hidden="true">
-                      {result.years.map(y => <div key={y.year} style={{flex:"1 1 0",minWidth:0,textAlign:"center",fontSize:".72rem",color:"#8A8178"}}>{y.year}</div>)}
-                    </div>
-                    {dueYears.length > 0 && (
-                      <div style={{marginTop:18}}>
-                        {dueYears.map(y => (
-                          <div key={y.year} style={{borderTop:"1px solid #EFE7D7",padding:"10px 0"}}>
-                            <div style={{display:"flex",justifyContent:"space-between",gap:10,fontWeight:700,fontSize:".9rem",color:"#234A3D"}}><span>{y.year}</span><span>{hfMoney(y.total)}</span></div>
-                            {y.items.map((x, i) => (
-                              <div key={i} style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:".82rem",color:"#5E574F",marginTop:4}}>
-                                <span style={{minWidth:0,overflowWrap:"anywhere"}}>{x.name}{result.pastLife.has(x.name) && <span style={{color:"#C16140",fontWeight:600}}> · past its typical life</span>}</span>
-                                <span style={{flexShrink:0}}>{hfMoney(x.cost)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {result.later.length > 0 && (
-                      <p style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.55,margin:"8px 0 0",borderTop:"1px solid #EFE7D7",paddingTop:10}}>
-                        Beyond five years: {result.later.map(l => `${l.name} (about ${l.left} years left)`).join(", ")}.
-                      </p>
-                    )}
-                    <p style={{fontSize:".74rem",color:"#8A8178",lineHeight:1.55,margin:"12px 0 0"}}>Estimates use typical lifespans and round planning costs, not quotes. Real prices depend on size, brand, region and local labor.</p>
-                  </>
-                )}
-              </div>
+            {/* Summary */}
+            <div ref={panelRef} id="hf-results" className="hf-panel" style={{scrollMarginTop:76}}>
+              <div style={{...card,padding:"22px 22px 20px"}}>
+                <h2 style={{...h2s,fontSize:"1.1rem"}}>Your 5-year forecast</h2>
+                {!custom && <div style={{display:"inline-block",margin:"8px 0 0",background:"rgba(193,97,64,.12)",color:"#A24E31",fontSize:".74rem",fontWeight:700,padding:"3px 10px",borderRadius:20}}>Example home. Move a slider to make it yours.</div>}
+                <div style={{fontSize:".8rem",color:"#8A8178",margin:"12px 0 2px"}}>Estimated replacements through {lastYear}</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(2.4rem,11vw,3.1rem)",fontWeight:600,color:result.total > 0 ? "#C16140" : "#234A3D",lineHeight:1.02,letterSpacing:"-.025em"}}>{hfMoney(shown)}</div>
+                <span style={{position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)"}}>Estimated total {hfMoney(result.total)}</span>
+                <p aria-live="polite" style={{fontSize:".92rem",color:"#4A443D",lineHeight:1.55,margin:"10px 0 0"}}>
+                  {verdict}{pastCount > 0 && <span style={{color:HF_COL.past,fontWeight:700}}> {pastCount} {pastCount === 1 ? "item is" : "items are"} already past its typical life.</span>}
+                </p>
+                {result.total > 0 && <div style={{marginTop:12,display:"inline-block",background:"#EFE7D7",borderRadius:10,padding:"8px 12px",fontSize:".84rem",color:"#4A443D"}}>Setting aside <strong>{hfMoney(result.total / 60)} a month</strong> would cover it.</div>}
 
-              <div style={{...card,background:"#234A3D",border:"1px solid #234A3D"}}>
-                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.25rem",color:"#F4EDDF",margin:"0 0 8px"}}>Keep track of the real thing</h2>
-                <p style={{fontSize:".88rem",color:"rgba(244,237,223,.75)",lineHeight:1.6,margin:"0 0 16px"}}>A free Steadwell account tracks the actual items in your home, with warranties, recall alerts and maintenance reminders. On Plus and Pro, the 5-year forecast is built from the items you save. What you entered on this page is not saved.</p>
-                <a href="/?action=signup" onClick={() => trackEvent("forecast_tool_cta_click", { items_selected: picked.length })} style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.5rem",borderRadius:12,fontWeight:700,fontSize:".92rem"}}>Create a free account</a>
-                <div style={{fontSize:".76rem",color:"rgba(244,237,223,.5)",marginTop:10}}>Free to start · No credit card required</div>
+                <div role="img" aria-label={"Replacement costs by year: " + result.years.map(y => y.year + " " + hfMoney(y.total)).join(", ")} style={{display:"flex",alignItems:"flex-end",gap:6,height:140,borderBottom:"1px solid #E6DECF",marginTop:18}}>
+                  {result.years.map(y => (
+                    <div key={y.year} style={{flex:"1 1 0",minWidth:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%"}}>
+                      <div style={{fontSize:".7rem",fontWeight:700,color:y.total > 0 ? "#5A534B" : "#B8B0A6",marginBottom:4,whiteSpace:"nowrap"}}>{y.total > 0 ? hfCompact(y.total) : "$0"}</div>
+                      <div className="hf-fill" style={{width:"72%",maxWidth:44,height:Math.max(Math.round((y.total / maxTotal) * 96), 3),background:y.total > 0 ? "#C16140" : "#A7BFA8",borderRadius:"4px 4px 0 0"}}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:6,marginTop:6}} aria-hidden="true">
+                  {result.years.map(y => <div key={y.year} style={{flex:"1 1 0",minWidth:0,textAlign:"center",fontSize:".72rem",color:"#8A8178"}}>{y.year}</div>)}
+                </div>
+
+                <a href="/?action=signup" onClick={() => trackEvent("forecast_tool_cta_click", { items_selected: picked.length, customized: custom })} style={{display:"block",textAlign:"center",marginTop:20,background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 1rem",borderRadius:12,fontWeight:700,fontSize:".95rem",lineHeight:1.3}}>{ctaLabel}</a>
+                <div style={{fontSize:".76rem",color:"#8A8178",textAlign:"center",marginTop:8}}>{ctaNote}</div>
+                <div className="hf-noprint" style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
+                  <button type="button" onClick={share} style={ghost}>Share</button>
+                  <button type="button" onClick={print} style={ghost}>Print or save PDF</button>
+                </div>
+                <div role="status" style={{fontSize:".78rem",color:"#3E7D5A",fontWeight:600,textAlign:"center",minHeight:18,marginTop:6}}>{msg}</div>
               </div>
             </div>
           </div>
-        </LPSection>
+        </section>
 
         <LPSection alt>
-          <LPSectionHead h2="How the forecast works" sub="The same method Steadwell uses for the 5-year forecast inside the app."/>
-          <LPGrid gap={16}>
-            {[
-              {num:"01",title:"Typical lifespan",text:"Each item starts with how long it typically lasts: 25 years for a roof, 20 for heating and cooling, 12 for a water heater and major appliances."},
-              {num:"02",title:"Years left",text:"We subtract the age you enter to see how many years are left. Anything past its typical life is flagged."},
-              {num:"03",title:"Replacement cost",text:"Items due within five years are priced with round planning figures, so you can see the size of the bill before it arrives."},
-            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          <LPSectionHead h2="What is due, and when" sub="Replacements placed in the year each item is likely to reach the end of its typical life."/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,190px),1fr))",gap:12}}>
+            {result.years.map((y, i) => (
+              <div key={y.year} style={{...card,padding:"16px 18px",borderColor:y.items.length ? "#E4C9BC" : "#E6DECF"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+                  <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.15rem",color:"#234A3D"}}>{y.year}</span>
+                  <span style={{fontSize:".7rem",fontWeight:700,color:"#8A8178"}}>{i === 0 ? "This year" : ""}</span>
+                </div>
+                <div style={{fontWeight:700,fontSize:"1.05rem",color:y.items.length ? "#C16140" : "#8A8178",margin:"2px 0 8px"}}>{hfMoney(y.total)}</div>
+                {y.items.length === 0
+                  ? <div style={{fontSize:".8rem",color:"#8A8178"}}>Nothing expected</div>
+                  : y.items.map((x, j) => (
+                    <div key={j} style={{fontSize:".82rem",color:"#4A443D",marginTop:4,overflowWrap:"anywhere"}}>
+                      {x.name} <span style={{color:"#8A8178"}}>{hfMoney(x.cost)}</span>
+                      {result.pastLife.has(x.name) && <div style={{color:HF_COL.past,fontWeight:700,fontSize:".74rem"}}>Past its typical life</div>}
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="Make each one last longer" sub="Typical lifespans and the planning costs this forecast uses, with one habit that helps each item last."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,240px),1fr))" gap={14}>
+            {HOME_FORECAST_ITEMS.map(it => (
+              <LPCard key={it.key}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span aria-hidden="true" style={{fontSize:"1.25rem"}}>{it.icon}</span><h3 style={{margin:0,fontSize:".98rem",fontWeight:700,color:"#234A3D"}}>{it.label}</h3></div>
+                <div style={{fontSize:".8rem",color:"#8A8178",marginBottom:8}}>Typically lasts about {hfYears(hfLife(it))} · planning cost {hfMoney(FORECAST_DEFAULT_COST[it.category])}</div>
+                <p style={{fontSize:".86rem",color:"#5E574F",lineHeight:1.55,margin:"0 0 10px"}}>{it.tip}</p>
+                <a href={it.link.href} style={{fontSize:".84rem",color:"#C16140",fontWeight:700,textDecoration:"none"}}>{it.link.label} <span aria-hidden="true">→</span></a>
+              </LPCard>
+            ))}
           </LPGrid>
         </LPSection>
 
-        <LPSection narrow>
+        <LPSection alt narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={HOME_FORECAST_FAQ}/>
+          <p style={{fontSize:".78rem",color:"#8A8178",margin:"18px 0 0"}}>Last updated October 2026.</p>
         </LPSection>
         <LPRelated hrefs={["/home-expense-tracker","/home-condition-assessment","/home-maintenance-tracker","/warranty-tracker"]}/>
-        <LPCTA h2="Know what's coming before it arrives." sub="Create a free account and keep every system, appliance and warranty in one place." btnLabel="Start for free →"/>
+        <LPCTA h2="Know what&#39;s coming before it arrives." sub="Create a free account and keep every system, appliance and warranty in one place, with reminders before things wear out." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
+
+      {showBar && (
+        <div className="hf-bar hf-noprint" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:150,background:"#234A3D",color:"#F4EDDF",padding:"10px 16px calc(10px + env(safe-area-inset-bottom))",alignItems:"center",justifyContent:"space-between",gap:12,boxShadow:"0 -4px 16px rgba(0,0,0,.2)"}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:".68rem",opacity:.72}}>Estimated replacements</div>
+            <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.3rem",lineHeight:1.1}}>{hfMoney(shown)}</div>
+          </div>
+          <a href="#hf-results" style={{flexShrink:0,background:"#C16140",color:"#fff",textDecoration:"none",padding:"10px 16px",borderRadius:10,fontWeight:700,fontSize:".86rem"}}>See forecast ↑</a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Dashboard card: a visitor who used the free forecast and then signed up can add those items in one tap.
+// Nothing is added until they press the button, and items already in the account are left out.
+function ForecastImportCard({ warranties, setWarranties, userId, propertyId, toast }) {
+  const [draft, setDraft] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("sw_forecast_draft") || "null");
+      if (!raw) return;
+      if (raw.v !== 1 || !Array.isArray(raw.items) || Date.now() - Number(raw.ts) > 30 * 86400000) { localStorage.removeItem("sw_forecast_draft"); return; }
+      const items = raw.items.map(x => {
+        const it = HOME_FORECAST_ITEMS.find(i => i.key === x.key);
+        const age = Number(x.age);
+        return it && Number.isInteger(age) && age >= 0 && age <= 60 ? { it, age } : null;
+      }).filter(Boolean);
+      if (items.length) setDraft(items);
+    } catch { /* storage unavailable or bad data */ }
+  }, []);
+  if (!draft || !userId || !propertyId) return null;
+  const have = new Set((warranties || []).filter(a => !a.retired_at).map(a => String(a.item || "").trim().toLowerCase()));
+  const todo = draft.filter(d => !have.has(d.it.item.toLowerCase()));
+  if (todo.length === 0) return null;
+
+  const dismiss = () => { try { localStorage.removeItem("sw_forecast_draft"); } catch { /* ignore */ } setDraft(null); };
+  const add = async () => {
+    if (busy) return;
+    setBusy(true);
+    const today = localISO();
+    const yr = new Date().getFullYear();
+    const rows = todo.map(({ it, age }) => {
+      let d = `${yr - age}-07-01`;
+      if (d > today) d = today;
+      return { item: it.item, category: it.category, install_date: d, condition: "Good", pm_schedule: "[]", notes: "Added from the free home forecast. The install date is an estimate from the age you entered. Update it when you find the label or paperwork.", user_id: userId, property_id: propertyId };
+    });
+    const { data, error } = await supabase.from("warranties").insert(rows).select();
+    setBusy(false);
+    if (error || !data) { toast("Could not add the items: " + (error?.message || "please try again"), "error"); return; }
+    setWarranties(w => [...(w || []), ...data]);
+    try { localStorage.removeItem("sw_forecast_draft"); } catch { /* ignore */ }
+    setDraft(null);
+    trackEvent("forecast_import", { items: data.length });
+    toast(`Added ${data.length} ${data.length === 1 ? "item" : "items"} from your forecast ✓`);
+  };
+  return (
+    <div style={{margin:"0 0 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem"}}>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",marginBottom:".35rem"}}>Your home forecast is ready to save</div>
+      <div style={{fontSize:".84rem",color:"#7A7370",lineHeight:1.55,marginBottom:".7rem"}}>You set the age of {todo.length} {todo.length === 1 ? "item" : "items"} on our free forecast. Add {todo.length === 1 ? "it" : "them"} to your home so Steadwell can track {todo.length === 1 ? "it" : "them"} and plan ahead.</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:".85rem"}}>
+        {todo.map(({ it, age }) => <span key={it.key} style={{fontSize:".76rem",background:"#EFE7D7",color:"#4A443D",borderRadius:20,padding:"4px 10px"}}>{it.label}, {age === 0 ? "new" : hfYears(age) + " old"}</span>)}
+      </div>
+      <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
+        <button type="button" disabled={busy} onClick={add} style={{background:"#234A3D",color:"#fff",border:"none",borderRadius:10,padding:".7rem 1.1rem",fontWeight:700,fontSize:".86rem",cursor:busy ? "default" : "pointer",opacity:busy ? .7 : 1,fontFamily:"inherit"}}>{busy ? "Adding…" : `Add ${todo.length} ${todo.length === 1 ? "item" : "items"}`}</button>
+        <button type="button" onClick={dismiss} style={{background:"none",border:"none",color:"#7A7370",fontSize:".84rem",cursor:"pointer",padding:".7rem .4rem",fontFamily:"inherit"}}>No thanks</button>
+      </div>
     </div>
   );
 }
