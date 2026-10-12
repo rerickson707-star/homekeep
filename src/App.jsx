@@ -1,4 +1,4 @@
-// Steadwell v356 — 2026-10-10
+// Steadwell v358 — 2026-10-12
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3016,6 +3016,25 @@ img,.lp-root img{max-width:100%;height:auto}
 .qa-icon{font-size:1.35rem;line-height:1}
 .qa-btn span:last-child{font-size:.7rem;font-weight:600;letter-spacing:.01em;text-align:center;line-height:1.3}
 
+/* ══ STORAGE BAR ══ */
+.stor{margin:.2rem 0}
+.stor-top{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap;font-size:.8rem;color:var(--dark);margin-bottom:.4rem}
+.stor-top strong{font-weight:700}
+.stor-left{font-size:.74rem;font-weight:600;color:#7A7370}
+.stor.near .stor-left{color:#B8861E}
+.stor.full .stor-left{color:#C16140}
+.stor-bar{display:flex;height:10px;border-radius:99px;background:var(--stone);overflow:hidden}
+.stor-compact .stor-bar{height:6px}
+.stor-seg{display:block;height:100%;min-width:2px;border-right:1px solid var(--white)}
+.stor-legend{list-style:none;margin:.65rem 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.3rem .9rem}
+.stor-legend li{display:flex;align-items:center;gap:.4rem;font-size:.76rem;color:var(--dark);min-width:0}
+.stor-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.stor-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stor-val{font-weight:600;color:#7A7370;flex-shrink:0}
+.stor-note{margin-top:.55rem;font-size:.76rem;line-height:1.45;color:#7A7370}
+.stor.full .stor-note{color:#A0511A}
+.stor-up{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--rust);text-decoration:underline;cursor:pointer}
+
 /* ══ FEEDBACK ══ */
 .feedback-type-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.85rem}
 .feedback-type-btn{padding:.35rem .85rem;border-radius:20px;border:1.5px solid var(--stone);background:none;font-size:.78rem;font-weight:600;font-family:'Hanken Grotesk',sans-serif;color:#7A7370;cursor:pointer;transition:all .15s}
@@ -4800,7 +4819,7 @@ function useSEO({ title, description, canonical, jsonLd, noindex, image, ogType 
 
 const LANDING_FAQ = [
   ["What is Steadwell?","Steadwell is a home management app for homeowners. It tracks maintenance, warranties, safety recalls, utility bills, expenses, insurance, contractors and documents for your home in one place, and uses AI to scan receipts, appliance nameplates and bills and to assess the condition of appliances and systems from photos."],
-  ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex and essential document storage for one property. Plus is $7.99 a month ($63.99 a year) and Pro is $14.99 a month ($119.99 a year)."],
+  ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex and 250 MB of document and photo storage for one property. Plus is $7.99 a month ($63.99 a year) and Pro is $14.99 a month ($119.99 a year)."],
   ["Can Steadwell track my utility bills?","Yes. Track electric, gas, water, sewer, internet and trash bills with usage, a six-month average and spike alerts. Add bills by scanning them with AI (Plus and Pro), forwarding the email, or typing them in. Utility bills also count toward your yearly and all-time home spend. If your city puts water, sewer and trash on one bill, add it as a single utility and, if you like, split each bill by service."],
   ["Can Steadwell show what my home costs to own?","Yes. The Fixed costs tab on the Money page adds your home loan, property tax, insurance, HOA dues and regular services to your utilities and repairs, and shows a typical month, where the money goes and what is due soon. Typing costs in is free on every plan. With Plus or Pro, you can upload your property tax bill and Steadwell reads it, explains it in plain English and shows how your tax has changed from year to year. You check every number before it is saved."],
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
@@ -4965,7 +4984,7 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>,
-      title: "Maintenance schedules", desc: "Tasks, reminders, and recurring schedules tuned to your home’s systems.", tag: "Free",
+      title: "Maintenance schedules", desc: "Tasks and reminders that repeat monthly or yearly. Plus repeats at any interval.", tag: "Free · Any interval on Plus",
       drawer: "Set recurring tasks for HVAC filters, smoke detector tests, and more — monthly or annual repeats, free on every plan. Get email reminders 3 days before anything is due. On Plus, unlock every interval — weekly, biweekly, quarterly, and every 6 months — for tighter-cadence jobs like gutter cleaning, pest control, and pool care.",
       drawerCta: "Free on all plans · Full intervals on Plus →",
       href: "/home-maintenance-tracker",
@@ -4986,8 +5005,8 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5"/><rect x="12" y="7" width="3" height="9"/><rect x="17" y="13" width="3" height="3"/></svg>,
-      title: "Costs & 5-year forecast", desc: "Every dollar tracked, and a forecast of what your home will cost over the next 5 years.", tag: "Free",
-      drawer: "See every dollar your home has cost you, broken down by category and year. On Plus, unlock the 5-year cost forecast — based on your appliance ages and industry replacement data, so you can plan and budget ahead.",
+      title: "Costs & spending", desc: "Every dollar your home costs you, tracked by category and year.", tag: "Free",
+      drawer: "See every dollar your home has cost you, broken down by category and year. On Plus, the 5-year cost forecast is based on your appliance ages and industry replacement data, so you can plan and budget ahead.",
       drawerCta: "Expense tracking free · 5-year forecast on Plus →",
       href: "/home-expense-tracker",
     },
@@ -5001,8 +5020,8 @@ function LandingPage({ onSignIn, onSignUp }) {
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>,
       title: "Document vault", desc: "Deeds, permits, inspection reports, manuals — stored and searchable.", tag: "Free",
-      drawer: "Store any home document — deeds, permits, warranties, inspection reports, HOA docs, appliance manuals. Free plan includes essential storage. Plus gets an expanded vault, Pro gets the full document vault for multiple properties.",
-      drawerCta: "Essential storage free · Expanded on Plus · Full vault on Pro →",
+      drawer: "Store any home document — deeds, permits, warranties, inspection reports, HOA docs, appliance manuals. Photos, receipts and documents all count toward one storage total: 250 MB on Free, 10 GB on Plus and 50 GB on Pro, shared across up to 3 properties. Each file can be up to 50MB.",
+      drawerCta: "250 MB free · 10 GB on Plus · 50 GB on Pro →",
       href: "/home-document-vault",
     },
     {
@@ -5014,7 +5033,7 @@ function LandingPage({ onSignIn, onSignUp }) {
     },
     {
       ic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>,
-      title: "Home health score", desc: "One score for your home, free on every plan. Plus adds the breakdown of what to fix first.", tag: "Breakdown on Plus",
+      title: "Home health score", desc: "One score for your home, free on every plan. Plus adds the breakdown of what to fix first and a 5-year cost forecast.", tag: "Breakdown & forecast on Plus",
       href: "/home-health-score",
     },
     {
@@ -5273,7 +5292,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <h3>AI condition assessment</h3>
               <p>Take a few photos of an appliance or system. Steadwell grades it 1 to 5 against a checklist for that item, estimates the years it has left, and suggests what to do next. You approve everything before it’s saved.</p>
               <ul className="duo-list">
-                <li><span className="ck">✓</span>Built-in checklists for 30+ home items</li>
+                <li><span className="ck">✓</span>Built-in checklists for 25+ home items</li>
                 <li><span className="ck">✓</span>Feeds your health score and 5-year forecast</li>
                 <li><span className="ck">✓</span>Included with Plus and Pro</li>
               </ul>
@@ -5322,7 +5341,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div className="price">$0<span> / month</span></div>
               <p className="pdesc">Everything you need to get started and stay organized.</p>
               <ul className="plist">
-                {["Unlimited tasks, assets & expenses","Warranty alerts & weekly digest","Safety recall alerts","Utility & bill tracking","Email capture & calendar sync","Full Home Setup Wizard","Property auto-fill & data export","Contractor rolodex","Essential document storage · 1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Unlimited tasks, assets & expenses","Warranty alerts & weekly digest","Safety recall alerts","Utility & bill tracking","Email capture & calendar sync","Full Home Setup Wizard","Property auto-fill & data export","Contractor rolodex","250 MB document and photo storage · 1 property"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-outline pbtn" onClick={onSignUp}>Get started free</button>
             </div>
@@ -5333,7 +5352,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Property tax bill reading & comparison","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","Expanded document vault"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Property tax bill reading & comparison","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","10 GB document and photo storage"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $7.99/mo</button>
             </div>
@@ -5343,7 +5362,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div style={{fontSize:".75rem",color:"#8A6A5A",marginBottom:".5rem"}}>or $119.99/year <span style={{background:"rgba(193,97,64,.12)",color:"#C16140",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">Multiple properties, shared access, and the full platform.</p>
               <ul className="plist">
-                {["Everything in Plus","25 condition assessments · 150 Ask Steadwell questions / mo","Up to 3 properties","Full home document vault","Shared access — invite others and assign tasks","Larger file uploads","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Plus","25 condition assessments · 150 Ask Steadwell questions / mo","Up to 3 properties","50 GB document and photo storage","Shared access — invite others and assign tasks","Priority support"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Pro — $14.99/mo</button>
             </div>
@@ -6793,7 +6812,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const fmtLimit = (n, noun) => (n === Infinity || n == null || n > 999) ? `Unlimited ${noun}` : `Up to ${n} ${noun}`;
   const planIncludes = [
     ["Properties", plan==="free" ? "1" : String(planData?.maxProperties ?? PLANS[plan]?.maxProperties ?? 1)],
-    ["Documents", (() => { const n = planData?.maxDocs ?? PLANS[plan]?.maxDocs; return (n === Infinity || n == null) ? "Unlimited" : String(n); })()],
+    ["Storage", `${planData?.storageLabel ?? PLANS[plan]?.storageLabel ?? ""}${plan==="free" ? " · 5 files" : ""}`],
     ["AI scanning", (planData?.aiScan ?? PLANS[plan]?.aiScan) ? "Included" : "Plus and up"],
     ["Ask Steadwell", plan==="pro" ? `${PLAN_ASK_LIMITS.pro} / month` : plan==="plus" ? `${PLAN_ASK_LIMITS.plus} / month` : "3 free to try"],
     ["Shared home access", (planData?.sharedAccess ?? PLANS[plan]?.sharedAccess) ? "Included" : "Pro"],
@@ -6988,6 +7007,9 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                 {planIncludes.map(([k,v]) => (
                   <div key={k} className="acct-limit"><span className="acct-limit-k">{k}</span><span className="acct-limit-v">{v}</span></div>
                 ))}
+              </div>
+              <div style={{marginTop:".95rem"}}>
+                <StorageUsage planData={planData}/>
               </div>
             </AcctCard>
 
@@ -9261,7 +9283,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
         "Smart Fill model lookup",
         "Home history report (PDF)",
         "Daily task & warranty reminders",
-        "Expanded document vault",
+        "10 GB document and photo storage",
       ],
     },
     {
@@ -9274,7 +9296,7 @@ function UpgradeModal({ onClose, onCheckout, checkoutLoading, postSetup = false 
         "Ask Steadwell AI assistant — 150 questions a month",
         "AI condition assessments from photos — 25 a month",
         "Up to 3 properties",
-        "Full home document vault",
+        "50 GB document and photo storage",
         "Shared access — invite others and assign tasks",
         "Priority support",
       ],
@@ -9681,10 +9703,13 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
         try {
           const ext = mimeType === "application/pdf" ? "pdf" : (file.name.split(".").pop() || "jpg");
           const path = `${currentUserId}/documents/${Date.now()}-scan-${scanType}.${ext}`;
-          const { error: upErr } = await supabase.storage
-            .from("expense-files")
-            .upload(path, file, { upsert: true, contentType: mimeType });
+          // Out of room: skip keeping the original copy. The scan results still come through.
+          const hasRoom = await storageHasRoom(file.size);
+          const { error: upErr } = hasRoom
+            ? await supabase.storage.from("expense-files").upload(path, file, { upsert: true, contentType: mimeType })
+            : { error: { message: "storage full" } };
           if (!upErr) {
+            notifyStorageChanged();
             const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
             const docCategory = scanType === "insurance" || scanType === "additional_policy" ? "insurance" : "other";
             const docName = data.fields?.ins_company || data.fields?.company || `Scanned ${scanType.replace("_"," ")}`;
@@ -9817,12 +9842,8 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
 
     // Check total file count before uploading
     if (!currentUrl) { // only check when adding new, not replacing
-      const limit = await checkFileLimit(userId, planData);
-      if (!limit.ok) {
-        if (onUpgrade) onUpgrade();
-        else setError(`File limit reached (${limit.max} files on ${planData?.label||"Free"}). Upgrade to add more.`);
-        return;
-      }
+      const limit = await checkFileLimit(userId, planData, file.size);
+      if (limitBlocked(limit, planData, onUpgrade, setError)) return;
     }
 
     setUploading(true);
@@ -9837,6 +9858,7 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
     const { data } = supabase.storage.from("expense-files").getPublicUrl(path);
     onUploaded(data.publicUrl + "?t=" + Date.now());
     setUploading(false);
+    notifyStorageChanged();
   };
 
   const handleRemove = async () => {
@@ -9845,6 +9867,7 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
     const path = storagePathFromUrl(currentUrl);
     if (path) await supabase.storage.from("expense-files").remove([path]);
     onUploaded("");
+    notifyStorageChanged();
   };
 
   return (
@@ -10268,9 +10291,11 @@ function ProjectPhotosEditor({ data, onChange, userId, status }) {
       try {
         if (take[i].size > 25 * 1024 * 1024) throw new Error("A photo is over 25MB.");
         const blob = await compressPhoto(take[i]);
+        if (!(await storageHasRoom(blob.size))) throw new Error("Your storage is full. Delete files you no longer need or upgrade for more space.");
         const path = `${userId}/project-${dataRef.current.id || "new"}-${kind}-${Date.now()}-${i}.jpg`;
         const { error: upErr } = await supabase.storage.from("expense-files").upload(path, blob, { contentType: "image/jpeg" });
         if (upErr) throw new Error("Upload failed. Check your connection and try again.");
+        notifyStorageChanged();
         const { data: pub } = supabase.storage.from("expense-files").getPublicUrl(path);
         const url = pub.publicUrl + "?t=" + Date.now();
         sessionAdded.current.add(url);
@@ -15151,8 +15176,11 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // Hard delete — only reachable after user explicitly declines the retire offer
   const confirmDel = async () => {
     const id = retireConfirm || confirm;
+    const gonePath = storagePathFromUrl(assets.find(a => a.id === id)?.asset_photo_url);
     const { error } = await supabase.from("warranties").delete().eq("id", id);
     if (!error) {
+      // free the storage the item photo was using
+      if (gonePath) supabase.storage.from("expense-files").remove([gonePath]).then(notifyStorageChanged, () => {});
       setAssets(assets.filter(a => a.id !== id));
       toast("Asset permanently deleted","error");
       setSelectedAsset(null);
@@ -16785,7 +16813,7 @@ function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, to
       if (file && keepCopy) {
         // Keep the original in Documents, the same way an insurance scan does. Best effort: a storage problem never blocks the save.
         try {
-          const lim = await checkFileLimit(userId, planData);
+          const lim = await checkFileLimit(userId, planData, file.size);
           if (lim.ok) {
             const ext = file.type === "application/pdf" ? "pdf" : (file.name.split(".").pop() || "jpg");
             const path = `${userId}/documents/${Date.now()}-tax-bill-${yearNum}.${ext}`;
@@ -18343,8 +18371,13 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const confirmDel = async () => {
+    const gonePath = storagePathFromUrl(expenses.find(e=>e.id===confirm)?.file_url);
     const {error} = await supabase.from("expenses").delete().eq("id",confirm);
-    if(!error) { setExpenses(expenses.filter(e=>e.id!==confirm)); toast("Expense deleted","error"); }
+    if(!error) {
+      setExpenses(expenses.filter(e=>e.id!==confirm)); toast("Expense deleted","error");
+      // free the storage the receipt was using
+      if (gonePath) supabase.storage.from("expense-files").remove([gonePath]).then(notifyStorageChanged, () => {});
+    }
     setConfirm(null);
   };
 
@@ -18377,8 +18410,14 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const confirmDelProject = async () => {
+    const goneProject = projects.find(p=>p.id===projectConfirm);
+    const gonePaths = goneProject ? [...new Set(projectPhotoList(goneProject).map(x => storagePathFromUrl(x.url)).filter(Boolean))] : [];
     const {error} = await supabase.from("projects").delete().eq("id",projectConfirm);
-    if(!error) { setProjects(projects.filter(p=>p.id!==projectConfirm)); toast("Project deleted","error"); }
+    if(!error) {
+      setProjects(projects.filter(p=>p.id!==projectConfirm)); toast("Project deleted","error");
+      // free the storage the project photos were using
+      if (gonePaths.length) supabase.storage.from("expense-files").remove(gonePaths).then(notifyStorageChanged, () => {});
+    }
     setProjectConfirm(null);
   };
 
@@ -19440,6 +19479,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
   const [uploading, setUploading]   = useState(false);
   const [scanning, setScanning]     = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
+  const [scanSkipped, setScanSkipped] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [dragging, setDragging]     = useState(false);
   const scanRef = useRef(null);
@@ -19454,12 +19494,13 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     try { file = await prepareImageFile(picked); }
     catch (err) { setUploadError(err.message); return; }
     if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
-    setUploadError(""); setScanning(true); setScanSuccess(false);
+    setUploadError(""); setScanning(true); setScanSuccess(false); setScanSkipped(false);
+    const skipScan = file.size > 20 * 1024 * 1024;
 
     // Check file limit first
     if (!data.file_url) {
-      const limit = await checkFileLimit(userId, planData);
-      if (!limit.ok) { setScanning(false); onUpgrade?.(); return; }
+      const limit = await checkFileLimit(userId, planData, file.size);
+      if (limitBlocked(limit, planData, onUpgrade, setUploadError)) { setScanning(false); return; }
     }
 
     try {
@@ -19471,6 +19512,8 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
       const [uploadResult, scanResult] = await Promise.allSettled([
         supabase.storage.from("expense-files").upload(path, file, { upsert:false, contentType:file.type }),
         (async () => {
+          // Very large files are saved without the AI read (the scan request would be too big)
+          if (skipScan) return { ok:false, tooLarge:true };
           const base64 = await new Promise((res,rej) => {
             const r = new FileReader();
             r.onload  = () => res(r.result.split(",")[1]);
@@ -19495,6 +19538,8 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
       // Merge AI fields if scan succeeded
       const ai = scanResult.status === "fulfilled" && scanResult.value?.ok ? (scanResult.value.fields || {}) : {};
       if (scanResult.status === "fulfilled" && scanResult.value?.ok) setScanSuccess(true);
+      if (skipScan) setScanSkipped(true);
+      notifyStorageChanged();
 
       onChange({
         ...data,
@@ -19520,8 +19565,8 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
     setUploadError("");
     if (!data.file_url) {
-      const limit = await checkFileLimit(userId, planData);
-      if (!limit.ok) { onUpgrade?.(); return; }
+      const limit = await checkFileLimit(userId, planData, file.size);
+      if (limitBlocked(limit, planData, onUpgrade, setUploadError)) return;
     }
     setUploading(true);
     const ext = file.name.split(".").pop();
@@ -19532,6 +19577,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
     onChange({...data, file_url:urlData.publicUrl, file_type:file.type, name:data.name||file.name.replace(/\.[^/.]+$/,"")});
     setUploading(false);
+    notifyStorageChanged();
   };
 
   return (
@@ -19574,7 +19620,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
             <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"#2A7A5A"}}>
               {scanSuccess ? "File scanned and attached ✓" : "File attached ✓"}
             </span>
-            <button className="btn btn-ghost btn-sm" onClick={()=>{onChange({...data,file_url:"",file_type:""});setScanSuccess(false);}}>Remove</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{onChange({...data,file_url:"",file_type:""});setScanSuccess(false);setScanSkipped(false);}}>Remove</button>
           </div>
         ) : (
           <div
@@ -19590,6 +19636,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
           </div>
         )}
         {uploading && <div style={{fontSize:".75rem",color:"var(--rust)",marginTop:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}><span className="spinner" style={{width:12,height:12,borderWidth:2}}/>Uploading…</div>}
+        {data.file_url && scanSkipped && <div style={{fontSize:".74rem",color:"#6E665D",marginTop:".35rem",lineHeight:1.45}}>Saved. This file is too large for the AI read, so fill in the details below. For insurance, you can also scan just the declarations page.</div>}
       </div>
 
       {/* ── Form fields ── */}
@@ -19679,6 +19726,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
     await supabase.from("home_documents").delete().eq("id",confirm).eq("user_id",userId);
     setDocuments(documents.filter(d=>d.id!==confirm));
     setConfirm(null);
+    notifyStorageChanged();
   };
 
   const toggleExpanded = (id) => setExpanded(e=>({...e,[id]:!e[id]}));
@@ -19727,6 +19775,10 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
         >
           {atLimit ? "Upgrade to Add" : "+ Add"}
         </button>
+      </div>
+
+      <div style={{padding:".65rem 1rem .5rem",flexShrink:0}}>
+        <StorageUsage planData={planData} onUpgrade={onUpgrade} collapsible/>
       </div>
 
       {/* At-limit banner */}
@@ -28476,7 +28528,7 @@ const LP_FEATURE_PAGES = [
   { href:"/warranty-tracker",          label:"Warranty Tracker",        icon:"🛡️", desc:"Every warranty, with expiry alerts before coverage ends." },
   { href:"/recall-alerts",             label:"Recall Alerts",           icon:"⚠️", desc:"Your items checked against federal safety recalls." },
   { href:"/home-maintenance-tracker",  label:"Maintenance Tracker",     icon:"🔧", desc:"Recurring tasks and reminders tuned to your home." },
-  { href:"/home-expense-tracker",      label:"Expense Tracker",         icon:"💳", desc:"Every home cost, plus a 5-year cost forecast." },
+  { href:"/home-expense-tracker",      label:"Expense Tracker",         icon:"💳", desc:"Every home cost in one place. Plus adds a 5-year forecast." },
   { href:"/ai-scan",                   label:"AI Scanning",             icon:"📷", desc:"Scan receipts, nameplates, bills and policies." },
   { href:"/email-capture",             label:"Email Capture",           icon:"✉️", desc:"Forward a receipt or bill and it files itself." },
   { href:"/contractor-tracker",        label:"Contractor Tracker",      icon:"👷", desc:"Trusted pros and every service visit in one place." },
@@ -28662,14 +28714,15 @@ function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home 
 
 // ─── PRICING PAGE ─────────────────────────────────────────────────────────────
 const PRICING_FAQ = [
-  ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex, email capture and essential document storage for one property. No credit card is needed to start."],
+  ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex, email capture and 250 MB of document and photo storage for one property. No credit card is needed to start."],
   ["How much do Plus and Pro cost?","Plus is $7.99 a month or $63.99 a year. Pro is $14.99 a month or $119.99 a year. Paying yearly saves about 33% compared with paying monthly."],
-  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, property tax bills read and explained in plain English with a year-by-year comparison, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator and a home history report."],
-  ["What do I get with Pro?","Pro includes everything in Plus with higher AI limits (25 condition assessments, 150 Ask Steadwell questions and 15 project reviews a month), up to three properties, shared access so you can invite a spouse or team member and assign tasks, the full document vault, larger file uploads and priority support."],
+  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, property tax bills read and explained in plain English with a year-by-year comparison, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator, a home history report and 10 GB of document and photo storage."],
+  ["What do I get with Pro?","Pro includes everything in Plus with higher AI limits (25 condition assessments, 150 Ask Steadwell questions and 15 project reviews a month), up to three properties, shared access so you can invite a spouse or team member and assign tasks, 50 GB of document and photo storage and priority support."],
+  ["How much storage do I get?","Photos, receipts and documents all count toward one storage total: 250 MB on Free (up to 5 files), 10 GB on Plus and 50 GB on Pro, shared across all three Pro properties. You can see what is using your space in Account Settings and the Documents tab, and deleting a file frees its space right away. Each file can be up to 50MB."],
   ["Can I cancel any time?","Yes. Cancel from Account Settings whenever you like. Cancelling stops future renewals right away, and you keep access until the end of the period you already paid for. Paid plans renew automatically until you cancel, and the Terms of Service have the full billing details."],
   ["Do I need a credit card to try Steadwell?","No. You can create a free account and use it for as long as you like without entering a card. A card is only needed if you choose Plus or Pro, and payments are handled by Stripe, so Steadwell never stores your card details."],
   ["Which plan do I need if I own more than one property?","Pro. Free and Plus cover one property, and Pro covers up to three, each with its own assets, tasks, documents and bills."],
-  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, reading and comparing property tax bills, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Typing in your fixed costs and property tax is free. Every account can see its overall home health score. Everything you track on Free stays yours if you ever change plans."],
+  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, reading and comparing property tax bills, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Typing in your fixed costs and property tax is free. Every account can see its overall home health score. Free storage is 250 MB and up to 5 files. Everything you track on Free stays yours if you ever change plans."],
 ];
 
 // [feature, free, plus, pro]; true renders a check, false a dash, strings render as text
@@ -28683,7 +28736,8 @@ const PRICING_ROWS = [
   ["Email capture (forward a receipt or bill)", true, true, true],
   ["Contractor rolodex and service history", true, true, true],
   ["Calendar sync", true, true, true],
-  ["Document storage", "Essential", "Expanded", "Full vault"],
+  ["Repeating tasks", "Monthly or yearly", "Any interval", "Any interval"],
+  ["Storage for documents and photos", "250 MB (5 files)", "10 GB", "50 GB"],
   { group:"AI tools" },
   ["Scan receipts, nameplates, bills and policies", false, true, true],
   ["Condition assessments from photos", false, "5 a month", "25 a month"],
@@ -28699,7 +28753,6 @@ const PRICING_ROWS = [
   ["Home history report (PDF)", false, true, true],
   { group:"Share and support" },
   ["Shared access and task assignment", false, false, true],
-  ["Larger file uploads", false, false, true],
   ["Priority support", false, false, true],
 ];
 
@@ -28708,11 +28761,11 @@ function PricingPage() {
   const description = "Steadwell is free to start. Plus is $7.99 a month and Pro is $14.99 a month, with AI scanning, assessments and shared access. Compare every plan.";
   const plans = [
     { plan:"Free", price:"$0", period:" / month", annual:"No time limit, no card", desc:"Everything you need to get organized.", cta:"Get started free",
-      features:["Unlimited tasks, assets and expenses","Warranty and recall alerts","Utility and bill tracking","Email capture and calendar sync","Contractor rolodex","Essential document storage, 1 property"] },
+      features:["Unlimited tasks, assets and expenses","Warranty and recall alerts","Utility and bill tracking","Email capture and calendar sync","Contractor rolodex","250 MB of storage, 1 property"] },
     { plan:"Plus", price:"$7.99", period:" / month", annual:"or $63.99 a year, save 33%", desc:"AI tools and planning for the serious homeowner.", cta:"Start Plus", popular:true,
-      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Property tax bill reading and year-by-year comparison","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review"] },
+      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Property tax bill reading and year-by-year comparison","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review","10 GB of storage"] },
     { plan:"Pro", price:"$14.99", period:" / month", annual:"or $119.99 a year, save 33%", desc:"More properties, shared access and higher limits.", cta:"Start Pro",
-      features:["Everything in Plus","Up to 3 properties","Shared access, invite and assign tasks","25 assessments and 150 questions a month","Full document vault and larger uploads","Priority support"] },
+      features:["Everything in Plus","Up to 3 properties","Shared access, invite and assign tasks","25 assessments and 150 questions a month","50 GB of storage","Priority support"] },
   ];
   useSEO({
     title:"Pricing — Free, Plus and Pro Plans",
@@ -28992,7 +29045,7 @@ function ConditionAssessmentPage() {
     jsonLd: lpJsonLd({
       name:"Steadwell Home Condition Assessment",
       path, description,
-      features:["1 to 5 condition score from photos","Type-specific checklist for more than 30 home items","Remaining-life estimate that feeds the cost forecast and home health score","Suggested maintenance tasks you approve","Label corrections for model, serial number and install date","Assessment history for every item"],
+      features:["1 to 5 condition score from photos","Type-specific checklist for more than 25 home items","Remaining-life estimate that feeds the cost forecast and home health score","Suggested maintenance tasks you approve","Label corrections for model, serial number and install date","Assessment history for every item"],
       faq: ASSESS_FAQ,
       offers:[{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
     }),
@@ -29010,7 +29063,7 @@ function ConditionAssessmentPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Condition Assessment" cta="Get started free" h1="Know what shape" h1em="your home is in." sub="Take a few photos of any appliance or system. Steadwell grades it 1 to 5, estimates how many years it has left, reads the label, and suggests what to do next. You confirm everything before it is saved." badge="AI-assisted · Plus & Pro" stats={[{num:"1–5",lbl:"Condition score"},{num:"30+",lbl:"Item types"},{num:"Up to 6",lbl:"Photos per assessment"}]}/>
+      <LPHero eyebrow="Condition Assessment" cta="Get started free" h1="Know what shape" h1em="your home is in." sub="Take a few photos of any appliance or system. Steadwell grades it 1 to 5, estimates how many years it has left, reads the label, and suggests what to do next. You confirm everything before it is saved." badge="AI-assisted · Plus & Pro" stats={[{num:"1–5",lbl:"Condition score"},{num:"25+",lbl:"Item types"},{num:"Up to 6",lbl:"Photos per assessment"}]}/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="What you get from one assessment" sub="More than a number: a checklist, a timeline and a to-do list."/>
@@ -29034,7 +29087,7 @@ function ConditionAssessmentPage() {
         </LPSection>
 
         <LPSection>
-          <LPSectionHead h2="Built for the things that wear out" sub="Over 30 item types, each with its own checklist and photo guide."/>
+          <LPSectionHead h2="Built for the things that wear out" sub="Over 25 item types, each with its own checklist and photo guide."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
             {GROUPS.map((g,i)=>(
               <LPCard key={i}>
@@ -29446,7 +29499,7 @@ function SharedHouseholdAccessPage() {
           <LPSectionHead h2="Plans and pricing" sub="Shared access comes with Pro, the plan built for more than one home and more than one person."/>
           <LPPlanTiles plans={[
             {plan:"Free",price:"$0",period:"",annual:"",desc:"Track your own home.",features:["One property","Unlimited warranty tracking","Shared access needs Pro"],cta:"Start free",popular:false},
-            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"More automation for your own account.",features:["AI scanning and maintenance schedules","Home health score with breakdown","5-year cost forecast","Shared access needs Pro"],cta:"Start Plus",popular:false},
+            {plan:"Plus",price:"$7.99",period:"/mo",annual:"or $63.99/year",desc:"More automation for your own account.",features:["AI scanning and repeating tasks at any interval","Home health score with breakdown","5-year cost forecast","Shared access needs Pro"],cta:"Start Plus",popular:false},
             {plan:"Pro",price:"$14.99",period:"/mo",annual:"or $119.99/year",desc:"Run the home together.",features:["Shared access: invite others and assign tasks","Up to 3 properties","Everything in Plus","Priority support"],cta:"Start Pro",popular:true},
           ]}/>
         </LPSection>
@@ -30385,7 +30438,7 @@ function HomeProjectsPage() {
 const VAULT_FAQ = [
             ["What file types can I upload?","PDF, JPG, PNG, HEIC, DOC, and DOCX files up to 50MB per file."],
             ["Is the document vault secure?","Yes. Documents are stored in Supabase Storage with row-level security, so other Steadwell users can never see them. Documents belong to your account and are not shared with people you invite to a home. See our Privacy Policy for how our own team and service providers may access data to operate and support the Service."],
-            ["What's the difference between the storage tiers?","Free includes essential storage for core documents. Plus gets an expanded vault for receipts, warranties, and home records. Pro gets the full vault for multiple properties."],
+            ["What's the difference between the storage tiers?","Photos, receipts and documents share one storage total: 250 MB on Free, 10 GB on Plus and 50 GB on Pro, shared across up to three properties."],
             ["Can I share documents with a contractor?","You can download any document and share it directly. Contractors do not have direct access to your vault."],
 ];
 
@@ -30419,7 +30472,7 @@ function DocumentVaultPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero eyebrow="Home Document Vault" cta="Get started free" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="Essential storage free · Expanded on Plus · Full vault on Pro"/>
+      <LPHero eyebrow="Home Document Vault" cta="Get started free" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="250 MB free · 10 GB on Plus · 50 GB on Pro"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="Every type of home document" sub="If it matters to your home, it belongs in your vault."/>
@@ -31494,7 +31547,7 @@ function TermsPage() {
     {t:"2. What Steadwell Does",b:"Steadwell is a web-based platform that helps homeowners track home systems, maintenance tasks, warranties, service records, expenses, documents, insurance policies, contractors, and safety recall alerts. It is a personal organization tool — not a licensed real estate service, financial advisory, legal counsel, home inspection service, or insurance provider. Nothing in the Service constitutes professional advice of any kind."},
     {t:"3. Your Account",b:"You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. Use a strong, unique password. Contact us immediately at hello@trysteadwell.app if you suspect unauthorized access. One account per person. You may not share your account with others unless you use the Shared Household Access feature on an eligible plan."},
     {t:"4. Acceptable Use",b:"You agree to use the Service only for lawful purposes and in a manner that does not infringe the rights of others. You may not: (a) upload content you do not have the right to share; (b) attempt to gain unauthorized access to any part of the Service or its infrastructure; (c) reverse-engineer, decompile, or disassemble the Service; (d) use automated bots, scrapers, or crawlers; (e) impersonate another person or misrepresent your identity or property ownership; (f) transmit malware or code designed to damage systems; or (g) use the Service in any way that could harm Steadwell or its users. We reserve the right to suspend or terminate accounts that violate these terms at our sole discretion."},
-    {t:"5. Plans and Pricing",b:"Free Plan — no cost, one property: home setup wizard, unlimited asset and warranty tracking, 30-day and 7-day expiry alerts, safety recall alerts, maintenance scheduling, basic recurring tasks, insurance and claim tracking, contractor rolodex, expense tracking, email inbox capture, essential document storage, and email reminders. Plus Plan — $7.99/month or $63.99/year, one property: everything in Free, plus AI receipt and nameplate scanning, Smart Fill model lookup, full recurring task intervals, home health score breakdown, 5-year cost forecast, expanded document vault, and project ROI calculator. Pro Plan — $14.99/month or $119.99/year, up to 3 properties: everything in Plus, plus multi-property support, shared household access, and a full home document vault across all properties. Both monthly and annual paid plans automatically renew at the then-current price for the same billing period (monthly or annual) until you cancel. Annual subscribers receive an email reminder between 30 and 40 days before each renewal date; monthly subscribers receive an annual reminder of the recurring charge. If we increase the price of your plan, we will provide at least 45 days' advance notice by email before the new price applies to you and give you the opportunity to cancel before it takes effect — continued use of the Service after the new price applies constitutes acceptance of it. Cancel anytime from Account Settings; cancellation stops future renewals immediately, and access continues through the end of the billing period you already paid for. No prorated refunds for partial months. If you believe you were charged in error, contact hello@trysteadwell.app within 48 hours of the charge and we will review it. We do not offer refunds based on non-use or change of mind. Payments processed by Stripe — we do not store your card information."},
+    {t:"5. Plans and Pricing",b:"Free Plan — no cost, one property: home setup wizard, unlimited asset and warranty tracking, 30-day and 7-day expiry alerts, safety recall alerts, maintenance scheduling, basic recurring tasks, insurance and claim tracking, contractor rolodex, expense tracking, email inbox capture, 250 MB of document and photo storage, and email reminders. Plus Plan — $7.99/month or $63.99/year, one property: everything in Free, plus AI receipt and nameplate scanning, Smart Fill model lookup, full recurring task intervals, home health score breakdown, 5-year cost forecast, 10 GB of document and photo storage, and project ROI calculator. Pro Plan — $14.99/month or $119.99/year, up to 3 properties: everything in Plus, plus multi-property support, shared household access, and 50 GB of document and photo storage across all properties. Both monthly and annual paid plans automatically renew at the then-current price for the same billing period (monthly or annual) until you cancel. Annual subscribers receive an email reminder between 30 and 40 days before each renewal date; monthly subscribers receive an annual reminder of the recurring charge. If we increase the price of your plan, we will provide at least 45 days' advance notice by email before the new price applies to you and give you the opportunity to cancel before it takes effect — continued use of the Service after the new price applies constitutes acceptance of it. Cancel anytime from Account Settings; cancellation stops future renewals immediately, and access continues through the end of the billing period you already paid for. No prorated refunds for partial months. If you believe you were charged in error, contact hello@trysteadwell.app within 48 hours of the charge and we will review it. We do not offer refunds based on non-use or change of mind. Payments processed by Stripe — we do not store your card information."},
     {t:"6. Agent Gift Program",b:"Participating real estate agents may gift a client a complimentary 90-day trial of Steadwell Plus at no cost and without collecting payment information. If you receive a gift, the referring agent has provided us with your name and email address for the sole purpose of sending you the gift invitation; see our Privacy Policy for how that information is handled, and contact privacy@trysteadwell.app if you'd like it removed before you create an account. At the end of the 90-day period, a claimed gift account automatically converts to the Free plan unless you choose to subscribe to a paid plan — no card is charged and no action is required on your part to avoid a charge. The gift is offered at Steadwell's discretion and may be modified, extended, or discontinued at any time. Agents who participate in referral or affiliate programs are subject to separate program terms governing disclosure obligations and any commission payable to them."},
     {t:"7. Digital Products — Homebuyer Guides",b:"Steadwell sells downloadable PDF guides (\"Digital Products\") through our Guides store at trysteadwell.app/guides. By purchasing a Digital Product, you receive a personal, non-exclusive, non-transferable license to download, save, and use the guide for your own personal, non-commercial purposes. All sales of Digital Products are final and non-refundable. Because digital files can be downloaded and retained immediately upon purchase, we do not offer refunds under any circumstances except where the file is technically defective (corrupted, blank, or unreadable) and we are unable to deliver a working replacement — in which case contact hello@trysteadwell.app within 48 hours of purchase with a description of the issue. Refunds are not available on the basis of content, format preference, or change of mind. By completing your purchase you acknowledge and accept this no-refund policy. You may not reproduce, redistribute, resell, sublicense, or share Digital Products with others. Digital Products are delivered via a secure, time-limited download link sent to your email address after purchase. Links expire after 24 hours; contact us if you need a new link. Steadwell guides are researched and written with the assistance of AI, including Claude by Anthropic, and reviewed for accuracy prior to publication. They are provided for general informational purposes only and do not constitute legal, financial, real estate, or professional advice. AI-generated content may contain errors, omissions, or outdated information. Local laws, programs, incentives, and market conditions change frequently — always verify information with licensed real estate professionals, attorneys, lenders, and local housing authorities in your area before making any home purchase or financial decision. Steadwell, LLC makes no representations or warranties as to the accuracy, completeness, or currentness of any guide."},
     {t:"8. Your Content",b:"You own everything you upload, create, or store in Steadwell — your documents, photos, records, and data are yours. To operate the Service, you grant Steadwell, LLC a limited, non-exclusive, royalty-free, worldwide license to store, process, display, and transmit your content solely for the purpose of providing and improving the Service for you. This license terminates when you delete the content or close your account. We do not sell, license, or share your content with third parties except as described in our Privacy Policy. You represent and warrant that you have all necessary rights to upload any content you submit. Avoid uploading documents that show full Social Security numbers or financial account numbers where not necessary — crop or redact them first where possible. You may export or permanently delete your data at any time from Account Settings. When you delete your account, we begin permanent deletion of your content within 30 days."},
@@ -32007,7 +32060,7 @@ const BLOG_POSTS_BASE = [
       <p>Both apps offer maintenance reminders. HomeZada's system is more comprehensive on paper — it covers a huge checklist of home systems. Steadwell's reminders are asset-specific and climate-aware: if you're in Florida, you won't get reminders about winterizing pipes. The reminders adapt to your home type, age, and region.</p>
 
       <h2>Pricing</h2>
-      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($7.99/month or $63.99/year) adds AI scanning, smart fill, and an expanded document vault. Pro ($14.99/month or $119.99/year) adds shared access for families or property managers and multi-property support.</p>
+      <p>HomeZada's paid tier runs $99–199/year depending on features. Steadwell offers a free tier that covers one property with core maintenance tracking. The Plus plan ($7.99/month or $63.99/year) adds AI scanning, smart fill, and 10 GB of document and photo storage. Pro ($14.99/month or $119.99/year) adds shared access for families or property managers and multi-property support.</p>
 
       <h2>Who should use each</h2>
       <p>HomeZada is a better fit for homeowners who want a comprehensive home inventory system — tracking the value of every item in the house for insurance purposes, for example. Steadwell is the better choice if your primary goal is keeping your home well-maintained and having an accurate record of every appliance and system. If you've tried HomeZada and found it overwhelming to set up, Steadwell is worth a look.</p>
@@ -32702,7 +32755,7 @@ function ADAPage() {
 const PLANS = {
   free: {
     label: "Free", color: "free",
-    maxDocs: 5, maxFiles: 5, maxFileMB: 10, maxProperties: 1,
+    maxDocs: 5, maxFiles: 5, maxFileMB: 50, maxProperties: 1, storageLabel: "250 MB",
     recurring: "basic",
     healthScore: false,
     costForecast: false,
@@ -32712,7 +32765,7 @@ const PLANS = {
   },
   plus: {
     label: "Plus", color: "plus",
-    maxDocs: 25, maxFiles: 25, maxFileMB: 25, maxProperties: 1,
+    maxDocs: Infinity, maxFiles: Infinity, maxFileMB: 50, maxProperties: 1, storageLabel: "10 GB",
     recurring: "full",
     healthScore: true,
     costForecast: true,
@@ -32722,7 +32775,7 @@ const PLANS = {
   },
   pro: {
     label: "Pro", color: "pro",
-    maxDocs: Infinity, maxFiles: Infinity, maxFileMB: 50, maxProperties: 3,
+    maxDocs: Infinity, maxFiles: Infinity, maxFileMB: 50, maxProperties: 3, storageLabel: "50 GB",
     recurring: "full",
     healthScore: true,
     costForecast: true,
@@ -32737,19 +32790,116 @@ function usePlan(profile) {
   return { plan, ...PLANS[plan] || PLANS.free };
 }
 
-// Counts ALL uploaded files across vault, asset photos, and expense receipts
-// Home profile photo is exempt (decorative, one slot)
-async function checkFileLimit(userId, planData) {
-  if (!planData || planData.maxFiles === Infinity) return { ok: true, count: 0, max: Infinity };
+// Free keeps a small file count; Plus and Pro are limited by total storage only.
+// The count covers vault files, asset photos and expense receipts (home photo is exempt, one slot).
+// The storage quota is checked on the server (storage_has_room) and again by a storage policy.
+const notifyStorageChanged = () => { try { window.dispatchEvent(new Event("sw-storage-changed")); } catch { /* ignore */ } };
+
+async function storageHasRoom(bytes = 0) {
   try {
-    const [docs, assets, expenses] = await Promise.all([
-      supabase.from("home_documents").select("id", { count:"exact", head:true }).eq("user_id", userId).not("file_url","is",null).neq("file_url",""),
-      supabase.from("warranties").select("id", { count:"exact", head:true }).eq("user_id", userId).not("asset_photo_url","is",null).neq("asset_photo_url",""),
-      supabase.from("expenses").select("id", { count:"exact", head:true }).eq("user_id", userId).not("file_url","is",null).neq("file_url",""),
-    ]);
-    const count = (docs.count||0) + (assets.count||0) + (expenses.count||0);
-    return { ok: count < planData.maxFiles, count, max: planData.maxFiles };
+    const { data, error } = await supabase.rpc("storage_has_room", { p_bytes: Math.max(0, Math.round(Number(bytes) || 0)) });
+    if (error) return true;   // fail open: the storage policy is the real backstop
+    return data !== false;
+  } catch { return true; }
+}
+
+async function checkFileLimit(userId, planData, bytes = 0) {
+  if (!planData) return { ok: true, count: 0, max: Infinity };
+  try {
+    if (planData.maxFiles !== Infinity) {
+      const [docs, assets, expenses] = await Promise.all([
+        supabase.from("home_documents").select("id", { count:"exact", head:true }).eq("user_id", userId).not("file_url","is",null).neq("file_url",""),
+        supabase.from("warranties").select("id", { count:"exact", head:true }).eq("user_id", userId).not("asset_photo_url","is",null).neq("asset_photo_url",""),
+        supabase.from("expenses").select("id", { count:"exact", head:true }).eq("user_id", userId).not("file_url","is",null).neq("file_url",""),
+      ]);
+      const count = (docs.count||0) + (assets.count||0) + (expenses.count||0);
+      if (count >= planData.maxFiles) return { ok: false, reason: "count", count, max: planData.maxFiles };
+    }
+    if (!(await storageHasRoom(bytes))) return { ok: false, reason: "storage", count: 0, max: planData.maxFiles };
+    return { ok: true, count: 0, max: planData.maxFiles };
   } catch { return { ok: true, count: 0, max: planData.maxFiles }; } // fail open — don't block on error
+}
+
+// Shows why an upload was blocked and opens the upgrade sheet unless the person is already on Pro.
+function limitBlocked(limit, planData, onUpgrade, setErr) {
+  if (limit.ok) return false;
+  const label = planData?.label || "Free";
+  const msg = limit.reason === "storage"
+    ? `Your ${label} storage is full. Delete files you no longer need${label === "Pro" ? "." : " or upgrade for more space."}`
+    : `File limit reached (${limit.max} files on ${label}). Upgrade to add more.`;
+  if (setErr) setErr(msg);
+  if (onUpgrade && label !== "Pro") onUpgrade();
+  return true;
+}
+
+// ─── STORAGE USAGE BAR ───────────────────────────────────────────────────────
+// The total for each plan is decided on the server (storage_quota_bytes); the browser only displays it.
+const STORAGE_CATS = [
+  { key:"documents",   label:"Documents",                color:"#234A3D" },
+  { key:"receipts",    label:"Receipts and item photos", color:"#C16140" },
+  { key:"projects",    label:"Project photos",           color:"#B8861E" },
+  { key:"assessments", label:"Condition assessments",    color:"#5B8A78" },
+  { key:"emails",      label:"Emailed files",            color:"#7A7370" },
+  { key:"other",       label:"Other",                    color:"#A8A09A" },
+];
+function fmtBytes(n) {
+  n = Math.max(0, Number(n) || 0);
+  if (n >= 1073741824) { const g = n / 1073741824; return `${g >= 10 ? g.toFixed(0) : g.toFixed(1)} GB`; }
+  if (n >= 1048576)    { const m = n / 1048576;    return `${m >= 100 ? m.toFixed(0) : m.toFixed(1)} MB`; }
+  if (n >= 1024)       return `${Math.round(n / 1024)} KB`;
+  return n === 0 ? "0 MB" : `${n} B`;
+}
+function StorageUsage({ planData, onUpgrade, collapsible = false }) {
+  const [u, setU] = useState(null);
+  const [open, setOpen] = useState(!collapsible);
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const { data, error } = await supabase.rpc("my_storage_usage");
+        if (alive && !error && data && typeof data.limit === "number") setU(data);
+      } catch { /* the bar stays hidden if the lookup fails */ }
+    };
+    load();
+    window.addEventListener("sw-storage-changed", load);
+    return () => { alive = false; window.removeEventListener("sw-storage-changed", load); };
+  }, []);
+  if (!u) return null;
+  const used = Math.max(0, Number(u.used) || 0);
+  const limit = Math.max(1, Number(u.limit) || 1);
+  const left = Math.max(0, limit - used);
+  const denom = Math.max(used, limit);
+  const cats = u.categories || {};
+  const segs = STORAGE_CATS.map(c => ({ ...c, bytes: Number(cats[c.key]) || 0 })).filter(c => c.bytes > 0);
+  const state = used >= limit ? "full" : used / limit >= 0.8 ? "near" : "ok";
+  const canUpgrade = planData?.label !== "Pro" && !!onUpgrade;
+  return (
+    <div className={`stor ${state}${collapsible ? " stor-compact" : ""}`}>
+      <div className="stor-top">
+        <span><strong>{fmtBytes(used)}</strong> of {fmtBytes(limit)} used</span>
+        <span className="stor-left">{state === "full" ? "Full" : `${fmtBytes(left)} left`}</span>
+      </div>
+      <div className="stor-bar" role="img" aria-label={`${fmtBytes(used)} of ${fmtBytes(limit)} used, ${fmtBytes(left)} left`}>
+        {segs.map(s => <span key={s.key} className="stor-seg" style={{ width: `${(s.bytes / denom) * 100}%`, background: s.color }} title={`${s.label}: ${fmtBytes(s.bytes)}`}/>)}
+      </div>
+      {collapsible && segs.length > 0 && (
+        <button type="button" className="stor-up" style={{ marginTop: ".4rem", fontSize: ".74rem" }} onClick={() => setOpen(o => !o)} aria-expanded={open}>
+          {open ? "Hide details" : "What's using space"}
+        </button>
+      )}
+      {open && segs.length > 0 && (
+        <ul className="stor-legend">
+          {segs.map(s => <li key={s.key}><span className="stor-dot" style={{ background: s.color }}/><span className="stor-lbl">{s.label}</span><span className="stor-val">{fmtBytes(s.bytes)}</span></li>)}
+        </ul>
+      )}
+      {state !== "ok" && (
+        <div className="stor-note">
+          {state === "full" ? "Storage is full. Delete files you no longer need" : "Storage is getting full. Delete files you no longer need"}
+          {canUpgrade ? <> or <button type="button" className="stor-up" onClick={onUpgrade}>upgrade for more space</button></> : null}.
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── HEALTH SCORE ENGINE ──────────────────────────────────────────────────────
