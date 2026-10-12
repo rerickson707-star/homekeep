@@ -1,4 +1,4 @@
-// Steadwell v361 — 2026-10-12
+// Steadwell v362 — 2026-10-12
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -28939,7 +28939,13 @@ function HomeForecastPage() {
     assets.forEach(a => { const age = (Date.now() - new Date(a.install_date + "T00:00:00")) / (365.25 * 86400000); if (age >= getDefaultLifespan(a)) pastLife.add(a.item); });
     let big = null;
     years.forEach(y => y.items.forEach(x => { if (!big || x.cost > big.cost) big = { ...x, year: y.year }; }));
-    return { years, total, count: years.reduce((s, y) => s + y.items.length, 0), pastLife, big };
+    const rows = HOME_FORECAST_ITEMS.filter(i => !off[i.key]).map(i => {
+      const life = hfLife(i);
+      const age = (Date.now() - new Date(`${thisYear - ages[i.key]}-07-01T00:00:00`)) / (365.25 * 86400000);
+      const left = life - age;
+      return { key: i.key, label: i.label, age: ages[i.key], life, left, due: left < 5 ? thisYear + Math.max(0, Math.round(left)) : null, cost: FORECAST_DEFAULT_COST[i.category] };
+    });
+    return { years, total, count: years.reduce((s, y) => s + y.items.length, 0), pastLife, big, rows };
   }, [ages, off]);
 
   const shown = useCountUp(Math.round(result.total));
@@ -29004,8 +29010,16 @@ function HomeForecastPage() {
         .hf-mark{position:absolute;top:7px;width:2px;height:22px;margin-left:-1px;background:#2A2723;opacity:.4;border-radius:1px;pointer-events:none}
         @media (prefers-reduced-motion:no-preference){.hf-fill{transition:height .35s ease}}
         @media (min-width:900px){.hf-grid{grid-template-columns:minmax(0,1fr) 390px;align-items:start}.hf-panel{order:0;position:sticky;top:76px}.hf-bar{display:none!important}}
-        @media print{nav,footer,.hf-noprint,.hf-bar{display:none!important}body{background:#fff!important}}
+        .hf-printdoc{display:none}
+        @media print{
+          @page{margin:16mm}
+          .hf-screen,.hf-bar{display:none!important}
+          .hf-printdoc{display:block!important}
+          body{background:#fff!important}
+          .hf-printdoc tr{page-break-inside:avoid}
+        }
       `}</style>
+      <div className="hf-screen">
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
 
@@ -29120,6 +29134,54 @@ function HomeForecastPage() {
         <LPCTA h2="Know what&#39;s coming before it arrives." sub="Create a free account and keep every system, appliance and warranty in one place, with reminders before things wear out." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
+      </div>
+
+      {/* Clean one-page sheet that replaces the whole page when printing or saving as PDF */}
+      <div className="hf-printdoc" style={{fontFamily:"'Hanken Grotesk',Arial,sans-serif",color:"#111"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,borderBottom:"2px solid #234A3D",paddingBottom:8,marginBottom:18}}>
+          <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"20pt",fontWeight:600,color:"#234A3D"}}>Steadwell</div>
+          <div style={{fontSize:"10pt",color:"#555"}}>Home replacement forecast, prepared {new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})}</div>
+        </div>
+        <h1 style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:500,fontSize:"20pt",margin:"0 0 4px",color:"#111"}}>What your home may need in the next 5 years</h1>
+        {!custom && <p style={{fontSize:"10pt",color:"#555",margin:"0 0 10px"}}>This is an example home. Enter your own at trysteadwell.app/home-replacement-forecast.</p>}
+        <div style={{fontSize:"10pt",color:"#555",margin:"12px 0 2px"}}>Estimated replacements through {lastYear}</div>
+        <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"32pt",fontWeight:600,color:"#C16140",lineHeight:1.1}}>{hfMoney(result.total)}</div>
+        <p style={{fontSize:"11pt",margin:"8px 0 0"}}>{verdict}{result.total > 0 && <> Setting aside about {hfMoney(result.total / 60)} a month would cover it.</>}</p>
+
+        <h2 style={{fontSize:"12pt",margin:"22px 0 6px",color:"#234A3D"}}>Your items</h2>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:"10pt"}}>
+          <thead><tr style={{textAlign:"left",borderBottom:"1.5px solid #234A3D"}}>{["Item","Age","Typical life","Status","Expected","Planning cost"].map(h => <th key={h} style={{padding:"5px 6px 5px 0",fontWeight:700}}>{h}</th>)}</tr></thead>
+          <tbody>
+            {result.rows.map(r => (
+              <tr key={r.key} style={{borderBottom:"1px solid #ddd"}}>
+                <td style={{padding:"6px 6px 6px 0",fontWeight:600}}>{r.label}</td>
+                <td style={{padding:"6px 6px 6px 0"}}>{r.age === 0 ? "New" : hfYears(r.age)}</td>
+                <td style={{padding:"6px 6px 6px 0"}}>{hfYears(r.life)}</td>
+                <td style={{padding:"6px 6px 6px 0"}}>{hfLeftText(r.left)}</td>
+                <td style={{padding:"6px 6px 6px 0"}}>{r.due === null ? "After " + lastYear : r.left <= 0 ? "Now" : r.due}</td>
+                <td style={{padding:"6px 0"}}>{hfMoney(r.cost)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h2 style={{fontSize:"12pt",margin:"22px 0 6px",color:"#234A3D"}}>Year by year</h2>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:"10pt"}}>
+          <thead><tr style={{textAlign:"left",borderBottom:"1.5px solid #234A3D"}}><th style={{padding:"5px 6px 5px 0",width:"14%"}}>Year</th><th style={{padding:"5px 6px 5px 0"}}>Replacements</th><th style={{padding:"5px 0",textAlign:"right",width:"18%"}}>Total</th></tr></thead>
+          <tbody>
+            {result.years.map(y => (
+              <tr key={y.year} style={{borderBottom:"1px solid #ddd"}}>
+                <td style={{padding:"6px 6px 6px 0",fontWeight:600}}>{y.year}</td>
+                <td style={{padding:"6px 6px 6px 0"}}>{y.items.length ? y.items.map(x => x.name).join(", ") : "Nothing expected"}</td>
+                <td style={{padding:"6px 0",textAlign:"right",fontWeight:600}}>{hfMoney(y.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <p style={{fontSize:"9pt",color:"#555",lineHeight:1.5,margin:"20px 0 0"}}>Estimates use typical lifespans and round planning costs, not quotes. Real prices depend on size, brand, region and local labor, and a well-maintained system can outlast the average. For a firm answer, ask a licensed pro to inspect it.</p>
+        <p style={{fontSize:"10pt",color:"#234A3D",fontWeight:700,margin:"14px 0 0"}}>Track these items for free at trysteadwell.app</p>
+      </div>
 
       {showBar && (
         <div className="hf-bar hf-noprint" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:150,background:"#234A3D",color:"#F4EDDF",padding:"10px 16px calc(10px + env(safe-area-inset-bottom))",alignItems:"center",justifyContent:"space-between",gap:12,boxShadow:"0 -4px 16px rgba(0,0,0,.2)"}}>
