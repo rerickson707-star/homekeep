@@ -81,6 +81,10 @@
       "destination": "/spa-shell.html"
     },
     {
+      "source": "/home-replacement-forecast",
+      "destination": "/spa-shell.html"
+    },
+    {
       "source": "/home-projects",
       "destination": "/spa-shell.html"
     },

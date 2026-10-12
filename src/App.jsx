@@ -1,4 +1,4 @@
-// Steadwell v358 — 2026-10-12
+// Steadwell v359 — 2026-10-12
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4753,6 +4753,17 @@ function useNoIndex(on = true) {
   }, [on]);
 }
 
+// ─── ANALYTICS (GA4) ─────────────────────────────────────────────────────────
+// GA4 itself is loaded from index.html. trackEvent never throws, does nothing while pre-rendering or when
+// an ad blocker has removed gtag, and is never given an email, name, user id or any other personal data.
+function trackEvent(name, params) {
+  try {
+    if (typeof window !== "undefined" && typeof window.gtag === "function") window.gtag("event", name, params || {});
+  } catch { /* analytics must never break the app */ }
+}
+// Used only to report the value of a purchase to GA4. Keep in step with the prices on the pricing page.
+const PLAN_PRICE = { plus: { monthly: 7.99, annual: 63.99 }, pro: { monthly: 14.99, annual: 119.99 } };
+
 function useSEO({ title, description, canonical, jsonLd, noindex, image, ogType } = {}) {
   // Build-time pre-rendering (scripts/prerender.mjs) renders each page on the server and
   // collects what it would put in <head> here; effects below never run on the server.
@@ -6252,9 +6263,12 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (!agreedToTerms) { setError("Please agree to the Terms of Service and Privacy Policy to continue."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
+    // An already-registered email comes back with no identities: that is not a new sign-up.
+    const identities = signUpData?.user?.identities;
+    if (!Array.isArray(identities) || identities.length > 0) trackEvent("sign_up", { method: "email" });
     setSuccess("Account created! Setting up your home…");
   };
 
@@ -24883,6 +24897,7 @@ export default function App() {
   if (_path === "/affiliates" || _path === "/affiliates/") return <AffiliatesPage />;
   if (_path === "/affiliate-agreement" || _path === "/affiliate-agreement/") return <AffiliateAgreementPage />;
   if (_path === "/pricing" || _path === "/pricing/") return <PricingPage />;
+  if (_path === "/home-replacement-forecast" || _path === "/home-replacement-forecast/") return <HomeForecastPage />;
   // Anything that is not the app root, auth routes, or a path handled above is a dead link.
   const _appPaths = ["/", "", "/index.html", "/login", "/signup", "/login/", "/signup/"];
   if (!_appPaths.includes(_path)) return <NotFoundPage />;
@@ -24978,9 +24993,27 @@ export default function App() {
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
+  // GA4 sign_up for Google accounts. Email accounts are counted in handleSignup. A Google account created in
+  // the last few minutes and not yet counted on this device is a new sign-up (the OAuth round trip reloads the page).
+  useEffect(() => {
+    const u = session?.user;
+    if (!u?.id || u.app_metadata?.provider !== "google") return;
+    if (Date.now() - new Date(u.created_at).getTime() > 5 * 60 * 1000) return;
+    try {
+      const key = "sw_signup_tracked_" + u.id;
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch { /* storage unavailable: count it once for this page load */ }
+    trackEvent("sign_up", { method: "google" });
+  }, [session?.user?.id]);
+
   const startCheckout = async (plan, interval) => {
     if (checkoutLoading) return;
     setCheckoutLoading(true);
+    const price = PLAN_PRICE[plan] && PLAN_PRICE[plan][interval];
+    trackEvent("begin_checkout", { currency: "USD", ...(price ? { value: price } : {}), items: [{ item_id: plan, item_name: "Steadwell " + (plan === "pro" ? "Pro" : "Plus"), item_variant: interval, quantity: 1 }] });
+    // Remembered so the purchase event can report the right plan and price when Stripe sends the person back.
+    try { sessionStorage.setItem("sw_checkout_intent", JSON.stringify({ plan, interval })); } catch { /* storage unavailable */ }
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       const resp = await fetch(
@@ -25215,9 +25248,23 @@ export default function App() {
     const upgraded     = urlParams.get("upgraded");
 
     if (upgraded === "1") {
+      let intent = null;
+      try { intent = JSON.parse(sessionStorage.getItem("sw_checkout_intent") || "null"); sessionStorage.removeItem("sw_checkout_intent"); } catch { /* storage unavailable */ }
       // Reload profile to pick up the plan change written by the webhook
       setTimeout(async () => {
         const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
+        // GA4 purchase. The plan comes from the profile once the webhook has run, else from what was chosen.
+        const boughtPlan = (data?.plan === "plus" || data?.plan === "pro") ? data.plan : (intent && intent.plan);
+        if (boughtPlan === "plus" || boughtPlan === "pro") {
+          const interval = intent && intent.plan === boughtPlan ? intent.interval : null;
+          const value = interval && PLAN_PRICE[boughtPlan] ? PLAN_PRICE[boughtPlan][interval] : null;
+          trackEvent("purchase", {
+            transaction_id: "sw-" + Date.now().toString(36),
+            currency: "USD",
+            ...(value ? { value } : {}),
+            items: [{ item_id: boughtPlan, item_name: "Steadwell " + (boughtPlan === "pro" ? "Pro" : "Plus"), ...(interval ? { item_variant: interval } : {}), ...(value ? { price: value } : {}), quantity: 1 }],
+          });
+        }
         if (data) {
           setAllProfiles(list => list.map(pr => pr.id === data.id ? { ...pr, ...data } : pr));
           setProfile(pr => (pr && pr.id === data.id) ? { ...pr, ...data } : pr);
@@ -28529,6 +28576,7 @@ const LP_FEATURE_PAGES = [
   { href:"/recall-alerts",             label:"Recall Alerts",           icon:"⚠️", desc:"Your items checked against federal safety recalls." },
   { href:"/home-maintenance-tracker",  label:"Maintenance Tracker",     icon:"🔧", desc:"Recurring tasks and reminders tuned to your home." },
   { href:"/home-expense-tracker",      label:"Expense Tracker",         icon:"💳", desc:"Every home cost in one place. Plus adds a 5-year forecast." },
+  { href:"/home-replacement-forecast", label:"Free Home Forecast",      icon:"🔮", desc:"Free tool: what your home may need replaced in 5 years." },
   { href:"/ai-scan",                   label:"AI Scanning",             icon:"📷", desc:"Scan receipts, nameplates, bills and policies." },
   { href:"/email-capture",             label:"Email Capture",           icon:"✉️", desc:"Forward a receipt or bill and it files itself." },
   { href:"/contractor-tracker",        label:"Contractor Tracker",      icon:"👷", desc:"Trusted pros and every service visit in one place." },
@@ -28709,6 +28757,203 @@ function LPRelated({ hrefs = [], heading = "More ways Steadwell keeps your home 
         </LPGrid>
       </LPSection>
     </>
+  );
+}
+
+// ─── FREE HOME FORECAST TOOL ──────────────────────────────────────────────────
+// Public page, no account. It feeds the ages a visitor types in to the same lifespan and replacement-cost
+// logic the in-app cost forecast uses (computeCostForecast). Nothing entered here is saved or sent anywhere.
+const HOME_FORECAST_ITEMS = [
+  { key:"roof",   label:"Roof",                       icon:"🏠", category:"Roofing",   item:"Roof" },
+  { key:"hvac",   label:"Heating and cooling system", icon:"🌡️", category:"HVAC",      item:"Heating and cooling system" },
+  { key:"heater", label:"Water heater",               icon:"🚿", category:"Plumbing",  item:"Water heater" },
+  { key:"fridge", label:"Refrigerator",               icon:"🧊", category:"Appliance", item:"Refrigerator" },
+  { key:"range",  label:"Range or oven",              icon:"🍳", category:"Appliance", item:"Range or oven" },
+  { key:"dish",   label:"Dishwasher",                 icon:"🍽️", category:"Appliance", item:"Dishwasher" },
+  { key:"washer", label:"Washing machine",            icon:"🧺", category:"Appliance", item:"Washing machine" },
+  { key:"dryer",  label:"Dryer",                      icon:"♨️", category:"Appliance", item:"Dryer" },
+];
+const HOME_FORECAST_EXAMPLE = { roof:"14", hvac:"12", heater:"9", fridge:"8", range:"10", dish:"7", washer:"7", dryer:"7" };
+const HOME_FORECAST_FAQ = [
+  ["How does the home forecast work?","Each item gets a typical lifespan: 25 years for a roof, 20 for a heating and cooling system, and 12 for a water heater, refrigerator, range, dishwasher, washer or dryer. We subtract the age you enter to estimate how many years are left, then add the item to the year it is likely to need replacing. Anything due within five years is counted."],
+  ["What replacement costs does it use?","Round planning figures: $16,000 for a roof, $10,000 for a heating and cooling system, $1,200 for a water heater and $900 for each major appliance. They are a starting point for a savings plan, not a quote. Size, brand, region and local labor all move the real price."],
+  ["Do I need an account, and is my information saved?","No account is needed and the tool is free. The ages you choose stay in your browser while the page is open. Nothing you enter is saved or sent to Steadwell."],
+  ["How accurate is it?","It is a budgeting guide built on typical lifespans. A well-maintained system can outlast the average and a neglected one can fail early, and climate and usage matter too. For a real answer on a roof, a heating and cooling system or a water heater, ask a licensed pro to inspect it."],
+  ["What does a Steadwell account add?","A free account tracks the actual items in your home with their warranties, recall alerts and maintenance reminders. On Plus and Pro, the 5-year cost forecast is built from the items you save, and a photo-based condition assessment can replace the age-only guess with what the item actually looks like."],
+];
+const hfMoney = (n) => "$" + Math.round(n).toLocaleString("en-US");
+const hfCompact = (n) => n >= 1000 ? "$" + ((n / 1000) % 1 === 0 ? (n / 1000) : (n / 1000).toFixed(1)) + "k" : "$" + Math.round(n);
+const hfAgeLabel = (n) => n === 0 ? "Less than 1 year" : n === 1 ? "1 year" : n + " years";
+const hfAgeOptions = Array.from({ length: 41 }, (_, i) => i);
+
+function HomeForecastPage() {
+  const seoPath = "/home-replacement-forecast";
+  const seoDesc = "See what your roof, heating and cooling, water heater and appliances may cost to replace in the next 5 years. Free, no signup.";
+  useSEO({
+    title: "Free Home Replacement Forecast (5 Years)",
+    description: seoDesc,
+    canonical: `https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpJsonLd({
+      name: "Steadwell Home Replacement Forecast",
+      path: seoPath, description: seoDesc,
+      features: ["Free 5-year replacement forecast", "Roof, heating and cooling, water heater and appliances", "Typical lifespans and planning-level replacement costs", "No account needed"],
+      faq: HOME_FORECAST_FAQ,
+      offers: [{ name: "Free", price: "0" }],
+    }),
+  });
+
+  const [ages, setAges] = useState(() => Object.fromEntries(HOME_FORECAST_ITEMS.map(i => [i.key, ""])));
+  const started = useRef(false);
+  const markStarted = () => { if (!started.current) { started.current = true; trackEvent("forecast_tool_start"); } };
+  const setAge = (key, val) => { markStarted(); setAges(a => ({ ...a, [key]: val })); };
+  const useExample = () => { markStarted(); trackEvent("forecast_tool_example"); setAges({ ...HOME_FORECAST_EXAMPLE }); };
+  const clearAll = () => setAges(Object.fromEntries(HOME_FORECAST_ITEMS.map(i => [i.key, ""])));
+
+  const picked = HOME_FORECAST_ITEMS.filter(i => ages[i.key] !== "");
+  const result = useMemo(() => {
+    const thisYear = new Date().getFullYear();
+    const assets = HOME_FORECAST_ITEMS.filter(i => ages[i.key] !== "").map(i => ({
+      key: i.key, category: i.category, item: i.item,
+      install_date: `${thisYear - Number(ages[i.key])}-07-01`,
+    }));
+    const { yearBuckets } = computeCostForecast(assets, 5);
+    const years = yearBuckets.map(b => ({ year: b.year, items: b.items, total: b.items.reduce((s, x) => s + x.cost, 0) }));
+    const total = years.reduce((s, y) => s + y.total, 0);
+    const pastLife = new Set();
+    const later = [];
+    assets.forEach(a => {
+      const life = getDefaultLifespan(a);
+      const age = (Date.now() - new Date(a.install_date + "T00:00:00")) / (365.25 * 86400000);
+      if (age >= life) pastLife.add(a.item);
+      const left = life - age;
+      if (left >= 5) later.push({ name: a.item, left: Math.round(left) });
+    });
+    return { years, total, count: years.reduce((s, y) => s + y.items.length, 0), pastLife, later };
+  }, [ages]);
+
+  const maxTotal = Math.max(...result.years.map(y => y.total), 1);
+  const dueYears = result.years.filter(y => y.items.length > 0);
+  const card = { boxSizing:"border-box", background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"20px 22px", textAlign:"left", minWidth:0 };
+  const btnLine = { background:"#fff", border:"1.5px solid #234A3D", color:"#234A3D", borderRadius:10, padding:"9px 14px", minHeight:40, fontWeight:700, fontSize:".84rem", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif" };
+  const sel = { flex:"1 1 140px", maxWidth:220, minWidth:0, boxSizing:"border-box", padding:"9px 10px", minHeight:44, borderRadius:10, border:"1px solid #D8CFBD", background:"#FBF8F1", color:"#2A2723", fontSize:".9rem", fontFamily:"'Hanken Grotesk',sans-serif" };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero eyebrow="Free home forecast" h1="What will your home" h1em="need in the next 5 years?" sub="Tell us how old your roof, heating and cooling and appliances are. See what may need replacing and about what it will cost. No account needed."/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:16,alignItems:"start"}}>
+            {/* Inputs */}
+            <div style={card}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:6}}>
+                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.25rem",color:"#234A3D",margin:0}}>How old is each one?</h2>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button type="button" onClick={useExample} style={btnLine}>Try an example home</button>
+                  {picked.length > 0 && <button type="button" onClick={clearAll} style={{...btnLine,border:"1.5px solid #D8CFBD",color:"#7A7370"}}>Clear</button>}
+                </div>
+              </div>
+              <p style={{fontSize:".84rem",color:"#7A7370",lineHeight:1.55,margin:"0 0 10px"}}>Pick an age for each one you have and skip the rest. A guess within a few years is fine. A nameplate, closing documents or an inspection report usually show the install date.</p>
+              {HOME_FORECAST_ITEMS.map(it => {
+                const life = getDefaultLifespan({ category: it.category, item: it.item });
+                const id = "hf-" + it.key;
+                return (
+                  <div key={it.key} style={{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:"6px 12px",padding:"12px 0",borderTop:"1px solid #EFE7D7"}}>
+                    <label htmlFor={id} style={{flex:"1 1 150px",minWidth:0,cursor:"pointer"}}>
+                      <span style={{display:"block",fontWeight:700,fontSize:".92rem",color:"#234A3D"}}><span aria-hidden="true" style={{marginRight:8}}>{it.icon}</span>{it.label}</span>
+                      <span style={{display:"block",fontSize:".74rem",color:"#8A8178",marginTop:2,marginLeft:26}}>Typically lasts about {life} years</span>
+                    </label>
+                    <select id={id} value={ages[it.key]} onChange={e => setAge(it.key, e.target.value)} style={sel}>
+                      <option value="">Skip, I don&#39;t have one</option>
+                      {hfAgeOptions.map(n => <option key={n} value={String(n)}>{hfAgeLabel(n)}</option>)}
+                    </select>
+                  </div>
+                );
+              })}
+              {picked.length > 0 && <a href="#hf-results" style={{display:"inline-block",marginTop:6,padding:"10px 0",color:"#C16140",fontWeight:700,fontSize:".9rem",textDecoration:"none"}}>See my forecast ↓</a>}
+            </div>
+
+            {/* Results */}
+            <div style={{display:"flex",flexDirection:"column",gap:16,minWidth:0}}>
+              <div id="hf-results" style={{...card,scrollMarginTop:76}} aria-live="polite">
+                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.25rem",color:"#234A3D",margin:"0 0 12px"}}>Your 5-year forecast</h2>
+                {picked.length === 0 ? (
+                  <p style={{fontSize:".92rem",color:"#7A7370",lineHeight:1.6,margin:0}}>Choose an age for any item on the left and your forecast appears here. Want to see how it looks first? Tap <strong>Try an example home</strong>.</p>
+                ) : (
+                  <>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(2rem,9vw,2.6rem)",fontWeight:600,color:result.total > 0 ? "#C16140" : "#234A3D",lineHeight:1.05,letterSpacing:"-.02em"}}>{hfMoney(result.total)}</div>
+                    <div style={{fontSize:".88rem",color:"#5E574F",margin:"6px 0 16px",lineHeight:1.5}}>
+                      {result.count > 0
+                        ? <>in replacements likely by {result.years[4].year}, across {result.count} {result.count === 1 ? "item" : "items"}.</>
+                        : <>Nothing on your list is likely to need replacing before {result.years[4].year + 1}. Keep up the maintenance and check back each year.</>}
+                    </div>
+                    <div role="img" aria-label={"Replacement costs by year: " + result.years.map(y => y.year + " " + hfMoney(y.total)).join(", ")} style={{display:"flex",alignItems:"flex-end",gap:6,height:150,borderBottom:"1px solid #E6DECF",paddingBottom:0}}>
+                      {result.years.map(y => (
+                        <div key={y.year} style={{flex:"1 1 0",minWidth:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%"}}>
+                          <div style={{fontSize:".7rem",fontWeight:700,color:y.total > 0 ? "#5A534B" : "#B8B0A6",marginBottom:4,whiteSpace:"nowrap"}}>{y.total > 0 ? hfCompact(y.total) : "$0"}</div>
+                          <div style={{width:"72%",maxWidth:44,height:Math.max(Math.round((y.total / maxTotal) * 104), 3),background:y.total > 0 ? "#C16140" : "#A7BFA8",borderRadius:"4px 4px 0 0"}}/>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",gap:6,marginTop:6}} aria-hidden="true">
+                      {result.years.map(y => <div key={y.year} style={{flex:"1 1 0",minWidth:0,textAlign:"center",fontSize:".72rem",color:"#8A8178"}}>{y.year}</div>)}
+                    </div>
+                    {dueYears.length > 0 && (
+                      <div style={{marginTop:18}}>
+                        {dueYears.map(y => (
+                          <div key={y.year} style={{borderTop:"1px solid #EFE7D7",padding:"10px 0"}}>
+                            <div style={{display:"flex",justifyContent:"space-between",gap:10,fontWeight:700,fontSize:".9rem",color:"#234A3D"}}><span>{y.year}</span><span>{hfMoney(y.total)}</span></div>
+                            {y.items.map((x, i) => (
+                              <div key={i} style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:".82rem",color:"#5E574F",marginTop:4}}>
+                                <span style={{minWidth:0,overflowWrap:"anywhere"}}>{x.name}{result.pastLife.has(x.name) && <span style={{color:"#C16140",fontWeight:600}}> · past its typical life</span>}</span>
+                                <span style={{flexShrink:0}}>{hfMoney(x.cost)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {result.later.length > 0 && (
+                      <p style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.55,margin:"8px 0 0",borderTop:"1px solid #EFE7D7",paddingTop:10}}>
+                        Beyond five years: {result.later.map(l => `${l.name} (about ${l.left} years left)`).join(", ")}.
+                      </p>
+                    )}
+                    <p style={{fontSize:".74rem",color:"#8A8178",lineHeight:1.55,margin:"12px 0 0"}}>Estimates use typical lifespans and round planning costs, not quotes. Real prices depend on size, brand, region and local labor.</p>
+                  </>
+                )}
+              </div>
+
+              <div style={{...card,background:"#234A3D",border:"1px solid #234A3D"}}>
+                <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.25rem",color:"#F4EDDF",margin:"0 0 8px"}}>Keep track of the real thing</h2>
+                <p style={{fontSize:".88rem",color:"rgba(244,237,223,.75)",lineHeight:1.6,margin:"0 0 16px"}}>A free Steadwell account tracks the actual items in your home, with warranties, recall alerts and maintenance reminders. On Plus and Pro, the 5-year forecast is built from the items you save. What you entered on this page is not saved.</p>
+                <a href="/?action=signup" onClick={() => trackEvent("forecast_tool_cta_click", { items_selected: picked.length })} style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.5rem",borderRadius:12,fontWeight:700,fontSize:".92rem"}}>Create a free account</a>
+                <div style={{fontSize:".76rem",color:"rgba(244,237,223,.5)",marginTop:10}}>Free to start · No credit card required</div>
+              </div>
+            </div>
+          </div>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="How the forecast works" sub="The same method Steadwell uses for the 5-year forecast inside the app."/>
+          <LPGrid gap={16}>
+            {[
+              {num:"01",title:"Typical lifespan",text:"Each item starts with how long it typically lasts: 25 years for a roof, 20 for heating and cooling, 12 for a water heater and major appliances."},
+              {num:"02",title:"Years left",text:"We subtract the age you enter to see how many years are left. Anything past its typical life is flagged."},
+              {num:"03",title:"Replacement cost",text:"Items due within five years are priced with round planning figures, so you can see the size of the bill before it arrives."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={HOME_FORECAST_FAQ}/>
+        </LPSection>
+        <LPRelated hrefs={["/home-expense-tracker","/home-condition-assessment","/home-maintenance-tracker","/warranty-tracker"]}/>
+        <LPCTA h2="Know what's coming before it arrives." sub="Create a free account and keep every system, appliance and warranty in one place." btnLabel="Start for free →"/>
+      </main>
+      <LPFooter/>
+    </div>
   );
 }
 
@@ -29408,7 +29653,7 @@ function HomeHealthScorePage() {
           <LPFAQ items={HEALTH_FAQ}/>
         </LPSection>
 
-        <LPRelated hrefs={["/home-condition-assessment","/home-expense-tracker","/ask-steadwell","/recall-alerts"]}/>
+        <LPRelated hrefs={["/home-condition-assessment","/home-expense-tracker","/home-replacement-forecast","/ask-steadwell","/recall-alerts"]}/>
         <LPCTA h2="See how well your home is kept." sub="Create a free account and watch your score as your records come together." btnLabel="Get started free →" note="Overall score free · Breakdown on Plus and Pro"/>
       </main>
       <LPFooter/>
@@ -30234,7 +30479,7 @@ function HomeExpenseTrackerPage() {
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={EXPENSE_FAQ}/>
         </LPSection>
-        <LPRelated hrefs={["/utility-bill-tracker","/home-condition-assessment","/ai-scan","/home-projects"]}/>
+        <LPRelated hrefs={["/home-replacement-forecast","/utility-bill-tracker","/home-condition-assessment","/ai-scan","/home-projects"]}/>
         <LPCTA h2="Know what&#39;s coming before it arrives." sub="Track your home expenses and get a 5-year cost forecast based on your actual appliances." btnLabel="Start for free →"/>
       </main>
       <LPFooter/>
@@ -34066,6 +34311,7 @@ export const PRERENDER_PAGES = {
   "/calendar-sync": CalendarSyncPage,
   "/shared-household-access": SharedHouseholdAccessPage,
   "/pricing": PricingPage,
+  "/home-replacement-forecast": HomeForecastPage,
   "/terms": TermsPage,
   "/privacy": PrivacyPage,
   "/ada": ADAPage,
