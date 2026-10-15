@@ -1,4 +1,4 @@
-// Steadwell v363 — 2026-10-15
+// Steadwell v364 — 2026-10-15
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3655,6 +3655,13 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .fc-check-box.on{background:var(--pine);border-color:var(--pine)}
 .fc-check-t b{display:block;font-size:.9rem;line-height:1.35}
 .fc-check-t span{display:block;font-size:.8rem;line-height:1.45;color:#6E665D;margin-top:.15rem}
+.ir-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:1.2rem 0 .35rem;padding-bottom:.35rem;border-bottom:1px solid var(--stone)}
+.ir-h{font-family:'Fraunces',Georgia,serif;font-size:1.02rem;font-weight:500;color:var(--dark)}
+.ir-bulk{display:flex;gap:.9rem;flex-shrink:0}
+.ir-row{padding:.45rem 0;border-bottom:1px solid #EFE9DD}
+.ir-row:last-of-type{border-bottom:none}
+.ir-sev{font-style:normal;display:inline-block;font-size:.68rem;font-weight:700;border:1.5px solid;border-radius:999px;padding:0 7px;margin-right:.45rem;vertical-align:1px;line-height:1.5}
+.ir-keep{margin-top:1.1rem;padding-top:.8rem;border-top:1px solid var(--stone)}
 .fc-priv{margin:.2rem 0 0;font-size:.8rem;line-height:1.5;color:#6E665D}
 .fc-lead{margin:0 0 1rem;font-size:.92rem;line-height:1.55;color:#4A443E}
 .fc-upload{display:flex;flex-direction:column;align-items:center;gap:.35rem;width:100%;box-sizing:border-box;padding:1.5rem 1rem;border:2px dashed #9DBBAE;border-radius:var(--r);background:#EAF2EE;font-family:inherit;cursor:pointer;color:var(--dark)}
@@ -5363,7 +5370,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <div style={{fontSize:".75rem",color:"rgba(255,255,255,.55)",marginBottom:".5rem"}}>or $63.99/year <span style={{background:"rgba(255,255,255,.15)",padding:"1px 7px",borderRadius:10,fontWeight:700}}>Save 33%</span></div>
               <p className="pdesc">AI tools and deeper intelligence for the serious homeowner.</p>
               <ul className="plist">
-                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Property tax bill reading & comparison","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","10 GB document and photo storage"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
+                {["Everything in Free","AI nameplate, receipt, bill & policy scan","Condition assessments from photos · 5/mo","Ask Steadwell AI assistant · 30/mo","Smart Fill from model number","Property tax bill reading & comparison","Import a home inspection report","Home health score breakdown & cost forecast","Project ROI calculator","Home history report (PDF)","10 GB document and photo storage"].map(f => <li key={f}><span className="ck">✓</span> {f}</li>)}
               </ul>
               <button className="btn btn-terra pbtn" onClick={onSignUp}>Start Plus — $7.99/mo</button>
             </div>
@@ -19710,7 +19717,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     </div>
   );
 }
-function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade, onBack }) {
+function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade, onBack, onImportInspection, reloadKey=0 }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -19739,7 +19746,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
       if (proj.data) setProjects(proj.data);
       setLoading(false);
     });
-  }, [userId]);
+  }, [userId, reloadKey]);
 
   const openEdit = d => { setEditData({...d}); setEditId(d.id); setModal(true); };
 
@@ -19817,6 +19824,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
 
       <div style={{padding:".65rem 1rem .5rem",flexShrink:0}}>
         <StorageUsage planData={planData} onUpgrade={onUpgrade} collapsible/>
+        {onImportInspection && <button type="button" onClick={onImportInspection} style={{background:"none",border:"none",padding:".5rem 0 0",color:"var(--pine)",fontWeight:700,fontSize:".84rem",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>Import an inspection report</button>}
       </div>
 
       {/* At-limit banner */}
@@ -25060,6 +25068,8 @@ export default function App() {
     }
   };
   const [showDocs, setShowDocs] = useState(false);
+  const [inspOpen, setInspOpen] = useState(false);
+  const [docsVersion, setDocsVersion] = useState(0);
   const [docLightbox, setDocLightbox] = useState(null);
   const [showContractors, setShowContractors] = useState(false);
   // The window scroll position is shared by every (always-mounted) tab, so a screen used to open
@@ -25661,7 +25671,7 @@ export default function App() {
             /* Documents Center */
             <div style={{display:"flex",flexDirection:"column",height:"100%",background:"var(--linen)"}}>
               <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onBack={()=>setShowDocs(false)}/>
+                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onBack={()=>setShowDocs(false)} onImportInspection={()=>setInspOpen(true)} reloadKey={docsVersion}/>
               </div>
               {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
             </div>
@@ -25684,7 +25694,7 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)}/><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
@@ -25785,6 +25795,7 @@ export default function App() {
             }}
           />
         )}
+        {inspOpen && <InspectionImportModal userId={uid} propertyId={activePropertyId} warranties={warranties} setWarranties={setWarranties} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>{setInspOpen(false);setShowUpgrade(true);}} onClose={()=>setInspOpen(false)} onImported={()=>setDocsVersion(v=>v+1)} toast={toast}/>}
         {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} postSetup={showUpgrade === "post-setup"} />}
       </div>
     </AppErrorBoundary>
@@ -29264,17 +29275,326 @@ function ForecastImportCard({ warranties, setWarranties, userId, propertyId, toa
   );
 }
 
+// ─── INSPECTION REPORT IMPORT ─────────────────────────────────────────────────
+// A homeowner uploads the home inspection report they received. Steadwell reads it (edge function
+// inspection-report-scan), then shows every piece of equipment and every finding for the owner to tick.
+// Nothing is saved until they press the button, and an Undo is offered afterwards.
+const IR_SEV = {
+  safety:      { label: "Safety",      priority: "Urgent", days: 7,   color: "#B91C1C" },
+  major:       { label: "Major",       priority: "High",   days: 30,  color: "#C16140" },
+  repair:      { label: "Repair",      priority: "Medium", days: 60,  color: "#8A6410" },
+  maintenance: { label: "Maintenance", priority: "Low",    days: 90,  color: "#2F6A49" },
+  monitor:     { label: "Monitor",     priority: "Low",    days: 180, color: "#6E665D" },
+};
+const IR_ERRORS = {
+  plan_required: "Importing an inspection report is included with Plus and Pro.",
+  limit_reached: "You've used today's report imports. Try again tomorrow.",
+  not_an_inspection_report: "That doesn't look like a home inspection report. Upload the report your inspector sent you.",
+  nothing_found: "We couldn't find any findings or equipment in this file. Try the full report PDF.",
+  too_large: "That file is too large. Try a smaller PDF, or the report's summary PDF if your inspector sent one.",
+  too_long: "This report is too long to read in one go. Try the summary PDF your inspector sent, or upload just the pages with the findings.",
+  not_signed_in: "Your session has expired. Sign in again to import a report.",
+};
+const irDue = days => localISO(new Date(Date.now() + days * 86400000));
+const irNice = iso => { try { return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return iso; } };
+
+function InspectionImportCard({ onOpen }) {
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem("sw_insp_card_off") === "1"; } catch { return false; } });
+  if (hidden) return null;
+  const hide = () => { try { localStorage.setItem("sw_insp_card_off", "1"); } catch { /* ignore */ } setHidden(true); };
+  return (
+    <div style={{margin:"0 0 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem"}}>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.05rem",fontWeight:500,color:"var(--dark)",marginBottom:".35rem"}}>Just had a home inspection?</div>
+      <div style={{fontSize:".84rem",color:"#7A7370",lineHeight:1.55,marginBottom:".8rem"}}>Upload the report. Steadwell turns it into equipment to track and tasks to work through, and you check everything before it is added.</div>
+      <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
+        <button type="button" onClick={onOpen} style={{background:"#234A3D",color:"#fff",border:"none",borderRadius:10,padding:".7rem 1.1rem",fontWeight:700,fontSize:".86rem",cursor:"pointer",fontFamily:"inherit"}}>Import inspection report</button>
+        <button type="button" onClick={hide} style={{background:"none",border:"none",color:"#7A7370",fontSize:".84rem",cursor:"pointer",padding:".7rem .4rem",fontFamily:"inherit"}}>Not now</button>
+      </div>
+    </div>
+  );
+}
+
+function InspectionImportModal({ userId, propertyId, warranties, setWarranties, tasks, setTasks, planData, onUpgrade, onClose, onImported, toast }) {
+  const canScan = planData?.aiScan === true;
+  const [phase, setPhase] = useState("choose");
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState("");
+  const [file, setFile] = useState(null);
+  const [res, setRes] = useState(null);
+  const [pickItems, setPickItems] = useState({});
+  const [pickFind, setPickFind] = useState({});
+  const [keepCopy, setKeepCopy] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(null);
+  const [undoing, setUndoing] = useState(false);
+  const fileRef = useRef(null);
+  const aliveRef = useRef(true);
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
+
+  const handleFile = async e => {
+    let pick = e.target.files?.[0];
+    e.target.value = "";
+    if (!pick || scanning) return;
+    setScanError("");
+    const isImage = pick.type.startsWith("image/") || /\.(heic|heif|jpg|jpeg|png|webp|gif)$/i.test(pick.name);
+    const isPdf = pick.type === "application/pdf";
+    if (!isPdf && !isImage) { setScanError("Please choose a PDF or a photo of the report."); return; }
+    if (pick.size > 15 * 1024 * 1024) { setScanError(IR_ERRORS.too_large); return; }
+    setScanning(true);
+    try {
+      if (isPdf) {
+        const pages = await countPdfPages(pick);
+        if (pages !== null && pages > 100) { setScanError(`This PDF has ${pages} pages, and we can read up to 100. Try the summary PDF your inspector sent.`); setScanning(false); return; }
+      } else {
+        pick = await prepareImageFile(pick);
+        if (!/^image\/(jpeg|png|webp|gif)$/i.test(pick.type || "")) pick = await fcToJpeg(pick);
+      }
+      const mimeType = isPdf ? "application/pdf" : pick.type;
+      const fileBase64 = await fcReadB64(pick);
+      const { data, error } = await supabase.functions.invoke("inspection-report-scan", { body: { fileBase64, mimeType } });
+      if (!aliveRef.current) return;
+      if (error) {
+        let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
+        if (code === "plan_required" && onUpgrade) { onUpgrade(); return; }
+        setScanError(IR_ERRORS[code] || "We couldn't read this report. Try the full PDF, or a clearer file.");
+        setScanning(false);
+        return;
+      }
+      if (!data?.ok || !Array.isArray(data.findings) || !Array.isArray(data.items)) { setScanError("We couldn't read this report. Try the full PDF, or a clearer file."); setScanning(false); return; }
+      // Things already in the account start unticked, so nothing is doubled up by accident.
+      const haveAssets = new Set((warranties || []).filter(a => !a.retired_at).map(a => String(a.item || "").trim().toLowerCase()));
+      const openTasks = new Set((tasks || []).filter(t => t.status !== "Completed").map(t => String(t.title || "").trim().toLowerCase()));
+      const items = data.items.map(it => ({ ...it, dupe: haveAssets.has(String(it.item || "").trim().toLowerCase()) }));
+      const findings = data.findings.map(f => ({ ...f, dupe: openTasks.has(String(f.title || "").trim().toLowerCase()) }));
+      setRes({ meta: data.meta || {}, items, findings });
+      setPickItems(Object.fromEntries(items.map((it, i) => [i, !it.dupe])));
+      setPickFind(Object.fromEntries(findings.map((f, i) => [i, !f.dupe && f.severity !== "monitor"])));
+      setFile(pick); setPhase("review");
+    } catch (err) {
+      if (!aliveRef.current) return;
+      setScanError(/HEIC|Apple photo/i.test(String(err?.message)) ? err.message : "We couldn't read this file. Try the full PDF, or a clearer file.");
+    }
+    if (aliveRef.current) setScanning(false);
+  };
+
+  const nItems = res ? res.items.filter((_, i) => pickItems[i]).length : 0;
+  const nFind = res ? res.findings.filter((_, i) => pickFind[i]).length : 0;
+  const setAll = (setter, list, on) => setter(Object.fromEntries(list.map((_, i) => [i, on])));
+
+  const apply = async () => {
+    if (!res || saving || nItems + nFind === 0) return;
+    setSaving(true);
+    const meta = res.meta || {};
+    const today = localISO();
+    const inspYear = meta.inspection_date ? Number(meta.inspection_date.slice(0, 4)) : new Date().getFullYear();
+    const from = `${meta.inspector_company ? " by " + meta.inspector_company : ""}${meta.inspection_date ? ", " + irNice(meta.inspection_date) : ""}`;
+    const problems = [];
+    let newAssets = [], newTasks = [], docRow = null, docPath = null;
+    try {
+      // 1. Equipment the owner ticked.
+      const chosen = res.items.filter((_, i) => pickItems[i]);
+      if (chosen.length) {
+        const rows = chosen.map(it => {
+          let year = it.year_made, estimated = false;
+          if (!year && it.age_years != null && Number.isFinite(inspYear)) { year = inspYear - it.age_years; estimated = true; }
+          let d = year ? `${year}-07-01` : null;
+          if (d && d > today) d = today;
+          const note = `Added from a home inspection report${from}.` + (estimated ? " The install date is an estimate from the age in the report." : year ? " The year comes from the report." : "");
+          return {
+            item: it.item, category: it.category || "Other", brand: it.brand || null, model: it.model || null, serial_number: it.serial_number || null,
+            install_date: d, condition: it.condition || "Good", pm_schedule: "[]", notes: note, user_id: userId, property_id: propertyId,
+          };
+        });
+        const { data, error } = await supabase.from("warranties").insert(rows).select();
+        if (error || !data) throw new Error(error?.message || "The equipment could not be added.");
+        newAssets = data;
+      }
+      // 2. Findings the owner ticked become tasks, linked to the matching item when the report names one.
+      const byName = new Map();
+      (warranties || []).filter(a => !a.retired_at).forEach(a => byName.set(String(a.item || "").trim().toLowerCase(), a.id));
+      newAssets.forEach(a => byName.set(String(a.item || "").trim().toLowerCase(), a.id));
+      const picked = res.findings.filter((_, i) => pickFind[i]);
+      if (picked.length) {
+        const mk = (f, withAsset) => {
+          const sev = IR_SEV[f.severity] || IR_SEV.repair;
+          const notes = [f.detail, f.recommended_action ? "Recommended in the report: " + f.recommended_action : "", `From the home inspection report${from}${f.page ? ` (page ${f.page})` : ""}.`].filter(Boolean).join("\n\n");
+          const row = { title: f.title, due_date: irDue(sev.days), status: "Scheduled", priority: sev.priority, category: f.system || "Other", notes, user_id: userId, property_id: propertyId };
+          const aid = f.related_item ? byName.get(String(f.related_item).trim().toLowerCase()) : null;
+          if (withAsset && aid) row.asset_id = aid;
+          return row;
+        };
+        let { data, error } = await supabase.from("tasks").insert(picked.map(f => mk(f, true))).select();
+        if (error) ({ data, error } = await supabase.from("tasks").insert(picked.map(f => mk(f, false))).select());
+        if (error || !data) problems.push("The tasks could not be added" + (error?.message ? ": " + error.message : "."));
+        else newTasks = data;
+      }
+      // 3. Keep the original in Documents. Best effort: a storage problem never undoes the rest.
+      if (file && keepCopy) {
+        try {
+          const lim = await checkFileLimit(userId, planData, file.size);
+          if (lim.ok) {
+            const ext = file.type === "application/pdf" ? "pdf" : (file.name.split(".").pop() || "jpg");
+            const path = `${userId}/documents/${Date.now()}-inspection-report.${ext}`;
+            const { error: upErr } = await supabase.storage.from("expense-files").upload(path, file, { upsert: true, contentType: file.type });
+            if (!upErr) {
+              const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
+              const { data: dr, error: docErr } = await supabase.from("home_documents").insert([{
+                user_id: userId, name: `Home inspection report${meta.inspection_date ? " " + irNice(meta.inspection_date) : ""}`, category: "inspection",
+                description: meta.inspector_company ? `Inspected by ${meta.inspector_company}` : "Saved from an inspection report import",
+                file_url: urlData.publicUrl + "?t=" + Date.now(), file_type: file.type,
+              }]).select().single();
+              if (!docErr && dr) { docRow = dr; docPath = path; notifyStorageChanged(); }
+              else await supabase.storage.from("expense-files").remove([path]);
+            }
+          } else problems.push("Your document storage is full, so the report file was not kept.");
+        } catch { /* best effort */ }
+      }
+    } catch (e) {
+      console.error("Inspection import error:", e?.message);
+      if (newAssets.length) {
+        // Equipment went in but a later step threw: roll the equipment back so the owner is not left with half an import.
+        await supabase.from("warranties").delete().in("id", newAssets.map(a => a.id)).eq("user_id", userId);
+      }
+      toast("Could not add the report: " + (e?.message || "please try again"), "error");
+      if (aliveRef.current) setSaving(false);
+      return;
+    }
+    if (newAssets.length) setWarranties(w => [...(w || []), ...newAssets]);
+    if (newTasks.length) setTasks(t => [...(t || []), ...newTasks]);
+    if (docRow) onImported && onImported();
+    trackEvent("inspection_import", { items: newAssets.length, tasks: newTasks.length });
+    if (problems.length) toast(problems[0], "error");
+    if (aliveRef.current) { setDone({ assets: newAssets, tasks: newTasks, doc: docRow, docPath, problems }); setPhase("done"); setSaving(false); }
+  };
+
+  const undo = async () => {
+    if (!done || undoing) return;
+    setUndoing(true);
+    let failed = false;
+    if (done.tasks.length) {
+      const { error } = await supabase.from("tasks").delete().in("id", done.tasks.map(t => t.id)).eq("user_id", userId);
+      if (error) failed = true; else setTasks(t => (t || []).filter(x => !done.tasks.some(d => d.id === x.id)));
+    }
+    if (done.assets.length) {
+      const { error } = await supabase.from("warranties").delete().in("id", done.assets.map(a => a.id)).eq("user_id", userId);
+      if (error) failed = true; else setWarranties(w => (w || []).filter(x => !done.assets.some(d => d.id === x.id)));
+    }
+    if (done.doc) {
+      const { error } = await supabase.from("home_documents").delete().eq("id", done.doc.id).eq("user_id", userId);
+      if (error) failed = true;
+      else { if (done.docPath) await supabase.storage.from("expense-files").remove([done.docPath]); notifyStorageChanged(); onImported && onImported(); }
+    }
+    if (!aliveRef.current) return;
+    if (failed) { toast("Some of the import could not be undone. You can remove those items yourself.", "error"); setUndoing(false); return; }
+    toast("Import undone ✓");
+    onClose();
+  };
+
+  const footer = (
+    <div className="modal-footer">
+      {phase === "choose" && <button className="btn btn-ghost" onClick={onClose} disabled={scanning}>Cancel</button>}
+      {phase === "review" && <>
+        <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+        <button className="btn btn-primary" onClick={apply} disabled={saving || nItems + nFind === 0}>{saving ? "Adding…" : nItems + nFind === 0 ? "Nothing selected" : `Add ${nItems + nFind} selected`}</button>
+      </>}
+      {phase === "done" && <>
+        <button className="btn btn-ghost" onClick={undo} disabled={undoing}>{undoing ? "Undoing…" : "Undo"}</button>
+        <button className="btn btn-primary" onClick={onClose} disabled={undoing}>Done</button>
+      </>}
+    </div>
+  );
+
+  const meta = res?.meta || {};
+  return (
+    <Modal title="Import inspection report" onClose={() => { if (!saving && !scanning && !undoing) onClose(); }} footer={footer}>
+      <input ref={fileRef} type="file" accept={IMAGE_ACCEPT + ",.pdf,application/pdf"} style={{ display: "none" }} onChange={handleFile} />
+      {phase === "choose" && (!canScan ? (
+        <div className="fc-lock">
+          <div className="fc-lock-t"><span className="fc-tag">Plus and Pro</span> Turn your inspection report into a plan.</div>
+          <p>With Plus, Steadwell reads your home inspection report and lists the equipment to track and the problems to fix. You check everything before it is added to your home.</p>
+          {onUpgrade && <button type="button" className="btn btn-primary btn-sm" onClick={onUpgrade}>See Plus</button>}
+        </div>
+      ) : (
+        <div>
+          <p className="fc-lead">Upload the report your inspector sent you. A PDF works best. Steadwell lists the equipment and the problems it finds, and you choose what to add.</p>
+          <button type="button" className="fc-upload" onClick={() => fileRef.current?.click()} disabled={scanning}>
+            <span className="fc-upload-i" aria-hidden="true">{scanning ? <span className="fc-spin" /> : <FcIcon kind="warranty" size={26} />}</span>
+            <span className="fc-upload-t">{scanning ? "Reading your report…" : "Upload your inspection report"}</span>
+            <span className="fc-upload-s">{scanning ? "A long report can take a minute or two." : "PDF or photo, up to 15 MB and 100 pages"}</span>
+          </button>
+          <div role="status" aria-live="polite">{scanError && <p className="fc-err">{scanError}</p>}</div>
+          <p className="fc-priv" style={{ marginTop: ".9rem" }}>The report is read by a third-party AI provider to pull out the findings. Your report is not used for advertising.</p>
+        </div>
+      ))}
+      {phase === "review" && res && (
+        <div>
+          <div className="fc-note" role="status">
+            <b>Check what we read.</b> AI can misread a report. Compare this with yours and untick anything that does not belong.
+            {meta.property_address && <> This report is for <b>{meta.property_address}</b>. If that is not your home, close this and nothing is saved.</>}
+          </div>
+          {(meta.inspector_company || meta.inspection_date) && <p className="fc-quiet" style={{ marginTop: ".6rem" }}>{[meta.inspector_company, meta.inspection_date ? irNice(meta.inspection_date) : ""].filter(Boolean).join(", ")}</p>}
+
+          <div className="ir-head">
+            <div className="ir-h">Equipment to add ({res.items.length})</div>
+            {res.items.length > 0 && <div className="ir-bulk"><button type="button" className="fc-link" onClick={() => setAll(setPickItems, res.items, true)}>All</button><button type="button" className="fc-link" onClick={() => setAll(setPickItems, res.items, false)}>None</button></div>}
+          </div>
+          {res.items.length === 0 && <p className="fc-quiet">No equipment was listed in this report.</p>}
+          {res.items.map((it, i) => {
+            const bits = [[it.brand, it.model].filter(Boolean).join(" "), it.year_made ? `made ${it.year_made}` : it.age_years != null ? `about ${it.age_years} yrs old` : "", it.condition && it.condition !== "Good" ? it.condition : ""].filter(Boolean);
+            return (
+              <div className="ir-row" key={"i" + i}>
+                <FcCheck checked={!!pickItems[i]} onChange={v => setPickItems(p => ({ ...p, [i]: v }))} label={it.item}
+                  help={(bits.join(", ") || it.category) + (it.dupe ? ". Already in your home, so this starts unticked. Ticking adds a second entry." : "")} />
+              </div>
+            );
+          })}
+
+          <div className="ir-head">
+            <div className="ir-h">Findings to add as tasks ({res.findings.length})</div>
+            {res.findings.length > 0 && <div className="ir-bulk"><button type="button" className="fc-link" onClick={() => setAll(setPickFind, res.findings, true)}>All</button><button type="button" className="fc-link" onClick={() => setAll(setPickFind, res.findings, false)}>None</button></div>}
+          </div>
+          {res.findings.length === 0 && <p className="fc-quiet">No findings were listed in this report.</p>}
+          {res.findings.map((f, i) => {
+            const sev = IR_SEV[f.severity] || IR_SEV.repair;
+            const extra = [f.detail, f.recommended_action ? "Report says: " + f.recommended_action : "", `Due ${irNice(irDue(sev.days))}`, f.dupe ? "Already on your task list, so this starts unticked" : (f.severity === "monitor" ? "Starts unticked because it is a watch item" : "")].filter(Boolean).join(". ");
+            return (
+              <div className="ir-row" key={"f" + i}>
+                <FcCheck checked={!!pickFind[i]} onChange={v => setPickFind(p => ({ ...p, [i]: v }))}
+                  label={<><em className="ir-sev" style={{ color: sev.color, borderColor: sev.color }}>{sev.label}</em>{f.title}</>} help={extra} />
+              </div>
+            );
+          })}
+
+          <div className="ir-keep">
+            <FcCheck checked={keepCopy} onChange={setKeepCopy} label="Keep the report in Documents" help="Saved with your other home documents so you can find it later." />
+          </div>
+        </div>
+      )}
+      {phase === "done" && done && (
+        <div>
+          <p className="fc-lead" role="status">
+            {done.assets.length === 0 && done.tasks.length === 0 ? "Nothing was added." : <>Added {done.assets.length > 0 && <b>{done.assets.length} {done.assets.length === 1 ? "item" : "items"}</b>}{done.assets.length > 0 && done.tasks.length > 0 && " and "}{done.tasks.length > 0 && <b>{done.tasks.length} {done.tasks.length === 1 ? "task" : "tasks"}</b>} to your home.</>}
+            {done.doc && " The report is saved in Documents."}
+          </p>
+          {done.problems.map((p, i) => <p className="fc-warn" key={i}>{p}</p>)}
+          <p className="fc-quiet">Tasks are due based on how serious each finding is: 7 days for safety, 30 for major, 60 for repairs and 90 for maintenance. Change any date on the Tasks tab. Press Undo to remove everything this import added.</p>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ─── PRICING PAGE ─────────────────────────────────────────────────────────────
 const PRICING_FAQ = [
   ["Is Steadwell free?","Yes. The Free plan has no time limit and includes unlimited tasks, assets and expenses, warranty and recall alerts, utility and bill tracking, a contractor rolodex, email capture and 250 MB of document and photo storage for one property. No credit card is needed to start."],
   ["How much do Plus and Pro cost?","Plus is $7.99 a month or $63.99 a year. Pro is $14.99 a month or $119.99 a year. Paying yearly saves about 33% compared with paying monthly."],
-  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, property tax bills read and explained in plain English with a year-by-year comparison, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator, a home history report and 10 GB of document and photo storage."],
+  ["What do I get with Plus?","Plus adds the AI tools: scanning of receipts, appliance nameplates, utility bills and insurance policies, property tax bills read and explained in plain English with a year-by-year comparison, home inspection reports turned into equipment and tasks, condition assessments from photos (5 a month), Ask Steadwell (30 questions a month), AI before and after project reviews (3 a month), the home health score, the 5-year cost forecast, the project ROI calculator, a home history report and 10 GB of document and photo storage."],
   ["What do I get with Pro?","Pro includes everything in Plus with higher AI limits (25 condition assessments, 150 Ask Steadwell questions and 15 project reviews a month), up to three properties, shared access so you can invite a spouse or team member and assign tasks, 50 GB of document and photo storage and priority support."],
   ["How much storage do I get?","Photos, receipts and documents all count toward one storage total: 250 MB on Free (up to 5 files), 10 GB on Plus and 50 GB on Pro, shared across all three Pro properties. You can see what is using your space in Account Settings and the Documents tab, and deleting a file frees its space right away. Each file can be up to 50MB."],
   ["Can I cancel any time?","Yes. Cancel from Account Settings whenever you like. Cancelling stops future renewals right away, and you keep access until the end of the period you already paid for. Paid plans renew automatically until you cancel, and the Terms of Service have the full billing details."],
   ["Do I need a credit card to try Steadwell?","No. You can create a free account and use it for as long as you like without entering a card. A card is only needed if you choose Plus or Pro, and payments are handled by Stripe, so Steadwell never stores your card details."],
   ["Which plan do I need if I own more than one property?","Pro. Free and Plus cover one property, and Pro covers up to three, each with its own assets, tasks, documents and bills."],
-  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, reading and comparing property tax bills, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Typing in your fixed costs and property tax is free. Every account can see its overall home health score. Free storage is 250 MB and up to 5 files. Everything you track on Free stays yours if you ever change plans."],
+  ["What is limited on the Free plan?","The AI features. Free accounts get 3 Ask Steadwell questions to try, while scanning, reading and comparing property tax bills, importing home inspection reports, condition assessments, project reviews, the home health score breakdown and the cost forecast are part of Plus and Pro. Typing in your fixed costs and property tax is free. Every account can see its overall home health score. Free storage is 250 MB and up to 5 files. Everything you track on Free stays yours if you ever change plans."],
 ];
 
 // [feature, free, plus, pro]; true renders a check, false a dash, strings render as text
@@ -29297,6 +29617,7 @@ const PRICING_ROWS = [
   ["AI before and after project review", false, "3 a month", "15 a month"],
   ["Smart Fill from a model number", false, true, true],
   ["Read your property tax bill and see how it changed", false, true, true],
+  ["Import a home inspection report as equipment and tasks", false, true, true],
   { group:"Plan ahead" },
   ["Overall home health score", true, true, true],
   ["Home health score breakdown by factor", false, true, true],
@@ -29315,7 +29636,7 @@ function PricingPage() {
     { plan:"Free", price:"$0", period:" / month", annual:"No time limit, no card", desc:"Everything you need to get organized.", cta:"Get started free",
       features:["Unlimited tasks, assets and expenses","Warranty and recall alerts","Utility and bill tracking","Email capture and calendar sync","Contractor rolodex","250 MB of storage, 1 property"] },
     { plan:"Plus", price:"$7.99", period:" / month", annual:"or $63.99 a year, save 33%", desc:"AI tools and planning for the serious homeowner.", cta:"Start Plus", popular:true,
-      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Property tax bill reading and year-by-year comparison","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review","10 GB of storage"] },
+      features:["Everything in Free","AI scan of receipts, nameplates, bills and policies","Condition assessments, 5 a month","Ask Steadwell, 30 questions a month","Property tax bill reading and year-by-year comparison","Home inspection report import","Home health score breakdown and 5-year cost forecast","Project ROI calculator and AI project review","10 GB of storage"] },
     { plan:"Pro", price:"$14.99", period:" / month", annual:"or $119.99 a year, save 33%", desc:"More properties, shared access and higher limits.", cta:"Start Pro",
       features:["Everything in Plus","Up to 3 properties","Shared access, invite and assign tasks","25 assessments and 150 questions a month","50 GB of storage","Priority support"] },
   ];
