@@ -1,4 +1,4 @@
-// Steadwell v362 — 2026-10-12
+// Steadwell v363 — 2026-10-15
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12620,16 +12620,18 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
         .ilike("name", utilityName)
         .limit(1);
       let utilityId = existingUtils?.[0]?.id || null;
+      let billErr = null;
       if (!utilityId) {
-        const { data: newUtil } = await supabase
+        const { data: newUtil, error: utilErr } = await supabase
           .from("utilities")
           .insert({ user_id: userId, property_id: profile.id, name: utilityName, type: utilityType })
           .select("id")
           .single();
         utilityId = newUtil?.id || null;
+        billErr = utilErr;
       }
       if (utilityId) {
-        await supabase.from("utility_bills").insert({
+        const { error: insErr } = await supabase.from("utility_bills").insert({
           user_id:     userId,
           utility_id:  utilityId,
           bill_date:   finalData.bill_date || finalData.purchase_date || new Date().toISOString().slice(0, 10),
@@ -12639,6 +12641,13 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
           notes:       finalData.notes || null,
           ...(billSplit ? { line_items: billSplit } : {}),
         });
+        billErr = insErr;
+      }
+      // Never mark the capture as saved when the bill itself was not written.
+      if (billErr || !utilityId) {
+        setSaving(false);
+        window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: `Couldn't save this bill: ${(billErr && billErr.message) || "the utility could not be created"}`, type: "error" } }));
+        return;
       }
     }
 
@@ -18513,14 +18522,15 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     const usageNum = billEditData.usage === "" || billEditData.usage == null ? null : Number(billEditData.usage);
     payload.usage = Number.isFinite(usageNum) ? usageNum : null;
     payload.usage_unit = payload.usage != null ? (String(billEditData.usage_unit||"").trim() || UTIL_TYPES[activeUtil?.type]?.unit || null) : null;
+    // A failed save keeps the form open with everything typed or scanned, and says what the database refused.
     if(billEditId) {
       const {error} = await supabase.from("utility_bills").update(payload).eq("id",billEditId).eq("user_id",userId);
-      if(!error) { setBills(bills.map(b=>b.id===billEditId?{...payload,id:billEditId}:b)); toast("Bill updated ✓"); }
-      else toast("Error saving","error");
+      if(error) { toast(`Couldn't save this bill: ${error.message || "unknown error"}`,"error"); return; }
+      setBills(bills.map(b=>b.id===billEditId?{...payload,id:billEditId}:b)); toast("Bill updated ✓");
     } else {
       const {data,error} = await supabase.from("utility_bills").insert([{...payload,user_id:userId}]).select();
-      if(!error&&data) { setBills([...bills,data[0]]); toast("Bill logged ✓"); }
-      else toast("Error logging","error");
+      if(error || !data || !data[0]) { toast(`Couldn't save this bill: ${(error && error.message) || "no row was returned"}`,"error"); return; }
+      setBills([...bills,data[0]]); toast("Bill logged ✓");
     }
     setBillModal(false);
   };
