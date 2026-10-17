@@ -1,4 +1,4 @@
-// Steadwell v364 — 2026-10-15
+// Steadwell v365 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4843,7 +4843,7 @@ const LANDING_FAQ = [
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
-  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties."],
+  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties, and each home can have up to 10 people."],
   ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by a third-party AI provider, and Steadwell does not use your photos to train AI. The Privacy Policy explains exactly what is shared and why."],
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
@@ -20576,9 +20576,6 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
 }
 
 // ─── SHARED ACCESS PANEL ─────────────────────────────────────────────────────
-const SHARED_ACCESS_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/shared-access";
-const ANON_KEY_SA = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3lhbWVyb3F1ZmFvanVlcm5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDkzNTMsImV4cCI6MjA5NTU4NTM1M30.KhBFWGFqiVLtLBF7Y9nK2BjHqaGKR32E7ZOXUL_Rkmk";
-
 // Access levels for invited people. Only an explicit "full" sees expenses and projects;
 // any other stored value (including older invites) is the restricted level.
 const ACCESS_LEVELS = [
@@ -20588,7 +20585,20 @@ const ACCESS_LEVELS = [
 const accessKey = (role) => role === "full" ? "full" : "limited";
 const accessLabel = (role) => ACCESS_LEVELS.find(l => l.key === accessKey(role)).label;
 
-function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, toast }) {
+const INVITE_ERRORS = {
+  plan_required: "Shared access is part of the Pro plan.",
+  not_signed_in: "Your session has expired. Sign in again to send invites.",
+  bad_email: "Enter a valid email address.",
+  self_invite: "You can't invite yourself.",
+  bad_request: "Choose at least one home and enter an email address.",
+  email_failed: "The invite was saved, but the email did not send. Press Invite again to resend it.",
+};
+const SHARED_MAX_PER_HOME = 10;
+
+function SharedAccessPanel({ profile, homes = [], userId, userEmail, planData, onUpgrade, toast }) {
+  const [pickHomes, setPickHomes] = useState(() => ({ [profile?.id]: true }));
+  useEffect(() => { setPickHomes({ [profile?.id]: true }); }, [profile?.id]);
+  const homeName = h => h?.name || h?.address?.split(",")[0] || "My Home";
   const [members, setMembers]       = useState([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLevel, setInviteLevel] = useState("limited"); // least privilege unless the owner picks Full
@@ -20605,36 +20615,34 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
   }, [profile?.id, isGuest]);
 
   const sendInvite = async () => {
-    if (!inviteEmail.trim() || !inviteEmail.includes("@")) { toast("Enter a valid email", "error"); return; }
-    if (inviteEmail.toLowerCase() === userEmail.toLowerCase()) { toast("You can't invite yourself", "error"); return; }
+    const memberEmail = inviteEmail.trim().toLowerCase();
+    if (!memberEmail || !memberEmail.includes("@")) { toast("Enter a valid email", "error"); return; }
+    if (memberEmail === String(userEmail || "").toLowerCase()) { toast("You can't invite yourself", "error"); return; }
+    const ids = homes.length > 1 ? homes.filter(h => pickHomes[h.id]).map(h => h.id) : [profile.id];
+    if (ids.length === 0) { toast("Choose at least one home", "error"); return; }
     setSending(true);
     try {
-      const memberEmail = inviteEmail.trim().toLowerCase();
-      const resp = await fetch(SHARED_ACCESS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY_SA}` },
-        body: JSON.stringify({
-          ownerName:       ownerLabel(profile),
-          ownerEmail:      userEmail,
-          memberEmail,
-          propertyAddress: profile.address,
-          propertyId:      profile.id,
-          ownerId:         userId,
-        }),
-      });
-      const data = await resp.json();
-      if (!data.ok) { toast(data.error || "Invite failed", "error"); }
-      else {
-        // Record the chosen access level on the new invite.
-        const { error: roleErr } = await supabase.from("home_members")
-          .update({ role: inviteLevel })
-          .eq("property_id", profile.id).eq("member_email", memberEmail).eq("owner_id", userId);
-        if (roleErr && inviteLevel === "full") toast("Invite sent, but Full access could not be saved. They have Tasks & assets access for now.", "error");
-        else toast("Invite sent ✓");
-        setInviteEmail("");
-        // Refresh members list
-        const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id);
-        setMembers(updated || []);
+      // The server reads who you are from your login, checks you are on Pro and own each home, and sends one email.
+      const { data, error } = await supabase.functions.invoke("home-invite", { body: { memberEmail, level: inviteLevel, propertyIds: ids } });
+      if (error) {
+        let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
+        if (code === "plan_required" && onUpgrade) onUpgrade();
+        toast(INVITE_ERRORS[code] || "Could not send the invite. Try again.", "error");
+      } else {
+        const r = Array.isArray(data?.results) ? data.results : [];
+        const count = st => r.filter(x => x.status === st).length;
+        const sent = count("invited") + count("resent");
+        if (sent > 0) {
+          const extra = [count("already") ? `${count("already")} already had access` : "", count("full") ? `${count("full")} full (${SHARED_MAX_PER_HOME} people)` : ""].filter(Boolean).join(", ");
+          toast("Invite sent ✓" + (extra ? ` (${extra})` : ""));
+          setInviteEmail("");
+        } else if (count("full")) toast(`That home already has ${SHARED_MAX_PER_HOME} people. Remove someone to invite more.`, "error");
+        else if (count("already")) toast("This person already has access.", "error");
+        else toast("Could not send the invite. Try again.", "error");
+        if (ids.includes(profile.id)) {
+          const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id);
+          setMembers(updated || []);
+        }
       }
     } catch { toast("Could not send invite", "error"); }
     setSending(false);
@@ -20702,11 +20710,20 @@ function SharedAccessPanel({ profile, userId, userEmail, planData, onUpgrade, to
           {sending ? "Sending…" : "Invite"}
         </button>
       </div>
+      {homes.length > 1 && (
+        <div style={{margin:".1rem 0 .7rem"}}>
+          <div style={{fontSize:".78rem",fontWeight:700,color:"var(--dark)",marginBottom:".25rem"}}>Invite to these homes</div>
+          {homes.map(h => <FcCheck key={h.id} checked={!!pickHomes[h.id]} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} />)}
+        </div>
+      )}
       <select value={inviteLevel} onChange={e => setInviteLevel(e.target.value)} aria-label="Access level for the new invite" style={{width:"100%",marginBottom:".4rem"}}>
         {ACCESS_LEVELS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
       </select>
       <div style={{fontSize:".74rem",color:"#8A6D1E",background:"#FBF3DE",border:"1px solid #F0E0B0",borderRadius:10,padding:".5rem .7rem",lineHeight:1.5,marginBottom:"1rem"}}>
         <strong>{chosen.label}:</strong> {chosen.desc} Documents and receipt files are not shared.
+      </div>
+      <div style={{fontSize:".76rem",color:"#7A7370",lineHeight:1.5,marginBottom:"1rem"}}>
+        Each person needs a free Steadwell account using the email you invite. Up to {SHARED_MAX_PER_HOME} people per home.
       </div>
 
       {/* Members list */}
@@ -22390,6 +22407,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       {!showSetup && (
         <SharedAccessPanel
           profile={profile}
+          homes={allProfiles.filter(h => !h._shared)}
           userId={userId}
           userEmail={userEmail}
           planData={planData}
@@ -25200,6 +25218,11 @@ export default function App() {
       const pResult = await supabase.from("profiles").select("*").eq("user_id", uid).order("created_at", { ascending: true });
       const ownedProfiles = pResult.data || [];
 
+      // Accept any invites sent to this email first, so the shared homes are in the list below.
+      // This is done on the server by accept_home_invites(); the invite link no longer has to carry anything.
+      let acceptedNow = 0;
+      try { const { data: nAccepted } = await supabase.rpc("accept_home_invites"); acceptedNow = Number(nAccepted) || 0; } catch { /* not installed yet: nothing to accept */ }
+
       // Load shared memberships — wrapped in try/catch so 403 doesn't crash the app
       let sharedMembersResult = { data: [], error: null };
       try {
@@ -25236,7 +25259,10 @@ export default function App() {
         try { localStorage.removeItem(`sw_prop_${uid}`); } catch {}
         storedId = null;
       }
-      const activePid = storedId || allP[0]?.id || null;
+      // Someone who just accepted an invite and has not set up a home of their own lands on the shared home.
+      let activePid = storedId || null;
+      if (!activePid && acceptedNow > 0 && sharedProfiles.length > 0 && !ownedProfiles.some(p => p.home_setup_complete)) activePid = sharedProfiles[0].id;
+      activePid = activePid || allP[0]?.id || null;
 
       setActivePropertyIdRaw(activePid);
       const activeP = allP.find(p => p.id === activePid) || allP[0] || null;
@@ -25278,7 +25304,6 @@ export default function App() {
     // ── Handle return from Stripe Checkout
     const urlParams = new URLSearchParams(window.location.search);
     const sharedInvite = urlParams.get("shared_invite");
-    const inviteEmail  = urlParams.get("email");
     const upgraded     = urlParams.get("upgraded");
 
     if (upgraded === "1") {
@@ -25307,16 +25332,8 @@ export default function App() {
       }, 1500); // small delay to allow webhook to process
       window.history.replaceState({}, "", "/");
     }
-    if (sharedInvite && inviteEmail && session.user.email?.toLowerCase() === inviteEmail.toLowerCase()) {
-      supabase.from("home_members")
-        .update({ member_id: uid, status: "accepted", accepted_at: new Date().toISOString() })
-        .eq("property_id", sharedInvite)
-        .eq("member_email", inviteEmail.toLowerCase())
-        .then(() => {
-          // Clean URL
-          window.history.replaceState({}, "", "/");
-        });
-    }
+    // The invite link only opens the app. Acceptance happens above, by email address.
+    if (sharedInvite) { try { window.history.replaceState({}, "", "/"); } catch { /* ignore */ } }
   // Deliberately keyed on the user id, not the `session` object itself.
   // supabase-js's onAuthStateChange fires TOKEN_REFRESHED (roughly hourly,
   // and also on tab refocus if the token was near expiry) with a *new*
@@ -30293,6 +30310,7 @@ function HomeHealthScorePage() {
 const SHARED_FAQ = [
   ["What is shared access?","It lets you invite other people to a property in Steadwell: a spouse or partner, a co-owner, a property manager or a team member. Everyone you invite works from the same tasks and assets, and you can assign tasks to them."],
   ["Which plan includes it?","Shared access is included with the Pro plan, which also covers up to three properties."],
+  ["How many people can I invite?","Up to 10 people per home. You can invite the same person to several of your homes at once, and each person needs a free Steadwell account using the email you invited."],
   ["Can I assign tasks to the people I invite?","Yes. Once someone accepts your invite, they appear in the Assigned to menu when you add or edit a task. You can filter the task list by Assigned to me, Unassigned or by person, and the person you assigned can mark the task done."],
   ["Does it work for a rental property?","Yes, for the upkeep side of a rental. Invite your co-owner, property manager or handyman and give them tasks like the HVAC filter or the annual inspection, while warranties, service history and expenses stay in one place. Steadwell is home maintenance software, not tenant, lease or rent-collection software."],
   ["What can the people I invite see and do?","You choose a level for each person. Full access (a spouse, partner, co-owner or property manager) covers tasks, assets and warranties, service history, contractors, expenses and projects. Tasks & assets (a maintenance person or caretaker) covers tasks, assets and warranties, service history and contractors, and keeps your expenses and projects private. Documents and receipt files stay in your own account. You can change someone’s level or remove them at any time."],
