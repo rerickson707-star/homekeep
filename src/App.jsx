@@ -1,4 +1,4 @@
-// Steadwell v388 — 2026-10-17
+// Steadwell v389 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4493,6 +4493,8 @@ const accountName = (profile, user) => {
   const m = user?.user_metadata || {};
   return (m.full_name || m.name || m.first_name || profile?.name || "").trim();
 };
+// The short name a home goes by on screen: its nickname, else the first part of the address.
+const homeShortName = (p) => p?.name || p?.address?.split(",")[0] || "My Home";
 // First and last name kept on the auth user. Older accounts only have one full name, so split it at the first space.
 const splitPersonName = (user) => {
   const m = user?.user_metadata || {};
@@ -11563,7 +11565,7 @@ function AssistantHistoryToggle({ toast, compact = false }) {
   );
 }
 
-function AskSteadwell({ session, propertyId, profile, planData, warranties = [], tasks = [], setTasks, toast, onUpgrade, onOpenAsset, onNavigate, onOpenDocs, onOpenExpense }) {
+function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, warranties = [], tasks = [], setTasks, toast, onUpgrade, onOpenAsset, onNavigate, onOpenDocs, onOpenExpense }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
@@ -11740,6 +11742,7 @@ function AskSteadwell({ session, propertyId, profile, planData, warranties = [],
         <span className="ask-spark" aria-hidden="true">✨</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="ask-title">Ask Steadwell</div>
+          {homeCount > 1 && <div className="ask-scope" style={{fontSize:".74rem",color:"#7A7370",marginTop:".1rem"}}>Answering about <strong style={{color:"var(--dark)"}}>{homeShortName(profile)}</strong></div>}
           {pill && <div className="ask-pill" aria-live="polite">{pill}</div>}
         </div>
         {msgs.length > 0 && <button type="button" className="ask-icon-btn" onClick={() => { setMsgs([]); setInput(""); }} aria-label="Start a new conversation" title="New conversation">↺</button>}
@@ -11750,7 +11753,7 @@ function AskSteadwell({ session, propertyId, profile, planData, warranties = [],
         {msgs.length === 0 && (
           <div className="ask-empty">
             <div className="ask-empty-title">Ask anything about your home</div>
-            <div className="ask-empty-sub">I read your assets, warranties, tasks, service history, expenses and documents, then help you plan what's next.</div>
+            <div className="ask-empty-sub">I read the assets, warranties, tasks, service history, expenses and documents for {homeCount > 1 ? homeShortName(profile) : "your home"}, then help you plan what's next.</div>
             <div className="ask-chips">
               {suggestions.map(s => <button key={s} type="button" className="ask-chip" disabled={atLimit} onClick={() => send(s)}>{s}</button>)}
             </div>
@@ -11848,7 +11851,7 @@ function AskSteadwell({ session, propertyId, profile, planData, warranties = [],
 const PLAN_ASK_LIMITS = { plus: 30, pro: 150 };
 
 
-function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], userId, onNavigate, onOpenAsset, onNavigateToTask, onOpenExpense, onOpenDocs }) {
+function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[], projects=[], userId, propertyId, homeLabel="", homeCount=1, onNavigate, onOpenAsset, onNavigateToTask, onOpenExpense, onOpenDocs }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -11868,14 +11871,23 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
     if (mobileOpen && inputRef.current) inputRef.current.focus();
   }, [mobileOpen]);
 
-  // Documents live in their own table; fetch names only when search is opened.
+  // Search covers the home on screen only. Documents and projects are read for that home each time search opens,
+  // and whatever was loaded for another home is dropped the moment the home changes.
+  const [projList, setProjList] = useState(null);
+  useEffect(() => { setDocs([]); setProjList(null); }, [propertyId]);
   useEffect(() => {
     if (!open || !userId) return;
     let off = false;
-    fetchHomeDocs(userId, "id,name,description,category")
+    fetchHomeDocs(userId, "id,name,description,category,property_id")
       .then(({ data }) => { if (!off && data) setDocs(data); });
+    if (propertyId) {
+      supabase.from("projects").select("id,name,description,category,status,budget,property_id").eq("property_id", propertyId)
+        .then(({ data }) => { if (!off && data) setProjList(data); });
+    }
     return () => { off = true; };
-  }, [open, userId]);
+  }, [open, userId, propertyId]);
+  // Anything not recorded against this home (an old row from before homes, or a leftover from another home) is left out.
+  const inHome = (r) => !propertyId || !r?.property_id || r.property_id === propertyId;
   useEffect(() => { setExpandedGroups({}); }, [q]);
 
   const trimmed = q.trim().toLowerCase();
@@ -11887,6 +11899,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       limit: 4,
       icon: "🔧",
       items: warranties
+        .filter(inHome)
         .filter(w => match(w.item) || match(w.brand) || match(w.model) || match(w.serial_number) || match(w.category))
         .map(w => ({
           id:     w.id,
@@ -11902,6 +11915,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       limit: 3,
       icon: "✓",
       items: tasks
+        .filter(inHome)
         .filter(t => match(t.title) || match(t.category) || match(t.notes))
         .map(t => {
           const d = daysTo(t.due_date);
@@ -11920,6 +11934,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       limit: 3,
       icon: "💸",
       items: expenses
+        .filter(inHome)
         .filter(e => match(e.description) || match(e.category) || match(e.vendor))
         .map(e => ({
           id:     e.id,
@@ -11934,6 +11949,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       limit: 2,
       icon: "⚙️",
       items: serviceLogs
+        .filter(inHome)
         .filter(s => match(s.description) || match(s.vendor) || match(s.notes))
         .map(s => {
           const asset = warranties.find(w => w.id === s.asset_id);
@@ -11950,7 +11966,8 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       label: "Projects",
       limit: 2,
       icon: "🔨",
-      items: (projects || [])
+      items: (projList || projects || [])
+        .filter(inHome)
         .filter(p => match(p.name) || match(p.description) || match(p.category))
         .map(p => ({
           id:     p.id,
@@ -11965,6 +11982,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       icon: "📄",
       limit: 3,
       items: docs
+        .filter(inHome)
         .filter(d => match(d.name) || match(d.description) || match((DOC_CATEGORIES.find(c=>c.id===d.category)||{}).label))
         .map(d => ({
           id:     d.id,
@@ -12034,6 +12052,9 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       />
       {showDropdown && (
         <div className="search-results">
+          {homeCount > 1 && homeLabel && (
+            <div className="sr-scope" style={{padding:".4rem .85rem",fontSize:".72rem",color:"#7A7370",background:"var(--cream)",borderBottom:"1px solid var(--stone)"}}>Searching <strong style={{color:"var(--dark)"}}>{homeLabel}</strong>. Switch homes to search another.</div>
+          )}
           {trimmed.length < 2 && (
             <>
               <div className="sr-item sr-ask" role="button" tabIndex={0} onClick={()=>askAI("")} onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); askAI(""); } }}>
@@ -12079,7 +12100,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
 
           {trimmed.length >= 2 && !hasResults && !isQuestion && (
             <div style={{padding:".85rem",textAlign:"center"}}>
-              <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",marginBottom:".25rem"}}>Nothing found for "{trimmed}"</div>
+              <div style={{fontSize:".82rem",fontWeight:600,color:"var(--dark)",marginBottom:".25rem"}}>Nothing found for "{trimmed}"{homeCount > 1 && homeLabel ? <> in {homeLabel}</> : null}</div>
               <div style={{fontSize:".74rem",color:"#A8A09A",lineHeight:1.5}}>
                 Searches assets, tasks, expenses, service logs, projects, and contractors
               </div>
@@ -26105,6 +26126,9 @@ export default function App() {
             contractors={contractors}
             projects={projects}
             userId={uid}
+            propertyId={activePropertyId}
+            homeLabel={homeShortName(profile)}
+            homeCount={allProfiles.length}
             onOpenDocs={()=>{setShowWarrantyModule(false);setShowContractors(false);setShowDocs(true);}}
             onNavigate={(t)=>{setShowWarrantyModule(false);setTab(t);}}
             onOpenAsset={(id)=>{
@@ -26268,6 +26292,7 @@ export default function App() {
           session={session}
           propertyId={activePropertyId}
           profile={profile}
+          homeCount={allProfiles.length}
           planData={planData}
           warranties={warranties}
           tasks={tasks}
