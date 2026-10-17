@@ -1,4 +1,4 @@
-// Steadwell v374 — 2026-10-17
+// Steadwell v375 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6793,6 +6793,48 @@ function AcctCard({ title, sub, children }) {
     </section>
   );
 }
+// Which team emails this person wants. No saved row means everything is on.
+const TEAM_NOTIFY = [
+  { key:"task_assigned",   title:"A task is assigned to me",  desc:"When someone gives you a task on a shared home." },
+  { key:"task_completed",  title:"A task I created is done",  desc:"When someone marks a task you created as Completed." },
+  { key:"invite_accepted", title:"An invitation is accepted", desc:"When someone you invited joins your home or account." },
+  { key:"member_left",     title:"Someone leaves or is removed", desc:"When a person stops having access to your homes." },
+];
+function TeamNotifyPrefs({ userId, toast }) {
+  const [prefs, setPrefs] = useState(null);   // null = loading, false = not available
+  const [busy, setBusy] = useState("");
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      if (!userId) return;
+      const { data, error } = await supabase.from("notification_prefs").select("*").eq("user_id", userId).maybeSingle();
+      if (!live) return;
+      if (error) { setPrefs(false); return; }
+      const base = {}; TEAM_NOTIFY.forEach(n => { base[n.key] = data ? data[n.key] !== false : true; });
+      setPrefs(base);
+    })();
+    return () => { live = false; };
+  }, [userId]);
+  if (prefs === null || prefs === false) return null;
+  const flip = async (key) => {
+    if (busy) return;
+    const next = !prefs[key];
+    setBusy(key);
+    setPrefs(p => ({ ...p, [key]: next }));
+    const { error } = await supabase.from("notification_prefs").upsert({ user_id: userId, [key]: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (error) { setPrefs(p => ({ ...p, [key]: !next })); toast("Could not update — try again", "error"); }
+    else toast(next ? "Turned on ✓" : "Turned off ✓");
+    setBusy("");
+  };
+  return (
+    <AcctCard title="Team activity" sub="Emails about the people you share a home with. Each one is sent right away.">
+      {TEAM_NOTIFY.map(n => (
+        <AcctToggleRow key={n.key} on={prefs[n.key]} busy={busy === n.key} onClick={() => flip(n.key)} title={n.title} desc={n.desc} />
+      ))}
+    </AcctCard>
+  );
+}
+
 function AcctToggleRow({ on, busy, onClick, title, desc }) {
   return (
     <div className="acct-row" style={{alignItems:"flex-start"}}>
@@ -7193,6 +7235,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                 title="Weekly digest & task reminders" desc="A weekly summary of what's coming up, plus reminders for due and overdue tasks and warranty alerts."/>
               <div className="acct-hint">Time-sensitive alerts — warranties expiring within 7 days — and account or security emails are always sent, even when this is off.</div>
             </AcctCard>
+            <TeamNotifyPrefs userId={session?.user?.id} toast={toast} />
             <AcctCard title="What we send">
               {[
                 ["📋","Task reminders","Due soon and overdue maintenance",emailDigest,"On","Off"],
@@ -13657,7 +13700,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
         const { assigned_to: _drop, ...rest } = payload; assignDropped = true;
         ({error} = await supabase.from("tasks").update(rest).eq("id",editId).eq("property_id",propertyId));
       }
-      if(!error) { setTasks(tasks.map(t=>t.id===editId?{...t,...payload,id:editId}:t)); toast(assignDropped ? "Task updated, but assignment could not be saved yet" : "Task updated ✓", assignDropped ? "error" : undefined); }
+      if(!error) { setTasks(tasks.map(t=>t.id===editId?{...t,...payload,id:editId}:t)); pingNotifications(); toast(assignDropped ? "Task updated, but assignment could not be saved yet" : "Task updated ✓", assignDropped ? "error" : undefined); }
       else toast("Error saving","error");
     } else {
       let {data,error} = await supabase.from("tasks").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
@@ -13665,7 +13708,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
         const { assigned_to: _drop, ...rest } = payload; assignDropped = true;
         ({data,error} = await supabase.from("tasks").insert([{...rest,user_id:userId,property_id:propertyId}]).select());
       }
-      if(!error&&data) { setTasks([...tasks,data[0]]); toast(assignDropped ? "Task added, but assignment could not be saved yet" : "Task added ✓", assignDropped ? "error" : undefined); }
+      if(!error&&data) { setTasks([...tasks,data[0]]); pingNotifications(); toast(assignDropped ? "Task added, but assignment could not be saved yet" : "Task added ✓", assignDropped ? "error" : undefined); }
       else toast("Error adding","error");
     }
     setModal(false);
@@ -13681,6 +13724,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     const {error} = await supabase.from("tasks").update({status:s}).eq("id",t.id).eq("property_id",propertyId);
     if(!error) {
       setTasks(tasks.map(x=>x.id===t.id?{...x,status:s}:x));
+      if (s === "Completed") pingNotifications();
       const prevStatus = t.status;
       let nextId = null, logId = null, prevServiced = null, toastMsg = `Marked as ${s} ✓`;
 
@@ -20663,12 +20707,24 @@ const PEOPLE_ERRORS = {
   not_found: "That person isn't on this account any more. Refresh and try again.",
   bad_request: "Check the email addresses and homes, then try again.",
 };
+// Asks the server to send any emails that team activity queued (task assigned, invite accepted, someone left).
+// What to send and to whom comes from the database, so this carries no data. Failures are retried on the next ping.
+let _notifyTimer = null;
+function pingNotifications(immediate = false) {
+  const run = async () => { try { await supabase.functions.invoke("send-notifications", { body: {} }); } catch { /* sent on the next ping */ } };
+  if (immediate) return run();
+  clearTimeout(_notifyTimer);
+  _notifyTimer = setTimeout(run, 1500);
+  return Promise.resolve();
+}
+
 async function callPeople(action, body) {
   const { data, error } = await supabase.functions.invoke("home-people", { body: { action, ...body } });
   if (error) {
     let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
     return { error: code || "failed" };
   }
+  if (action === "remove" || action === "remove_admin") pingNotifications();
   return { data };
 }
 
@@ -20684,6 +20740,7 @@ function LeaveHome({ profile }) {
       const { data, error } = await supabase.rpc("leave_home", { p_property: profile.id });
       if (error) throw error;
       if (!(Number(data) > 0)) throw new Error("nothing changed");
+      await pingNotifications(true);   // tell the owner before this page reloads
       window.location.reload();
     } catch { setStep("error"); }
   };
@@ -25468,6 +25525,7 @@ export default function App() {
       // This is done on the server by accept_home_invites(); the invite link no longer has to carry anything.
       let acceptedNow = 0;
       try { const { data: nAccepted } = await supabase.rpc("accept_home_invites"); acceptedNow = Number(nAccepted) || 0; } catch { /* not installed yet: nothing to accept */ }
+      pingNotifications();   // sends anything team activity queued, including "invite accepted" for the owner
 
       // Load shared memberships — wrapped in try/catch so 403 doesn't crash the app
       let sharedMembersResult = { data: [], error: null };
