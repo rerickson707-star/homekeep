@@ -1,4 +1,4 @@
-// Steadwell v383 — 2026-10-17
+// Steadwell v385 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4871,7 +4871,7 @@ const LANDING_FAQ = [
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
-  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties. Each home can have up to 10 people, and you can add as many Admins as you like to invite and manage people for you."],
+  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties. There is no limit on how many people you can invite to a home, and you can add as many Admins as you like to invite and manage people for you."],
   ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by a third-party AI provider, and Steadwell does not use your photos to train AI. The Privacy Policy explains exactly what is shared and why."],
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
@@ -20760,13 +20760,12 @@ const stripPrivateFields = (row, role) => {
   return out;
 };
 const accessLabel = (role) => ACCESS_LEVELS.find(l => l.key === accessKey(role)).label;
-const PEOPLE_MAX_PER_HOME = 10;
 const PEOPLE_ERRORS = {
   plan_required: "Shared access is part of the Pro plan.",
   not_signed_in: "Your session has expired. Sign in again.",
   owner_only: "Only the account owner can do that.",
   not_yours: "That home isn't part of this account.",
-  too_many: "You can invite up to 10 people at a time.",
+  too_many: "Invite up to 50 people at a time. You can send more in another batch.",
   nothing_pending: "There is no pending invite for that person.",
   not_found: "That person isn't on this account any more. Refresh and try again.",
   bad_request: "Check the email addresses and homes, then try again.",
@@ -20934,7 +20933,6 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     if (r.status === "email_failed") return "was saved, but the email did not send. Use Resend on their row below";
     if (r.status === "already") return "already has access";
     const st = (r.homes || []).map(x => x.status);
-    if (st.includes("full")) return `can't be added because that home already has ${PEOPLE_MAX_PER_HOME} people`;
     if (st.includes("already_admin")) return "is already an Admin";
     if (st.includes("owner")) return "is the account owner";
     if (st.includes("already")) return "already has access to those homes";
@@ -21064,7 +21062,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
   const emailCount = emailList.length;
   const pickedCount = level === "admin" ? 1 : homes.filter(h => isPicked(h.id)).length;
   const sendBlock = emailCount === 0 ? "Add an email address to send an invite."
-    : emailCount > 10 ? "Invite up to 10 people at a time."
+    : emailCount > 50 ? "Invite up to 50 people at a time. Send the rest in another batch."
     : pickedCount === 0 ? "Choose at least one home."
     : "";
   const sendLabel = emailCount > 1 ? `Send ${emailCount} invites` : "Send invite";
@@ -21091,7 +21089,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
 
         <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
         <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => setEmailsText(e.target.value)} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
-        <div className="fc-quiet">Add up to 10 at once, separated by commas, spaces or new lines.</div>
+        <div className="fc-quiet">Separate addresses with commas, spaces or new lines.</div>
 
         <div className="pp-lab" id="pp-role-lab">What they can do</div>
         <div className="pp-roles" role="radiogroup" aria-labelledby="pp-role-lab">
@@ -30727,14 +30725,14 @@ function HomeHealthScorePage() {
 const SHARED_FAQ = [
   ["What is shared access?","It lets you invite other people to a property in Steadwell: a spouse or partner, a co-owner, a property manager or a team member. Everyone you invite works from the same tasks and assets, and you can assign tasks to them."],
   ["Which plan includes it?","Shared access is included with the Pro plan, which also covers up to three properties."],
-  ["How many people can I invite?","Up to 10 people per home, and as many Admins as you need. You can invite several people at once, choose which homes each one can work on, and each person needs a free Steadwell account using the email you invited."],
+  ["How many people can I invite?","As many as you need. There is no limit on people or Admins, and no extra charge per person. You can invite several people at once, choose which homes each one can work on, and each person needs a free Steadwell account using the email you invited."],
   ["What is an Admin?","An Admin has full access to every home on your account, including homes you add later, and can invite, change and remove the other people. Use it for a partner or property manager who runs things with you. Only you can add or remove Admins, and Admins cannot add or delete homes or change billing."],
   ["Can I assign tasks to the people I invite?","Yes. Once someone accepts your invite, they appear in the Assigned to menu when you add or edit a task. You can filter the task list by Assigned to me, Unassigned or by person, and the person you assigned can mark the task done."],
   ["Does it work for a rental property?","Yes, for the upkeep side of a rental. Invite your co-owner, property manager or handyman and give them tasks like the HVAC filter or the annual inspection, while warranties, service history and expenses stay in one place. Steadwell is home maintenance software, not tenant, lease or rent-collection software."],
-  ["What can the people I invite see and do?","You choose a level for each person. Full access (a spouse, partner, co-owner or property manager) covers tasks, assets and warranties, service history, contractors, expenses and projects. Tasks & assets (a maintenance person or caretaker) covers tasks, assets and warranties, service history and contractors, and keeps your expenses and projects private. Documents and receipt files stay in your own account. You can change someone’s level or remove them at any time."],
-  ["How do I invite someone?","Open the Shared Access card for your property, enter their email address and tap Invite. They receive an email, and you can see whether the invite is pending or active."],
-  ["Can I remove someone later?","Yes. You can remove access at any time from the same card."],
-  ["Do I invite people separately for each property?","Yes. Invitations are per property, so you decide who sees each home."],
+  ["What can the people I invite see and do?","You choose a level for each person. Full access (a spouse, partner, co-owner or property manager) covers tasks, assets and warranties, service history, contractors, expenses and projects. Tasks & assets (a maintenance person or caretaker) covers tasks, assets and warranties, service history and contractors, and keeps your expenses and projects private. Full access people also see the home’s documents and receipt files; Tasks & assets people do not. An Admin has everything Full access has, plus inviting and managing people. You can change someone’s level or remove them at any time, and each person is emailed when their access changes."],
+  ["How do I invite someone?","Open My Home and choose Manage people on the People card, enter one or more email addresses, pick a level and tick the homes they should have, then tap Send invite. Each person gets one email listing their homes. They sign in or create a free Steadwell account with that email, confirm it, and the homes appear. You can see whether each invite is pending or active."],
+  ["Can I remove someone later?","Yes. You can remove access at any time from the same card, and people can also leave a home themselves. If you close your account, everyone you invited loses access right away."],
+  ["Do I invite people separately for each property?","No. One invite can cover several homes, and you choose which homes each person gets. Their level is set per home, so a gardener can be on one property while your property manager is on all three."],
 ];
 
 function SharedHouseholdAccessPage() {
@@ -30747,7 +30745,7 @@ function SharedHouseholdAccessPage() {
     jsonLd: lpJsonLd({
       name:"Steadwell Shared Access",
       path, description,
-      features:["Invite a spouse, partner, property manager or team member by email","Choose Full access or Tasks & assets access for each person","Assign tasks to the people you invite","Filter tasks by person","Shared tasks, assets and service history","See pending and active invites","Remove access at any time","Up to three properties on Pro"],
+      features:["Invite a spouse, partner, property manager, housekeeper or gardener by email","Choose Admin, Full access or Tasks & assets access for each person, home by home","Assign tasks to the people you invite","Filter tasks by person","Shared tasks, assets and service history","See pending and active invites","Remove access at any time","Up to three properties on Pro"],
       faq: SHARED_FAQ,
       offers:[{name:"Pro",price:"14.99"}],
     }),
@@ -30780,9 +30778,9 @@ function SharedHouseholdAccessPage() {
           <LPSectionHead h2="How it works"/>
           <LPGrid gap={16}>
             {[
-              {num:"01",title:"Open Shared Access",text:"Find the Shared Access card for your property in Steadwell."},
-              {num:"02",title:"Invite and choose access",text:"Enter their email address, pick Full access or Tasks & assets, and tap Invite."},
-              {num:"03",title:"They accept",text:"They receive an email invitation. Until they accept, the invite shows as pending."},
+              {num:"01",title:"Open Manage people",text:"Find the People card on My Home in Steadwell and choose Manage people."},
+              {num:"02",title:"Invite and choose access",text:"Enter one or more email addresses, pick Admin, Full access or Tasks & assets, tick the homes, and tap Send invite."},
+              {num:"03",title:"They accept",text:"They get one email listing their homes, sign in with that address and confirm it. Until then the invite shows as pending, and you get an email when they join."},
               {num:"04",title:"Assign and manage together",text:"Once active, choose them in the Assigned to menu on any task, and filter the list by person."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
@@ -30792,8 +30790,8 @@ function SharedHouseholdAccessPage() {
           <LPSectionHead h2="Know what you are sharing" sub="Shared access is simple on purpose."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
             {[
-              {t:"You choose what each person sees",d:"Full access covers tasks, assets, service history, contractors, expenses and projects. Tasks & assets keeps your expenses and projects private. You can change it any time."},
-              {t:"You decide who and where",d:"Invitations are per property, and you can remove someone at any time from the same card. Documents and receipt files stay in your own account."},
+              {t:"You choose what each person sees",d:"Full access covers tasks, assets, service history, contractors, documents, expenses and projects. Tasks & assets keeps documents, expenses, projects and insurance private. You can change it any time."},
+              {t:"You decide who and where",d:"Access is set home by home, and you can remove someone at any time from the same card. Everything in a home belongs to that home’s owner, including what the people you invite add to it."},
               {t:"Maintenance, not tenant management",d:"Steadwell keeps the home’s upkeep, warranties, documents and costs organized. It does not handle leases, rent or tenant screening."},
             ].map((s,i)=>(
               <LPCard key={i}>
