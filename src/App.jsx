@@ -1,4 +1,4 @@
-// Steadwell v386 — 2026-10-17
+// Steadwell v387 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4493,6 +4493,17 @@ const accountName = (profile, user) => {
   const m = user?.user_metadata || {};
   return (m.full_name || m.name || m.first_name || profile?.name || "").trim();
 };
+// First and last name kept on the auth user. Older accounts only have one full name, so split it at the first space.
+const splitPersonName = (user) => {
+  const m = user?.user_metadata || {};
+  if (m.first_name || m.last_name) return { first: String(m.first_name || "").trim(), last: String(m.last_name || "").trim() };
+  const full = String(m.full_name || m.name || "").trim();
+  const i = full.indexOf(" ");
+  return i < 0 ? { first: full, last: "" } : { first: full.slice(0, i).trim(), last: full.slice(i + 1).trim() };
+};
+// True when the person has given (or their sign-in provider supplied) any name of their own. Home nicknames do not count.
+const hasPersonName = (user) => { const m = user?.user_metadata || {}; return !!String(m.full_name || m.name || m.first_name || "").trim(); };
+const personNameData = (first, last) => { const f = first.trim(), l = last.trim(); return { full_name: [f, l].filter(Boolean).join(" "), first_name: f, last_name: l }; };
 
 // Reports and invites label the home's owner with the person's own name (never the
 // home nickname in profiles.name). App sets this each render; shared homes keep
@@ -5607,6 +5618,57 @@ const ONBOARDING_GOALS = [
   { id:"warranties",  label:"Organize warranties & insurance",sub:"Never lose a policy or warranty card again",   ico:"🔒" },
 ];
 
+// Shown to someone who was invited but has not verified their email yet, instead of the new-home setup.
+function InviteWaitScreen({ email, resendState, onResend, onOwnHome }) {
+  const [checking, setChecking] = useState(false);
+  const check = async () => { setChecking(true); try { await supabase.auth.refreshSession(); } catch {} window.location.reload(); };
+  return (
+    <div className="onb-screen">
+      <div className="onb-inner">
+        <div className="onb-q">Your invitation is waiting</div>
+        <div className="onb-hint">Verify <strong>{email}</strong> to see the home that was shared with you. We sent a link when you signed up.</div>
+        <button className="onb-btn" disabled={checking} onClick={check}>{checking ? "Checking…" : "I've verified my email"}</button>
+        <div style={{marginTop:"1rem",display:"flex",flexDirection:"column",gap:".6rem",alignItems:"center"}}>
+          {resendState === "sent"
+            ? <span style={{color:"#234A3D",fontWeight:600}}>Email sent. Check your inbox.</span>
+            : <button className="btn btn-ghost btn-sm" disabled={resendState === "sending"} onClick={onResend}>{resendState === "sending" ? "Sending…" : "Send the verification email again"}</button>}
+          <button type="button" onClick={onOwnHome} style={{background:"none",border:"none",color:"#5E574F",textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:".9rem"}}>Set up my own home instead</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Shown once to an invited person who has no name on file, so the people they work with see who they are.
+function InviteNameScreen({ onSaved }) {
+  const [first, setFirst] = useState("");
+  const [last, setLast] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const ready = first.trim() && last.trim();
+  const save = async () => {
+    if (!ready || saving) return;
+    setSaving(true); setErr("");
+    const data = personNameData(first, last);
+    const { error } = await supabase.auth.updateUser({ data });
+    setSaving(false);
+    if (error) { setErr("We couldn't save your name. Try again."); return; }
+    onSaved(data.full_name);
+  };
+  return (
+    <div className="onb-screen">
+      <div className="onb-inner">
+        <div className="onb-q">What's your name?</div>
+        <div className="onb-hint">The people who shared a home with you will see it next to your tasks.</div>
+        <input className="onb-input" autoFocus value={first} autoComplete="given-name" aria-label="First name" onChange={e => setFirst(e.target.value)} placeholder="First name" />
+        <input className="onb-input" value={last} autoComplete="family-name" aria-label="Last name" style={{marginTop:".75rem"}} onChange={e => setLast(e.target.value)} placeholder="Last name" onKeyDown={e => e.key === "Enter" && save()} />
+        {err && <div role="alert" style={{color:"#B0432B",fontSize:".85rem",marginTop:".5rem"}}>{err}</div>}
+        <button className="onb-btn" disabled={!ready || saving} onClick={save}>{saving ? "Saving…" : "Continue →"}</button>
+      </div>
+    </div>
+  );
+}
+
 function OnboardingWizard({ session, onComplete, onCheckout }) {
   const TOTAL = 5;
   const [chosenPlan, setChosenPlan] = useState(null); // forced plan choice — nothing pre-selected
@@ -5654,7 +5716,9 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   };
 
   // Step 1 — Name
-  const [name, setName] = useState(() => loadOnbData().name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
+  const [first, setFirst] = useState(() => { const d = loadOnbData(); return d.first ?? (d.name ? String(d.name).split(" ")[0] : splitPersonName(session?.user).first); });
+  const [last, setLast] = useState(() => { const d = loadOnbData(); return d.last ?? (d.name ? String(d.name).split(" ").slice(1).join(" ") : splitPersonName(session?.user).last); });
+  const name = [first.trim(), last.trim()].filter(Boolean).join(" ");
 
   // Step 2 — Address
   const [address, setAddress]         = useState(() => loadOnbData().address || "");
@@ -5672,7 +5736,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
   const [hearAbout, setHearAbout] = useState(() => loadOnbData().hearAbout ?? null);
 
   // Keep the persisted copy in sync as each answer changes.
-  useEffect(() => { saveOnbData({name}); }, [name]);
+  useEffect(() => { saveOnbData({first, last}); }, [first, last]);
   useEffect(() => { saveOnbData({address, selectedAddress, lookupState, propertyData}); }, [address, selectedAddress, lookupState, propertyData]);
   useEffect(() => { saveOnbData({goals}); }, [goals]);
   useEffect(() => { saveOnbData({hearAbout}); }, [hearAbout]);
@@ -5822,7 +5886,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
     const uid = session.user.id;
     try {
       const payload = {
-        user_id: uid, name: name.trim(), goal: goals.length ? goals.join(",") : null, onboarding_complete: true,
+        user_id: uid, name: first.trim(), goal: goals.length ? goals.join(",") : null, onboarding_complete: true,
         referred_by: (() => { const m = document.cookie.match(/(^| )rw_via=([^;]+)/); return m ? decodeURIComponent(m[2]) : (hearAbout || null); })(),
         address: propertyData?.address || address || "",
         type: propertyData?.type || "", year: propertyData?.year || "",
@@ -5848,7 +5912,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
         else await supabase.from("profiles").insert([core]);
       }
       // Keep the person's own name on the auth user too, separate from the home nickname.
-      if (name.trim()) { try { await supabase.auth.updateUser({ data: { full_name: name.trim() } }); } catch {} }
+      if (name) { try { await supabase.auth.updateUser({ data: personNameData(first, last) }); } catch {} }
       try { sessionStorage.removeItem(ONB_STEP_KEY); sessionStorage.removeItem(ONB_DATA_KEY); } catch {}
 
       // ── Gift redemption: if user came via agent gift link, activate Plus ──
@@ -5894,7 +5958,7 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
 
 
   const pct = `${Math.round((step / TOTAL) * 100)}%`;
-  const firstName = name.split(" ")[0];
+  const firstName = first.trim();
 
   const Wordmark = () => (
     <div className="onb-wordmark">
@@ -6100,15 +6164,20 @@ function OnboardingWizard({ session, onComplete, onCheckout }) {
       <div className="onb-inner">
         <div className="onb-step">Step 1 of {TOTAL}</div>
         <div className="onb-q">What's your name?</div>
-        <div className="onb-hint">We'll use this to personalize your experience.</div>
+        <div className="onb-hint">We'll use this to personalize your experience, and so the people you share your home with know who you are.</div>
         <input
-          className="onb-input" autoFocus value={name}
-          onChange={e => setName(e.target.value)}
+          className="onb-input" autoFocus value={first} autoComplete="given-name" aria-label="First name"
+          onChange={e => setFirst(e.target.value)}
           placeholder="First name"
-          onKeyDown={e => e.key === "Enter" && name.trim() && setStep(2)}
         />
-        <button className="onb-btn" disabled={!name.trim()} onClick={() => setStep(2)}>
-          {name.trim() ? `Continue, ${firstName} →` : "Continue →"}
+        <input
+          className="onb-input" value={last} autoComplete="family-name" aria-label="Last name" style={{marginTop:".75rem"}}
+          onChange={e => setLast(e.target.value)}
+          placeholder="Last name"
+          onKeyDown={e => e.key === "Enter" && first.trim() && last.trim() && setStep(2)}
+        />
+        <button className="onb-btn" disabled={!first.trim() || !last.trim()} onClick={() => setStep(2)}>
+          {first.trim() ? `Continue, ${firstName} →` : "Continue →"}
         </button>
       </div>
     </div>
@@ -6721,22 +6790,26 @@ const CANCEL_SUBSCRIPTION_URL = "https://hjkyameroqufaojuerns.supabase.co/functi
 // password from within the app at all.
 function NameAndPasswordSection({ profile, setProfile, userId, user, toast, part }) {
   const shownName = accountName(profile, user);
-  const [name, setName] = useState(shownName);
+  const own = splitPersonName(user);
+  const [first, setFirst] = useState(own.first);
+  const [last, setLast] = useState(own.last);
+  const savedFull = personNameData(own.first, own.last).full_name;
   const [savingName, setSavingName] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
-  useEffect(() => { setName(shownName); }, [shownName]);
+  useEffect(() => { const o = splitPersonName(user); setFirst(o.first); setLast(o.last); }, [user?.user_metadata?.full_name, user?.user_metadata?.first_name, user?.user_metadata?.last_name]);
 
   const saveName = async () => {
-    const trimmed = name.trim();
-    if (!trimmed || trimmed === shownName) return;
+    const next = personNameData(first, last);
+    const trimmed = next.full_name;
+    if (!first.trim() || !last.trim() || trimmed === savedFull) return;
     setSavingName(true);
     // The person's name lives ONLY on the auth user. profiles.name is the home's
     // nickname ("My Home", "Lake House") and must never be written from here.
-    const { error: authErr } = await supabase.auth.updateUser({ data: { full_name: trimmed } });
+    const { error: authErr } = await supabase.auth.updateUser({ data: next });
     if (!authErr) { setOwnerNameCache(trimmed); toast("Name updated ✓"); }
     else toast("Could not update name — try again", "error");
     setSavingName(false);
@@ -6760,8 +6833,9 @@ function NameAndPasswordSection({ profile, setProfile, userId, user, toast, part
       {showName && (
         <div className="acct-form" style={{marginTop:0}}>
           <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
-            <input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") saveName(); }} placeholder="Your name" autoComplete="name" className="acct-input" style={{flex:"1 1 180px"}}/>
-            <button className="btn btn-primary btn-sm" disabled={savingName || !name.trim() || name.trim()===shownName} onClick={saveName}>
+            <input value={first} onChange={e=>setFirst(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") saveName(); }} placeholder="First name" aria-label="First name" autoComplete="given-name" className="acct-input" style={{flex:"1 1 140px"}}/>
+            <input value={last} onChange={e=>setLast(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") saveName(); }} placeholder="Last name" aria-label="Last name" autoComplete="family-name" className="acct-input" style={{flex:"1 1 140px"}}/>
+            <button className="btn btn-primary btn-sm" disabled={savingName || !first.trim() || !last.trim() || personNameData(first, last).full_name === savedFull} onClick={saveName}>
               {savingName ? "Saving…" : "Save"}
             </button>
           </div>
@@ -25490,6 +25564,8 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
+  const [skipInviteWait, setSkipInviteWait] = useState(false);   // 'Set up my own home instead' on the invitation-waiting screen
+  const [inviteNameSaved, setInviteNameSaved] = useState(false);
 
   // Durable resume: covers the normal post-onboarding launch AND returning from a
   // Stripe Checkout redirect, which reloads the page and loses the transient
@@ -25933,6 +26009,17 @@ export default function App() {
     );
   }
 
+  // ── Invited but not verified yet: wait for the invitation instead of walking them through a new home
+  if (session && !dataLoading && profile === null && pendingInviteCount > 0 && session.user?.app_metadata?.email_verified === false && !skipInviteWait) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <InviteWaitScreen email={session.user.email} resendState={verifyResendState} onResend={handleResendVerification} onOwnHome={() => setSkipInviteWait(true)} />
+        <Toasts toasts={toasts} dismiss={dismissToast} />
+      </>
+    );
+  }
+
   // ── Show wizard for brand new users (no profile yet)
   if (session && !dataLoading && profile === null) {
     return (
@@ -25952,6 +26039,17 @@ export default function App() {
             if (launchSetup) { setTab("profile"); setAutoOpenSetup(true); }
           }}
         />
+        <Toasts toasts={toasts} dismiss={dismissToast} />
+      </>
+    );
+  }
+
+  // ── Someone who only has shared homes and has never given a name is asked once
+  if (session && !dataLoading && profile?._shared && !allProfiles.some(p => !p._shared) && !hasPersonName(session.user) && !inviteNameSaved) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <InviteNameScreen onSaved={(full) => { setOwnerNameCache(full); setInviteNameSaved(true); }} />
         <Toasts toasts={toasts} dismiss={dismissToast} />
       </>
     );
