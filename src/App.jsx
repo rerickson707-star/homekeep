@@ -1,4 +1,4 @@
-// Steadwell v387 — 2026-10-17
+// Steadwell v388 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -34287,19 +34287,28 @@ function fmtBytes(n) {
 function StorageUsage({ planData, onUpgrade, collapsible = false }) {
   const [u, setU] = useState(null);
   const [open, setOpen] = useState(!collapsible);
+  const pid = _activeHomeId;   // set while the app renders, so this is the home on screen
   useEffect(() => {
     let alive = true;
+    setU(null);   // never keep showing the previous home's numbers while the new ones load
     const load = async () => {
       try {
-        let r = await supabase.rpc("account_storage_usage", { p_property: _activeHomeId });
-        if (r.error) r = await supabase.rpc("my_storage_usage");
-        if (alive && !r.error && r.data && typeof r.data.limit === "number") setU(r.data);
+        const r = await supabase.rpc("account_storage_usage", { p_property: pid });
+        if (r.error) {
+          // Only an account that has not had the account-wide SQL yet falls back to the personal total.
+          // Any other failure hides the bar: the personal total would be the wrong number for a shared home.
+          const missing = r.error.code === "PGRST202" || r.error.code === "42883";
+          if (missing && !pid) { const r2 = await supabase.rpc("my_storage_usage"); if (alive && !r2.error && r2.data && typeof r2.data.limit === "number") setU(r2.data); }
+          return;
+        }
+        if (alive && r.data && typeof r.data.limit === "number") setU(r.data);
       } catch { /* the bar stays hidden if the lookup fails */ }
     };
     load();
-    window.addEventListener("sw-storage-changed", load);
-    return () => { alive = false; window.removeEventListener("sw-storage-changed", load); };
-  }, []);
+    const onChange = () => load();
+    window.addEventListener("sw-storage-changed", onChange);
+    return () => { alive = false; window.removeEventListener("sw-storage-changed", onChange); };
+  }, [pid]);
   if (!u) return null;
   const used = Math.max(0, Number(u.used) || 0);
   const limit = Math.max(1, Number(u.limit) || 1);
