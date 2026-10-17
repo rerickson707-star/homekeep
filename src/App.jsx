@@ -1,4 +1,4 @@
-// Steadwell v380 — 2026-10-17
+// Steadwell v381 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -12733,7 +12733,6 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
         .from("utilities")
         .select("id")
         .eq("property_id", profile.id)
-        .eq("user_id", userId)
         .ilike("name", utilityName)
         .limit(1);
       let utilityId = existingUtils?.[0]?.id || null;
@@ -16750,12 +16749,12 @@ async function fcSyncTaxCost({ userId, propertyId, bills, costs }) {
   const latest = [...bills].sort((a, b) => b.tax_year - a.tax_year)[0];
   const existing = costs.find(c => c.kind === "property_tax");
   if (!latest) {
-    if (existing) { const { error } = await supabase.from("fixed_costs").delete().eq("id", existing.id).eq("user_id", userId); if (error) throw error; }
+    if (existing) { const { error } = await supabase.from("fixed_costs").delete().eq("id", existing.id); if (error) throw error; }
     return null;
   }
   const row = { kind: "property_tax", name: "Property tax", amount: latest.total, frequency: "yearly", next_due: latest.due_date || null, tax_bill_id: latest.id };
   if (existing) {
-    const { data, error } = await supabase.from("fixed_costs").update(row).eq("id", existing.id).eq("user_id", userId).select().single();
+    const { data, error } = await supabase.from("fixed_costs").update(row).eq("id", existing.id).select().single();
     if (error) throw error;
     return data;
   }
@@ -17281,8 +17280,8 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
     let live = true;
     setLoaded(false); setLoadErr(false); setScreen("list");
     Promise.all([
-      supabase.from("fixed_costs").select("*").eq("user_id", userId).eq("property_id", propertyId).order("created_at", { ascending: true }),
-      supabase.from("tax_bills").select("*").eq("user_id", userId).eq("property_id", propertyId).order("tax_year", { ascending: false }),
+      supabase.from("fixed_costs").select("*").eq("property_id", propertyId).order("created_at", { ascending: true }),
+      supabase.from("tax_bills").select("*").eq("property_id", propertyId).order("tax_year", { ascending: false }),
     ]).then(([a, b]) => {
       if (!live) return;
       if (a.error || b.error) { console.error("Fixed costs load error:", (a.error || b.error).message); setLoadErr(true); }
@@ -17329,7 +17328,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
         if (l) await saveEscrowFor(l, true);
       }
       const ids = dupes.map(d => d.id);
-      const { error } = await supabase.from("fixed_costs").delete().in("id", ids).eq("user_id", userId);
+      const { error } = await supabase.from("fixed_costs").delete().in("id", ids);
       if (error) throw error;
       setCosts(prev => prev.filter(c => !ids.includes(c.id)));
       toast("Removed the costs you typed in");
@@ -17354,7 +17353,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
     const row = { kind, name, provider: String(d.provider || "").trim() || null, amount: fcR2(amount), frequency: d.frequency || "monthly", next_due: d.next_due || null, in_escrow: FC_ESCROW_KINDS.includes(kind) ? !!d.in_escrow : false };
     setSaving(true);
     const q = costModal.id
-      ? supabase.from("fixed_costs").update(row).eq("id", costModal.id).eq("user_id", userId).select().single()
+      ? supabase.from("fixed_costs").update(row).eq("id", costModal.id).select().single()
       : supabase.from("fixed_costs").insert([{ ...row, user_id: userId, property_id: propertyId }]).select().single();
     const { data, error } = await q;
     setSaving(false);
@@ -17365,7 +17364,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   };
   const deleteCost = async () => {
     const id = costConfirm;
-    const { error } = await supabase.from("fixed_costs").delete().eq("id", id).eq("user_id", userId);
+    const { error } = await supabase.from("fixed_costs").delete().eq("id", id);
     setCostConfirm(null);
     if (error) { toast("Could not delete this cost. Try again.", "error"); return; }
     setCosts(prev => prev.filter(c => c.id !== id)); setCostModal(null);
@@ -17380,7 +17379,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   };
   const deleteBill = async () => {
     const b = billConfirm; setBillConfirm(null);
-    const { error } = await supabase.from("tax_bills").delete().eq("id", b.id).eq("user_id", userId);
+    const { error } = await supabase.from("tax_bills").delete().eq("id", b.id);
     if (error) { toast("Could not delete this bill. Try again.", "error"); return; }
     const nb = taxBills.filter(x => x.id !== b.id);
     try {
@@ -17392,7 +17391,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   };
   const setTaxEscrow = async v => {
     const c = realCosts.find(x => x.kind === "property_tax"); if (!c) return;
-    const { data, error } = await supabase.from("fixed_costs").update({ in_escrow: v }).eq("id", c.id).eq("user_id", userId).select().single();
+    const { data, error } = await supabase.from("fixed_costs").update({ in_escrow: v }).eq("id", c.id).select().single();
     if (error || !data) { toast("Could not save that change. Try again.", "error"); return; }
     setCosts(prev => prev.map(x => x.id === data.id ? data : x));
   };
@@ -18470,7 +18469,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     if(!userId || !propertyId) return;
     supabase.from("projects").select("*").eq("property_id", propertyId)
       .then(({data, error}) => { if(error) console.error("Projects load error:", error.message, error.code); if(data) setProjects(data); });
-    supabase.from("utilities").select("*").eq("user_id", userId).eq("property_id", propertyId)
+    supabase.from("utilities").select("*").eq("property_id", propertyId)
       .then(({data, error}) => {
         if(error) console.error("Utilities load error:", error.message, error.code);
         if(data) {
@@ -18589,7 +18588,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   const saveUtil = async () => {
     if(!utilEditData.name?.trim()) return;
     if(utilEditId) {
-      const {error} = await supabase.from("utilities").update(utilEditData).eq("id",utilEditId).eq("user_id",userId);
+      const {error} = await supabase.from("utilities").update(utilEditData).eq("id",utilEditId);
       if(!error) { setUtilities(utilities.map(u=>u.id===utilEditId?{...utilEditData,id:utilEditId}:u)); toast("Utility updated ✓"); }
       else toast("Error saving","error");
     } else {
@@ -18601,7 +18600,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const confirmDelUtil = async () => {
-    const {error} = await supabase.from("utilities").delete().eq("id",utilConfirm).eq("user_id",userId);
+    const {error} = await supabase.from("utilities").delete().eq("id",utilConfirm);
     if(!error) {
       setUtilities(utilities.filter(u=>u.id!==utilConfirm));
       setBills(bills.filter(b=>b.utility_id!==utilConfirm));
@@ -18648,7 +18647,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     payload.usage_unit = payload.usage != null ? (String(billEditData.usage_unit||"").trim() || UTIL_TYPES[activeUtil?.type]?.unit || null) : null;
     // A failed save keeps the form open with everything typed or scanned, and says what the database refused.
     if(billEditId) {
-      const {error} = await supabase.from("utility_bills").update(payload).eq("id",billEditId).eq("user_id",userId);
+      const {error} = await supabase.from("utility_bills").update(payload).eq("id",billEditId);
       if(error) { toast(`Couldn't save this bill: ${error.message || "unknown error"}`,"error"); return; }
       setBills(bills.map(b=>b.id===billEditId?{...payload,id:billEditId}:b)); toast("Bill updated ✓");
     } else {
@@ -18660,7 +18659,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
   };
 
   const confirmDelBill = async () => {
-    const {error} = await supabase.from("utility_bills").delete().eq("id",billConfirm).eq("user_id",userId);
+    const {error} = await supabase.from("utility_bills").delete().eq("id",billConfirm);
     if(!error) { setBills(bills.filter(b=>b.id!==billConfirm)); toast("Bill deleted","error"); }
     setBillConfirm(null);
   };
@@ -21390,7 +21389,6 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
     if (!userId || !profile?.id) return;
     supabase.from("email_captures")
       .select("*")
-      .eq("user_id", userId)
       .eq("property_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(100)
