@@ -1,4 +1,4 @@
-// Steadwell v381 — 2026-10-17
+// Steadwell v382 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6885,6 +6885,23 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [showExitSurvey, setShowExitSurvey] = useState(false);
+  const [sharedWithCount, setSharedWithCount] = useState(0);   // people who have access to my homes (they lose it if I delete)
+  useEffect(() => {
+    if (!showExitSurvey || !session?.user?.id) return;
+    let off = false;
+    (async () => {
+      try {
+        const uid = session.user.id;
+        const [a, b] = await Promise.all([
+          supabase.from("home_members").select("member_id").eq("owner_id", uid).eq("status", "accepted").not("member_id", "is", null),
+          supabase.from("account_admins").select("member_id").eq("owner_id", uid).eq("status", "accepted").not("member_id", "is", null),
+        ]);
+        const ids = new Set([...(a.data || []), ...(b.data || [])].map(r => r.member_id).filter(id => id && id !== uid));
+        if (!off) setSharedWithCount(ids.size);
+      } catch { /* the warning is a courtesy; never block deletion */ }
+    })();
+    return () => { off = true; };
+  }, [showExitSurvey, session?.user?.id]);
   const [exitReason, setExitReason] = useState(null);
   const [exitDetails, setExitDetails] = useState("");
 
@@ -7308,7 +7325,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
               <div className="acct-row" style={{alignItems:"center"}}>
                 <div className="acct-wrap" style={{flex:1}}>
                   <div className="acct-val">Delete my account</div>
-                  <div className="acct-hint" style={{marginTop:1}}>Permanently deletes your account and all home data after a 30-day grace period. This cannot be undone.</div>
+                  <div className="acct-hint" style={{marginTop:1}}>Permanently deletes your account and all home data after a 30-day grace period. People you've shared a home with lose access right away. This cannot be undone.</div>
                 </div>
                 <button className="acct-danger-btn" onClick={()=>setShowExitSurvey(true)}>Delete account</button>
               </div>
@@ -7378,7 +7395,9 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
       {/* Delete account confirmation */}
       {confirmDelete && (
         <Confirm
-          message="This will permanently delete your account and all data after a 30-day grace period. You'll be signed out immediately. Are you sure?"
+          message={(sharedWithCount > 0
+            ? `${sharedWithCount} ${sharedWithCount === 1 ? "person has" : "people have"} access to your homes. They lose it right away, and anything they added to your homes is deleted with them. `
+            : "") + "This will permanently delete your account and all data after a 30-day grace period. Any paid plan is cancelled. You'll be signed out immediately. Are you sure?"}
           onConfirm={()=>{setConfirmDelete(false);handleDeleteAccount();}}
           onCancel={()=>setConfirmDelete(false)}
         />
@@ -26451,11 +26470,15 @@ function AdminPage() {
   const deleteUser = async (userId, name) => {
     if (!window.confirm(`Delete ${name || "this user"}? This cannot be undone.`)) return;
     const { data: { session: s } } = await supabase.auth.getSession();
-    const { error } = await supabase.functions.invoke("admin-delete-user", {
+    const { data: out, error } = await supabase.functions.invoke("admin-delete-user", {
       body: { targetUserId: userId },
       headers: { Authorization: `Bearer ${s?.access_token}` },
     });
-    if (!error) { setUsers(u => u.filter(r => r.user_id !== userId)); notify(`✓ User deleted.`); }
+    if (!error) {
+      setUsers(u => u.filter(r => r.user_id !== userId));
+      const warn = Array.isArray(out?.warnings) && out.warnings.length ? " " + out.warnings.join(" ") : "";
+      notify(`✓ User deleted.${warn}`, warn ? "error" : undefined);
+    }
     else { notify(`Error: ${error.message}`, "error"); }
   };
 
