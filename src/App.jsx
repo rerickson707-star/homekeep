@@ -1,4 +1,4 @@
-// Steadwell v371 — 2026-10-17
+// Steadwell v372 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -20701,6 +20701,15 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     let cancelled = false;
     (async () => {
       const ids = homes.map(h => h.id);
+      // The people-service reads the lists for us. Reading the tables directly is only the fallback.
+      const listed = await callPeople("list", {});
+      if (cancelled) return;
+      if (!listed.error && listed.data?.ok) {
+        setMembers((listed.data.members || []).filter(r => ids.includes(r.property_id)));
+        setAdmins((listed.data.admins || []).filter(r => r.owner_id === acctOwner));
+        setLoading(false);
+        return;
+      }
       const [m, a] = await Promise.all([
         ids.length ? supabase.from("home_members").select("*").in("property_id", ids) : Promise.resolve({ data: [] }),
         supabase.from("account_admins").select("*").eq("owner_id", acctOwner),
