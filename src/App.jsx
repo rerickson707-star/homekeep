@@ -1,4 +1,4 @@
-// Steadwell v368 — 2026-10-17
+// Steadwell v370 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8000,7 +8000,7 @@ async function assessCall(body) {
   const resp = await fetch(ASSESS_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: ANON_KEY },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ property_id: _activeHomeId, ...body }),
   });
   let json = null;
   try { json = await resp.json(); } catch { /* non-JSON error page */ }
@@ -11312,7 +11312,7 @@ async function assistantCall(body) {
   const resp = await fetch(ASSISTANT_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: ANON_KEY },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ property_id: _activeHomeId, ...body }),
   });
   let json = null;
   try { json = await resp.json(); } catch { /* non-JSON error page */ }
@@ -16839,7 +16839,7 @@ function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, to
       }
       const mimeType = isPdf ? "application/pdf" : pick.type;
       const fileBase64 = await fcReadB64(pick);
-      const { data, error } = await supabase.functions.invoke("tax-bill-scan", { body: { fileBase64, mimeType } });
+      const { data, error } = await supabase.functions.invoke("tax-bill-scan", { body: { fileBase64, mimeType, propertyId: _activeHomeId } });
       if (error) {
         let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
         if (code === "plan_required" && onUpgrade) onUpgrade();
@@ -18095,7 +18095,7 @@ async function projReviewCall(body) {
   const resp = await fetch(PROJ_REVIEW_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: ANON_KEY },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ property_id: _activeHomeId, ...body }),
   });
   let json = null;
   try { json = await resp.json(); } catch { /* non-JSON error page */ }
@@ -25285,6 +25285,8 @@ export default function App() {
   // Inside a home shared with them (Admin, Full access or Tasks & assets), the home's owner pays,
   // so the owner's plan applies. Every profile row of an owner carries that owner's plan.
   const primaryProfile = profile?._shared ? profile : (allProfiles.find(p => !p._shared) || profile);
+  setActiveHome(activePropertyId);   // set while rendering, so the screens below read the right home on their first load
+  useEffect(() => { notifyStorageChanged(); }, [activePropertyId]);
   const planData = usePlan(primaryProfile);
 
   // ── Handle return from the email-verification link (?verified=1 or ?verified=already)
@@ -33845,9 +33847,19 @@ function usePlan(profile) {
 // The storage quota is checked on the server (storage_has_room) and again by a storage policy.
 const notifyStorageChanged = () => { try { window.dispatchEvent(new Event("sw-storage-changed")); } catch { /* ignore */ } };
 
+// The account behind the home being worked on pays for storage and the AI tools: the owner's plan sets
+// the limits, and what the people invited to the owner's homes use counts toward them. The home being
+// worked on decides which account. App sets this when the active home changes.
+let _activeHomeId = null;
+function setActiveHome(id) { _activeHomeId = id || null; }
 async function storageHasRoom(bytes = 0) {
+  const p_bytes = Math.max(0, Math.round(Number(bytes) || 0));
   try {
-    const { data, error } = await supabase.rpc("storage_has_room", { p_bytes: Math.max(0, Math.round(Number(bytes) || 0)) });
+    const r = await supabase.rpc("storage_has_room_for", { p_bytes, p_property: _activeHomeId });
+    if (!r.error) return r.data !== false;
+  } catch { /* fall back to the personal check below */ }
+  try {
+    const { data, error } = await supabase.rpc("storage_has_room", { p_bytes });
     if (error) return true;   // fail open: the storage policy is the real backstop
     return data !== false;
   } catch { return true; }
@@ -33906,8 +33918,9 @@ function StorageUsage({ planData, onUpgrade, collapsible = false }) {
     let alive = true;
     const load = async () => {
       try {
-        const { data, error } = await supabase.rpc("my_storage_usage");
-        if (alive && !error && data && typeof data.limit === "number") setU(data);
+        let r = await supabase.rpc("account_storage_usage", { p_property: _activeHomeId });
+        if (r.error) r = await supabase.rpc("my_storage_usage");
+        if (alive && !r.error && r.data && typeof r.data.limit === "number") setU(r.data);
       } catch { /* the bar stays hidden if the lookup fails */ }
     };
     load();
