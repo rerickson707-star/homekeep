@@ -1,4 +1,4 @@
-// Steadwell v379 — 2026-10-17
+// Steadwell v380 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -19644,10 +19644,12 @@ async function insertHomeDocument(row) {
   if (r.error && withHome !== row) r = await supabase.from("home_documents").insert([row]).select().single();
   return r;
 }
+// A home's documents are read by home, so owners, Admins and Full access people all see them (the database decides
+// which rows each person may read). Without the per-home column yet, it falls back to the person's own documents.
 async function fetchHomeDocs(userId, cols, tweak) {
-  const base = () => { let q = supabase.from("home_documents").select(cols).eq("user_id", userId); if (tweak) q = tweak(q); return q; };
-  if (_activeHomeId) { const r = await base().eq("property_id", _activeHomeId); if (!r.error) return r; }
-  return base();
+  const build = (scope) => { let q = scope(supabase.from("home_documents").select(cols)); if (tweak) q = tweak(q); return q; };
+  if (_activeHomeId) { const r = await build(q => q.eq("property_id", _activeHomeId)); if (!r.error) return r; }
+  return build(q => q.eq("user_id", userId));
 }
 
 function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade, homes=[] }) {
@@ -19893,7 +19895,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   const save = async () => {
     if (!editData.name?.trim()) return;
     if (editId) {
-      const {error} = await supabase.from("home_documents").update(editData).eq("id",editId).eq("user_id",userId);
+      const {error} = await supabase.from("home_documents").update(editData).eq("id",editId);   // the database allows the uploader, and Full access people and up on a shared home
       if (!error) setDocuments(editData.property_id && propertyId && editData.property_id !== propertyId ? documents.filter(d=>d.id!==editId) : documents.map(d=>d.id===editId?{...editData,id:editId}:d));
     } else {
       const {data,error} = await insertHomeDocument({...editData,user_id:userId});
@@ -19908,7 +19910,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
       const path = storagePathFromUrl(doc.file_url);
       if (path) await supabase.storage.from("expense-files").remove([path]);
     }
-    await supabase.from("home_documents").delete().eq("id",confirm).eq("user_id",userId);
+    await supabase.from("home_documents").delete().eq("id",confirm);
     setDocuments(documents.filter(d=>d.id!==confirm));
     setConfirm(null);
     notifyStorageChanged();
