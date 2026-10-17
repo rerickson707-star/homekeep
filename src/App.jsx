@@ -1,4 +1,4 @@
-// Steadwell v365 — 2026-10-17
+// Steadwell v366 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3662,6 +3662,29 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ir-row:last-of-type{border-bottom:none}
 .ir-sev{font-style:normal;display:inline-block;font-size:.68rem;font-weight:700;border:1.5px solid;border-radius:999px;padding:0 7px;margin-right:.45rem;vertical-align:1px;line-height:1.5}
 .ir-keep{margin-top:1.1rem;padding-top:.8rem;border-top:1px solid var(--stone)}
+.pp-lab{display:block;font-size:.8rem;font-weight:700;color:var(--dark);margin:1rem 0 .3rem}
+.pp-area{width:100%;box-sizing:border-box;min-height:84px;padding:.6rem .75rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);background:var(--white);font:inherit;font-size:.92rem;color:var(--dark);resize:vertical}
+.pp-roles{display:grid;gap:.5rem;margin:.1rem 0 .9rem}
+.pp-role{display:flex;gap:.7rem;align-items:flex-start;width:100%;text-align:left;font-family:inherit;color:var(--dark);background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:.7rem .8rem;cursor:pointer}
+.pp-role.on{border-color:var(--pine);background:#EAF2EE}
+.pp-role:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.pp-dot{width:20px;height:20px;min-width:20px;border-radius:50%;border:2px solid #B9AE9E;background:var(--white);margin-top:2px;display:flex;align-items:center;justify-content:center}
+.pp-role.on .pp-dot{border-color:var(--pine)}
+.pp-role.on .pp-dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--pine)}
+.pp-role b{display:block;font-size:.92rem;line-height:1.35}
+.pp-role .d{display:block;font-size:.8rem;line-height:1.45;color:#6E665D;margin-top:.15rem}
+.pp-sec{font-family:'Fraunces',Georgia,serif;font-size:1.02rem;font-weight:500;color:var(--dark);margin:1.4rem 0 .35rem;padding-bottom:.35rem;border-bottom:1px solid var(--stone)}
+.pp-person{padding:.7rem 0;border-bottom:1px solid #EFE9DD}
+.pp-top{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.pp-mail{flex:1;min-width:140px;font-size:.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-sel{width:auto;flex-shrink:0;font-size:.8rem;padding:.35rem 1.8rem .35rem .6rem}
+.pp-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;font-size:.76rem;color:#6E665D;margin:.3rem 0 .15rem}
+.pp-chip{display:inline-flex;align-items:center;gap:.2rem;background:#EFE7D7;color:#4A443D;border-radius:999px;padding:2px 9px;font-size:.74rem}
+.pp-chip button{border:none;background:none;cursor:pointer;color:#7A7370;font-size:1rem;line-height:1;padding:0 0 0 2px;font-family:inherit}
+.pp-acts{display:flex;gap:1rem;flex-wrap:wrap}
+.pp-report p{margin:.35rem 0 0;font-size:.82rem;line-height:1.45}
+.pp-ok{color:#2F6A49;font-weight:600}
+.pp-bad{color:#8A6410;font-weight:600}
 .fc-priv{margin:.2rem 0 0;font-size:.8rem;line-height:1.5;color:#6E665D}
 .fc-lead{margin:0 0 1rem;font-size:.92rem;line-height:1.55;color:#4A443E}
 .fc-upload{display:flex;flex-direction:column;align-items:center;gap:.35rem;width:100%;box-sizing:border-box;padding:1.5rem 1rem;border:2px dashed #9DBBAE;border-radius:var(--r);background:#EAF2EE;font-family:inherit;cursor:pointer;color:var(--dark)}
@@ -4843,7 +4866,7 @@ const LANDING_FAQ = [
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
-  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties, and each home can have up to 10 people."],
+  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties. Each home can have up to 10 people, and you can add up to 3 Admins who can invite and manage people for you."],
   ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by a third-party AI provider, and Steadwell does not use your photos to train AI. The Privacy Policy explains exactly what is shared and why."],
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
@@ -6462,7 +6485,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
-function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount, variant="top", planData, status, onUpgrade, allProfiles=[], activePropertyId, onSwitchProperty, onAddProperty }) {
+function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySettings, onAccount, onPeople, variant="top", planData, status, onUpgrade, allProfiles=[], activePropertyId, onSwitchProperty, onAddProperty }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -6530,6 +6553,11 @@ function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySet
           <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onAccount();}}>
             <span>👤</span> My Account
           </button>
+          {onPeople && (
+            <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);onPeople();}}>
+              <span>👥</span> People &amp; access
+            </button>
+          )}
           {!isStandaloneApp() && (
             <button className="user-dd-item" role="menuitem" onClick={()=>{setOpen(false);window.dispatchEvent(new CustomEvent("sw:open-install"));}}>
               <span>📲</span> Install the app
@@ -20576,198 +20604,283 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
 }
 
 // ─── SHARED ACCESS PANEL ─────────────────────────────────────────────────────
-// Access levels for invited people. Only an explicit "full" sees expenses and projects;
-// any other stored value (including older invites) is the restricted level.
+// ─── PEOPLE: shared access with an Admin level ────────────────────────────────
+// Owner: invites Admins, Full access and Tasks & assets people. Admin: same, except Admins.
+// Everything that changes who has access goes through the home-people function, which checks
+// the caller, the plan and the homes on the server. The database enforces what each level can see.
 const ACCESS_LEVELS = [
+  { key:"admin",   label:"Admin",          desc:"Everything in Full access, plus inviting and removing people. For someone who runs the account with you." },
   { key:"full",    label:"Full access",    desc:"Tasks, assets, service history, contractors, expenses and projects. For a spouse, partner, co-owner or property manager." },
-  { key:"limited", label:"Tasks & assets", desc:"Tasks, assets, service history and contractors. Expenses and projects stay private. For a maintenance person or caretaker." },
+  { key:"limited", label:"Tasks & assets", desc:"Tasks, assets, service history and contractors. Expenses and projects stay private. For a housekeeper, gardener or caretaker." },
 ];
-const accessKey = (role) => role === "full" ? "full" : "limited";
+const accessKey = (role) => role === "admin" ? "admin" : role === "full" ? "full" : "limited";
 const accessLabel = (role) => ACCESS_LEVELS.find(l => l.key === accessKey(role)).label;
-
-const INVITE_ERRORS = {
+const PEOPLE_MAX_PER_HOME = 10;
+const PEOPLE_MAX_ADMINS = 3;
+const PEOPLE_ERRORS = {
   plan_required: "Shared access is part of the Pro plan.",
-  not_signed_in: "Your session has expired. Sign in again to send invites.",
-  bad_email: "Enter a valid email address.",
-  self_invite: "You can't invite yourself.",
-  bad_request: "Choose at least one home and enter an email address.",
-  email_failed: "The invite was saved, but the email did not send. Press Invite again to resend it.",
+  not_signed_in: "Your session has expired. Sign in again.",
+  owner_only: "Only the account owner can do that.",
+  not_yours: "That home isn't part of this account.",
+  too_many: "You can invite up to 10 people at a time.",
+  nothing_pending: "There is no pending invite for that person.",
+  bad_request: "Check the email addresses and homes, then try again.",
 };
-const SHARED_MAX_PER_HOME = 10;
+async function callPeople(action, body) {
+  const { data, error } = await supabase.functions.invoke("home-people", { body: { action, ...body } });
+  if (error) {
+    let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
+    return { error: code || "failed" };
+  }
+  return { data };
+}
 
-function SharedAccessPanel({ profile, homes = [], userId, userEmail, planData, onUpgrade, toast }) {
-  const [pickHomes, setPickHomes] = useState(() => ({ [profile?.id]: true }));
-  useEffect(() => { setPickHomes({ [profile?.id]: true }); }, [profile?.id]);
-  const homeName = h => h?.name || h?.address?.split(",")[0] || "My Home";
-  const [members, setMembers]       = useState([]);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteLevel, setInviteLevel] = useState("limited"); // least privilege unless the owner picks Full
-  const [sending, setSending]       = useState(false);
-  const [loading, setLoading]       = useState(true);
+// Short card on the Profile page. The work happens in PeopleModal.
+function PeopleSummaryCard({ profile, planData, onOpen, onUpgrade }) {
+  const isGuest = !!profile?._shared;
+  const isAdmin = isGuest && profile?._role === "admin";
   const isPro = planData?.plan === "pro";
-  const isGuest = !!profile?._shared; // viewing someone else's home through an invite
-
-  useEffect(() => {
-    if (!profile?.id || isGuest) { setLoading(false); return; }
-    supabase.from("home_members").select("*").eq("property_id", profile.id)
-      .then(({ data, error }) => { setMembers(error ? [] : (data || [])); setLoading(false); })
-      .catch(() => { setMembers([]); setLoading(false); });
-  }, [profile?.id, isGuest]);
-
-  const sendInvite = async () => {
-    const memberEmail = inviteEmail.trim().toLowerCase();
-    if (!memberEmail || !memberEmail.includes("@")) { toast("Enter a valid email", "error"); return; }
-    if (memberEmail === String(userEmail || "").toLowerCase()) { toast("You can't invite yourself", "error"); return; }
-    const ids = homes.length > 1 ? homes.filter(h => pickHomes[h.id]).map(h => h.id) : [profile.id];
-    if (ids.length === 0) { toast("Choose at least one home", "error"); return; }
-    setSending(true);
-    try {
-      // The server reads who you are from your login, checks you are on Pro and own each home, and sends one email.
-      const { data, error } = await supabase.functions.invoke("home-invite", { body: { memberEmail, level: inviteLevel, propertyIds: ids } });
-      if (error) {
-        let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
-        if (code === "plan_required" && onUpgrade) onUpgrade();
-        toast(INVITE_ERRORS[code] || "Could not send the invite. Try again.", "error");
-      } else {
-        const r = Array.isArray(data?.results) ? data.results : [];
-        const count = st => r.filter(x => x.status === st).length;
-        const sent = count("invited") + count("resent");
-        if (sent > 0) {
-          const extra = [count("already") ? `${count("already")} already had access` : "", count("full") ? `${count("full")} full (${SHARED_MAX_PER_HOME} people)` : ""].filter(Boolean).join(", ");
-          toast("Invite sent ✓" + (extra ? ` (${extra})` : ""));
-          setInviteEmail("");
-        } else if (count("full")) toast(`That home already has ${SHARED_MAX_PER_HOME} people. Remove someone to invite more.`, "error");
-        else if (count("already")) toast("This person already has access.", "error");
-        else toast("Could not send the invite. Try again.", "error");
-        if (ids.includes(profile.id)) {
-          const { data: updated } = await supabase.from("home_members").select("*").eq("property_id", profile.id);
-          setMembers(updated || []);
-        }
-      }
-    } catch { toast("Could not send invite", "error"); }
-    setSending(false);
-  };
-
-  const changeLevel = async (m, level) => {
-    const { error } = await supabase.from("home_members").update({ role: level }).eq("id", m.id).eq("owner_id", userId);
-    if (error) { toast("Could not change access", "error"); return; }
-    setMembers(list => list.map(x => x.id === m.id ? { ...x, role: level } : x));
-    toast(`${m.member_email.split("@")[0]} now has ${accessLabel(level)}`);
-  };
-
-  const revoke = async (memberId) => {
-    const { error } = await supabase.from("home_members").delete().eq("id", memberId).eq("owner_id", userId);
-    if (!error) {
-      setMembers(m => m.filter(x => x.id !== memberId));
-      toast("Access removed");
-    }
-  };
-
-  if (isGuest) {
+  if (isGuest && !isAdmin) {
     return (
       <div className="panel" style={{marginBottom:".85rem"}}>
-        <div className="panel-title">Shared Access</div>
+        <div className="panel-title">People</div>
         <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55}}>
-          You are viewing this home through an invite. Your access: <strong style={{color:"var(--dark)"}}>{accessLabel(profile._role)}</strong>. Only the owner can invite people or change access.
+          You are viewing this home through an invite. Your access: <strong style={{color:"var(--dark)"}}>{accessLabel(profile._role)}</strong>. Only the owner or an Admin can invite people or change access.
         </div>
       </div>
     );
   }
-
-  if (!isPro) {
-    return (
-      <div className="panel" style={{marginBottom:".85rem"}}>
-        <div className="panel-title">Shared Access</div>
-        <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,marginBottom:".85rem"}}>
-          Invite a spouse, partner, property manager or team member to work on this property with you, choose what each person can see, and assign tasks to them.
-        </div>
-        <button className="btn btn-primary" style={{width:"100%"}} onClick={onUpgrade}>
-          Upgrade to Pro to enable shared access
-        </button>
-      </div>
-    );
-  }
-
-  const chosen = ACCESS_LEVELS.find(l => l.key === inviteLevel);
+  const can = isAdmin || isPro;
   return (
     <div className="panel" style={{marginBottom:".85rem"}}>
-      <div className="panel-title">Shared Access</div>
-      <div style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.5,marginBottom:"1rem"}}>
-        Invite a spouse, partner, property manager, co-owner or team member. Choose what each person can see. Once they accept, you can assign tasks to them and filter the task list by person.
+      <div className="panel-title">People</div>
+      <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,marginBottom:".85rem"}}>
+        {isAdmin ? "You are an Admin on this account. You can invite people, change what they can do and remove them."
+          : "Invite a spouse, property manager, housekeeper or gardener. Choose what each person can do, and add Admins who can invite others for you."}
       </div>
-
-      {/* Invite input */}
-      <div style={{display:"flex",gap:".5rem",marginBottom:".6rem"}}>
-        <input
-          type="email"
-          value={inviteEmail}
-          onChange={e => setInviteEmail(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && sendInvite()}
-          placeholder="name@email.com"
-          style={{flex:1,minWidth:0}}
-        />
-        <button className="btn btn-primary" disabled={sending} onClick={sendInvite} style={{flexShrink:0}}>
-          {sending ? "Sending…" : "Invite"}
-        </button>
-      </div>
-      {homes.length > 1 && (
-        <div style={{margin:".1rem 0 .7rem"}}>
-          <div style={{fontSize:".78rem",fontWeight:700,color:"var(--dark)",marginBottom:".25rem"}}>Invite to these homes</div>
-          {homes.map(h => <FcCheck key={h.id} checked={!!pickHomes[h.id]} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} />)}
-        </div>
-      )}
-      <select value={inviteLevel} onChange={e => setInviteLevel(e.target.value)} aria-label="Access level for the new invite" style={{width:"100%",marginBottom:".4rem"}}>
-        {ACCESS_LEVELS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
-      </select>
-      <div style={{fontSize:".74rem",color:"#8A6D1E",background:"#FBF3DE",border:"1px solid #F0E0B0",borderRadius:10,padding:".5rem .7rem",lineHeight:1.5,marginBottom:"1rem"}}>
-        <strong>{chosen.label}:</strong> {chosen.desc} Documents and receipt files are not shared.
-      </div>
-      <div style={{fontSize:".76rem",color:"#7A7370",lineHeight:1.5,marginBottom:"1rem"}}>
-        Each person needs a free Steadwell account using the email you invite. Up to {SHARED_MAX_PER_HOME} people per home.
-      </div>
-
-      {/* Members list */}
-      {loading ? (
-        <div style={{fontSize:".8rem",color:"#9E9690"}}>Loading…</div>
-      ) : members.length === 0 ? (
-        <div style={{fontSize:".8rem",color:"#9E9690",textAlign:"center",padding:".75rem",background:"var(--cream)",borderRadius:10}}>
-          No one invited yet. Share access with your household or team.
-        </div>
-      ) : (
-        <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
-          {members.map(m => (
-            <div key={m.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:12,border:"1px solid var(--stone)",flexWrap:"wrap"}}>
-              <div style={{width:34,height:34,borderRadius:"50%",background:"var(--pine)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F4EDDF",fontWeight:700,fontSize:".85rem",flexShrink:0}}>
-                {m.member_email[0].toUpperCase()}
-              </div>
-              <div style={{flex:1,minWidth:140}}>
-                <div style={{fontSize:".85rem",fontWeight:500,color:"var(--dark)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.member_email}</div>
-                <div style={{fontSize:".7rem",color:"#9E9690",marginTop:1,display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{
-                    display:"inline-block",width:6,height:6,borderRadius:"50%",
-                    background: m.status === "accepted" ? "#639922" : "#BA7517",
-                    flexShrink:0
-                  }}/>
-                  {m.status === "accepted" ? "Active" : "Invite pending"}
-                  {m.status === "pending" && " — hasn't accepted yet"}
-                </div>
-              </div>
-              <select value={accessKey(m.role)} onChange={e => changeLevel(m, e.target.value)} aria-label={`Access level for ${m.member_email}`} style={{fontSize:".78rem",padding:".3rem 1.8rem .3rem .6rem",width:"auto",flexShrink:0}}>
-                {ACCESS_LEVELS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
-              </select>
-              <button
-                onClick={() => revoke(m.id)}
-                className="btn btn-sm btn-danger"
-                style={{flexShrink:0}}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <button className="btn btn-primary" style={{width:"100%"}} onClick={can ? onOpen : onUpgrade}>
+        {can ? "Manage people" : "Upgrade to Pro to invite people"}
+      </button>
     </div>
   );
+}
+
+function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgrade, onClose, onChanged, toast }) {
+  const acctOwner = profile?.user_id;
+  const iAmOwner = acctOwner === userId;
+  const iAmAdmin = !iAmOwner && profile?._role === "admin";
+  const homes = useMemo(() => (allProfiles || []).filter(h => h.user_id === acctOwner), [allProfiles, acctOwner]);
+  const homeName = h => h?.name || h?.address?.split(",")[0] || "My Home";
+  const homeById = useMemo(() => new Map(homes.map(h => [h.id, h])), [homes]);
+  const isPro = planData?.plan === "pro";
+
+  const [members, setMembers] = useState([]);
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+  const [emailsText, setEmailsText] = useState("");
+  const [level, setLevel] = useState("limited");   // least access unless the person chooses more
+  const [pickHomes, setPickHomes] = useState(() => Object.fromEntries(homes.map(h => [h.id, true])));
+  const [sending, setSending] = useState(false);
+  const [report, setReport] = useState([]);
+  const [busy, setBusy] = useState("");
+  const [confirmKey, setConfirmKey] = useState("");
+  const aliveRef = useRef(true);
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
+
+  const homeKey = homes.map(h => h.id).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ids = homes.map(h => h.id);
+      const [m, a] = await Promise.all([
+        ids.length ? supabase.from("home_members").select("*").in("property_id", ids) : Promise.resolve({ data: [] }),
+        supabase.from("account_admins").select("*").eq("owner_id", acctOwner),
+      ]);
+      if (cancelled) return;
+      setMembers(m.data || []); setAdmins(a.data || []); setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick, acctOwner, homeKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const persons = useMemo(() => {
+    const by = new Map();
+    members.forEach(m => {
+      const k = String(m.member_email || "").toLowerCase();
+      if (!by.has(k)) by.set(k, { email: k, rows: [] });
+      by.get(k).rows.push(m);
+    });
+    return [...by.values()].map(p => {
+      const levels = new Set(p.rows.map(r => accessKey(r.role)));
+      return { ...p, level: levels.size === 1 ? [...levels][0] : "mixed", active: p.rows.some(r => r.status === "accepted") };
+    }).sort((a, b) => a.email.localeCompare(b.email));
+  }, [members]);
+
+  const refresh = () => { setTick(t => t + 1); onChanged && onChanged(); };
+  const why = (r) => {
+    if (r.status === "bad_email") return "isn't a valid email address";
+    if (r.status === "self") return "is your own email address";
+    if (r.status === "email_failed") return "was saved, but the email did not send. Use Resend on their row below";
+    if (r.status === "full") return `can't be added because you already have ${PEOPLE_MAX_ADMINS} Admins`;
+    if (r.status === "already") return "already has access";
+    const st = (r.homes || []).map(x => x.status);
+    if (st.includes("full")) return `can't be added because that home already has ${PEOPLE_MAX_PER_HOME} people`;
+    if (st.includes("already_admin")) return "is already an Admin";
+    if (st.includes("owner")) return "is the account owner";
+    if (st.includes("already")) return "already has access to those homes";
+    return "could not be invited";
+  };
+
+  const submit = async () => {
+    if (sending) return;
+    const emails = [...new Set(emailsText.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean))];
+    if (emails.length === 0) { toast("Enter at least one email address", "error"); return; }
+    if (emails.length > 10) { toast(PEOPLE_ERRORS.too_many, "error"); return; }
+    const propertyIds = level === "admin" ? [] : homes.filter(h => pickHomes[h.id]).map(h => h.id);
+    if (level !== "admin" && propertyIds.length === 0) { toast("Choose at least one home", "error"); return; }
+    setSending(true);
+    const { data, error } = await callPeople("invite", { emails, level, propertyIds });
+    if (!aliveRef.current) return;
+    setSending(false);
+    if (error) {
+      if (error === "plan_required" && onUpgrade) { onUpgrade(); return; }
+      toast(PEOPLE_ERRORS[error] || "Could not send the invites. Try again.", "error");
+      return;
+    }
+    const results = Array.isArray(data?.results) ? data.results : [];
+    const okStatus = new Set(["invited", "resent", "sent"]);
+    const lines = results.map(r => okStatus.has(r.status) ? { ok: true, text: `Invite sent to ${r.email}` } : { ok: false, text: `${r.email} ${why(r)}` });
+    setReport(lines);
+    const left = results.filter(r => !okStatus.has(r.status)).map(r => r.email);
+    setEmailsText(left.join("\n"));
+    if (results.some(r => okStatus.has(r.status))) { toast("Invites sent ✓"); refresh(); }
+  };
+
+  const run = async (key, fn, okMsg) => {
+    if (busy) return;
+    setBusy(key);
+    const { error } = await fn();
+    if (!aliveRef.current) return;
+    setBusy(""); setConfirmKey("");
+    if (error) { toast(PEOPLE_ERRORS[error] || "That did not work. Try again.", "error"); return; }
+    if (okMsg) toast(okMsg);
+    refresh();
+  };
+  const ids = p => p.rows.map(r => r.property_id);
+  const setPersonLevel = (p, lv) => run("lv:" + p.email, () => callPeople("set_level", { memberEmail: p.email, level: lv, propertyIds: ids(p) }), `${p.email.split("@")[0]} now has ${accessLabel(lv)}`);
+  const removeFrom = (p, propertyIds) => run("rm:" + p.email + propertyIds.join(), () => callPeople("remove", { memberEmail: p.email, propertyIds }), "Access removed");
+  const resend = (email, kind) => run("rs:" + email, () => callPeople("resend", { memberEmail: email, kind }), "Invite sent again ✓");
+  const removeAdmin = (a) => run("ra:" + a.member_email, () => callPeople("remove_admin", { memberEmail: a.member_email }), "Admin removed");
+  const copyInvite = async (email) => {
+    const text = `You're invited to work on a home in Steadwell. Create a free account (or sign in) at https://www.trysteadwell.app using ${email}, and the home will appear automatically.`;
+    try { await navigator.clipboard.writeText(text); toast("Invite message copied"); }
+    catch { toast("Could not copy. Select and copy this instead: " + text, "error"); }
+  };
+  const confirmBtn = (key, label, onGo, danger) => (
+    confirmKey === key
+      ? <button type="button" className="fc-link del" disabled={!!busy} onClick={onGo}>Tap again to confirm</button>
+      : <button type="button" className={"fc-link" + (danger ? " del" : "")} disabled={!!busy} onClick={() => setConfirmKey(key)}>{label}</button>
+  );
+
+  const footer = <div className="modal-footer"><button className="btn btn-primary" onClick={onClose}>Done</button></div>;
+  const canManage = iAmOwner ? isPro : iAmAdmin;
+
+  let body;
+  if (!iAmOwner && !iAmAdmin) {
+    body = <p className="fc-lead">Only the account owner or an Admin can manage people.</p>;
+  } else if (!canManage) {
+    body = (
+      <div className="fc-lock">
+        <div className="fc-lock-t"><span className="fc-tag">Pro</span> Share your homes with the people who care for them.</div>
+        <p>Pro lets you invite a property manager, housekeeper or gardener, choose what each person can do, and add Admins who can invite others for you.</p>
+        {onUpgrade && <button type="button" className="btn btn-primary btn-sm" onClick={onUpgrade}>See Pro</button>}
+      </div>
+    );
+  } else {
+    const levelChoices = ACCESS_LEVELS.filter(l => l.key !== "admin" || iAmOwner);
+    const adminRows = admins.slice().sort((a, b) => String(a.member_email).localeCompare(String(b.member_email)));
+    body = (
+      <div>
+        <p className="fc-lead">Invite people to {homes.length > 1 ? "your homes" : "your home"}. Each person needs a free Steadwell account with the email you use here, and the homes appear for them automatically.</p>
+
+        <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
+        <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => setEmailsText(e.target.value)} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+        <div className="fc-quiet">Add up to 10 at once, separated by commas, spaces or new lines.</div>
+
+        <div className="pp-lab" id="pp-role-lab">What they can do</div>
+        <div className="pp-roles" role="radiogroup" aria-labelledby="pp-role-lab">
+          {levelChoices.map(l => (
+            <button key={l.key} type="button" role="radio" aria-checked={level === l.key} className={"pp-role" + (level === l.key ? " on" : "")} onClick={() => setLevel(l.key)}>
+              <span className="pp-dot" aria-hidden="true" />
+              <span><b>{l.label}</b><span className="d">{l.desc}</span></span>
+            </button>
+          ))}
+        </div>
+
+        {level === "admin" ? (
+          <p className="fc-quiet">Admins cover every home on the account, including homes you add later. You can have up to {PEOPLE_MAX_ADMINS}. Only you can add or remove Admins.</p>
+        ) : homes.length > 1 ? (
+          <div style={{margin:".2rem 0 .8rem"}}>
+            <div className="pp-lab">Which homes</div>
+            {homes.map(h => <FcCheck key={h.id} checked={!!pickHomes[h.id]} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} />)}
+          </div>
+        ) : null}
+
+        <button type="button" className="btn btn-primary" style={{width:"100%"}} onClick={submit} disabled={sending}>{sending ? "Sending…" : "Send invites"}</button>
+        <div role="status" aria-live="polite" className="pp-report">
+          {report.map((r, i) => <p key={i} className={r.ok ? "pp-ok" : "pp-bad"}>{r.text}</p>)}
+        </div>
+
+        {loading ? <div className="fc-quiet" style={{marginTop:"1rem"}}>Loading…</div> : (
+          <>
+            <div className="pp-sec">Admins ({adminRows.length} of {PEOPLE_MAX_ADMINS})</div>
+            {adminRows.length === 0 && <p className="fc-quiet">No Admins yet.{iAmOwner ? " An Admin can invite and manage people for you." : ""}</p>}
+            {adminRows.map(a => (
+              <div className="pp-person" key={a.id}>
+                <div className="pp-top"><div className="pp-mail">{a.member_email}</div><span className="fc-tag">Admin</span></div>
+                <div className="pp-meta">{a.status === "accepted" ? "Active" : "Invite pending"}</div>
+                {iAmOwner && (
+                  <div className="pp-acts">
+                    {a.status !== "accepted" && <button type="button" className="fc-link" disabled={!!busy} onClick={() => resend(a.member_email, "admin")}>{busy === "rs:" + a.member_email ? "Sending…" : "Resend"}</button>}
+                    {confirmBtn("ra:" + a.member_email, "Remove Admin", () => removeAdmin(a), true)}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="pp-sec">People ({persons.length})</div>
+            {persons.length === 0 && <p className="fc-quiet">No one yet. Add an email above to invite your first person.</p>}
+            {persons.map(p => (
+              <div className="pp-person" key={p.email}>
+                <div className="pp-top">
+                  <div className="pp-mail">{p.email}</div>
+                  <select aria-label={`Access level for ${p.email}`} value={p.level} disabled={!!busy} onChange={e => setPersonLevel(p, e.target.value)} className="pp-sel">
+                    {p.level === "mixed" && <option value="mixed" disabled>Mixed</option>}
+                    <option value="full">Full access</option>
+                    <option value="limited">Tasks &amp; assets</option>
+                  </select>
+                </div>
+                <div className="pp-meta">
+                  <span>{p.active ? "Active" : "Invite pending"}</span>
+                  {p.rows.map(r => (
+                    <span className="pp-chip" key={r.id}>{homeName(homeById.get(r.property_id))}
+                      {p.rows.length > 1 && <button type="button" aria-label={`Remove ${p.email} from ${homeName(homeById.get(r.property_id))}`} disabled={!!busy} onClick={() => removeFrom(p, [r.property_id])}>×</button>}
+                    </span>
+                  ))}
+                </div>
+                <div className="pp-acts">
+                  {!p.active && <button type="button" className="fc-link" disabled={!!busy} onClick={() => resend(p.email)}>{busy === "rs:" + p.email ? "Sending…" : "Resend"}</button>}
+                  {!p.active && <button type="button" className="fc-link" onClick={() => copyInvite(p.email)}>Copy invite</button>}
+                  {confirmBtn("rm:" + p.email, p.rows.length > 1 ? "Remove from all homes" : "Remove", () => removeFrom(p, ids(p)), true)}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    );
+  }
+  return <Modal title="People" onClose={onClose} footer={footer}>{body}</Modal>;
 }
 
 
@@ -20975,7 +21088,7 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const { roiData } = useProjectROIData();
   // ── Remove one home (Pro, owner only). The server decides what is allowed; see delete-property.
   const [homeToRemove, setHomeToRemove] = useState(null);
@@ -22405,14 +22518,11 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── SHARED ACCESS ── */}
       {!showSetup && (
-        <SharedAccessPanel
+        <PeopleSummaryCard
           profile={profile}
-          homes={allProfiles.filter(h => !h._shared)}
-          userId={userId}
-          userEmail={userEmail}
           planData={planData}
+          onOpen={onOpenPeople}
           onUpgrade={onUpgrade}
-          toast={toast}
         />
       )}
 
@@ -25087,6 +25197,8 @@ export default function App() {
   };
   const [showDocs, setShowDocs] = useState(false);
   const [inspOpen, setInspOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const [peopleVersion, setPeopleVersion] = useState(0);
   const [docsVersion, setDocsVersion] = useState(0);
   const [docLightbox, setDocLightbox] = useState(null);
   const [showContractors, setShowContractors] = useState(false);
@@ -25243,6 +25355,20 @@ export default function App() {
         if (sp) sharedProfiles.push({ ...sp, _shared: true, _role: m.role });
       }
 
+      // Homes of every account this person is an Admin on, including homes added later.
+      try {
+        const { data: admRows } = await supabase.from("account_admins").select("owner_id").eq("member_id", uid).eq("status", "accepted");
+        const ownerIds = [...new Set((admRows || []).map(r => r.owner_id))].filter(id => id !== uid);
+        if (ownerIds.length) {
+          const { data: admHomes } = await supabase.from("profiles").select("*").in("user_id", ownerIds).order("created_at", { ascending: true });
+          (admHomes || []).forEach(h => {
+            const i = sharedProfiles.findIndex(x => x.id === h.id);
+            if (i >= 0) sharedProfiles[i] = { ...sharedProfiles[i], _role: "admin" };
+            else if (!ownedProfiles.find(p => p.id === h.id)) sharedProfiles.push({ ...h, _shared: true, _role: "admin" });
+          });
+        }
+      } catch { /* the Admin list could not be read: the person still sees the homes they were invited to */ }
+
       // Merge — avoid duplicates if user owns and is also a member
       const allP = [...ownedProfiles];
       sharedProfiles.forEach(sp => {
@@ -25362,8 +25488,12 @@ export default function App() {
     setPeople(base);
     (async () => {
       try {
-        const { data } = await supabase.from("home_members").select("member_id, member_email, status").eq("property_id", pid).eq("status", "accepted");
-        if (cancelled || !data) return;
+        const [mem, adm] = await Promise.all([
+          supabase.from("home_members").select("member_id, member_email, status").eq("property_id", pid).eq("status", "accepted"),
+          ownerId ? supabase.from("account_admins").select("member_id, member_email, status").eq("owner_id", ownerId).eq("status", "accepted") : Promise.resolve({ data: [] }),
+        ]);
+        const data = [...(mem.data || []), ...(adm.data || [])];
+        if (cancelled || !mem.data) return;
         const list = [...base];
         const pretty = (em) => { const tok = (em || "").split("@")[0].split(/[._\-+]/)[0]; return tok ? tok.charAt(0).toUpperCase() + tok.slice(1) : "Member"; };
         data.forEach(m => {
@@ -25376,11 +25506,13 @@ export default function App() {
       } catch { /* keep owner-only list */ }
     })();
     return () => { cancelled = true; };
-  }, [profile?.id, profile?.user_id, session?.user?.id]);
+  }, [profile?.id, profile?.user_id, session?.user?.id, peopleVersion]);
 
   // ── What this person may see on the active home. The database enforces it; this hides
   // screens that would only come back empty. Only an explicit "full" invite sees money.
-  const accessLevel = profile?._shared ? (profile._role === "full" ? "full" : "limited") : "owner";
+  const accessLevel = profile?._shared ? (profile._role === "admin" ? "admin" : profile._role === "full" ? "full" : "limited") : "owner";
+  // Owners on Pro and Admins can invite and manage people.
+  const canManagePeople = !!profile && (profile._shared ? profile._role === "admin" : planData?.plan === "pro");
   const canSeeMoney = accessLevel !== "limited";
   useEffect(() => { if (!canSeeMoney && tab === "expenses") setTab("dashboard"); }, [canSeeMoney, tab]);
 
@@ -25600,7 +25732,7 @@ export default function App() {
               setTab("expenses");
             }}
           />
-          <UserMenu user={session.user} profile={profile} planData={planData} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)} allProfiles={allProfiles} activePropertyId={activePropertyId} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>
+          <UserMenu user={session.user} profile={profile} planData={planData} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)} onPeople={canManagePeople ? ()=>setPeopleOpen(true) : undefined} allProfiles={allProfiles} activePropertyId={activePropertyId} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>
         </header>
 
         {/* ── Desktop sidebar — mirrors bottom-nav's tabs/handlers exactly so the
@@ -25630,7 +25762,7 @@ export default function App() {
             <span className="sbar-icon" aria-hidden="true">📄</span>
             <span>Documents</span>
           </button>
-          <UserMenu variant="side" user={session.user} profile={profile} planData={planData} status={sidebarStatus} onUpgrade={()=>setShowUpgrade(true)} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)} allProfiles={allProfiles} activePropertyId={activePropertyId} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>
+          <UserMenu variant="side" user={session.user} profile={profile} planData={planData} status={sidebarStatus} onUpgrade={()=>setShowUpgrade(true)} onSignOut={handleSignOut} onFeedback={()=>setShowFeedback(true)} onExport={()=>setShowExport(true)} onPrivacySettings={()=>setShowPrivacySettings(true)} onAccount={()=>setShowAccount(true)} onPeople={canManagePeople ? ()=>setPeopleOpen(true) : undefined} allProfiles={allProfiles} activePropertyId={activePropertyId} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)}/>
         </nav>
 
         {/* ── Bounce banner — takes priority over the softer verify banner, since a bounce means
@@ -25715,7 +25847,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
@@ -25812,6 +25944,7 @@ export default function App() {
             }}
           />
         )}
+        {peopleOpen && <PeopleModal profile={profile} allProfiles={allProfiles} userId={uid} userEmail={session?.user?.email || ""} planData={planData} onUpgrade={()=>{setPeopleOpen(false);setShowUpgrade(true);}} onClose={()=>setPeopleOpen(false)} onChanged={()=>setPeopleVersion(v=>v+1)} toast={toast}/>}
         {inspOpen && <InspectionImportModal userId={uid} propertyId={activePropertyId} warranties={warranties} setWarranties={setWarranties} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>{setInspOpen(false);setShowUpgrade(true);}} onClose={()=>setInspOpen(false)} onImported={()=>setDocsVersion(v=>v+1)} toast={toast}/>}
         {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} postSetup={showUpgrade === "post-setup"} />}
       </div>
@@ -30310,7 +30443,8 @@ function HomeHealthScorePage() {
 const SHARED_FAQ = [
   ["What is shared access?","It lets you invite other people to a property in Steadwell: a spouse or partner, a co-owner, a property manager or a team member. Everyone you invite works from the same tasks and assets, and you can assign tasks to them."],
   ["Which plan includes it?","Shared access is included with the Pro plan, which also covers up to three properties."],
-  ["How many people can I invite?","Up to 10 people per home. You can invite the same person to several of your homes at once, and each person needs a free Steadwell account using the email you invited."],
+  ["How many people can I invite?","Up to 10 people per home, plus up to 3 Admins. You can invite several people at once, choose which homes each one can work on, and each person needs a free Steadwell account using the email you invited."],
+  ["What is an Admin?","An Admin has full access to every home on your account, including homes you add later, and can invite, change and remove the other people. Use it for a partner or property manager who runs things with you. Only you can add or remove Admins, and Admins cannot add or delete homes or change billing."],
   ["Can I assign tasks to the people I invite?","Yes. Once someone accepts your invite, they appear in the Assigned to menu when you add or edit a task. You can filter the task list by Assigned to me, Unassigned or by person, and the person you assigned can mark the task done."],
   ["Does it work for a rental property?","Yes, for the upkeep side of a rental. Invite your co-owner, property manager or handyman and give them tasks like the HVAC filter or the annual inspection, while warranties, service history and expenses stay in one place. Steadwell is home maintenance software, not tenant, lease or rent-collection software."],
   ["What can the people I invite see and do?","You choose a level for each person. Full access (a spouse, partner, co-owner or property manager) covers tasks, assets and warranties, service history, contractors, expenses and projects. Tasks & assets (a maintenance person or caretaker) covers tasks, assets and warranties, service history and contractors, and keeps your expenses and projects private. Documents and receipt files stay in your own account. You can change someone’s level or remove them at any time."],
