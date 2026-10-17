@@ -1,4 +1,4 @@
-// Steadwell v373 — 2026-10-17
+// Steadwell v374 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -13082,7 +13082,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
     { key:"insurance",   icon:"🛡️", label:"Insurance",   action:()=>onNavigate("profile"),    done: !!profile?.ins_company },
     { key:"expenses",    icon:"💸", label:"Expenses",    action:()=>onNavigate("expenses"),   done: expenses.length > 0 },
     { key:"projects",    icon:"🏗️", label:"Projects",    action:()=>onNavigate("expenses"),   done: projects.length > 0 },
-  ];
+  ].filter(f => !hidesMoney(profile) || !["insurance","expenses","projects"].includes(f.key));
   const usedCount = exploreItems.filter(f => f.done).length;
 
   // ── Build unified action feed ────────────────────────────────────────────
@@ -20641,6 +20641,16 @@ const ACCESS_LEVELS = [
   { key:"limited", label:"Tasks & assets", desc:"Tasks, assets, service history and contractors. Expenses and projects stay private. For a housekeeper, gardener or caretaker." },
 ];
 const accessKey = (role) => role === "admin" ? "admin" : role === "full" ? "full" : "limited";
+// "Tasks & assets" people never see insurance, claims, HOA or money screens. The database already leaves these
+// fields out for them; this removes them again on the device and hides the screens that would show them.
+const PRIVATE_PROFILE_FIELDS = ["ins_company","ins_policy_number","ins_agent_name","ins_agent_phone","ins_premium","ins_deductible","ins_dwelling_coverage","ins_personal_property","ins_liability_coverage","ins_loss_of_use","ins_renewal_date","ins_notes","ins_document_id","additional_policies","claim_log","checkin_data","hoa_fee"];
+const hidesMoney = (profile) => !!profile?._shared && profile._role !== "admin" && profile._role !== "full";
+const stripPrivateFields = (row, role) => {
+  if (!row || role === "admin" || role === "full") return row;
+  const out = { ...row };
+  PRIVATE_PROFILE_FIELDS.forEach(k => { delete out[k]; });
+  return out;
+};
 const accessLabel = (role) => ACCESS_LEVELS.find(l => l.key === accessKey(role)).label;
 const PEOPLE_MAX_PER_HOME = 10;
 const PEOPLE_ERRORS = {
@@ -21933,7 +21943,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               {label:"Lot size",   val:profile?.lot_size},
               {label:"Bedrooms",   val:profile?.bedrooms},
               {label:"Bathrooms",  val:profile?.bathrooms},
-              {label:"HOA fee",    val:profile?.hoa_fee?"$"+Number(profile.hoa_fee).toLocaleString()+"/mo":null},
+              {label:"HOA fee",    val:profile?.hoa_fee&&!hidesMoney(profile)?"$"+Number(profile.hoa_fee).toLocaleString()+"/mo":null},
             ].filter(f=>f.val).map(f=>(
               <div key={f.label} style={{background:"var(--cream)",borderRadius:10,padding:".65rem .8rem"}}>
                 <div style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em",color:"#A8A09A",fontWeight:700,marginBottom:".2rem"}}>{f.label}</div>
@@ -22012,7 +22022,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       )}
 
       {/* ── INSURANCE MODULE ── */}
-      {!showSetup && (
+      {!showSetup && !hidesMoney(profile) && (
         <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:"0 1rem 1rem",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
             <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🛡️</span><span style={{fontSize:"1rem",fontWeight:700}}>Insurance</span></div>
@@ -22075,7 +22085,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
       )}
 
       {/* ── INSURANCE FULL-SCREEN VIEW ── */}
-      {showInsurance && (
+      {showInsurance && !hidesMoney(profile) && (
         <div className="ins-overlay" style={{position:"fixed",inset:0,background:"var(--cream)",zIndex:300,overflowY:"auto",display:"flex",flexDirection:"column"}}>
           {/* Header */}
           <div className="ins-hdr" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".85rem 1rem",background:"var(--white)",borderBottom:"1px solid var(--stone)",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
@@ -25484,8 +25494,16 @@ export default function App() {
         if (!m.property_id) continue;
         // Skip if we already own this property
         if (ownedProfiles.find(p => p.id === m.property_id)) continue;
-        const { data: sp } = await supabase.from("profiles").select("*").eq("id", m.property_id).single();
-        if (sp) sharedProfiles.push({ ...sp, _shared: true, _role: m.role });
+        let sp = null;
+        try {
+          const { data: viaFn, error: fnErr } = await supabase.rpc("get_shared_profile", { p_property: m.property_id });
+          if (!fnErr && viaFn) sp = viaFn;
+        } catch { /* the function is not installed yet: read the row directly below */ }
+        if (!sp) {
+          const { data: direct } = await supabase.from("profiles").select("*").eq("id", m.property_id).single();
+          sp = direct || null;
+        }
+        if (sp) sharedProfiles.push({ ...stripPrivateFields(sp, m.role), _shared: true, _role: m.role });
       }
 
       // Homes of every account this person is an Admin on, including homes added later.
