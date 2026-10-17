@@ -1,4 +1,4 @@
-// Steadwell v385 — 2026-10-17
+// Steadwell v386 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3669,6 +3669,10 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .pp-role{display:flex;gap:.7rem;align-items:flex-start;width:100%;text-align:left;font-family:inherit;color:var(--dark);background:var(--white);border:1.5px solid var(--stone);border-radius:var(--r-sm);padding:.7rem .8rem;cursor:pointer}
 .pp-role.on{border-color:var(--pine);background:#EAF2EE}
 .pp-role:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.as-chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.as-chip{font-family:inherit;font-size:.85rem;color:var(--dark);background:var(--white);border:1.5px solid var(--stone);border-radius:999px;padding:.4rem .8rem;cursor:pointer}
+.as-chip.on{border-color:var(--pine);background:#EAF2EE;color:var(--pine);font-weight:600}
+.as-chip:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .pp-dot{width:20px;height:20px;min-width:20px;border-radius:50%;border:2px solid #B9AE9E;background:var(--white);margin-top:2px;display:flex;align-items:center;justify-content:center}
 .pp-role.on .pp-dot{border-color:var(--pine)}
 .pp-role.on .pp-dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--pine)}
@@ -6840,8 +6844,10 @@ function TeamNotifyPrefs({ userId, toast }) {
 }
 
 // "Robert · Oct 17" for who assigned a task and when. Empty when the task was assigned before this was recorded.
+// Everyone a task is assigned to. Older rows only have assigned_to.
+const taskAssignees = (t) => (Array.isArray(t?.assignee_ids) && t.assignee_ids.length ? t.assignee_ids : (t?.assigned_to ? [t.assigned_to] : []));
 function assignedByText(task, peopleById, userId) {
-  if (!task?.assigned_to || !task?.assigned_by) return "";
+  if (!taskAssignees(task).length || !task?.assigned_by) return "";
   const by = task.assigned_by === userId ? "you" : (peopleById?.[task.assigned_by]?.label || "a teammate");
   const when = task.assigned_at ? new Date(task.assigned_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
   return `Assigned by ${by}${when ? " · " + when : ""}`;
@@ -7720,13 +7726,20 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
       </div>
       {people.length > 1 && (
         <div className="field s2">
-          <label>👤 Assigned to</label>
-          <select value={data.assigned_to||""} onChange={e=>f("assigned_to",e.target.value||null)}>
-            <option value="">Unassigned</option>
-            {people.map(pp=>(
-              <option key={pp.id} value={pp.id}>{pp.label}{pp.role==="owner"&&pp.label!=="Me"?" (owner)":""}</option>
-            ))}
-          </select>
+          <label id="as-lab">👤 Assigned to</label>
+          {(() => {
+            const picked = taskAssignees(data);
+            const toggle = (id) => { const next = picked.includes(id) ? picked.filter(x => x !== id) : [...picked, id]; onChange({...data, assignee_ids: next, assigned_to: next[0] || null}); };
+            return <>
+              <div className="as-chips" role="group" aria-labelledby="as-lab">
+                {people.map(pp => {
+                  const on = picked.includes(pp.id);
+                  return <button key={pp.id} type="button" role="checkbox" aria-checked={on} className={"as-chip" + (on ? " on" : "")} onClick={() => toggle(pp.id)}>{on ? "✓ " : ""}{pp.label}{pp.role==="owner"&&pp.label!=="Me"?" (owner)":""}</button>;
+                })}
+              </div>
+              <div style={{fontSize:".78rem",color:"#8A8178",marginTop:".3rem"}}>{picked.length === 0 ? "Unassigned. Tap everyone who should take this on." : picked.length === 1 ? "Tap more people to add them." : `${picked.length} people. Newly added people get an email.`}</div>
+            </>;
+          })()}
           {(() => {
             const by = assignedByText(data, Object.fromEntries(people.map(pp => [pp.id, pp])), people.find(pp => pp.label === "Me")?.id);
             return by ? <div style={{fontSize:".78rem",color:"#8A8178",marginTop:".3rem"}}>{by}</div> : null;
@@ -13695,7 +13708,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
   }, [menuId]);
 
   const openNew = (cat) => {
-    setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||"",...(people.length>1?{assigned_to:null}:{})});
+    setEditData({status:"Scheduled",priority:"Medium",due_date:localISO(),category:cat||"",...(people.length>1?{assigned_to:null,assignee_ids:[]}:{})});
     setEditId(null);
     setModal(true);
   };
@@ -13725,25 +13738,29 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     };
     // Only send assigned_to when the form actually carries it, so accounts that
     // have not had the shared-tasks SQL applied yet keep working unchanged.
-    if ("assigned_to" in editData) payload.assigned_to = editData.assigned_to || null;
+    if (Array.isArray(editData.assignee_ids)) { payload.assignee_ids = editData.assignee_ids; payload.assigned_to = editData.assignee_ids[0] || null; }
+    else if ("assigned_to" in editData) payload.assigned_to = editData.assigned_to || null;
     // Who assigned a task, and when, is recorded by the database. The app never writes it.
     delete payload.assigned_by; delete payload.assigned_at;
-    let assignDropped = false;
+    // Try the full payload, then without the multi-person column, then without assignment at all, so a
+    // database that has not had the newest SQL applied still saves the task.
+    const variants = [payload];
+    if ("assignee_ids" in payload) { const { assignee_ids: _i, ...p1 } = payload; variants.push(p1); }
+    if ("assigned_to" in payload) { const { assignee_ids: _i, assigned_to: _a, ...p2 } = payload; variants.push(p2); }
+    const attempt = async (run) => {
+      let res = { error: true }, used = 0;
+      for (; used < variants.length; used++) { res = await run(variants[used]); if (!res.error) break; }
+      return { res, used };
+    };
+    const manyLost = (used) => used > 0 && !("assignee_ids" in variants[used]) && (payload.assignee_ids || []).length > 1;
+    const noteMsg = (used, ok) => used === 0 ? ok : (!("assigned_to" in variants[used]) && payload.assigned_to ? ok + ", but assignment could not be saved yet" : manyLost(used) ? ok + ", but only the first person was assigned" : ok);
     if(editId) {
-      let {error} = await supabase.from("tasks").update(payload).eq("id",editId).eq("property_id",propertyId);
-      if (error && "assigned_to" in payload) {
-        const { assigned_to: _drop, ...rest } = payload; assignDropped = true;
-        ({error} = await supabase.from("tasks").update(rest).eq("id",editId).eq("property_id",propertyId));
-      }
-      if(!error) { setTasks(tasks.map(t=>t.id===editId?{...t,...payload,id:editId}:t)); pingNotifications(); toast(assignDropped ? "Task updated, but assignment could not be saved yet" : "Task updated ✓", assignDropped ? "error" : undefined); }
+      const { res, used } = await attempt((pl) => supabase.from("tasks").update(pl).eq("id",editId).eq("property_id",propertyId));
+      if(!res.error) { setTasks(tasks.map(t=>t.id===editId?{...t,...variants[used],id:editId}:t)); pingNotifications(); const m = noteMsg(used, "Task updated"); toast(used === 0 ? "Task updated ✓" : m, m.includes(", but") ? "error" : undefined); }
       else toast("Error saving","error");
     } else {
-      let {data,error} = await supabase.from("tasks").insert([{...payload,user_id:userId,property_id:propertyId}]).select();
-      if (error && "assigned_to" in payload) {
-        const { assigned_to: _drop, ...rest } = payload; assignDropped = true;
-        ({data,error} = await supabase.from("tasks").insert([{...rest,user_id:userId,property_id:propertyId}]).select());
-      }
-      if(!error&&data) { setTasks([...tasks,data[0]]); pingNotifications(); toast(assignDropped ? "Task added, but assignment could not be saved yet" : "Task added ✓", assignDropped ? "error" : undefined); }
+      const { res, used } = await attempt((pl) => supabase.from("tasks").insert([{...pl,user_id:userId,property_id:propertyId}]).select());
+      if(!res.error&&res.data) { setTasks([...tasks,res.data[0]]); pingNotifications(); const m = noteMsg(used, "Task added"); toast(used === 0 ? "Task added ✓" : m, m.includes(", but") ? "error" : undefined); }
       else toast("Error adding","error");
     }
     setModal(false);
@@ -13781,8 +13798,9 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             user_id:   userId,
             property_id: propertyId,
           };
-          if (t.assigned_to) { nextPayload.assigned_to = t.assigned_to; if (t.assigned_by && t.assigned_at) { nextPayload.assigned_by = t.assigned_by; nextPayload.assigned_at = t.assigned_at; } }
+          if (t.assigned_to) { nextPayload.assigned_to = t.assigned_to; if (taskAssignees(t).length > 1) nextPayload.assignee_ids = taskAssignees(t); if (t.assigned_by && t.assigned_at) { nextPayload.assigned_by = t.assigned_by; nextPayload.assigned_at = t.assigned_at; } }
           let { data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select();
+          if (nextErr && nextPayload.assignee_ids) { delete nextPayload.assignee_ids; ({ data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select()); }
           if (nextErr && nextPayload.assigned_to) { delete nextPayload.assigned_to; delete nextPayload.assigned_by; delete nextPayload.assigned_at; ({ data: created } = await supabase.from("tasks").insert([nextPayload]).select()); }
           if (created) {
             setTasks(prev => [...prev, created[0]]);
@@ -13867,9 +13885,9 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
       : b === dueF;
     const textMatch = !needle || [t.title, t.category, t.vendor, t.notes].some(v => (v||"").toLowerCase().includes(needle));
     const whoMatch = whoF === "all" ? true
-      : whoF === "me" ? t.assigned_to === userId
-      : whoF === "none" ? !t.assigned_to
-      : t.assigned_to === whoF;
+      : whoF === "me" ? taskAssignees(t).includes(userId)
+      : whoF === "none" ? !taskAssignees(t).length
+      : taskAssignees(t).includes(whoF);
     return statusMatch && catMatch && dueMatch && textMatch && whoMatch;
   });
   filtered = [...filtered].sort((a,b) => {
@@ -13912,11 +13930,13 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             {t.recurring && <span className="task-meta-pill" style={{background:"var(--sky-light)",color:"var(--sky)"}}>↻ {t.recurring}</span>}
             {t.vendor && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{t.vendor}</span>}
             {t.cost>0 && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>}
-            {t.assigned_to && (() => {
-              const who = peopleById[t.assigned_to]; const mine = t.assigned_to === userId;
+            {taskAssignees(t).length > 0 && (() => {
+              const ids = taskAssignees(t); const mine = ids.includes(userId);
+              const names = [...ids].sort((x, y) => (y === userId) - (x === userId)).map(id => id === userId ? "You" : (peopleById[id]?.label || "Teammate"));
+              const shown = names.length > 3 ? names.slice(0, 2).join(", ") + ` +${names.length - 2}` : names.join(", ");
               const by = assignedByText(t, peopleById, userId);
               return <>
-                <span className="task-meta-pill" title={by || "Assigned to"} style={{background:mine?"var(--pine)":"var(--sage-light)",color:mine?"#fff":"var(--pine)",fontWeight:600}}>👤 {mine ? "You" : (who?.label || "Teammate")}</span>
+                <span className="task-meta-pill" title={(by ? by + ". " : "") + "Assigned to " + names.join(", ")} style={{background:mine?"var(--pine)":"var(--sage-light)",color:mine?"#fff":"var(--pine)",fontWeight:600}}>👤 {shown}</span>
                 {by && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{by}</span>}
               </>;
             })()}
