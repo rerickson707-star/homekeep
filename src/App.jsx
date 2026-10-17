@@ -1,4 +1,4 @@
-// Steadwell v372 — 2026-10-17
+// Steadwell v373 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3662,6 +3662,7 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ir-row:last-of-type{border-bottom:none}
 .ir-sev{font-style:normal;display:inline-block;font-size:.68rem;font-weight:700;border:1.5px solid;border-radius:999px;padding:0 7px;margin-right:.45rem;vertical-align:1px;line-height:1.5}
 .ir-keep{margin-top:1.1rem;padding-top:.8rem;border-top:1px solid var(--stone)}
+.auth-invite{margin:0 0 1rem;padding:.7rem .85rem;border-radius:10px;background:#EAF2EE;border:1px solid rgba(35,74,61,.2);color:#234A3D;font-size:.84rem;line-height:1.5}
 .pp-lab{display:block;font-size:.8rem;font-weight:700;color:var(--dark);margin:1rem 0 .3rem}
 .pp-area{width:100%;box-sizing:border-box;min-height:84px;padding:.6rem .75rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);background:var(--white);font:inherit;font-size:.92rem;color:var(--dark);resize:vertical}
 .pp-roles{display:grid;gap:.5rem;margin:.1rem 0 .9rem}
@@ -6283,9 +6284,21 @@ async function googlePlacesAutocomplete(input, key) {
 }
 
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
+// An invitation link looks like /?shared_invite=1&email=name@example.com. It opens sign-up with that
+// address filled in, because the invite only works for an account that uses the same address.
+function readInviteEmail() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (!p.get("shared_invite")) return "";
+    const e = String(p.get("email") || "").trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length <= 254 ? e : "";
+  } catch { return ""; }
+}
+
 function AuthScreen({ onAuth, initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode); // login | signup | reset | update
-  const [email, setEmail] = useState("");
+  const inviteEmail = useMemo(readInviteEmail, []);
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -6385,6 +6398,11 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
         {mode === "login" && <>
           <div className="auth-title">Welcome back</div>
           <div className="auth-sub">Sign in to manage your home</div>
+          {inviteEmail && (mode === "login" || mode === "signup") && (
+            <div className="auth-invite" role="note">
+              You've been invited to a home on Steadwell. Use <strong>{inviteEmail}</strong> to {mode === "signup" ? "create your account" : "sign in"}, and the home will be waiting for you.
+            </div>
+          )}
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
           <form onSubmit={e=>{e.preventDefault();handleLogin();}} autoComplete="on">
@@ -6407,6 +6425,11 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
         {mode === "signup" && <>
           <div className="auth-title">Create account</div>
           <div className="auth-sub">Start managing your home today</div>
+          {inviteEmail && (mode === "login" || mode === "signup") && (
+            <div className="auth-invite" role="note">
+              You've been invited to a home on Steadwell. Use <strong>{inviteEmail}</strong> to {mode === "signup" ? "create your account" : "sign in"}, and the home will be waiting for you.
+            </div>
+          )}
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
           <form onSubmit={e=>{e.preventDefault();handleSignup();}} autoComplete="on">
@@ -20640,6 +20663,42 @@ async function callPeople(action, body) {
 }
 
 // Short card on the Profile page. The work happens in PeopleModal.
+// An invited person can step away from a home (an Admin steps away from the whole account).
+function LeaveHome({ profile }) {
+  const [step, setStep] = useState("idle");   // idle | confirm | working | error
+  const isAdmin = profile?._role === "admin";
+  const go = async () => {
+    if (step === "working") return;
+    setStep("working");
+    try {
+      const { data, error } = await supabase.rpc("leave_home", { p_property: profile.id });
+      if (error) throw error;
+      if (!(Number(data) > 0)) throw new Error("nothing changed");
+      window.location.reload();
+    } catch { setStep("error"); }
+  };
+  return (
+    <div style={{marginTop:".85rem",paddingTop:".7rem",borderTop:"1px solid var(--stone)"}}>
+      {step === "confirm" || step === "working" ? (
+        <div>
+          <div style={{fontSize:".82rem",color:"var(--dark)",lineHeight:1.5,marginBottom:".5rem"}}>
+            {isAdmin ? "Leave this whole account? You will lose access to all of its homes." : "Leave this home? You will lose access to it until the owner invites you again."}
+          </div>
+          <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={step === "working"} onClick={() => setStep("idle")}>Stay</button>
+            <button type="button" className="btn btn-sm" style={{background:"#B0432B",color:"#fff"}} disabled={step === "working"} onClick={go}>{step === "working" ? "Leaving…" : (isAdmin ? "Leave account" : "Leave home")}</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <button type="button" className="fc-link del" onClick={() => setStep("confirm")}>{isAdmin ? "Leave this account" : "Leave this home"}</button>
+          {step === "error" && <div className="fc-warn" role="status">That did not work. Try again in a moment.</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
 function PeopleSummaryCard({ profile, planData, onOpen, onUpgrade }) {
   const isGuest = !!profile?._shared;
   const isAdmin = isGuest && profile?._role === "admin";
@@ -20651,6 +20710,7 @@ function PeopleSummaryCard({ profile, planData, onOpen, onUpgrade }) {
         <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55}}>
           You are viewing this home through an invite. Your access: <strong style={{color:"var(--dark)"}}>{accessLabel(profile._role)}</strong>. Only the owner or an Admin can invite people or change access.
         </div>
+        <LeaveHome profile={profile} />
       </div>
     );
   }
@@ -20665,6 +20725,7 @@ function PeopleSummaryCard({ profile, planData, onOpen, onUpgrade }) {
       <button className="btn btn-primary" style={{width:"100%"}} onClick={can ? onOpen : onUpgrade}>
         {can ? "Manage people" : "Upgrade to Pro to invite people"}
       </button>
+      {isAdmin && <LeaveHome profile={profile} />}
     </div>
   );
 }
@@ -20808,71 +20869,9 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
   const footer = <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={onClose}>Close</button></div>;
   const canManage = iAmOwner ? isPro : iAmAdmin;
 
-  const emailList = [...new Set(emailsText.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean))];
-  const emailCount = emailList.length;
-  const pickedCount = level === "admin" ? 1 : homes.filter(h => isPicked(h.id)).length;
-  const sendBlock = emailCount === 0 ? "Add an email address to send an invite."
-    : emailCount > 10 ? "Invite up to 10 people at a time."
-    : pickedCount === 0 ? "Choose at least one home."
-    : "";
-  const sendLabel = emailCount > 1 ? `Send ${emailCount} invites` : "Send invite";
-
-  let body;
-  if (!iAmOwner && !iAmAdmin) {
-    body = <p className="fc-lead">Only the account owner or an Admin can manage people.</p>;
-  } else if (!canManage) {
-    body = (
-      <div className="fc-lock">
-        <div className="fc-lock-t"><span className="fc-tag">Pro</span> Share your homes with the people who care for them.</div>
-        <p>Pro lets you invite a property manager, housekeeper or gardener, choose what each person can do, and add Admins who can invite others for you.</p>
-        {onUpgrade && <button type="button" className="btn btn-primary btn-sm" onClick={onUpgrade}>See Pro</button>}
-      </div>
-    );
-  } else {
-    const levelChoices = ACCESS_LEVELS.filter(l => l.key !== "admin" || iAmOwner);
-    const adminRows = admins.slice().sort((a, b) => String(a.member_email).localeCompare(String(b.member_email)));
-    body = (
-      <div>
-        <p className="fc-lead">Invite people to {homes.length > 1 ? "your homes" : "your home"}. Each person needs a free Steadwell account with the email you use here, and the homes appear for them automatically.</p>
-
-        <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
-        <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => setEmailsText(e.target.value)} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
-        <div className="fc-quiet">Add up to 10 at once, separated by commas, spaces or new lines.</div>
-
-        <div className="pp-lab" id="pp-role-lab">What they can do</div>
-        <div className="pp-roles" role="radiogroup" aria-labelledby="pp-role-lab">
-          {levelChoices.map(l => (
-            <button key={l.key} type="button" role="radio" aria-checked={level === l.key} className={"pp-role" + (level === l.key ? " on" : "")} onClick={() => setLevel(l.key)}>
-              <span className="pp-dot" aria-hidden="true" />
-              <span><b>{l.label}</b><span className="d">{l.desc}</span></span>
-            </button>
-          ))}
-        </div>
-
-        <div className="pp-lab">Which homes</div>
-        {level === "admin" ? (
-          <p className="fc-quiet" style={{marginTop:0}}>Admins cover every home on the account, including homes you add later. Only you can add or remove Admins.</p>
-        ) : homes.length === 0 ? (
-          <p className="fc-quiet" style={{marginTop:0}}>Finish setting up a home first, then invite people to it.</p>
-        ) : homes.length === 1 ? (
-          <div className="pp-home1">{homeAddr(homes[0])}</div>
-        ) : (
-          <div>
-            <div className="pp-bulk">
-              <button type="button" className="fc-link" onClick={() => setAllHomes(true)}>Select all</button>
-              <button type="button" className="fc-link" onClick={() => setAllHomes(false)}>Clear</button>
-            </div>
-            {homes.map(h => <FcCheck key={h.id} checked={isPicked(h.id)} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} help={h.address && h.address !== homeName(h) ? h.address : undefined} />)}
-          </div>
-        )}
-
-        <button type="button" className="btn btn-primary pp-send" onClick={submit} disabled={sending || !!sendBlock}>{sending ? "Sending…" : sendLabel}</button>
-        {sendBlock && !sending && emailCount > 0 && <div className="fc-quiet" style={{textAlign:"center"}}>{sendBlock}</div>}
-        <div role="status" aria-live="polite" className="pp-report">
-          {report.map((r, i) => <p key={i} className={r.ok ? "pp-ok" : "pp-bad"}>{r.text}</p>)}
-        </div>
-
-        {loading ? <div className="fc-quiet" style={{marginTop:"1rem"}}>Loading…</div> : (
+  const adminRows = admins.slice().sort((a, b) => String(a.member_email).localeCompare(String(b.member_email)));
+  const peopleLists = (
+    loading ? <div className="fc-quiet" style={{marginTop:"1rem"}}>Loading…</div> : (
           <>
             <div className="pp-sec">Admins ({adminRows.length})</div>
             {adminRows.length === 0 && <p className="fc-quiet">No Admins yet.{iAmOwner ? " An Admin can invite and manage people for you." : ""}</p>}
@@ -20927,7 +20926,76 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
               </div>
             ))}
           </>
+        )
+  );
+
+  const emailList = [...new Set(emailsText.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean))];
+  const emailCount = emailList.length;
+  const pickedCount = level === "admin" ? 1 : homes.filter(h => isPicked(h.id)).length;
+  const sendBlock = emailCount === 0 ? "Add an email address to send an invite."
+    : emailCount > 10 ? "Invite up to 10 people at a time."
+    : pickedCount === 0 ? "Choose at least one home."
+    : "";
+  const sendLabel = emailCount > 1 ? `Send ${emailCount} invites` : "Send invite";
+
+  let body;
+  if (!iAmOwner && !iAmAdmin) {
+    body = <p className="fc-lead">Only the account owner or an Admin can manage people.</p>;
+  } else if (!canManage) {
+    body = (
+      <div className="fc-lock">
+        <div className="fc-lock-t"><span className="fc-tag">Pro</span> Share your homes with the people who care for them.</div>
+        <p>Pro lets you invite a property manager, housekeeper or gardener, choose what each person can do, and add Admins who can invite others for you.</p>
+        {onUpgrade && <button type="button" className="btn btn-primary btn-sm" onClick={onUpgrade}>See Pro</button>}
+      </div>
+    );
+    // People already invited keep their access; the owner can still review and remove them here.
+    body = <div>{body}{peopleLists}</div>;
+  } else {
+    const levelChoices = ACCESS_LEVELS.filter(l => l.key !== "admin" || iAmOwner);
+    body = (
+      <div>
+        {iAmAdmin && <p className="fc-quiet" style={{margin:"0 0 .6rem"}}>You are an Admin on this account: {homes.map(homeName).join(", ")}.</p>}
+        <p className="fc-lead">Invite people to {homes.length > 1 ? "your homes" : "your home"}. Each person needs a free Steadwell account with the email you use here, and the homes appear for them automatically.</p>
+
+        <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
+        <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => setEmailsText(e.target.value)} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+        <div className="fc-quiet">Add up to 10 at once, separated by commas, spaces or new lines.</div>
+
+        <div className="pp-lab" id="pp-role-lab">What they can do</div>
+        <div className="pp-roles" role="radiogroup" aria-labelledby="pp-role-lab">
+          {levelChoices.map(l => (
+            <button key={l.key} type="button" role="radio" aria-checked={level === l.key} className={"pp-role" + (level === l.key ? " on" : "")} onClick={() => setLevel(l.key)}>
+              <span className="pp-dot" aria-hidden="true" />
+              <span><b>{l.label}</b><span className="d">{l.desc}</span></span>
+            </button>
+          ))}
+        </div>
+
+        <div className="pp-lab">Which homes</div>
+        {level === "admin" ? (
+          <p className="fc-quiet" style={{marginTop:0}}>Admins cover every home on the account, including homes you add later. Only you can add or remove Admins.</p>
+        ) : homes.length === 0 ? (
+          <p className="fc-quiet" style={{marginTop:0}}>Finish setting up a home first, then invite people to it.</p>
+        ) : homes.length === 1 ? (
+          <div className="pp-home1">{homeAddr(homes[0])}</div>
+        ) : (
+          <div>
+            <div className="pp-bulk">
+              <button type="button" className="fc-link" onClick={() => setAllHomes(true)}>Select all</button>
+              <button type="button" className="fc-link" onClick={() => setAllHomes(false)}>Clear</button>
+            </div>
+            {homes.map(h => <FcCheck key={h.id} checked={isPicked(h.id)} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} help={h.address && h.address !== homeName(h) ? h.address : undefined} />)}
+          </div>
         )}
+
+        <button type="button" className="btn btn-primary pp-send" onClick={submit} disabled={sending || !!sendBlock}>{sending ? "Sending…" : sendLabel}</button>
+        {sendBlock && !sending && emailCount > 0 && <div className="fc-quiet" style={{textAlign:"center"}}>{sendBlock}</div>}
+        <div role="status" aria-live="polite" className="pp-report">
+          {report.map((r, i) => <p key={i} className={r.ok ? "pp-ok" : "pp-bad"}>{r.text}</p>)}
+        </div>
+
+        {peopleLists}
       </div>
     );
   }
@@ -25132,7 +25200,7 @@ export default function App() {
   const [screen, setScreen] = useState(() => {
     // If coming from a gift link or any ?action=signup link, open signup directly
     const params = new URLSearchParams(window.location.search);
-    if (params.get("action") === "signup" || _path === "/signup" || _path === "/signup/") return "signup";
+    if (params.get("action") === "signup" || params.get("shared_invite") || _path === "/signup" || _path === "/signup/") return "signup";
     if (_path === "/login" || _path === "/login/") return "login";
     return "landing";
   }); // landing | login | signup
@@ -25274,6 +25342,7 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
+  const [pendingInviteCount, setPendingInviteCount] = useState(0);
 
   // Durable resume: covers the normal post-onboarding launch AND returning from a
   // Stripe Checkout redirect, which reloads the page and loses the transient
@@ -25321,13 +25390,14 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const verified = params.get("verified");
     if (!verified) return;
-    if (verified === "1") {
-      // Force a fresh token so app_metadata.email_verified (just updated server-side) is picked up now
-      supabase.auth.refreshSession();
-    }
     params.delete("verified");
     const clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
     window.history.replaceState({}, "", clean);
+    if (verified === "1") {
+      // Get a fresh token so app_metadata.email_verified (just updated server-side) is picked up, then reload
+      // so any invitations waiting for this address are accepted with the verified token.
+      supabase.auth.refreshSession().then(() => { window.location.replace(clean); }, () => {});
+    }
   }, []);
 
   const handleResendVerification = async () => {
@@ -25394,9 +25464,18 @@ export default function App() {
       try {
         sharedMembersResult = await supabase.from("home_members")
           .select("property_id, role, status")
-          .eq("member_email", userEmail)
+          .or(`member_id.eq.${uid},member_email.eq.${String(userEmail || "").toLowerCase()}`)
           .eq("status", "accepted");
       } catch(e) { /* RLS may block this — fail silently */ }
+
+      // Invitations still waiting (for example until the email address is verified).
+      try {
+        const [pm, pa] = await Promise.all([
+          supabase.from("home_members").select("id", { count: "exact", head: true }).eq("status", "pending").eq("member_email", String(userEmail || "").toLowerCase()),
+          supabase.from("account_admins").select("id", { count: "exact", head: true }).eq("status", "pending").eq("member_email", String(userEmail || "").toLowerCase()),
+        ]);
+        setPendingInviteCount((pm.count || 0) + (pa.count || 0));
+      } catch { setPendingInviteCount(0); }
 
       // For each shared membership, fetch the profile separately
       const sharedMemberRows = sharedMembersResult.data || [];
@@ -25834,11 +25913,20 @@ export default function App() {
         )}
 
         {/* ── Email verification banner — only shows when app_metadata.email_verified is explicitly false */}
-        {session?.user?.app_metadata?.email_verified === false && session?.user?.app_metadata?.email_bounced !== true && !verifyBannerDismissed && (
+        {session?.user?.app_metadata?.email_verified === false && session?.user?.app_metadata?.email_bounced !== true && (!verifyBannerDismissed || pendingInviteCount > 0) && (
           <div className="vb-bar" style={{background:"#FBF0DD",borderBottom:"1px solid rgba(193,97,64,.25)"}}>
             <span className="vb-msg">
-              <span className="vb-full">Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.</span>
-              <span className="vb-short">Verify your email to get reminders.</span>
+              {pendingInviteCount > 0 ? (
+                <>
+                  <span className="vb-full">Verify <strong>{session.user.email}</strong> to see the {pendingInviteCount === 1 ? "home" : "homes"} shared with you.</span>
+                  <span className="vb-short">Verify your email to see shared homes.</span>
+                </>
+              ) : (
+                <>
+                  <span className="vb-full">Please verify <strong>{session.user.email}</strong> so you don't miss maintenance reminders.</span>
+                  <span className="vb-short">Verify your email to get reminders.</span>
+                </>
+              )}
             </span>
             {verifyResendState === "sent" ? (
               <span style={{color:"#234A3D",fontWeight:600}}>Email sent — check your inbox</span>
