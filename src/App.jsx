@@ -1,4 +1,4 @@
-// Steadwell v376 — 2026-10-17
+// Steadwell v379 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9862,9 +9862,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
             const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
             const docCategory = scanType === "insurance" || scanType === "additional_policy" ? "insurance" : "other";
             const docName = data.fields?.ins_company || data.fields?.company || `Scanned ${scanType.replace("_"," ")}`;
-            const { data: docRow, error: docErr } = await supabase
-              .from("home_documents")
-              .insert([{
+            const { data: docRow, error: docErr } = await insertHomeDocument({
                 user_id:     currentUserId,
                 name:        docName,
                 category:    docCategory,
@@ -9872,9 +9870,7 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
                 expiry_date: data.fields?.ins_renewal_date || data.fields?.renewal_date || null,
                 file_url:    urlData.publicUrl + "?t=" + Date.now(),
                 file_type:   mimeType,
-              }])
-              .select()
-              .single();
+              });
             if (!docErr && docRow) savedDoc = docRow;
           }
         } catch {
@@ -11767,7 +11763,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
   useEffect(() => {
     if (!open || !userId) return;
     let off = false;
-    supabase.from("home_documents").select("id,name,description,category").eq("user_id", userId)
+    fetchHomeDocs(userId, "id,name,description,category")
       .then(({ data }) => { if (!off && data) setDocs(data); });
     return () => { off = true; };
   }, [open, userId]);
@@ -16985,10 +16981,10 @@ function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, to
             const { error: upErr } = await supabase.storage.from("expense-files").upload(path, file, { upsert: true, contentType: file.type });
             if (!upErr) {
               const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
-              const { data: docRow, error: docErr } = await supabase.from("home_documents").insert([{
+              const { data: docRow, error: docErr } = await insertHomeDocument({
                 user_id: userId, name: `${yearNum} property tax bill`, category: "tax", description: "Saved from a tax bill scan",
                 file_url: urlData.publicUrl + "?t=" + Date.now(), file_type: file.type,
-              }]).select().single();
+              });
               if (!docErr && docRow) documentId = docRow.id;
             }
           } else toast("Your document storage is full, so the bill file was not kept. The numbers were saved.", "error");
@@ -19640,7 +19636,21 @@ const DOC_CATEGORIES = [
   { id:"other",      label:"Other",                  border:"#8A8076", bg:"#F4F2EF", desc:"Any other home documents" },
 ];
 
-function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade }) {
+// Documents belong to one home. These two helpers add the home to what is saved and to what is read.
+// If the database has not had steadwell-documents-per-home.sql yet, they fall back to the old all-homes behaviour.
+async function insertHomeDocument(row) {
+  const withHome = _activeHomeId ? { ...row, property_id: _activeHomeId } : row;
+  let r = await supabase.from("home_documents").insert([withHome]).select().single();
+  if (r.error && withHome !== row) r = await supabase.from("home_documents").insert([row]).select().single();
+  return r;
+}
+async function fetchHomeDocs(userId, cols, tweak) {
+  const base = () => { let q = supabase.from("home_documents").select(cols).eq("user_id", userId); if (tweak) q = tweak(q); return q; };
+  if (_activeHomeId) { const r = await base().eq("property_id", _activeHomeId); if (!r.error) return r; }
+  return base();
+}
+
+function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade, homes=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const [uploading, setUploading]   = useState(false);
   const [scanning, setScanning]     = useState(false);
@@ -19807,6 +19817,15 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
 
       {/* ── Form fields ── */}
       <div className="field s2"><label>Document Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. Home Inspection Report 2024"/></div>
+      {homes.length > 1 && (
+        <div className="field s2">
+          <label>Home</label>
+          <select value={data.property_id||_activeHomeId||""} onChange={e=>onChange({...data, property_id:e.target.value, asset_id:null, project_id:null})}>
+            {homes.map(h=><option key={h.id} value={h.id}>{h.name || (h.address||"").split(",")[0] || "My Home"}{h._shared?" (shared)":""}</option>)}
+          </select>
+          {data.id && data.property_id && data.property_id !== _activeHomeId && <div style={{fontSize:".76rem",color:"#8A8178",marginTop:".3rem"}}>This document will move to the other home when you save.</div>}
+        </div>
+      )}
       <div className="field s2">
         <label>Category</label>
         <select value={data.category||""} onChange={e=>f("category",e.target.value)}>
@@ -19838,7 +19857,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     </div>
   );
 }
-function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade, onBack, onImportInspection, reloadKey=0 }) {
+function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, planData, onUpgrade, onBack, onImportInspection, reloadKey=0, propertyId, homes=[] }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -19860,14 +19879,14 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   useEffect(() => {
     if (!userId) return;
     Promise.all([
-      supabase.from("home_documents").select("*").eq("user_id", userId).order("created_at", {ascending:false}),
-      supabase.from("projects").select("id,name").eq("user_id", userId),
+      fetchHomeDocs(userId, "*", q => q.order("created_at", {ascending:false})),
+      (propertyId ? supabase.from("projects").select("id,name").eq("property_id", propertyId) : supabase.from("projects").select("id,name").eq("user_id", userId)),
     ]).then(([docs, proj]) => {
       if (docs.data) setDocuments(docs.data);
       if (proj.data) setProjects(proj.data);
       setLoading(false);
     });
-  }, [userId, reloadKey]);
+  }, [userId, reloadKey, propertyId]);
 
   const openEdit = d => { setEditData({...d}); setEditId(d.id); setModal(true); };
 
@@ -19875,10 +19894,10 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
     if (!editData.name?.trim()) return;
     if (editId) {
       const {error} = await supabase.from("home_documents").update(editData).eq("id",editId).eq("user_id",userId);
-      if (!error) setDocuments(documents.map(d=>d.id===editId?{...editData,id:editId}:d));
+      if (!error) setDocuments(editData.property_id && propertyId && editData.property_id !== propertyId ? documents.filter(d=>d.id!==editId) : documents.map(d=>d.id===editId?{...editData,id:editId}:d));
     } else {
-      const {data,error} = await supabase.from("home_documents").insert([{...editData,user_id:userId}]).select();
-      if (!error&&data) setDocuments([data[0],...documents]);
+      const {data,error} = await insertHomeDocument({...editData,user_id:userId});
+      if (!error&&data) setDocuments([data,...documents]);
     }
     setModal(false);
   };
@@ -20037,7 +20056,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
 
       {modal && (
         <Modal title={editId?"Edit Document":"Add Document"} onClose={()=>setModal(false)} onSave={save}>
-          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects} planData={planData} onUpgrade={onUpgrade}/>
+          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects} planData={planData} onUpgrade={onUpgrade} homes={homes}/>
         </Modal>
       )}
       {confirm && <Confirm message="This document and its file will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
@@ -21388,11 +21407,10 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   // covers both docs uploaded here via scan AND docs uploaded directly in the Documents tab.
   const refetchInsuranceDocs = () => {
     if (!userId) return;
-    supabase.from("home_documents").select("id,name,description,file_url,file_type,expiry_date,created_at")
-      .eq("user_id", userId).eq("category", "insurance").order("created_at", {ascending:false})
+    fetchHomeDocs(userId, "id,name,description,file_url,file_type,expiry_date,created_at", q => q.eq("category", "insurance").order("created_at", {ascending:false}))
       .then(({data}) => setInsuranceDocuments(data||[]));
   };
-  useEffect(refetchInsuranceDocs, [userId]);
+  useEffect(refetchInsuranceDocs, [userId, propertyId]);
   const [editData, setEditData]   = useState({});
   const [insData, setInsData]     = useState({});
 
@@ -26060,7 +26078,7 @@ export default function App() {
             /* Documents Center */
             <div style={{display:"flex",flexDirection:"column",height:"100%",background:"var(--linen)"}}>
               <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onBack={()=>setShowDocs(false)} onImportInspection={()=>setInspOpen(true)} reloadKey={docsVersion}/>
+                <DocumentVault userId={uid} warranties={warranties} lightbox={docLightbox} setLightbox={setDocLightbox} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onBack={()=>setShowDocs(false)} onImportInspection={()=>setInspOpen(true)} reloadKey={docsVersion} propertyId={activePropertyId} homes={allProfiles}/>
               </div>
               {docLightbox && <Lightbox src={docLightbox} onClose={()=>setDocLightbox(null)}/>}
             </div>
@@ -29828,11 +29846,11 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
             const { error: upErr } = await supabase.storage.from("expense-files").upload(path, file, { upsert: true, contentType: file.type });
             if (!upErr) {
               const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
-              const { data: dr, error: docErr } = await supabase.from("home_documents").insert([{
+              const { data: dr, error: docErr } = await insertHomeDocument({
                 user_id: userId, name: `Home inspection report${meta.inspection_date ? " " + irNice(meta.inspection_date) : ""}`, category: "inspection",
                 description: meta.inspector_company ? `Inspected by ${meta.inspector_company}` : "Saved from an inspection report import",
                 file_url: urlData.publicUrl + "?t=" + Date.now(), file_type: file.type,
-              }]).select().single();
+              });
               if (!docErr && dr) { docRow = dr; docPath = path; notifyStorageChanged(); }
               else await supabase.storage.from("expense-files").remove([path]);
             }
