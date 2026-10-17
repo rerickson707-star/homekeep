@@ -1,4 +1,4 @@
-// Steadwell v370 — 2026-10-17
+// Steadwell v371 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -20627,6 +20627,7 @@ const PEOPLE_ERRORS = {
   not_yours: "That home isn't part of this account.",
   too_many: "You can invite up to 10 people at a time.",
   nothing_pending: "There is no pending invite for that person.",
+  not_found: "That person isn't on this account any more. Refresh and try again.",
   bad_request: "Check the email addresses and homes, then try again.",
 };
 async function callPeople(action, body) {
@@ -20710,10 +20711,12 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     return () => { cancelled = true; };
   }, [tick, acctOwner, homeKey]);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  const adminEmails = useMemo(() => new Set(admins.map(a => String(a.member_email || "").toLowerCase())), [admins]);
   const persons = useMemo(() => {
     const by = new Map();
     members.forEach(m => {
       const k = String(m.member_email || "").toLowerCase();
+      if (adminEmails.has(k)) return;   // an Admin is shown under Admins, even if home rows from an earlier level remain
       if (!by.has(k)) by.set(k, { email: k, rows: [] });
       by.get(k).rows.push(m);
     });
@@ -20721,7 +20724,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
       const levels = new Set(p.rows.map(r => accessKey(r.role)));
       return { ...p, level: levels.size === 1 ? [...levels][0] : "mixed", active: p.rows.some(r => r.status === "accepted") };
     }).sort((a, b) => a.email.localeCompare(b.email));
-  }, [members]);
+  }, [members, adminEmails]);
 
   const refresh = () => { setTick(t => t + 1); onChanged && onChanged(); };
   const why = (r) => {
@@ -20773,7 +20776,12 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     refresh();
   };
   const ids = p => p.rows.map(r => r.property_id);
-  const setPersonLevel = (p, lv) => run("lv:" + p.email, () => callPeople("set_level", { memberEmail: p.email, level: lv, propertyIds: ids(p) }), `${p.email.split("@")[0]} now has ${accessLabel(lv)}`);
+  const nameOf = email => String(email || "").split("@")[0];
+  // Moving someone into or out of Admin goes through change_level (owner only). Other changes keep their homes.
+  const setPersonLevel = (p, lv) => run("lv:" + p.email,
+    () => lv === "admin" ? callPeople("change_level", { memberEmail: p.email, level: "admin" }) : callPeople("set_level", { memberEmail: p.email, level: lv, propertyIds: ids(p) }),
+    `${nameOf(p.email)} is now ${lv === "admin" ? "an Admin" : "set to " + accessLabel(lv)}`);
+  const setAdminLevel = (a, lv) => run("lv:" + a.member_email, () => callPeople("change_level", { memberEmail: a.member_email, level: lv }), `${nameOf(a.member_email)} now has ${accessLabel(lv)}`);
   const removeFrom = (p, propertyIds) => run("rm:" + p.email + propertyIds.join(), () => callPeople("remove", { memberEmail: p.email, propertyIds }), "Access removed");
   const resend = (email, kind) => run("rs:" + email, () => callPeople("resend", { memberEmail: email, kind }), "Invite sent again ✓");
   const removeAdmin = (a) => run("ra:" + a.member_email, () => callPeople("remove_admin", { memberEmail: a.member_email }), "Admin removed");
@@ -20861,7 +20869,16 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
             {adminRows.length === 0 && <p className="fc-quiet">No Admins yet.{iAmOwner ? " An Admin can invite and manage people for you." : ""}</p>}
             {adminRows.map(a => (
               <div className="pp-person" key={a.id}>
-                <div className="pp-top"><div className="pp-mail">{a.member_email}</div><span className="fc-tag">Admin</span></div>
+                <div className="pp-top">
+                  <div className="pp-mail">{a.member_email}</div>
+                  {iAmOwner
+                    ? <select aria-label={`Access level for ${a.member_email}`} value="admin" disabled={!!busy} onChange={e => setAdminLevel(a, e.target.value)} className="pp-sel">
+                        <option value="admin">Admin</option>
+                        <option value="full">Full access</option>
+                        <option value="limited">Tasks &amp; assets</option>
+                      </select>
+                    : <span className="fc-tag">Admin</span>}
+                </div>
                 <div className="pp-meta">{a.status === "accepted" ? "Active" : "Invite pending"}</div>
                 {iAmOwner && (
                   <div className="pp-acts">
@@ -20880,6 +20897,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
                   <div className="pp-mail">{p.email}</div>
                   <select aria-label={`Access level for ${p.email}`} value={p.level} disabled={!!busy} onChange={e => setPersonLevel(p, e.target.value)} className="pp-sel">
                     {p.level === "mixed" && <option value="mixed" disabled>Mixed</option>}
+                    {iAmOwner && <option value="admin">Admin</option>}
                     <option value="full">Full access</option>
                     <option value="limited">Tasks &amp; assets</option>
                   </select>
