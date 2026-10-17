@@ -1,4 +1,4 @@
-// Steadwell v366 — 2026-10-17
+// Steadwell v368 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3673,6 +3673,10 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .pp-role.on .pp-dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--pine)}
 .pp-role b{display:block;font-size:.92rem;line-height:1.35}
 .pp-role .d{display:block;font-size:.8rem;line-height:1.45;color:#6E665D;margin-top:.15rem}
+.pp-home1{padding:.65rem .8rem;border:1.5px solid var(--stone);border-radius:var(--r-sm);background:#F7F2E8;font-size:.9rem;font-weight:600;color:var(--dark)}
+.pp-bulk{display:flex;gap:1rem;margin:0 0 .15rem}
+.pp-send{width:100%;margin-top:1rem}
+.pp-send:disabled{opacity:.5;cursor:not-allowed}
 .pp-sec{font-family:'Fraunces',Georgia,serif;font-size:1.02rem;font-weight:500;color:var(--dark);margin:1.4rem 0 .35rem;padding-bottom:.35rem;border-bottom:1px solid var(--stone)}
 .pp-person{padding:.7rem 0;border-bottom:1px solid #EFE9DD}
 .pp-top{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
@@ -4866,7 +4870,7 @@ const LANDING_FAQ = [
   ["What is a condition assessment?","Take a few photos of an appliance or system, such as a water heater, HVAC unit or roof, and Steadwell AI grades its condition from 1 to 5 using a checklist for that item type, estimates the years it has left and suggests next steps. You review everything before it is saved. It is an estimate from photos, not a professional inspection. Condition assessments are included with Plus (5 a month) and Pro (25 a month)."],
   ["How does Steadwell fill in my home details?","Enter your address and Steadwell pulls your home's year built, sale history, tax records and estimated value from public records. Then scan an appliance nameplate or receipt and AI reads the brand, model, serial number and warranty."],
   ["Does Steadwell check for product recalls?","Yes. Every tracked item is checked against the federal CPSC recall database automatically, and you are alerted if something is recalled. Recall alerts are free on every plan."],
-  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties. Each home can have up to 10 people, and you can add up to 3 Admins who can invite and manage people for you."],
+  ["Can I share Steadwell with my spouse, partner or a team member?","Yes. The Pro plan includes shared access, so you can invite a spouse, partner, property manager or team member to a home, choose what each person can see, and assign tasks to them. Pro also covers up to three properties. Each home can have up to 10 people, and you can add as many Admins as you like to invite and manage people for you."],
   ["Is my data private?","Your documents and records are stored privately in your account, and other Steadwell users can never see them. AI scans and assessments are processed by a third-party AI provider, and Steadwell does not use your photos to train AI. The Privacy Policy explains exactly what is shared and why."],
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
@@ -20616,7 +20620,6 @@ const ACCESS_LEVELS = [
 const accessKey = (role) => role === "admin" ? "admin" : role === "full" ? "full" : "limited";
 const accessLabel = (role) => ACCESS_LEVELS.find(l => l.key === accessKey(role)).label;
 const PEOPLE_MAX_PER_HOME = 10;
-const PEOPLE_MAX_ADMINS = 3;
 const PEOPLE_ERRORS = {
   plan_required: "Shared access is part of the Pro plan.",
   not_signed_in: "Your session has expired. Sign in again.",
@@ -20681,6 +20684,10 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
   const [emailsText, setEmailsText] = useState("");
   const [level, setLevel] = useState("limited");   // least access unless the person chooses more
   const [pickHomes, setPickHomes] = useState(() => Object.fromEntries(homes.map(h => [h.id, true])));
+  // homes can finish loading after the modal opens, and new homes can be added: treat unseen homes as ticked
+  const isPicked = id => pickHomes[id] !== false;
+  const setAllHomes = v => setPickHomes(Object.fromEntries(homes.map(h => [h.id, v])));
+  const homeAddr = h => h?.address || h?.name || "My Home";
   const [sending, setSending] = useState(false);
   const [report, setReport] = useState([]);
   const [busy, setBusy] = useState("");
@@ -20721,7 +20728,6 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     if (r.status === "bad_email") return "isn't a valid email address";
     if (r.status === "self") return "is your own email address";
     if (r.status === "email_failed") return "was saved, but the email did not send. Use Resend on their row below";
-    if (r.status === "full") return `can't be added because you already have ${PEOPLE_MAX_ADMINS} Admins`;
     if (r.status === "already") return "already has access";
     const st = (r.homes || []).map(x => x.status);
     if (st.includes("full")) return `can't be added because that home already has ${PEOPLE_MAX_PER_HOME} people`;
@@ -20736,7 +20742,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     const emails = [...new Set(emailsText.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean))];
     if (emails.length === 0) { toast("Enter at least one email address", "error"); return; }
     if (emails.length > 10) { toast(PEOPLE_ERRORS.too_many, "error"); return; }
-    const propertyIds = level === "admin" ? [] : homes.filter(h => pickHomes[h.id]).map(h => h.id);
+    const propertyIds = level === "admin" ? [] : homes.filter(h => isPicked(h.id)).map(h => h.id);
     if (level !== "admin" && propertyIds.length === 0) { toast("Choose at least one home", "error"); return; }
     setSending(true);
     const { data, error } = await callPeople("invite", { emails, level, propertyIds });
@@ -20782,8 +20788,17 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
       : <button type="button" className={"fc-link" + (danger ? " del" : "")} disabled={!!busy} onClick={() => setConfirmKey(key)}>{label}</button>
   );
 
-  const footer = <div className="modal-footer"><button className="btn btn-primary" onClick={onClose}>Done</button></div>;
+  const footer = <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={onClose}>Close</button></div>;
   const canManage = iAmOwner ? isPro : iAmAdmin;
+
+  const emailList = [...new Set(emailsText.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean))];
+  const emailCount = emailList.length;
+  const pickedCount = level === "admin" ? 1 : homes.filter(h => isPicked(h.id)).length;
+  const sendBlock = emailCount === 0 ? "Add an email address to send an invite."
+    : emailCount > 10 ? "Invite up to 10 people at a time."
+    : pickedCount === 0 ? "Choose at least one home."
+    : "";
+  const sendLabel = emailCount > 1 ? `Send ${emailCount} invites` : "Send invite";
 
   let body;
   if (!iAmOwner && !iAmAdmin) {
@@ -20817,23 +20832,32 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
           ))}
         </div>
 
+        <div className="pp-lab">Which homes</div>
         {level === "admin" ? (
-          <p className="fc-quiet">Admins cover every home on the account, including homes you add later. You can have up to {PEOPLE_MAX_ADMINS}. Only you can add or remove Admins.</p>
-        ) : homes.length > 1 ? (
-          <div style={{margin:".2rem 0 .8rem"}}>
-            <div className="pp-lab">Which homes</div>
-            {homes.map(h => <FcCheck key={h.id} checked={!!pickHomes[h.id]} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} />)}
+          <p className="fc-quiet" style={{marginTop:0}}>Admins cover every home on the account, including homes you add later. Only you can add or remove Admins.</p>
+        ) : homes.length === 0 ? (
+          <p className="fc-quiet" style={{marginTop:0}}>Finish setting up a home first, then invite people to it.</p>
+        ) : homes.length === 1 ? (
+          <div className="pp-home1">{homeAddr(homes[0])}</div>
+        ) : (
+          <div>
+            <div className="pp-bulk">
+              <button type="button" className="fc-link" onClick={() => setAllHomes(true)}>Select all</button>
+              <button type="button" className="fc-link" onClick={() => setAllHomes(false)}>Clear</button>
+            </div>
+            {homes.map(h => <FcCheck key={h.id} checked={isPicked(h.id)} onChange={v => setPickHomes(p => ({ ...p, [h.id]: v }))} label={homeName(h)} help={h.address && h.address !== homeName(h) ? h.address : undefined} />)}
           </div>
-        ) : null}
+        )}
 
-        <button type="button" className="btn btn-primary" style={{width:"100%"}} onClick={submit} disabled={sending}>{sending ? "Sending…" : "Send invites"}</button>
+        <button type="button" className="btn btn-primary pp-send" onClick={submit} disabled={sending || !!sendBlock}>{sending ? "Sending…" : sendLabel}</button>
+        {sendBlock && !sending && emailCount > 0 && <div className="fc-quiet" style={{textAlign:"center"}}>{sendBlock}</div>}
         <div role="status" aria-live="polite" className="pp-report">
           {report.map((r, i) => <p key={i} className={r.ok ? "pp-ok" : "pp-bad"}>{r.text}</p>)}
         </div>
 
         {loading ? <div className="fc-quiet" style={{marginTop:"1rem"}}>Loading…</div> : (
           <>
-            <div className="pp-sec">Admins ({adminRows.length} of {PEOPLE_MAX_ADMINS})</div>
+            <div className="pp-sec">Admins ({adminRows.length})</div>
             {adminRows.length === 0 && <p className="fc-quiet">No Admins yet.{iAmOwner ? " An Admin can invite and manage people for you." : ""}</p>}
             {adminRows.map(a => (
               <div className="pp-person" key={a.id}>
@@ -25256,10 +25280,11 @@ export default function App() {
     try { localStorage.setItem(`sw_prop_${uid || session?.user?.id}`, id); } catch {}
   };
 
-  // Plan is a user-level attribute — always read from the primary (oldest) owned profile,
-  // not the currently active property, so switching to a secondary property doesn't
-  // incorrectly reset the plan to "free".
-  const primaryProfile = allProfiles.find(p => !p._shared) || profile;
+  // Plan is an account-level attribute. For the person's own homes it is read from the primary
+  // (oldest) owned profile, so switching to a second property doesn't reset it to "free".
+  // Inside a home shared with them (Admin, Full access or Tasks & assets), the home's owner pays,
+  // so the owner's plan applies. Every profile row of an owner carries that owner's plan.
+  const primaryProfile = profile?._shared ? profile : (allProfiles.find(p => !p._shared) || profile);
   const planData = usePlan(primaryProfile);
 
   // ── Handle return from the email-verification link (?verified=1 or ?verified=already)
@@ -29501,7 +29526,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
       }
       const mimeType = isPdf ? "application/pdf" : pick.type;
       const fileBase64 = await fcReadB64(pick);
-      const { data, error } = await supabase.functions.invoke("inspection-report-scan", { body: { fileBase64, mimeType } });
+      const { data, error } = await supabase.functions.invoke("inspection-report-scan", { body: { fileBase64, mimeType, propertyId } });
       if (!aliveRef.current) return;
       if (error) {
         let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
@@ -30443,7 +30468,7 @@ function HomeHealthScorePage() {
 const SHARED_FAQ = [
   ["What is shared access?","It lets you invite other people to a property in Steadwell: a spouse or partner, a co-owner, a property manager or a team member. Everyone you invite works from the same tasks and assets, and you can assign tasks to them."],
   ["Which plan includes it?","Shared access is included with the Pro plan, which also covers up to three properties."],
-  ["How many people can I invite?","Up to 10 people per home, plus up to 3 Admins. You can invite several people at once, choose which homes each one can work on, and each person needs a free Steadwell account using the email you invited."],
+  ["How many people can I invite?","Up to 10 people per home, and as many Admins as you need. You can invite several people at once, choose which homes each one can work on, and each person needs a free Steadwell account using the email you invited."],
   ["What is an Admin?","An Admin has full access to every home on your account, including homes you add later, and can invite, change and remove the other people. Use it for a partner or property manager who runs things with you. Only you can add or remove Admins, and Admins cannot add or delete homes or change billing."],
   ["Can I assign tasks to the people I invite?","Yes. Once someone accepts your invite, they appear in the Assigned to menu when you add or edit a task. You can filter the task list by Assigned to me, Unassigned or by person, and the person you assigned can mark the task done."],
   ["Does it work for a rental property?","Yes, for the upkeep side of a rental. Invite your co-owner, property manager or handyman and give them tasks like the HVAC filter or the annual inspection, while warranties, service history and expenses stay in one place. Steadwell is home maintenance software, not tenant, lease or rent-collection software."],
