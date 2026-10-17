@@ -1,4 +1,4 @@
-// Steadwell v382 — 2026-10-17
+// Steadwell v383 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8232,6 +8232,9 @@ async function smartFillLookup(asset, { tier = "free", userId = "", zip = "", fo
   // Only facts about the model are sent. Who is asking and which plan they are on is decided by the server from the login token;
   // the install date and zip are never sent (the result is shared between owners, so it can't depend on them).
   const body = { brand, model, item: asset.item || "", upc: asset.upc || "", category: asset.category || "" };
+  // The home being worked on, so a person invited to someone else's home uses that owner's plan. The server checks they really have access.
+  const homeId = asset.property_id || (typeof _activeHomeId !== "undefined" ? _activeHomeId : null);
+  const reqBody = homeId ? { ...body, property_id: homeId } : body;
   const key = [sfNorm(brand), sfNorm(model), sfNorm(body.item), sfNorm(body.category), String(body.upc).trim()].join("|");
   if (!force) { const hit = sfCacheRead(key); if (hit) return { ok: true, data: hit, cached: true }; }
   if (SF_INFLIGHT.has(key)) return SF_INFLIGHT.get(key);
@@ -8243,7 +8246,7 @@ async function smartFillLookup(asset, { tier = "free", userId = "", zip = "", fo
       const resp = await fetch(ASSET_INTEL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, apikey: ANON_KEY },
-        body: JSON.stringify(body),
+        body: JSON.stringify(reqBody),
       });
       let json = null; try { json = await resp.json(); } catch {}
       if (resp.status === 429 || json?.limit_reached) return { ok: false, reason: "limit", message: "You've used today's Smart Fill lookups. Try again tomorrow." };
