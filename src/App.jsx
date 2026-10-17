@@ -1,4 +1,4 @@
-// Steadwell v375 — 2026-10-17
+// Steadwell v376 — 2026-10-17
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6831,8 +6831,20 @@ function TeamNotifyPrefs({ userId, toast }) {
       {TEAM_NOTIFY.map(n => (
         <AcctToggleRow key={n.key} on={prefs[n.key]} busy={busy === n.key} onClick={() => flip(n.key)} title={n.title} desc={n.desc} />
       ))}
+      <div className="acct-row acct-rowline">
+        <div className="acct-wrap" style={{flex:1}}><div className="acct-val">My access level changes</div><div className="acct-hint" style={{marginTop:1}}>When an owner changes what you can do on their account. This one is always sent.</div></div>
+        <span className="acct-pill ok">Always</span>
+      </div>
     </AcctCard>
   );
+}
+
+// "Robert · Oct 17" for who assigned a task and when. Empty when the task was assigned before this was recorded.
+function assignedByText(task, peopleById, userId) {
+  if (!task?.assigned_to || !task?.assigned_by) return "";
+  const by = task.assigned_by === userId ? "you" : (peopleById?.[task.assigned_by]?.label || "a teammate");
+  const when = task.assigned_at ? new Date(task.assigned_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+  return `Assigned by ${by}${when ? " · " + when : ""}`;
 }
 
 function AcctToggleRow({ on, busy, onClick, title, desc }) {
@@ -7696,6 +7708,10 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
               <option key={pp.id} value={pp.id}>{pp.label}{pp.role==="owner"&&pp.label!=="Me"?" (owner)":""}</option>
             ))}
           </select>
+          {(() => {
+            const by = assignedByText(data, Object.fromEntries(people.map(pp => [pp.id, pp])), people.find(pp => pp.label === "Me")?.id);
+            return by ? <div style={{fontSize:".78rem",color:"#8A8178",marginTop:".3rem"}}>{by}</div> : null;
+          })()}
         </div>
       )}
       {assets.length > 0 && (
@@ -13693,6 +13709,8 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     // Only send assigned_to when the form actually carries it, so accounts that
     // have not had the shared-tasks SQL applied yet keep working unchanged.
     if ("assigned_to" in editData) payload.assigned_to = editData.assigned_to || null;
+    // Who assigned a task, and when, is recorded by the database. The app never writes it.
+    delete payload.assigned_by; delete payload.assigned_at;
     let assignDropped = false;
     if(editId) {
       let {error} = await supabase.from("tasks").update(payload).eq("id",editId).eq("property_id",propertyId);
@@ -13746,9 +13764,9 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             user_id:   userId,
             property_id: propertyId,
           };
-          if (t.assigned_to) nextPayload.assigned_to = t.assigned_to;
+          if (t.assigned_to) { nextPayload.assigned_to = t.assigned_to; if (t.assigned_by && t.assigned_at) { nextPayload.assigned_by = t.assigned_by; nextPayload.assigned_at = t.assigned_at; } }
           let { data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select();
-          if (nextErr && nextPayload.assigned_to) { delete nextPayload.assigned_to; ({ data: created } = await supabase.from("tasks").insert([nextPayload]).select()); }
+          if (nextErr && nextPayload.assigned_to) { delete nextPayload.assigned_to; delete nextPayload.assigned_by; delete nextPayload.assigned_at; ({ data: created } = await supabase.from("tasks").insert([nextPayload]).select()); }
           if (created) {
             setTasks(prev => [...prev, created[0]]);
             nextId = created[0].id;
@@ -13879,7 +13897,11 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             {t.cost>0 && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{fmt$(t.cost)}</span>}
             {t.assigned_to && (() => {
               const who = peopleById[t.assigned_to]; const mine = t.assigned_to === userId;
-              return <span className="task-meta-pill" title="Assigned to" style={{background:mine?"var(--pine)":"var(--sage-light)",color:mine?"#fff":"var(--pine)",fontWeight:600}}>👤 {mine ? "You" : (who?.label || "Teammate")}</span>;
+              const by = assignedByText(t, peopleById, userId);
+              return <>
+                <span className="task-meta-pill" title={by || "Assigned to"} style={{background:mine?"var(--pine)":"var(--sage-light)",color:mine?"#fff":"var(--pine)",fontWeight:600}}>👤 {mine ? "You" : (who?.label || "Teammate")}</span>
+                {by && <span className="task-meta-pill" style={{background:"var(--cream2)",color:"#7A7370"}}>{by}</span>}
+              </>;
             })()}
           </div>
           {t.notes && !t.notes.startsWith("[") && (() => {
@@ -20724,7 +20746,7 @@ async function callPeople(action, body) {
     let code = ""; try { code = (await error.context.json())?.error || ""; } catch { /* no body */ }
     return { error: code || "failed" };
   }
-  if (action === "remove" || action === "remove_admin") pingNotifications();
+  if (action !== "list") pingNotifications();   // removals and level changes email the people affected
   return { data };
 }
 
