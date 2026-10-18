@@ -1,4 +1,4 @@
-// Steadwell v389 — 2026-10-17
+// Steadwell v390 — 2026-10-18
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3693,6 +3693,8 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .pp-acts{display:flex;gap:1rem;flex-wrap:wrap}
 .pp-report p{margin:.35rem 0 0;font-size:.82rem;line-height:1.45}
 .pp-ok{color:#2F6A49;font-weight:600}
+.pp-note{color:#6E665D;font-weight:600}
+.pp-saving{font-size:.76rem;color:#6E665D;margin-right:.4rem}
 .pp-bad{color:#8A6410;font-weight:600}
 .fc-priv{margin:.2rem 0 0;font-size:.8rem;line-height:1.5;color:#6E665D}
 .fc-lead{margin:0 0 1rem;font-size:.92rem;line-height:1.55;color:#4A443E}
@@ -20885,6 +20887,27 @@ const PEOPLE_ERRORS = {
   not_found: "That person isn't on this account any more. Refresh and try again.",
   bad_request: "Check the email addresses and homes, then try again.",
 };
+// Pulls real email addresses out of whatever was typed or pasted. Handles commas, spaces, new lines, and the
+// "Alice Smith <alice@example.com>" form that Gmail and Outlook copy. Anything else is returned as `invalid`.
+const INVITE_EMAIL_RE = /^[^\s@<>"',;()]+@[^\s@<>"',;()]+\.[^\s@<>"',;()]{2,}$/;
+function parseInviteInput(text) {
+  const valid = [], invalid = [];
+  const take = (tok) => {
+    const t = String(tok || "").replace(/^[("'<]+|[)"'>.:]+$/g, "").replace(/^mailto:/i, "").trim();
+    if (!t) return;
+    if (INVITE_EMAIL_RE.test(t) && t.length <= 254) valid.push(t.toLowerCase()); else invalid.push(t);
+  };
+  String(text || "").replace(/"[^"]*"\s*(?=<)/g, " ").split(/[,;\n]+/).forEach(seg => {
+    if (/<[^<>]*>/.test(seg)) {
+      // a contact: keep what is inside <...>; any other word with an @ is an address too; the rest is the person's name
+      (seg.match(/<[^<>]*>/g) || []).forEach(take);
+      seg.replace(/<[^<>]*>/g, " ").split(/\s+/).filter(w => w.includes("@")).forEach(take);
+    } else seg.split(/\s+/).forEach(take);
+  });
+  const seen = new Set();
+  return { valid: valid.filter(e => !seen.has(e) && seen.add(e)), invalid: [...new Set(invalid)] };
+}
+
 // Asks the server to send any emails that team activity queued (task assigned, invite accepted, someone left).
 // What to send and to whom comes from the database, so this carries no data. Failures are retried on the next ping.
 let _notifyTimer = null;
@@ -20999,6 +21022,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
   const [report, setReport] = useState([]);
   const [busy, setBusy] = useState("");
   const [confirmKey, setConfirmKey] = useState("");
+  const [pendingLv, setPendingLv] = useState({});   // the level just picked, shown until the list reloads
   const aliveRef = useRef(true);
   useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
 
@@ -21013,7 +21037,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
       if (!listed.error && listed.data?.ok) {
         setMembers((listed.data.members || []).filter(r => ids.includes(r.property_id)));
         setAdmins((listed.data.admins || []).filter(r => r.owner_id === acctOwner));
-        setLoading(false);
+        setLoading(false); setPendingLv({});
         return;
       }
       const [m, a] = await Promise.all([
@@ -21021,7 +21045,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
         supabase.from("account_admins").select("*").eq("owner_id", acctOwner),
       ]);
       if (cancelled) return;
-      setMembers(m.data || []); setAdmins(a.data || []); setLoading(false);
+      setMembers(m.data || []); setAdmins(a.data || []); setLoading(false); setPendingLv({});
     })();
     return () => { cancelled = true; };
   }, [tick, acctOwner, homeKey]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -21047,6 +21071,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     if (r.status === "self") return "is your own email address";
     if (r.status === "email_failed") return "was saved, but the email did not send. Use Resend on their row below";
     if (r.status === "already") return "already has access";
+    if (r.status === "already_invited") return "is already invited. Use Resend on their row if they did not get the email";
     const st = (r.homes || []).map(x => x.status);
     if (st.includes("already_admin")) return "is already an Admin";
     if (st.includes("owner")) return "is the account owner";
@@ -21056,9 +21081,9 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
 
   const submit = async () => {
     if (sending) return;
-    const emails = [...new Set(emailsText.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean))];
-    if (emails.length === 0) { toast("Enter at least one email address", "error"); return; }
-    if (emails.length > 10) { toast(PEOPLE_ERRORS.too_many, "error"); return; }
+    const { valid: emails, invalid } = parseInviteInput(emailsText);
+    if (emails.length === 0) { toast(invalid.length ? "Enter a valid email address" : "Enter at least one email address", "error"); return; }
+    if (emails.length > 50) { toast(PEOPLE_ERRORS.too_many, "error"); return; }
     const propertyIds = level === "admin" ? [] : homes.filter(h => isPicked(h.id)).map(h => h.id);
     if (level !== "admin" && propertyIds.length === 0) { toast("Choose at least one home", "error"); return; }
     setSending(true);
@@ -21072,33 +21097,45 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     }
     const results = Array.isArray(data?.results) ? data.results : [];
     const okStatus = new Set(["invited", "resent", "sent"]);
-    const lines = results.map(r => okStatus.has(r.status) ? { ok: true, text: `Invite sent to ${r.email}` } : { ok: false, text: `${r.email} ${why(r)}` });
+    const lines = results.map(r => okStatus.has(r.status) ? { ok: true, text: `Invite sent to ${r.email}` }
+      : r.status === "already_invited" ? { ok: null, text: `${r.email} ${why(r)}` }
+      : { ok: false, text: `${r.email} ${why(r)}` });
+    invalid.forEach(t => lines.push({ ok: false, text: `${t} isn't a valid email address` }));
     setReport(lines);
-    const left = results.filter(r => !okStatus.has(r.status)).map(r => r.email);
-    setEmailsText(left.join("\n"));
-    if (results.some(r => okStatus.has(r.status))) { toast("Invites sent ✓"); refresh(); }
+    // Only entries that are not email addresses stay in the box to be fixed. Everyone else is settled, and the lines above say how.
+    setEmailsText(invalid.join("\n"));
+    const sentCount = results.filter(r => okStatus.has(r.status)).length;
+    if (sentCount > 0) { toast(sentCount === 1 ? "Invite sent ✓" : "Invites sent ✓"); refresh(); }
+    else if (results.some(r => r.status === "already_invited")) toast("Already invited. Nothing new was sent.");
   };
 
   const run = async (key, fn, okMsg) => {
-    if (busy) return;
+    if (busy) return false;
     setBusy(key);
     const { error } = await fn();
-    if (!aliveRef.current) return;
+    if (!aliveRef.current) return false;
     setBusy(""); setConfirmKey("");
-    if (error) { toast(PEOPLE_ERRORS[error] || "That did not work. Try again.", "error"); return; }
+    if (error) { toast(PEOPLE_ERRORS[error] || "That did not work. Try again.", "error"); return false; }
     if (okMsg) toast(okMsg);
     refresh();
+    return true;
   };
   const ids = p => p.rows.map(r => r.property_id);
   const nameOf = email => String(email || "").split("@")[0];
   // Moving someone into or out of Admin goes through change_level (owner only). Other changes keep their homes.
-  const setPersonLevel = (p, lv) => run("lv:" + p.email,
+  const changeLevel = async (email, lv, fn, okMsg) => {
+    if (busy) return;
+    setPendingLv(m => ({ ...m, [email]: lv }));
+    const ok = await run("lv:" + email, fn, okMsg);
+    if (!ok && aliveRef.current) setPendingLv(m => { const n = { ...m }; delete n[email]; return n; });
+  };
+  const setPersonLevel = (p, lv) => changeLevel(p.email, lv,
     () => lv === "admin" ? callPeople("change_level", { memberEmail: p.email, level: "admin" }) : callPeople("set_level", { memberEmail: p.email, level: lv, propertyIds: ids(p) }),
     `${nameOf(p.email)} is now ${lv === "admin" ? "an Admin" : "set to " + accessLabel(lv)}`);
-  const setAdminLevel = (a, lv) => run("lv:" + a.member_email, () => callPeople("change_level", { memberEmail: a.member_email, level: lv }), `${nameOf(a.member_email)} now has ${accessLabel(lv)}`);
+  const setAdminLevel = (a, lv) => changeLevel(a.member_email, lv, () => callPeople("change_level", { memberEmail: a.member_email, level: lv }), `${nameOf(a.member_email)} now has ${accessLabel(lv)}`);
   const removeFrom = (p, propertyIds) => run("rm:" + p.email + propertyIds.join(), () => callPeople("remove", { memberEmail: p.email, propertyIds }), "Access removed");
   const resend = (email, kind) => run("rs:" + email, () => callPeople("resend", { memberEmail: email, kind }), "Invite sent again ✓");
-  const removeAdmin = (a) => run("ra:" + a.member_email, () => callPeople("remove_admin", { memberEmail: a.member_email }), "Admin removed");
+  const removeAdmin = (a) => run("ra:" + a.member_email, () => callPeople("remove_admin", { memberEmail: a.member_email }), "Access removed");
   const copyInvite = async (email) => {
     const text = `You're invited to work on a home in Steadwell. Create a free account (or sign in) at https://www.trysteadwell.app using ${email}, and the home will appear automatically.`;
     try { await navigator.clipboard.writeText(text); toast("Invite message copied"); }
@@ -21123,19 +21160,24 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
               <div className="pp-person" key={a.id}>
                 <div className="pp-top">
                   <div className="pp-mail">{a.member_email}</div>
+                  {busy === "lv:" + a.member_email && <span className="pp-saving" role="status">Saving…</span>}
                   {iAmOwner
-                    ? <select aria-label={`Access level for ${a.member_email}`} value="admin" disabled={!!busy} onChange={e => setAdminLevel(a, e.target.value)} className="pp-sel">
+                    ? <select aria-label={`Access level for ${a.member_email}`} value={pendingLv[a.member_email] || "admin"} disabled={!!busy} onChange={e => setAdminLevel(a, e.target.value)} className="pp-sel">
                         <option value="admin">Admin</option>
                         <option value="full">Full access</option>
                         <option value="limited">Tasks &amp; assets</option>
                       </select>
                     : <span className="fc-tag">Admin</span>}
                 </div>
-                <div className="pp-meta">{a.status === "accepted" ? "Active" : "Invite pending"}</div>
+                <div className="pp-meta">
+                  <span>{a.status === "accepted" ? "Active" : "Invite pending"}</span>
+                  <span className="pp-chip">All homes</span>
+                </div>
                 {iAmOwner && (
                   <div className="pp-acts">
                     {a.status !== "accepted" && <button type="button" className="fc-link" disabled={!!busy} onClick={() => resend(a.member_email, "admin")}>{busy === "rs:" + a.member_email ? "Sending…" : "Resend"}</button>}
-                    {confirmBtn("ra:" + a.member_email, "Remove Admin", () => removeAdmin(a), true)}
+                    {a.status !== "accepted" && <button type="button" className="fc-link" onClick={() => copyInvite(a.member_email)}>Copy invite</button>}
+                    {confirmBtn("ra:" + a.member_email, "Remove from account", () => removeAdmin(a), true)}
                   </div>
                 )}
               </div>
@@ -21147,7 +21189,8 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
               <div className="pp-person" key={p.email}>
                 <div className="pp-top">
                   <div className="pp-mail">{p.email}</div>
-                  <select aria-label={`Access level for ${p.email}`} value={p.level} disabled={!!busy} onChange={e => setPersonLevel(p, e.target.value)} className="pp-sel">
+                  {busy === "lv:" + p.email && <span className="pp-saving" role="status">Saving…</span>}
+                  <select aria-label={`Access level for ${p.email}`} value={pendingLv[p.email] || p.level} disabled={!!busy} onChange={e => setPersonLevel(p, e.target.value)} className="pp-sel">
                     {p.level === "mixed" && <option value="mixed" disabled>Mixed</option>}
                     {iAmOwner && <option value="admin">Admin</option>}
                     <option value="full">Full access</option>
@@ -21173,10 +21216,10 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
         )
   );
 
-  const emailList = [...new Set(emailsText.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean))];
-  const emailCount = emailList.length;
+  const parsed = useMemo(() => parseInviteInput(emailsText), [emailsText]);
+  const emailCount = parsed.valid.length;
   const pickedCount = level === "admin" ? 1 : homes.filter(h => isPicked(h.id)).length;
-  const sendBlock = emailCount === 0 ? "Add an email address to send an invite."
+  const sendBlock = emailCount === 0 ? (parsed.invalid.length ? "" : "Add an email address to send an invite.")
     : emailCount > 50 ? "Invite up to 50 people at a time. Send the rest in another batch."
     : pickedCount === 0 ? "Choose at least one home."
     : "";
@@ -21204,7 +21247,9 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
 
         <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
         <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => setEmailsText(e.target.value)} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
-        <div className="fc-quiet">Separate addresses with commas, spaces or new lines.</div>
+        {parsed.invalid.length > 0
+          ? <div className="pp-bad" role="status" style={{fontSize:".8rem",margin:".25rem 0 0"}}>{parsed.invalid.length === 1 ? `${parsed.invalid[0]} isn't a valid email address.` : `${parsed.invalid.length} entries aren't valid email addresses: ${parsed.invalid.slice(0, 3).join(", ")}${parsed.invalid.length > 3 ? "…" : ""}.`}{emailCount > 0 ? " Only the valid ones will be sent." : ""}</div>
+          : <div className="fc-quiet">Separate addresses with commas, spaces or new lines. You can paste contacts like Alice &lt;alice@example.com&gt;.</div>}
 
         <div className="pp-lab" id="pp-role-lab">What they can do</div>
         <div className="pp-roles" role="radiogroup" aria-labelledby="pp-role-lab">
@@ -21236,7 +21281,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
         <button type="button" className="btn btn-primary pp-send" onClick={submit} disabled={sending || !!sendBlock}>{sending ? "Sending…" : sendLabel}</button>
         {sendBlock && !sending && emailCount > 0 && <div className="fc-quiet" style={{textAlign:"center"}}>{sendBlock}</div>}
         <div role="status" aria-live="polite" className="pp-report">
-          {report.map((r, i) => <p key={i} className={r.ok ? "pp-ok" : "pp-bad"}>{r.text}</p>)}
+          {report.map((r, i) => <p key={i} className={r.ok === true ? "pp-ok" : r.ok === null ? "pp-note" : "pp-bad"}>{r.text}</p>)}
         </div>
 
         {peopleLists}
