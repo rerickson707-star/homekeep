@@ -1,4 +1,4 @@
-// Steadwell v391 — 2026-10-18
+// Steadwell v392 — 2026-10-18
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -16945,7 +16945,7 @@ const FC_SCAN_ERRORS = {
   limit_reached: "You've used today's tax bill scans. Try again tomorrow, or type the numbers in.",
   not_a_tax_bill: "That doesn't look like a property tax bill. Try the bill from your county or city.",
   no_total: "We couldn't find the total on this bill. Try a clearer photo, or type the numbers in.",
-  too_large: "That file is too large. Try a smaller photo or PDF.",
+  too_large: "Scans read files up to 15 MB. Try a smaller photo or PDF, or add the file to Documents, which takes up to 50 MB.",
   not_signed_in: "Your session has expired. Sign in again to scan a bill.",
 };
 const fcReadB64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = () => rej(new Error("read")); r.readAsDataURL(file); });
@@ -17162,7 +17162,7 @@ function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, to
           <button type="button" className="fc-upload" onClick={() => fileRef.current?.click()} disabled={scanning}>
             <span className="fc-upload-i" aria-hidden="true">{scanning ? <span className="fc-spin" /> : <FcIcon kind="warranty" size={26} />}</span>
             <span className="fc-upload-t">{scanning ? "Reading your bill…" : "Upload your tax bill"}</span>
-            <span className="fc-upload-s">{scanning ? "This usually takes under a minute." : "Photo or PDF, up to 15 MB"}</span>
+            <span className="fc-upload-s">{scanning ? "This usually takes under a minute." : "Photo or PDF, up to 15 MB for the scan"}</span>
           </button>
           <div role="status" aria-live="polite">{scanError && <p className="fc-err">{scanError}</p>}</div>
           <p className="fc-priv" style={{ marginTop: ".9rem" }}>The bill is read by a third-party AI provider to pull out the numbers. Your bill is not used for advertising.</p>
@@ -17193,7 +17193,7 @@ function TaxBillModal({ bill, bills, userId, propertyId, planData, onUpgrade, to
           {clash && <div className="field s2"><p className="fc-warn">You already saved a {yearNum} bill. Saving this one replaces it.</p></div>}
           <div className="field"><label htmlFor="tb-due">Due date</label><input id="tb-due" type="date" value={form.due_date} onChange={e => f("due_date", e.target.value)} className={flag("due_date") ? "fc-flag" : ""} />{flag("due_date") && <small className="fc-flag-t">Please check this one.</small>}</div>
           <div className="field"><label htmlFor="tb-av">Assessed value ($)</label><input id="tb-av" type="number" min="0" inputMode="decimal" value={form.assessed_value} onChange={e => f("assessed_value", e.target.value)} className={flag("assessed_value") ? "fc-flag" : ""} />{flag("assessed_value") && <small className="fc-flag-t">Please check this one.</small>}</div>
-          {installments && <div className="field s2"><p className="fc-quiet">The bill mentions: {installments}. Steadwell tracks the first due date.</p></div>}
+          {installments && <div className="field s2"><p className="fc-quiet">The bill mentions: {installments}. Steadwell tracks the date the full amount is due.</p></div>}
           <div className="field"><label htmlFor="tb-ex">Exemptions ($ of value)</label><input id="tb-ex" type="number" min="0" inputMode="decimal" value={form.exemptions} onChange={e => f("exemptions", e.target.value)} className={flag("exemptions") ? "fc-flag" : ""} />{flag("exemptions") && <small className="fc-flag-t">Please check this one.</small>}</div>
           <div className="field"><label htmlFor="tb-tv">Taxable value ($)</label><input id="tb-tv" type="number" min="0" inputMode="decimal" value={form.taxable_value} onChange={e => f("taxable_value", e.target.value)} className={flag("taxable_value") ? "fc-flag" : ""} />{flag("taxable_value") && <small className="fc-flag-t">Please check this one.</small>}</div>
           {av != null && tv != null && (
@@ -17271,6 +17271,17 @@ function TaxScreen({ bills, costs, history, planData, onUpgrade, onBack, onAdd, 
 
       {!cur && (
         <div className="ut-card"><p className="ut-quiet">No tax bill yet. {history && history.length > 0 ? `County records on your home show ${fmt$(history[0].total)} for ${history[0].year}. ` : ""}Add your latest bill to count your exact property tax in your monthly cost{planData?.aiScan ? ", and Steadwell will read it for you" : ""}.</p></div>
+      )}
+
+      {cur && cur.due_date && (
+        <div className="ut-card" style={{ marginBottom: "1rem" }}>
+          <div className="fc-stat-k">Due</div>
+          <div className="fc-stat-v">{fcDay(cur.due_date)}</div>
+          <div className="fc-quiet" style={{ marginTop: ".25rem" }}>
+            {cur.due_date >= today ? "The last day to pay the full amount without penalty." : "This date has passed. If the bill is paid, nothing more to do."}
+            {!canInsights && cur.discount_pct && cur.discount_by && cur.discount_by >= today ? ` Pay by ${fcDay(cur.discount_by)} for ${Number(cur.discount_pct)}% off.` : ""}
+          </div>
+        </div>
       )}
 
       {cur && canInsights && story && (
@@ -17889,6 +17900,9 @@ function analyzeUtility(u, allBills, today, yr) {
   }
   const baseAmt = yoy ? Number(yoy.amount) : priorAvg;
   const delta = last && baseAmt > 0 ? Number(last.amount) / baseAmt - 1 : null;
+  // With only one earlier bill there is no "usual" yet. A big jump from that one bill is still worth mentioning, softly.
+  const onlyPrior = list.length === 2 ? list[1] : null;
+  const softDelta = delta == null && last && onlyPrior && Number(onlyPrior.amount) > 0 ? Number(last.amount) / Number(onlyPrior.amount) - 1 : null;
   const gaps = [];
   for (let i = 0; i < Math.min(list.length - 1, 6); i++) gaps.push(utilDaysBetween(list[i + 1].bill_date, list[i].bill_date));
   const medGap = utilMedian(gaps.filter(g => g > 0));
@@ -17910,7 +17924,7 @@ function analyzeUtility(u, allBills, today, yr) {
   const rateDelta = lastRate != null && avgRate ? lastRate / avgRate - 1 : null;
   const daysSince = last ? utilDaysBetween(last.bill_date, today) : null;
   const stale = last ? daysSince > freq * 30.4 + 20 : false;
-  return { list, last, priorAvg, yoy, baseAmt, delta, freq, usual, monthly: usual / freq, ytd, unit, lastRate, avgRate, rateDelta, daysSince, stale, waterOnly, splitYtd, splitN, ytdCount: ytdList.length };
+  return { list, last, priorAvg, yoy, baseAmt, delta, softDelta, onlyPrior, freq, usual, monthly: usual / freq, ytd, unit, lastRate, avgRate, rateDelta, daysSince, stale, waterOnly, splitYtd, splitN, ytdCount: ytdList.length };
 }
 
 function utilStatus(a) {
@@ -17978,6 +17992,12 @@ function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil
       const against = a.yoy ? fmt$(a.baseAmt) : `about ${fmt$(a.baseAmt)}`;
       if (a.delta >= 0.15) items.push({ k: u.id + "-hi", dot: a.delta >= 0.4 ? "#B0432B" : "#D9A93E", text: `${u.name} was ${pct}% higher than ${than}: ${fmt$(a.last.amount)} against ${against}.` });
       else if (a.yoy && a.delta <= -0.25) items.push({ k: u.id + "-lo", dot: "#3E7D5A", text: `${u.name} was ${pct}% lower than ${than}: ${fmt$(a.last.amount)} against ${against}.` });
+    }
+  });
+  utilities.forEach(u => {
+    const a = an[u.id];
+    if (a.softDelta != null && a.softDelta >= 0.25 && a.last && a.daysSince <= 75) {
+      items.push({ k: u.id + "-soft", dot: a.softDelta >= 0.4 ? "#B0432B" : "#D9A93E", text: `${u.name} was ${Math.round(a.softDelta * 100)}% higher than your last bill: ${fmt$(a.last.amount)} against ${fmt$(a.onlyPrior.amount)}. A few more bills will show what is usual.` });
     }
   });
   utilities.forEach(u => {
@@ -29926,12 +29946,76 @@ const IR_SEV = {
   maintenance: { label: "Maintenance", priority: "Low",    days: 90,  color: "#2F6A49" },
   monitor:     { label: "Monitor",     priority: "Low",    days: 180, color: "#6E665D" },
 };
+// ── Matching what a report lists against what the home already has.
+// Equipment: the same kind of thing under another name ("HVAC system" and "Central AC Unit", "Breaker box" and "Electrical panel").
+// Tasks: an open task that already covers the finding ("Clean dryer vent" and "Dryer vent has heavy lint buildup").
+const IR_KINDS = [
+  ["hvac",         /\bhvac\b|heating (and|&) (air|cooling)|heating,? ventilation/],
+  ["ac",           /air.?condition|\ba\/?c\b|central air|condenser|cooling/],
+  ["heat",         /furnace|heat pump|boiler|air handler|heating|space heater/],
+  ["waterheater",  /water heater|hot water|tankless/],
+  ["panel",        /\bpanel\b|breaker (box|panel)|fuse box|load center|service panel/],
+  ["garagedoor",   /garage.{0,14}(door|opener)|door opener/],
+  ["dryer",        /\bdryer\b/],
+  ["washer",       /\bwasher\b|washing machine/],
+  ["fridge",       /refrigerator|fridge|freezer/],
+  ["dishwasher",   /dishwasher/],
+  ["range",        /\b(range|oven|stove|cooktop)\b/],
+  ["microwave",    /microwave/],
+  ["disposal",     /disposal/],
+  ["roof",         /\broof/],
+  ["septic",       /septic/],
+  ["well",         /\bwell\b/],
+  ["sump",         /sump/],
+  ["detector",     /smoke|carbon monoxide|\bco detector|alarm/],
+  ["softener",     /softener/],
+  ["pool",         /\bpool\b/],
+  ["fireplace",    /fireplace|chimney/],
+];
+const irKinds = name => { const t = String(name || "").toLowerCase(); const out = new Set(); IR_KINDS.forEach(([k, re]) => { if (re.test(t)) out.add(k); }); return out; };
+const IR_NOISE = new Set(["the","a","an","of","and","or","system","unit","main","central","home","house","new","old","equipment","assembly","covering"]);
+const irStem = w => (w.length > 3 && w.endsWith("es") && !w.endsWith("ses") ? w.slice(0, -2) : w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
+const irWords = (name, drop) => String(name || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(w => w && !drop.has(w)).map(irStem);
+function irFindAsset(name, assets) {
+  const mine = irKinds(name), myWords = irWords(name, IR_NOISE);
+  for (const a of assets) {
+    const other = irKinds(a.item);
+    const plain = String(name || "").trim().toLowerCase() === String(a.item || "").trim().toLowerCase();
+    let same = plain;
+    if (!same) for (const k of mine) if (other.has(k)) same = true;
+    // "HVAC system" in a report can mean the cooling side, the heating side or both
+    if (!same && ((mine.has("hvac") && (other.has("ac") || other.has("heat") || other.has("hvac"))) || (other.has("hvac") && (mine.has("ac") || mine.has("heat"))))) same = true;
+    if (!same && mine.size === 0 && other.size === 0) {
+      const ow = irWords(a.item, IR_NOISE), shared = myWords.filter(w => ow.includes(w)).length;
+      if (shared > 0 && shared / new Set([...myWords, ...ow]).size >= 0.6) same = true;
+    }
+    if (same) return a;
+  }
+  return null;
+}
+const IR_TASK_NOISE = new Set(["the","a","an","of","to","and","or","in","on","at","for","is","are","was","has","have","had","no","not","need","needs","needed","from","with","by","be","your","home","due","clean","replace","repair","fix","inspect","check","service","install","evaluate","remove","test","annual","regular","excessive","heavy","buildup","build","up","damaged","missing","loose","old","recommend","recommended","licensed","qualified"]);
+function irFindTask(finding, openTasks) {
+  const f = new Set([...irWords(finding.title, IR_TASK_NOISE), ...irWords(finding.related_item, IR_TASK_NOISE)]);
+  if (f.size === 0) return null;
+  for (const t of openTasks) {
+    const a = new Set(irWords(t.title, IR_TASK_NOISE));
+    if (a.size === 0) continue;
+    const shared = [...a].filter(w => f.has(w)).length;
+    const sub = shared === a.size || shared === f.size;
+    const jac = shared / new Set([...a, ...f]).size;
+    if ((sub && Math.min(a.size, f.size) >= 2) || jac >= 0.6) return t;
+  }
+  return null;
+}
+// Safety items the report itself calls immediate are due today. Everything else keeps its normal window.
+const irDays = (f, sev) => (f && f.urgency === "immediate" ? 0 : sev.days);
+const irPriority = (f, sev) => (f && f.urgency === "immediate" ? "Urgent" : sev.priority);
 const IR_ERRORS = {
   plan_required: "Importing an inspection report is included with Plus and Pro.",
   limit_reached: "You've used today's report imports. Try again tomorrow.",
   not_an_inspection_report: "That doesn't look like a home inspection report. Upload the report your inspector sent you.",
   nothing_found: "We couldn't find any findings or equipment in this file. Try the full report PDF.",
-  too_large: "That file is too large. Try a smaller PDF, or the report's summary PDF if your inspector sent one.",
+  too_large: "Scans read files up to 15 MB. Try the report's summary PDF if your inspector sent one, or add the full file to Documents, which takes up to 50 MB.",
   too_long: "This report is too long to read in one go. Try the summary PDF your inspector sent, or upload just the pages with the findings.",
   not_signed_in: "Your session has expired. Sign in again to import a report.",
 };
@@ -30002,10 +30086,10 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
       }
       if (!data?.ok || !Array.isArray(data.findings) || !Array.isArray(data.items)) { setScanError("We couldn't read this report. Try the full PDF, or a clearer file."); setScanning(false); return; }
       // Things already in the account start unticked, so nothing is doubled up by accident.
-      const haveAssets = new Set((warranties || []).filter(a => !a.retired_at).map(a => String(a.item || "").trim().toLowerCase()));
-      const openTasks = new Set((tasks || []).filter(t => t.status !== "Completed").map(t => String(t.title || "").trim().toLowerCase()));
-      const items = data.items.map(it => ({ ...it, dupe: haveAssets.has(String(it.item || "").trim().toLowerCase()) }));
-      const findings = data.findings.map(f => ({ ...f, dupe: openTasks.has(String(f.title || "").trim().toLowerCase()) }));
+      const liveAssets = (warranties || []).filter(a => !a.retired_at);
+      const openTasks = (tasks || []).filter(t => t.status !== "Completed");
+      const items = data.items.map(it => { const m = irFindAsset(it.item, liveAssets); return { ...it, dupe: !!m, dupeOf: m ? String(m.item || "") : "" }; });
+      const findings = data.findings.map(f => { const m = irFindTask(f, openTasks); return { ...f, dupe: !!m, dupeOf: m ? String(m.title || "") : "", dupeLate: !!m && (m.status === "Overdue" || (m.due_date && m.due_date < localISO())) }; });
       setRes({ meta: data.meta || {}, items, findings });
       setPickItems(Object.fromEntries(items.map((it, i) => [i, !it.dupe])));
       setPickFind(Object.fromEntries(findings.map((f, i) => [i, !f.dupe && f.severity !== "monitor"])));
@@ -30058,7 +30142,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
         const mk = (f, withAsset) => {
           const sev = IR_SEV[f.severity] || IR_SEV.repair;
           const notes = [f.detail, f.recommended_action ? "Recommended in the report: " + f.recommended_action : "", `From the home inspection report${from}${f.page ? ` (page ${f.page})` : ""}.`].filter(Boolean).join("\n\n");
-          const row = { title: f.title, due_date: irDue(sev.days), status: "Scheduled", priority: sev.priority, category: f.system || "Other", notes, user_id: userId, property_id: propertyId };
+          const row = { title: f.title, due_date: irDue(irDays(f, sev)), status: "Scheduled", priority: irPriority(f, sev), category: f.system || "Other", notes, user_id: userId, property_id: propertyId };
           const aid = f.related_item ? byName.get(String(f.related_item).trim().toLowerCase()) : null;
           if (withAsset && aid) row.asset_id = aid;
           return row;
@@ -30160,7 +30244,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
           <button type="button" className="fc-upload" onClick={() => fileRef.current?.click()} disabled={scanning}>
             <span className="fc-upload-i" aria-hidden="true">{scanning ? <span className="fc-spin" /> : <FcIcon kind="warranty" size={26} />}</span>
             <span className="fc-upload-t">{scanning ? "Reading your report…" : "Upload your inspection report"}</span>
-            <span className="fc-upload-s">{scanning ? "A long report can take a minute or two." : "PDF or photo, up to 15 MB and 100 pages"}</span>
+            <span className="fc-upload-s">{scanning ? "A long report can take a minute or two." : "PDF or photo, up to 15 MB and 100 pages for the scan"}</span>
           </button>
           <div role="status" aria-live="polite">{scanError && <p className="fc-err">{scanError}</p>}</div>
           <p className="fc-priv" style={{ marginTop: ".9rem" }}>The report is read by a third-party AI provider to pull out the findings. Your report is not used for advertising.</p>
@@ -30184,7 +30268,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
             return (
               <div className="ir-row" key={"i" + i}>
                 <FcCheck checked={!!pickItems[i]} onChange={v => setPickItems(p => ({ ...p, [i]: v }))} label={it.item}
-                  help={(bits.join(", ") || it.category) + (it.dupe ? ". Already in your home, so this starts unticked. Ticking adds a second entry." : "")} />
+                  help={(bits.join(", ") || it.category) + (it.dupe ? `. Looks like your "${it.dupeOf}", so this starts unticked. Ticking adds a second entry.` : "")} />
               </div>
             );
           })}
@@ -30196,7 +30280,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
           {res.findings.length === 0 && <p className="fc-quiet">No findings were listed in this report.</p>}
           {res.findings.map((f, i) => {
             const sev = IR_SEV[f.severity] || IR_SEV.repair;
-            const extra = [f.detail, f.recommended_action ? "Report says: " + f.recommended_action : "", `Due ${irNice(irDue(sev.days))}`, f.dupe ? "Already on your task list, so this starts unticked" : (f.severity === "monitor" ? "Starts unticked because it is a watch item" : "")].filter(Boolean).map(x => String(x).trim().replace(/[.\s]+$/, "")).filter(Boolean).join(". ");
+            const extra = [f.detail, f.recommended_action ? "Report says: " + f.recommended_action : "", `Due ${irDays(f, sev) === 0 ? "today" : irNice(irDue(irDays(f, sev)))}`, f.dupe ? `Looks like your task "${f.dupeOf}"${f.dupeLate ? ", which is overdue" : ""}, so this starts unticked` : (f.severity === "monitor" ? "Starts unticked because it is a watch item" : "")].filter(Boolean).map(x => String(x).trim().replace(/[.\s]+$/, "")).filter(Boolean).join(". ");
             return (
               <div className="ir-row" key={"f" + i}>
                 <FcCheck checked={!!pickFind[i]} onChange={v => setPickFind(p => ({ ...p, [i]: v }))}

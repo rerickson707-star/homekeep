@@ -64,6 +64,7 @@ Return ONLY a JSON object with this shape:
       "severity": one of ["safety","major","repair","maintenance","monitor"],
       "detail": one or two plain sentences saying what the inspector found and where, 300 characters or fewer,
       "recommended_action": what the report recommends doing (for example "Have a licensed electrician evaluate and repair"), 200 characters or fewer, or null if the report gives none,
+      "urgency": "immediate" only if the report itself says to act immediately, right away, as soon as possible, or before the item is used again (for example "clean the dryer vent immediately", "do not use until repaired"); otherwise null,
       "related_item": the name of the equipment this finding is about, matching an entry in "items" when there is one (for example "Water heater"), or null,
       "page": page number in the PDF where it appears, or null
     }
@@ -125,6 +126,7 @@ function clean(raw: Record<string, unknown>) {
         detail: txt(o.detail, 300),
         recommended_action: txt(o.recommended_action, 200),
         related_item: txt(o.related_item, 60),
+        urgency: String(o.urgency ?? "").toLowerCase() === "immediate" ? "immediate" : null,
         page: Number.isFinite(page) && page > 0 && page < 1000 ? page : null,
       });
     }

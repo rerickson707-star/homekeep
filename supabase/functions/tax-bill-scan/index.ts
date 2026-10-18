@@ -50,7 +50,7 @@ Return ONLY a JSON object with this shape:
   "assessed_value": the value taxes are based on before exemptions (assessed, taxable-before-exemptions or "assessed/capped" value; if the bill shows both a market/just value and an assessed value, use the assessed value), number or null,
   "exemptions": total value of exemptions or reductions (homestead, senior, veteran, etc), as a dollar value, number or null,
   "taxable_value": the value the tax rate is applied to after exemptions, number or null,
-  "due_date": "YYYY-MM-DD" of the main or first payment due date, or null,
+  "due_date": "YYYY-MM-DD" of the date the full amount is due without penalty or delinquency (the final date to pay the full amount, not an early-payment discount date), or null,
   "installments": short text if the bill is paid in installments or has several due dates (for example "Two payments: Nov 1 and Feb 1"), else null,
   "discount_pct": percent discount for early payment as a number (for example 4), or null if none is offered,
   "discount_by": "YYYY-MM-DD" deadline for that early-payment discount, or null,
