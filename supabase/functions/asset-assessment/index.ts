@@ -382,12 +382,21 @@ export async function handler(req: Request): Promise<Response> {
   try { body = await req.json(); } catch { return json({ ok: false, code: "bad_request" }, 400); }
   const action = String(body.action || "assess");
 
-  const { data: prof } = await db.from("profiles").select("plan").eq("user_id", user.id).order("created_at", { ascending: true }).limit(1);
-  const plan = String(prof?.[0]?.plan || "free");
-  const limit = MONTHLY_LIMIT[plan] ?? 0;
+  // Whose account pays: the owner of the home being worked on. A person invited to a home (Admin, Full access
+  // or Tasks & assets) uses that owner's plan and the owner's allowance. With no home they use their own account.
+  const acctFor = async (pid: unknown) => {
+    const p = typeof pid === "string" && UUID.test(pid) ? pid : null;
+    const { data, error } = await admin.rpc("sw_account_for", { p_user: user.id, p_email: user.email || "", p_property: p });
+    const r = Array.isArray(data) ? data[0] : data;
+    return !error && r?.owner_id ? { owner: String(r.owner_id), plan: String(r.plan || "free") } : null;
+  };
+  let acct = (await acctFor(body.property_id)) || (await acctFor(null));
+  if (!acct) return json({ ok: false, code: "usage_error" }, 500);
+  let plan = acct.plan;
+  let limit = MONTHLY_LIMIT[plan] ?? 0;
   const period = "assess:" + new Date().toISOString().slice(0, 7);
   const usageNow = async () => {
-    const { data } = await admin.from("assistant_usage").select("used").eq("user_id", user.id).eq("period", period).maybeSingle();
+    const { data } = await admin.from("assistant_usage").select("used").eq("user_id", acct.owner).eq("period", period).maybeSingle();
     const used = data?.used ?? 0;
     const now = new Date();
     return { plan, limit, used, remaining: Math.max(0, limit - used), resets: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10) };
@@ -425,7 +434,6 @@ export async function handler(req: Request): Promise<Response> {
   if (action !== "assess") return json({ ok: false, code: "bad_request" }, 400);
 
   // ── assess ──
-  if (!limit) return json({ ok: false, code: "plan_required", error: "Condition assessments are included with Plus and Pro." }, 403);
   if (!env("ANTHROPIC_API_KEY")) return json({ ok: false, code: "not_configured" }, 503);
 
   const assetId = String(body.asset_id || "");
@@ -438,14 +446,20 @@ export async function handler(req: Request): Promise<Response> {
   const { data: asset } = await db.from("warranties").select("*").eq("id", assetId).maybeSingle();   // row-level security: only assets this person can see
   if (!asset) return json({ ok: false, code: "no_asset", error: "Couldn't find that asset." }, 404);
   if (asset.retired_at || asset.warranty_only) return json({ ok: false, code: "not_assessable", error: "This record can't be assessed." }, 400);
-  const { data: home } = await db.from("profiles").select("*").eq("id", asset.property_id).maybeSingle();
+  const { data: home } = await db.rpc("get_shared_profile", { p_property: asset.property_id });
+
+  // the asset's home decides which account pays, and whose monthly allowance is used
+  const acctHome = await acctFor(asset.property_id);
+  if (!acctHome) return json({ ok: false, code: "no_asset", error: "Couldn't find that asset." }, 404);
+  acct = acctHome; plan = acct.plan; limit = MONTHLY_LIMIT[plan] ?? 0;
+  if (!limit) return json({ ok: false, code: "plan_required", error: "Condition assessments are included with Plus and Pro." }, 403);
 
   // take one assessment from the monthly allowance (atomic); give it back if nothing useful comes out
-  const { data: taken, error: takeErr } = await admin.rpc("assistant_consume", { p_user: user.id, p_period: period, p_limit: limit });
+  const { data: taken, error: takeErr } = await admin.rpc("assistant_consume", { p_user: acct.owner, p_period: period, p_limit: limit });
   if (takeErr) return json({ ok: false, code: "usage_error" }, 500);
   const trow = Array.isArray(taken) ? taken[0] : taken;
   if (!trow?.ok) return json({ ok: false, code: "limit_reached", usage: await usageNow() }, 429);
-  const refund = () => admin.rpc("assistant_refund", { p_user: user.id, p_period: period }).then(() => {}, () => {});
+  const refund = () => admin.rpc("assistant_refund", { p_user: acct.owner, p_period: period }).then(() => {}, () => {});
 
   const today = isoDate(body.today) ? String(body.today) : new Date().toISOString().slice(0, 10);
   const labels: string[] = Array.isArray(body.photo_labels) ? body.photo_labels.map((s: unknown) => clip(s, 50)) : [];

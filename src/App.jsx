@@ -1,4 +1,4 @@
-// Steadwell v390 — 2026-10-18
+// Steadwell v391 — 2026-10-18
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -16698,7 +16698,7 @@ function UtilityForm({ data, onChange }) {
         </div>
       </div>
       <div className="fg">
-        <div className="field s2"><label>Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder={`e.g. Home ${UTIL_TYPES[data.type||"electric"]?.label||"Electric"}`} /></div>
+        <div className="field s2"><label>Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} onFocus={e=>{ if (Object.values(UTIL_TYPES).some(x=>x.label===e.target.value.trim())) e.target.select(); }} placeholder={`e.g. Home ${UTIL_TYPES[data.type||"electric"]?.label||"Electric"}`} /></div>
         <div className="field s2"><label>Provider / Company</label><input value={data.provider||""} onChange={e=>f("provider",e.target.value)} placeholder={data.type==="bundle"?"e.g. your city utilities department":"e.g. Duke Energy"} /></div>
         <div className="field s2"><label>Account Number (optional)</label><input value={data.account_number||""} onChange={e=>f("account_number",e.target.value)} placeholder="For reference only" /></div>
         <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any details about this utility…" /></div>
@@ -19796,6 +19796,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
   const [scanning, setScanning]     = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
   const [scanSkipped, setScanSkipped] = useState(false);
+  const [scanFailed, setScanFailed] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [dragging, setDragging]     = useState(false);
   const scanRef = useRef(null);
@@ -19810,7 +19811,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     try { file = await prepareImageFile(picked); }
     catch (err) { setUploadError(err.message); return; }
     if (file.size > maxMB * 1024 * 1024) { setUploadError(`File must be under ${maxMB}MB on your plan.`); return; }
-    setUploadError(""); setScanning(true); setScanSuccess(false); setScanSkipped(false);
+    setUploadError(""); setScanning(true); setScanSuccess(false); setScanSkipped(false); setScanFailed(false);
     const skipScan = file.size > 20 * 1024 * 1024;
 
     // Check file limit first
@@ -19855,6 +19856,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
       const ai = scanResult.status === "fulfilled" && scanResult.value?.ok ? (scanResult.value.fields || {}) : {};
       if (scanResult.status === "fulfilled" && scanResult.value?.ok) setScanSuccess(true);
       if (skipScan) setScanSkipped(true);
+      else if (!(scanResult.status === "fulfilled" && scanResult.value?.ok)) setScanFailed(true);
       notifyStorageChanged();
 
       onChange({
@@ -19864,7 +19866,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
         name:         ai.name         || data.name         || file.name.replace(/\.[^/.]+$/,""),
         category:     ai.category     || data.category     || "",
         description:  ai.description  || data.description  || "",
-        expiry_date:  ai.expiry_date  || data.expiry_date  || "",
+        expiry_date:  (/^\d{4}-\d{2}-\d{2}$/.test(String(ai.expiry_date || "")) ? ai.expiry_date : "") || data.expiry_date || "",
       });
     } catch(err) {
       setUploadError("Something went wrong — please try again");
@@ -19936,7 +19938,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
             <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"#2A7A5A"}}>
               {scanSuccess ? "File scanned and attached ✓" : "File attached ✓"}
             </span>
-            <button className="btn btn-ghost btn-sm" onClick={()=>{onChange({...data,file_url:"",file_type:""});setScanSuccess(false);setScanSkipped(false);}}>Remove</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{onChange({...data,file_url:"",file_type:""});setScanSuccess(false);setScanSkipped(false);setScanFailed(false);}}>Remove</button>
           </div>
         ) : (
           <div
@@ -19952,6 +19954,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
           </div>
         )}
         {uploading && <div style={{fontSize:".75rem",color:"var(--rust)",marginTop:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}><span className="spinner" style={{width:12,height:12,borderWidth:2}}/>Uploading…</div>}
+        {data.file_url && scanFailed && <div style={{fontSize:".74rem",color:"#8A6410",marginTop:".35rem",lineHeight:1.45}}>The file is attached, but the AI could not read it this time. Fill in the details below, or remove the file and try again.</div>}
         {data.file_url && scanSkipped && <div style={{fontSize:".74rem",color:"#6E665D",marginTop:".35rem",lineHeight:1.45}}>Saved. This file is too large for the AI read, so fill in the details below. For insurance, you can also scan just the declarations page.</div>}
       </div>
 
@@ -20007,13 +20010,15 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   const [expanded, setExpanded] = useState({});
   const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
+  const [saveErr, setSaveErr] = useState("");
+  const [savingDoc, setSavingDoc] = useState(false);
 
   const maxDocs = planData?.maxDocs ?? Infinity;
   const atLimit = documents.length >= maxDocs;
 
   const openNew = (category="") => {
     if (atLimit && onUpgrade) { onUpgrade(); return; }
-    setEditData({category}); setEditId(null); setModal(true);
+    setEditData({category}); setEditId(null); setSaveErr(""); setModal(true);
   };
 
   useEffect(() => {
@@ -20028,16 +20033,30 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
     });
   }, [userId, reloadKey, propertyId]);
 
-  const openEdit = d => { setEditData({...d}); setEditId(d.id); setModal(true); };
+  const openEdit = d => { setEditData({...d}); setEditId(d.id); setSaveErr(""); setModal(true); };
 
   const save = async () => {
-    if (!editData.name?.trim()) return;
+    if (savingDoc) return;
+    if (!editData.name?.trim()) { setSaveErr("Give the document a name."); return; }
+    setSaveErr(""); setSavingDoc(true);
+    // A date column cannot hold an empty string, and the AI read can hand back text that is not a date. Empty means "no date".
+    const clean = { ...editData, expiry_date: /^\d{4}-\d{2}-\d{2}$/.test(String(editData.expiry_date || "")) ? editData.expiry_date : null };
+    let failed = null;
     if (editId) {
-      const {error} = await supabase.from("home_documents").update(editData).eq("id",editId);   // the database allows the uploader, and Full access people and up on a shared home
-      if (!error) setDocuments(editData.property_id && propertyId && editData.property_id !== propertyId ? documents.filter(d=>d.id!==editId) : documents.map(d=>d.id===editId?{...editData,id:editId}:d));
+      const {error} = await supabase.from("home_documents").update(clean).eq("id",editId);   // the database allows the uploader, and Full access people and up on a shared home
+      if (error) failed = error;
+      else setDocuments(clean.property_id && propertyId && clean.property_id !== propertyId ? documents.filter(d=>d.id!==editId) : documents.map(d=>d.id===editId?{...clean,id:editId}:d));
     } else {
-      const {data,error} = await insertHomeDocument({...editData,user_id:userId});
-      if (!error&&data) setDocuments([data,...documents]);
+      const {data,error} = await insertHomeDocument({...clean,user_id:userId});
+      if (error || !data) failed = error || new Error("not saved");
+      else setDocuments([data,...documents]);
+    }
+    setSavingDoc(false);
+    if (failed) {
+      // Keep the window open so nothing typed or uploaded is lost, and say what happened.
+      console.error("Document save failed:", failed.code, failed.message);
+      setSaveErr("This document could not be saved" + (failed.message && failed.message !== "not saved" ? " (" + failed.message + ")" : "") + ". Your file is still attached. Try Save again.");
+      return;
     }
     setModal(false);
   };
@@ -20196,6 +20215,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
 
       {modal && (
         <Modal title={editId?"Edit Document":"Add Document"} onClose={()=>setModal(false)} onSave={save}>
+          {saveErr && <div role="alert" style={{fontSize:".82rem",color:"var(--red)",background:"#FBEDE9",border:"1px solid #E8C4B8",borderRadius:"var(--r-sm)",padding:".6rem .8rem",marginBottom:".8rem",lineHeight:1.45}}>{saveErr}</div>}
           <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects} planData={planData} onUpgrade={onUpgrade} homes={homes}/>
         </Modal>
       )}
@@ -30176,7 +30196,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
           {res.findings.length === 0 && <p className="fc-quiet">No findings were listed in this report.</p>}
           {res.findings.map((f, i) => {
             const sev = IR_SEV[f.severity] || IR_SEV.repair;
-            const extra = [f.detail, f.recommended_action ? "Report says: " + f.recommended_action : "", `Due ${irNice(irDue(sev.days))}`, f.dupe ? "Already on your task list, so this starts unticked" : (f.severity === "monitor" ? "Starts unticked because it is a watch item" : "")].filter(Boolean).join(". ");
+            const extra = [f.detail, f.recommended_action ? "Report says: " + f.recommended_action : "", `Due ${irNice(irDue(sev.days))}`, f.dupe ? "Already on your task list, so this starts unticked" : (f.severity === "monitor" ? "Starts unticked because it is a watch item" : "")].filter(Boolean).map(x => String(x).trim().replace(/[.\s]+$/, "")).filter(Boolean).join(". ");
             return (
               <div className="ir-row" key={"f" + i}>
                 <FcCheck checked={!!pickFind[i]} onChange={v => setPickFind(p => ({ ...p, [i]: v }))}

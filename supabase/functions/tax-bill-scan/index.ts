@@ -4,8 +4,8 @@
 //
 // Rules this function keeps:
 //  - The person is read from the login token. The browser never sends a user id or a plan.
-//  - Plus and Pro only. The plan is read from the oldest home the person owns (same rule as the rest of the app).
-//  - 15 scans per person per day (public.tax_scan_usage_bump).
+//  - Plus and Pro only. The plan is the plan of the account that owns the home (people invited to a home use the owner's plan).
+//  - 15 scans per account per day, shared by everyone invited to its homes (public.tax_scan_usage_bump).
 //  - The bill itself is not stored or logged here.
 //
 // Run steadwell-fixed-costs.sql FIRST.
@@ -145,16 +145,20 @@ serve(async (req) => {
   if (uErr || !u?.user) return json(401, { error: "not_signed_in" });
   const userId = u.user.id;
 
-  // Which plan: the oldest home this person owns.
-  const { data: prof, error: pErr } = await admin
-    .from("profiles").select("plan").eq("user_id", userId)
-    .order("created_at", { ascending: true }).order("id", { ascending: true }).limit(1);
-  if (pErr) { console.error("[tax-bill-scan] plan lookup failed:", pErr.message); return json(500, { error: "scan_failed" }); }
-  const plan = String(prof?.[0]?.plan || "free");
-  if (plan !== "plus" && plan !== "pro") return json(403, { error: "plan_required", code: "plan_required" });
-
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return json(400, { error: "bad_request" }); }
+
+  // Whose account pays: the owner of the home being worked on. A person invited to a home uses that owner's
+  // plan and the owner's daily limit. With no home, or for their own home, it is their own account.
+  const propertyId = typeof b?.propertyId === "string" && /^[0-9a-f-]{36}$/i.test(b.propertyId) ? b.propertyId : null;
+  const { data: acctRows, error: aErr } = await admin.rpc("sw_account_for", { p_user: userId, p_email: String(u.user.email || ""), p_property: propertyId });
+  if (aErr) { console.error("[tax-bill-scan] account lookup failed:", aErr.message); return json(500, { error: "scan_failed" }); }
+  const a0 = Array.isArray(acctRows) ? acctRows[0] : acctRows;
+  if (!a0?.owner_id) return json(403, { error: "not_yours" });
+  const accountId = String(a0.owner_id);
+  const plan = String(a0.plan || "free");
+  if (plan !== "plus" && plan !== "pro") return json(403, { error: "plan_required", code: "plan_required" });
+
   const fileBase64 = String(b?.fileBase64 ?? "");
   const mimeType = String(b?.mimeType ?? "");
   const okType = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType);
@@ -163,7 +167,7 @@ serve(async (req) => {
   if (!ANTHROPIC_KEY) { console.error("[tax-bill-scan] ANTHROPIC_API_KEY missing"); return json(500, { error: "scan_failed" }); }
 
   // Daily limit (counts attempts, so it also caps cost).
-  const { data: allowed, error: uslErr } = await admin.rpc("tax_scan_usage_bump", { p_user: userId, p_limit: DAILY_LIMIT });
+  const { data: allowed, error: uslErr } = await admin.rpc("tax_scan_usage_bump", { p_user: accountId, p_limit: DAILY_LIMIT });
   if (uslErr) { console.error("[tax-bill-scan] usage bump failed:", uslErr.message); return json(500, { error: "scan_failed" }); }
   if (allowed === false) return json(429, { error: "limit_reached", code: "limit_reached" });
 

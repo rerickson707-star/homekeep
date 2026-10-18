@@ -248,12 +248,21 @@ export async function handler(req: Request): Promise<Response> {
   try { body = await req.json(); } catch { return json({ ok: false, code: "bad_request", error: "That request wasn't understood. Refresh the page and try again." }, 400); }
   const action = String(body.action || "review");
 
-  const { data: prof } = await db.from("profiles").select("plan").eq("user_id", user.id).order("created_at", { ascending: true }).limit(1);
-  const plan = String(prof?.[0]?.plan || "free");
-  const limit = MONTHLY_LIMIT[plan] ?? 0;
+  // Whose account pays: the owner of the home being worked on. A person invited to a home (Admin, Full access
+  // or Tasks & assets) uses that owner's plan and the owner's allowance. With no home they use their own account.
+  const acctFor = async (pid: unknown) => {
+    const p = typeof pid === "string" && UUID.test(pid) ? pid : null;
+    const { data, error } = await admin.rpc("sw_account_for", { p_user: user.id, p_email: user.email || "", p_property: p });
+    const r = Array.isArray(data) ? data[0] : data;
+    return !error && r?.owner_id ? { owner: String(r.owner_id), plan: String(r.plan || "free") } : null;
+  };
+  let acct = (await acctFor(body.property_id)) || (await acctFor(null));
+  if (!acct) return json({ ok: false, code: "usage_error" }, 500);
+  let plan = acct.plan;
+  let limit = MONTHLY_LIMIT[plan] ?? 0;
   const period = "projroi:" + new Date().toISOString().slice(0, 7);
   const usageNow = async () => {
-    const { data } = await admin.from("assistant_usage").select("used").eq("user_id", user.id).eq("period", period).maybeSingle();
+    const { data } = await admin.from("assistant_usage").select("used").eq("user_id", acct.owner).eq("period", period).maybeSingle();
     const used = data?.used ?? 0;
     const now = new Date();
     return { plan, limit, used, remaining: Math.max(0, limit - used), resets: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10) };
@@ -284,7 +293,6 @@ export async function handler(req: Request): Promise<Response> {
   if (action !== "review") return json({ ok: false, code: "bad_request", error: "That request wasn't understood. Refresh the page and try again." }, 400);
 
   // ── review ──
-  if (!limit) return json({ ok: false, code: "plan_required", error: "Before and after reviews are included with Plus and Pro." }, 403);
   if (!env("ANTHROPIC_API_KEY")) return json({ ok: false, code: "not_configured" }, 503);
 
   const projectId = Number(body.project_id);   // projects.id is a bigint
@@ -304,12 +312,18 @@ export async function handler(req: Request): Promise<Response> {
 
   const { data: project } = await db.from("projects").select("*").eq("id", projectId).maybeSingle();   // row-level security: only projects this person can see
   if (!project) return json({ ok: false, code: "no_project", error: "Couldn't find that project." }, 404);
+
+  // the project's home decides which account pays, and whose monthly allowance is used
+  const acctHome = await acctFor(project.property_id);
+  if (!acctHome) return json({ ok: false, code: "no_project", error: "Couldn't find that project." }, 404);
+  acct = acctHome; plan = acct.plan; limit = MONTHLY_LIMIT[plan] ?? 0;
+  if (!limit) return json({ ok: false, code: "plan_required", error: "Before and after reviews are included with Plus and Pro." }, 403);
   if (!project.roi_category) return json({ ok: false, code: "no_category", error: "Choose a project type first so the review knows what to look for." }, 400);
 
   const [{ data: cat }, { data: scopes }, { data: home }, { data: spendRows }] = await Promise.all([
     db.from("project_roi_categories").select("key,label").eq("key", project.roi_category).maybeSingle(),
     db.from("project_roi_scopes").select("scope_key,label,includes").eq("category_key", project.roi_category).order("sort_order"),
-    db.from("profiles").select("*").eq("id", project.property_id).maybeSingle(),
+    db.rpc("get_shared_profile", { p_property: project.property_id }),
     db.from("expenses").select("amount").eq("project_id", projectId).limit(500),
   ]);
   const scopeList: Row[] = Array.isArray(scopes) ? scopes : [];
@@ -318,11 +332,11 @@ export async function handler(req: Request): Promise<Response> {
   const spent = (spendRows || []).reduce((a: number, r: Row) => a + (Number(r.amount) || 0), 0);
 
   // take one review from the monthly allowance (atomic); give it back if nothing useful comes out
-  const { data: taken, error: takeErr } = await admin.rpc("assistant_consume", { p_user: user.id, p_period: period, p_limit: limit });
+  const { data: taken, error: takeErr } = await admin.rpc("assistant_consume", { p_user: acct.owner, p_period: period, p_limit: limit });
   if (takeErr) return json({ ok: false, code: "usage_error" }, 500);
   const trow = Array.isArray(taken) ? taken[0] : taken;
   if (!trow?.ok) return json({ ok: false, code: "limit_reached", usage: await usageNow() }, 429);
-  const refund = () => admin.rpc("assistant_refund", { p_user: user.id, p_period: period }).then(() => {}, () => {});
+  const refund = () => admin.rpc("assistant_refund", { p_user: acct.owner, p_period: period }).then(() => {}, () => {});
 
   const today = isoDate(body.today) ? String(body.today) : new Date().toISOString().slice(0, 10);
   const labelOf: Record<string, string> = { before: "BEFORE", progress: "DURING the work", after: "AFTER" };

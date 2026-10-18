@@ -60,6 +60,8 @@ const CAT_NORMALIZE: Record<string, string> = {
 };
 const isoDate = (s: unknown) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + "T00:00:00Z"));
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const weekdayOf = (d: string) => WEEKDAYS[new Date(d + "T00:00:00Z").getUTCDay()];
 const addDays = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const clip = (s: unknown, n: number) => { const t = String(s ?? "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
 const lc = (s: unknown) => String(s ?? "").toLowerCase();
@@ -154,7 +156,7 @@ function load(ctx: Ctx, name: string): Promise<Row[]> {
         case "logs":       r = await ctx.db.from("asset_service_log").select("*").eq("property_id", pid).order("service_date", { ascending: false }).limit(400); break;
         case "projects":   r = await ctx.db.from("projects").select("*").eq("property_id", pid).limit(100); break;
         case "utilities":  r = await ctx.db.from("utilities").select("*").eq("property_id", pid).limit(30); break;
-        case "docs":       r = await ctx.db.from("home_documents").select("*").eq("user_id", owner).limit(300); break;
+        case "docs":       r = await ctx.db.from("home_documents").select("*").eq("user_id", owner).eq("property_id", pid).limit(300); break;   // documents belong to one home
         case "contractors":r = await ctx.db.from("contractors").select("*").eq("user_id", owner).limit(200); break;
         default: return [];
       }
@@ -218,6 +220,7 @@ const TOOLS = [
   { name: "search_assets", description: "Find the user's assets (appliances, systems, roof, etc.) with age and lifespan facts. Filters are optional.", input_schema: { type: "object", properties: { query: { type: "string", description: "text to match in name/brand/model/category" }, category: { type: "string" }, include_retired: { type: "boolean" } } } },
   { name: "get_asset", description: "One asset in detail: its service history, tasks and warranty. Use the ref returned by search_assets.", input_schema: { type: "object", properties: { ref: { type: "string" } }, required: ["ref"] } },
   { name: "search_tasks", description: "Find tasks. status: open | overdue | completed | all (default open).", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string", enum: ["open", "overdue", "completed", "all"] }, due_within_days: { type: "integer" } } } },
+  { name: "spending_summary", description: "Total money spent on the home between two dates (YYYY-MM-DD). Counts BOTH saved expenses AND the costs on service records, exactly like the Steadwell dashboard does. Use this for any 'how much did I spend' question, then name the biggest items.", input_schema: { type: "object", properties: { since: { type: "string" }, until: { type: "string" } }, required: ["since", "until"] } },
   { name: "search_expenses", description: "Find expenses and get totals. Dates are YYYY-MM-DD.", input_schema: { type: "object", properties: { query: { type: "string" }, category: { type: "string" }, since: { type: "string" }, until: { type: "string" } } } },
   { name: "search_service_history", description: "Find service/repair/maintenance log entries, optionally for one asset ref.", input_schema: { type: "object", properties: { query: { type: "string" }, asset_ref: { type: "string" } } } },
   { name: "search_documents", description: "Find saved documents (name, category, description, expiry). Contents of files are not available unless a summary was saved.", input_schema: { type: "object", properties: { query: { type: "string" } } } },
@@ -254,8 +257,10 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
         .map((d) => ({ ref: ref(ctx, "doc", d.id, d.name), name: d.name, expires: String(d.expiry_date).slice(0, 10) }));
       const since = addDays(today, -365);
       const year = expenses.filter((e) => e.date && e.date >= since);
+      const yearLogs = logs.filter((l) => l.service_date && String(l.service_date).slice(0, 10) >= since && Number(l.cost) > 0);
       const byCat: Record<string, number> = {};
       for (const e of year) byCat[e.category || "Uncategorized"] = (byCat[e.category || "Uncategorized"] || 0) + (Number(e.amount) || 0);
+      for (const l of yearLogs) byCat["Service records"] = (byCat["Service records"] || 0) + (Number(l.cost) || 0);
       const topCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([category, total]) => ({ category, total: Math.round(total) }));
       const lastService = facts.filter((x) => x.a.pm_schedule).length;
       const h = ctx.home;
@@ -264,7 +269,7 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
         counts: { assets: live.length, warranty_only_items: assets.filter((a) => a.warranty_only).length, open_tasks: open.length, overdue_tasks: overdue.length, service_log_entries: logs.length, documents: docs.length },
         assets_aging: aging, assets_needing_attention: needsAttention, assets_with_unknown_age: unknownAge, assets_with_maintenance_schedule: lastService,
         overdue_tasks: overdue, upcoming_tasks_45d: upcoming, warranties_expiring_90d: warrantiesSoon, documents_expiring_90d: docsSoon,
-        spending_last_12_months: { total: Math.round(year.reduce((s, e) => s + (Number(e.amount) || 0), 0)), entries: year.length, top_categories: topCats },
+        spending_last_12_months: { total: Math.round(year.reduce((s, e) => s + (Number(e.amount) || 0), 0) + yearLogs.reduce((s, l) => s + (Number(l.cost) || 0), 0)), entries: year.length + yearLogs.length, includes: "expenses and service-record costs", top_categories: topCats },
       };
     }
     case "search_assets": {
@@ -295,6 +300,22 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
       list.sort((a, b) => String(a.due_date || "9999").localeCompare(String(b.due_date || "9999")));
       await load(ctx, "assets").then((as) => as.forEach((a) => { if (list.some((t) => t.asset_id === a.id)) ref(ctx, "asset", a.id, a.item); }));
       return { total: list.length, tasks: list.slice(0, 25).map((t) => taskView(ctx, t)) };
+    }
+    case "spending_summary": {
+      if (!isoDate(input.since) || !isoDate(input.until)) return { error: "since and until must be YYYY-MM-DD dates" };
+      const [ex, logs, assets] = await Promise.all([load(ctx, "expenses"), load(ctx, "logs"), load(ctx, "assets")]);
+      const inRange = (d: unknown) => typeof d === "string" && d.slice(0, 10) >= input.since && d.slice(0, 10) <= input.until;
+      const exList = ex.filter((e) => inRange(e.date));
+      const logList = logs.filter((s) => inRange(s.service_date) && Number(s.cost) > 0);
+      const exTotal = exList.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const logTotal = logList.reduce((s, l) => s + (Number(l.cost) || 0), 0);
+      const nameOf = (id: string) => assets.find((a) => a.id === id)?.item;
+      return {
+        from: input.since, to: input.until,
+        total: Math.round((exTotal + logTotal) * 100) / 100,
+        expenses: { count: exList.length, total: Math.round(exTotal * 100) / 100, items: exList.slice(0, 15).map((e) => expenseView(ctx, e)) },
+        service_records: { count: logList.length, total: Math.round(logTotal * 100) / 100, items: logList.slice(0, 15).map((l) => logView(ctx, l, nameOf(l.asset_id))) },
+      };
     }
     case "search_expenses": {
       const ex = await load(ctx, "expenses");
@@ -378,11 +399,13 @@ function buildSystem(home: Row, today: string, tz: string): string {
   return `You are Ask Steadwell, the assistant inside Steadwell, a home-management app. You help one homeowner understand and look after their own home using the records they saved: assets, warranties, tasks, service history, expenses, projects, documents, contractors and utilities.
 
 THIS HOME
-Today is ${today}${tz ? ` (${tz})` : ""}. ${bits ? "Home: " + bits + "." : "Home details not filled in."} ${loc ? "Location: " + loc + "." : "Location unknown."}
+Today is ${weekdayOf(today)}, ${today}${tz ? ` (${tz})` : ""}. Calendar for the next two weeks: ${Array.from({ length: 14 }, (_, i) => `${weekdayOf(addDays(today, i + 1)).slice(0, 3)} ${addDays(today, i + 1)}`).join(", ")}. Use this calendar for every weekday date; never work out a weekday yourself. ${bits ? "Home: " + bits + "." : "Home details not filled in."} ${loc ? "Location: " + loc + "." : "Location unknown."}
 
 HOW TO ANSWER
 - Ground every statement about THIS home in data you retrieved with your tools. Call a tool before answering anything about their records. Never guess. If the data needed is missing, say what is missing and how to add it in Steadwell (for example an install date).
-- Cite records you relied on by putting their ref in square brackets right after the claim, like [a3] or [e12]. Only use refs that tools returned.
+- Cite records you relied on by putting their ref in square brackets right after the claim, like [a3] or [e12]. One ref per bracket: write [e1][e2], never [e1, e2]. Only use refs that tools returned.
+- Spending: for any "how much did I spend" question call spending_summary. It counts saved expenses and service-record costs together, the same as the Steadwell dashboard. Say which parts the total is made of.
+- You can only read records and suggest tasks. You cannot mark tasks done, edit, delete or schedule anything. If the person asks for one of those, say so in your first sentence and tell them where to do it in Steadwell (for example, open the task and tap Complete). Then help with the rest of the request.
 - For general home knowledge (typical lifespans, typical costs, seasonal care, climate risks) use your own knowledge, say it is a general estimate, and adapt to the home's age and location. Give cost ranges, never a single number, and note that local quotes vary.
 - Recommendations: specific and prioritized: what, why now, rough cost, how urgent. At most 3 items unless asked for more. Base urgency on recorded facts, and say when age is unknown instead of assuming.
 - Safety: for gas, electrical panels, structure, roof work, mold, or anything that could hurt someone, recommend a licensed professional. You do not give legal, tax, insurance-coverage or investment advice; say so briefly when relevant.
@@ -408,6 +431,8 @@ function parseTail(text: string) {
 }
 
 // ─── main ────────────────────────────────────────────────────────────────────
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, code: "method" }, 405);
@@ -428,16 +453,26 @@ export async function handler(req: Request): Promise<Response> {
   const secret = env("ASSISTANT_HASH_SECRET");
   const userHash = secret ? await hmacHex(secret, user.id) : null;
 
-  // plan (the account's own plan) + preferences
-  const { data: prof } = await db.from("profiles").select("plan").eq("user_id", user.id).order("created_at", { ascending: true }).limit(1);
-  const plan = LIMITS[prof?.[0]?.plan] ? String(prof![0].plan) : "free";
+  // Whose account pays: the owner of the home being worked on. A person invited to a home (Admin, Full access
+  // or Tasks & assets) uses that owner's plan and the owner's allowance. With no home they use their own account.
+  const acctFor = async (pid: unknown) => {
+    const p = typeof pid === "string" && UUID.test(pid) ? pid : null;
+    const { data, error } = await admin.rpc("sw_account_for", { p_user: user.id, p_email: user.email || "", p_property: p });
+    const r = Array.isArray(data) ? data[0] : data;
+    return !error && r?.owner_id ? { owner: String(r.owner_id), plan: String(r.plan || "free") } : null;
+  };
+  const acct = (await acctFor(body.property_id)) || (await acctFor(null));
+  if (!acct) return json({ ok: false, code: "usage_error" }, 500);
+
+  // plan (the plan of the account that owns the home) + preferences
+  const plan = LIMITS[acct.plan] ? acct.plan : "free";
   const lim = LIMITS[plan];
   const period = lim.period === "lifetime" ? "lifetime" : new Date().toISOString().slice(0, 7);
   const { data: prefRow } = await admin.from("assistant_prefs").select("log_optout,notice_seen_at").eq("user_id", user.id).maybeSingle();
   const optout = !!prefRow?.log_optout;
 
   const usageNow = async () => {
-    const { data } = await admin.from("assistant_usage").select("used").eq("user_id", user.id).eq("period", period).maybeSingle();
+    const { data } = await admin.from("assistant_usage").select("used").eq("user_id", acct.owner).eq("period", period).maybeSingle();
     const used = data?.used ?? 0;
     return { plan, period: lim.period, limit: lim.max, used, remaining: Math.max(0, lim.max - used), resets: lim.period === "month" ? new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)).toISOString().slice(0, 10) : null };
   };
@@ -478,15 +513,15 @@ export async function handler(req: Request): Promise<Response> {
   if (!env("ANTHROPIC_API_KEY")) return json({ ok: false, code: "not_configured" }, 503);
 
   const propertyId = String(body.property_id || "");
-  const { data: home } = await db.from("profiles").select("*").eq("id", propertyId).maybeSingle();
+  const { data: home } = await db.rpc("get_shared_profile", { p_property: propertyId });
   if (!home) return json({ ok: false, code: "no_home", error: "Couldn't find that home." }, 404);
 
   // take one question from the allowance (atomic); give it back if the AI call fails
-  const { data: taken, error: takeErr } = await admin.rpc("assistant_consume", { p_user: user.id, p_period: period, p_limit: lim.max });
+  const { data: taken, error: takeErr } = await admin.rpc("assistant_consume", { p_user: acct.owner, p_period: period, p_limit: lim.max });
   if (takeErr) return json({ ok: false, code: "usage_error" }, 500);
   const row = Array.isArray(taken) ? taken[0] : taken;
   if (!row?.ok) return json({ ok: false, code: "limit_reached", usage: await usageNow() }, 429);
-  const refund = () => admin.rpc("assistant_refund", { p_user: user.id, p_period: period }).then(() => {}, () => {});
+  const refund = () => admin.rpc("assistant_refund", { p_user: acct.owner, p_period: period }).then(() => {}, () => {});
 
   const today = isoDate(body.today) ? String(body.today) : new Date().toISOString().slice(0, 10);
   const tz = typeof body.tz === "string" ? body.tz.slice(0, 40) : "";
@@ -543,11 +578,15 @@ export async function handler(req: Request): Promise<Response> {
   // citations -> sources, then strip markers
   const { topic, answered, clean } = parseTail(finalText);
   const sources: Array<{ type: string; id: string; label: string }> = [];
-  for (const m of clean.matchAll(/\[([a-z]\d{1,3})\]/g)) {
-    const r = ctx.refs.get(m[1]);
-    if (r && !sources.find((s) => s.id === r.id && s.type === r.type) && sources.length < 6) sources.push(r);
+  // Refs are normally one per bracket, but the model sometimes groups them: [e1, e2]. Read and remove both forms.
+  const GROUP = /\[\s*[a-z]\d{1,3}(?:\s*[,;]\s*[a-z]\d{1,3})*\s*\]/g;
+  for (const grp of clean.match(GROUP) || []) {
+    for (const m of grp.matchAll(/[a-z]\d{1,3}/g)) {
+      const r = ctx.refs.get(m[0]);
+      if (r && !sources.find((s) => s.id === r.id && s.type === r.type) && sources.length < 6) sources.push(r);
+    }
   }
-  const answer = clean.replace(/\s?\[[a-z]\d{1,3}\]/g, "").replace(/[ \t]+\n/g, "\n").trim();
+  const answer = clean.replace(new RegExp("\\s?" + GROUP.source, "g"), "").replace(/[ \t]+\n/g, "\n").trim();
 
   // research log (text only when the user has not opted out)
   let logId: string | null = null;

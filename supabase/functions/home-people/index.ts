@@ -246,6 +246,8 @@ serve(async (req) => {
           const { data: ex, error: xErr } = await admin.from("account_admins").select("id, status").eq("owner_id", userId).eq("member_email", email).maybeSingle();
           if (xErr) throw new Error("lookup: " + xErr.message);
           if (ex?.status === "accepted") { results.push({ email, status: "already" }); continue; }
+          // Already invited and still waiting: say so instead of sending the same email again. Resend on their row sends it again on purpose.
+          if (ex) { results.push({ email, status: "already_invited" }); continue; }
           if (!ex) {
             const { error: iErr } = await admin.from("account_admins").insert([{ owner_id: userId, member_email: email, status: "pending" }]);
             if (iErr) throw new Error("insert: " + iErr.message);
@@ -266,14 +268,16 @@ serve(async (req) => {
         if (email === userEmail) { results.push({ email, status: "self" }); continue; }
         const perHome: { propertyId: string; status: string }[] = [];
         const toEmail: string[] = [];
+        let waiting = 0;   // homes where this person already has a pending invite at the same level
         for (const home of homes) {
           if (email === await emailOfOwner(home.user_id)) { perHome.push({ propertyId: home.id, status: "owner" }); continue; }
           const { data: adm } = await admin.from("account_admins").select("id").eq("owner_id", home.user_id).eq("member_email", email).maybeSingle();
           if (adm) { perHome.push({ propertyId: home.id, status: "already_admin" }); continue; }
-          const { data: ex, error: eErr } = await admin.from("home_members").select("id, status").eq("property_id", home.id).eq("member_email", email).maybeSingle();
+          const { data: ex, error: eErr } = await admin.from("home_members").select("id, status, role").eq("property_id", home.id).eq("member_email", email).maybeSingle();
           if (eErr) throw new Error("lookup: " + eErr.message);
           if (ex) {
             if (ex.status === "accepted") { perHome.push({ propertyId: home.id, status: "already" }); continue; }
+            if (ex.role === level) { waiting++; perHome.push({ propertyId: home.id, status: "already_invited" }); continue; }
             const { error: upErr } = await admin.from("home_members").update({ role: level }).eq("id", ex.id);
             if (upErr) throw new Error("update: " + upErr.message);
             perHome.push({ propertyId: home.id, status: "resent" });
@@ -290,7 +294,7 @@ serve(async (req) => {
           first = false;
           try { await sendHomeInvite(email, inviterName, level, toEmail); sent = true; } catch { /* rows are kept; the owner can resend */ }
         }
-        results.push({ email, status: toEmail.length === 0 ? "nothing_new" : sent ? "sent" : "email_failed", homes: perHome });
+        results.push({ email, status: toEmail.length === 0 ? (waiting > 0 ? "already_invited" : "nothing_new") : sent ? "sent" : "email_failed", homes: perHome });
       }
       return json(200, { ok: true, results });
     }
