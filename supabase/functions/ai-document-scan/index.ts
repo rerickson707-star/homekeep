@@ -186,17 +186,17 @@ Return only the JSON. No markdown, no explanation.`,
     default:
       return {
         max_tokens: 600,
-        prompt: `You are reading a home-related document. Extract all useful information.
+        prompt: `You are reading a home-related document that a homeowner is filing in their document vault.
 
-Return ONLY a JSON object with whatever fields are relevant:
+Return ONLY a JSON object:
 {
-  "title": "document title or type",
-  "date": "YYYY-MM-DD or null",
-  "vendor": "company or person name if relevant",
-  "amount": number or null,
-  "item": "product or property if relevant",
-  "notes": "key information from the document"
+  "name": "short plain name for the document, 60 characters or fewer, for example 'Property tax bill 2026', 'Home inspection report, Oct 2026' or 'Roof warranty, Acme Roofing'",
+  "category": "one of: legal (deed, title, survey, closing documents, easements) | mortgage (loan documents, statements, refinance, HELOC) | inspection (home, pest, radon, mold, septic or pool inspection reports) | insurance (homeowners, flood, umbrella or other policies) | permits (building permits, certificates of occupancy, permitted work) | tax (property tax bills, assessments, payment records) | contracts (HOA documents, service contracts, home warranty plans) | other",
+  "description": "one plain sentence saying what the document is and who it is from, 140 characters or fewer",
+  "expiry_date": "YYYY-MM-DD" for a date the homeowner should be reminded about (policy renewal, warranty end, permit expiry, tax due date), or null if the document has none
 }
+
+Use only what is printed in the document. If something is not shown, use null. Plain text only.
 
 Return only the JSON. No markdown, no explanation.`,
       };
@@ -229,6 +229,22 @@ function cleanUtilityBill(fields: Record<string, unknown>) {
   }
   fields.split_status = status;
   if (!UTILITY_TYPES.includes(String(fields.utility_type))) fields.utility_type = "other";
+}
+
+// ── Documents: the form fills name, category, description and expiry date, so return exactly those ─────────
+const DOC_CATEGORY_IDS = ["legal", "mortgage", "inspection", "insurance", "permits", "tax", "contracts", "other"];
+function cleanDocument(fields: Record<string, unknown>) {
+  const str = (v: unknown, n: number) => { const t = String(v ?? "").replace(/\s+/g, " ").trim(); return t && t.toLowerCase() !== "null" ? t.slice(0, n) : ""; };
+  const date = (v: unknown) => { const t = String(v ?? ""); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return ""; const d = new Date(t + "T00:00:00Z"); return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== t ? "" : t; };
+  const cat = String(fields.category ?? "").toLowerCase().trim();
+  const out = {
+    name: str(fields.name ?? fields.title, 60),
+    category: DOC_CATEGORY_IDS.includes(cat) ? cat : "",
+    description: str(fields.description ?? fields.notes, 140),
+    expiry_date: date(fields.expiry_date),
+  };
+  for (const k of Object.keys(fields)) delete fields[k];
+  Object.assign(fields, out);
 }
 
 serve(async (req) => {
@@ -344,6 +360,7 @@ serve(async (req) => {
     }
 
     if (scanType === "utility_bill") cleanUtilityBill(fields);
+    if (scanType === "document") cleanDocument(fields);
 
     return new Response(JSON.stringify({ ok: true, fields }), {
       headers: { ...CORS, "Content-Type": "application/json" },
