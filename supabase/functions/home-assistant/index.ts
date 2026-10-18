@@ -220,7 +220,7 @@ const TOOLS = [
   { name: "search_assets", description: "Find the user's assets (appliances, systems, roof, etc.) with age and lifespan facts. Filters are optional.", input_schema: { type: "object", properties: { query: { type: "string", description: "text to match in name/brand/model/category" }, category: { type: "string" }, include_retired: { type: "boolean" } } } },
   { name: "get_asset", description: "One asset in detail: its service history, tasks and warranty. Use the ref returned by search_assets.", input_schema: { type: "object", properties: { ref: { type: "string" } }, required: ["ref"] } },
   { name: "search_tasks", description: "Find tasks. status: open | overdue | completed | all (default open).", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string", enum: ["open", "overdue", "completed", "all"] }, due_within_days: { type: "integer" } } } },
-  { name: "spending_summary", description: "Total money spent on the home between two dates (YYYY-MM-DD). Counts BOTH saved expenses AND the costs on service records, exactly like the Steadwell dashboard does. Use this for any 'how much did I spend' question, then name the biggest items.", input_schema: { type: "object", properties: { since: { type: "string" }, until: { type: "string" } }, required: ["since", "until"] } },
+  { name: "spending_summary", description: "Total money spent on the home between two dates (YYYY-MM-DD). Counts BOTH saved expenses AND the costs on service records, exactly like the Steadwell dashboard does, and reports utility bills on their own line (not inside the total). Use this for any 'how much did I spend' question, then name the biggest items.", input_schema: { type: "object", properties: { since: { type: "string" }, until: { type: "string" } }, required: ["since", "until"] } },
   { name: "search_expenses", description: "Find expenses and get totals. Dates are YYYY-MM-DD.", input_schema: { type: "object", properties: { query: { type: "string" }, category: { type: "string" }, since: { type: "string" }, until: { type: "string" } } } },
   { name: "search_service_history", description: "Find service/repair/maintenance log entries, optionally for one asset ref.", input_schema: { type: "object", properties: { query: { type: "string" }, asset_ref: { type: "string" } } } },
   { name: "search_documents", description: "Find saved documents (name, category, description, expiry). Contents of files are not available unless a summary was saved.", input_schema: { type: "object", properties: { query: { type: "string" } } } },
@@ -310,8 +310,19 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
       const exTotal = exList.reduce((s, e) => s + (Number(e.amount) || 0), 0);
       const logTotal = logList.reduce((s, l) => s + (Number(l.cost) || 0), 0);
       const nameOf = (id: string) => assets.find((a) => a.id === id)?.item;
+      // utility bills: kept out of the total, reported beside it
+      let utilTotal = 0, utilCount = 0;
+      try {
+        const utils = await load(ctx, "utilities");
+        const ids = utils.map((u) => u.id);
+        if (ids.length) {
+          const { data: bills } = await ctx.db.from("utility_bills").select("amount, bill_date, utility_id").in("utility_id", ids).gte("bill_date", input.since).lte("bill_date", input.until).limit(500);
+          for (const b of bills || []) { utilTotal += Number(b.amount) || 0; utilCount++; }
+        }
+      } catch { /* utilities are optional */ }
       return {
         from: input.since, to: input.until,
+        utility_bills_not_in_total: { count: utilCount, total: Math.round(utilTotal * 100) / 100 },
         total: Math.round((exTotal + logTotal) * 100) / 100,
         expenses: { count: exList.length, total: Math.round(exTotal * 100) / 100, items: exList.slice(0, 15).map((e) => expenseView(ctx, e)) },
         service_records: { count: logList.length, total: Math.round(logTotal * 100) / 100, items: logList.slice(0, 15).map((l) => logView(ctx, l, nameOf(l.asset_id))) },
@@ -405,7 +416,10 @@ HOW TO ANSWER
 - Ground every statement about THIS home in data you retrieved with your tools. Call a tool before answering anything about their records. Never guess. If the data needed is missing, say what is missing and how to add it in Steadwell (for example an install date).
 - Cite records you relied on by putting their ref in square brackets right after the claim, like [a3] or [e12]. One ref per bracket: write [e1][e2], never [e1, e2]. Only use refs that tools returned.
 - Spending: for any "how much did I spend" question call spending_summary. It counts saved expenses and service-record costs together, the same as the Steadwell dashboard. Say which parts the total is made of.
-- You can only read records and suggest tasks. You cannot mark tasks done, edit, delete or schedule anything. If the person asks for one of those, say so in your first sentence and tell them where to do it in Steadwell (for example, open the task and tap Complete). Then help with the rest of the request.
+- You can read records and you CAN suggest tasks. When the person asks you to add, create, schedule or remind them of a task: check search_tasks once for a duplicate, then you MUST call propose_task. The Add button only appears if you call it. Never say "tap Add" unless you called propose_task in this reply.
+- You cannot mark tasks done, edit or delete anything. If asked, say so in your first sentence and tell them where to do it in Steadwell (for example, open the task and tap Complete). Then help with the rest of the request.
+- Start with the answer. Do not narrate your checks ("No duplicate found", "Let me look"). Use **bold** sparingly and never a lone asterisk.
+- Utility bills (electric, water, gas, trash) are tracked separately from home spending. spending_summary reports them on their own line; give the home total first, then say what the utility bills came to in the same period.
 - For general home knowledge (typical lifespans, typical costs, seasonal care, climate risks) use your own knowledge, say it is a general estimate, and adapt to the home's age and location. Give cost ranges, never a single number, and note that local quotes vary.
 - Recommendations: specific and prioritized: what, why now, rough cost, how urgent. At most 3 items unless asked for more. Base urgency on recorded facts, and say when age is unknown instead of assuming.
 - Safety: for gas, electrical panels, structure, roof work, mold, or anything that could hurt someone, recommend a licensed professional. You do not give legal, tax, insurance-coverage or investment advice; say so briefly when relevant.
@@ -586,7 +600,9 @@ export async function handler(req: Request): Promise<Response> {
       if (r && !sources.find((s) => s.id === r.id && s.type === r.type) && sources.length < 6) sources.push(r);
     }
   }
-  const answer = clean.replace(new RegExp("\\s?" + GROUP.source, "g"), "").replace(/[ \t]+\n/g, "\n").trim();
+  let answer = clean.replace(new RegExp("\\s?" + GROUP.source, "g"), "").replace(/[ \t]+\n/g, "\n").trim();
+  // Never point at an Add button that is not there.
+  if (ctx.proposals.length === 0) answer = answer.replace(/[^.!?\n]*\btap\s+\**add\**[^.!?\n]*[.!?]?/gi, "").replace(/[ \t]{2,}/g, " ").trim();
 
   // research log (text only when the user has not opted out)
   let logId: string | null = null;

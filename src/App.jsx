@@ -1,4 +1,4 @@
-// Steadwell v392 — 2026-10-18
+// Steadwell v393 — 2026-10-18
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4189,7 +4189,7 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ask-typing em{font-style:normal;font-size:.76rem;color:#8A8178;margin-left:.4rem}
 @keyframes askDot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 .ask-compose{display:flex;align-items:flex-end;gap:.5rem;padding:.65rem .8rem;border-top:1px solid var(--stone);background:var(--white);flex-shrink:0}
-.ask-compose textarea{flex:1;min-width:0;resize:none;height:44px;min-height:44px;box-sizing:border-box;border:1.5px solid var(--stone);border-radius:14px;padding:.6rem .8rem;font-family:inherit;font-size:16px;line-height:1.4;color:var(--dark);background:var(--cream);outline:none;max-height:120px}
+.ask-compose textarea{flex:1;min-width:0;resize:none;height:44px;min-height:44px;box-sizing:border-box;border:1.5px solid var(--stone);border-radius:14px;padding:.6rem .8rem;font-family:inherit;font-size:16px;line-height:1.4;color:var(--dark);background:var(--cream);outline:none;max-height:120px;overflow-y:hidden}
 .ask-compose textarea:focus{border-color:var(--pine);background:#fff}
 .ask-send{width:42px;height:42px;border-radius:50%;border:none;background:var(--pine);color:#fff;font-size:1.15rem;font-weight:700;cursor:pointer;flex-shrink:0}
 .ask-send:disabled{background:var(--stone);color:#fff;cursor:default}
@@ -11512,8 +11512,9 @@ async function assistantCall(body) {
 
 // Tiny, safe formatter for the assistant's replies: paragraphs, "- " bullets and **bold**.
 function askInline(s) {
-  return String(s).split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
-    p.length > 4 && p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : p);
+  return String(s).split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g).map((p, i) =>
+    p.length > 4 && p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong>
+    : p.length > 2 && p.startsWith("*") && p.endsWith("*") && !p.startsWith("**") ? <em key={i}>{p.slice(1, -1)}</em> : p);
 }
 function AskText({ text }) {
   const blocks = []; let list = null;
@@ -11830,7 +11831,7 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
         <form className="ask-compose" onSubmit={e => { e.preventDefault(); send(); }}>
           <textarea
             ref={inputRef} rows={1} value={input} maxLength={600}
-            onChange={e => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }}
+            onChange={e => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; e.target.style.overflowY = e.target.scrollHeight > 120 ? "auto" : "hidden"; }}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) { e.preventDefault(); send(); } }}
             placeholder="Ask about your home…" aria-label="Your question" disabled={busy}
           />
@@ -12511,8 +12512,30 @@ function parseRecallDate(d) {
 //   built after the fix, so it doesn't apply (2019 Rheem vs a 1980 LP-gas heater recall).
 // - No install date to compare: a brand-only (non-model) match older than 15 years is dropped.
 // A confirmed model match ("high") is always kept.
+// Words that mean "the same kind of product" for the equipment people track, so a recall of a different product from the
+// same brand (a surge arrester, a safety switch) is not shown against an electrical panel.
+const RECALL_KIND_WORDS = [
+  [/panel|breaker|load center|fuse box/i, ["panel","breaker","loadcenter","circuit","fuse","electrical"]],
+  [/air.?condition|\ba\/?c\b|condenser|central air|hvac|cooling/i, ["air","conditioner","conditioning","condenser","cooling","hvac","heat","pump"]],
+  [/furnace|boiler|heat pump|heating/i, ["furnace","boiler","heater","heating","heat","pump"]],
+  [/water heater|hot water|tankless/i, ["water","heater","tankless"]],
+  [/garage/i, ["garage","door","opener"]],
+  [/smoke|carbon monoxide|alarm|detector/i, ["smoke","alarm","detector","carbon","monoxide"]],
+];
+const recallWords = t => String(t || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(w => w.length > 2).map(w => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w));
+function recallSameProduct(asset, recall) {
+  const title = new Set(recallWords(`${recall?.title || ""} ${recall?.description || ""}`));
+  if (title.size === 0) return true;
+  const name = `${asset?.item || ""} ${asset?.category || ""}`;
+  const want = new Set(recallWords(asset?.item).filter(w => !["system","unit","main","home","house","new","old","the"].includes(w)));
+  RECALL_KIND_WORDS.forEach(([re, words]) => { if (re.test(name)) words.forEach(w => want.add(w)); });
+  if (want.size === 0) return true;
+  for (const w of want) if (title.has(w)) return true;
+  return false;
+}
 function recallAppliesToAsset(asset, recall) {
   if (recall?.confidence === "high") return true;
+  if (!recallSameProduct(asset, recall)) return false;
   const rd = parseRecallDate(recall?.date);
   if (!rd) return true;
   const inst = asset?.install_date || asset?.purchase_date;
@@ -12555,7 +12578,7 @@ async function scanRecalls(list) {
   return { found, failed };
 }
 
-const RECALL_CACHE_KEY = "sw_recall_cache_v2";
+const RECALL_CACHE_KEY = "sw_recall_cache_v3";
 const RECALL_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 let _recallInflight = null; // one scan at a time — Dashboard, Assets and My Home share it
 async function getRecallScan(list, force = false) {
@@ -19810,13 +19833,14 @@ async function fetchHomeDocs(userId, cols, tweak) {
   return build(q => q.eq("user_id", userId));
 }
 
-function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade, homes=[] }) {
+function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData, onUpgrade, homes=[], onUploaded, onDiscard }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const [uploading, setUploading]   = useState(false);
   const [scanning, setScanning]     = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
   const [scanSkipped, setScanSkipped] = useState(false);
   const [scanFailed, setScanFailed] = useState(false);
+  const [scanWhy, setScanWhy] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [dragging, setDragging]     = useState(false);
   const scanRef = useRef(null);
@@ -19870,13 +19894,19 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
         setUploadError("Upload failed — please try again");
         setScanning(false); return;
       }
+      onUploaded && onUploaded(path);
       const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
 
       // Merge AI fields if scan succeeded
       const ai = scanResult.status === "fulfilled" && scanResult.value?.ok ? (scanResult.value.fields || {}) : {};
       if (scanResult.status === "fulfilled" && scanResult.value?.ok) setScanSuccess(true);
       if (skipScan) setScanSkipped(true);
-      else if (!(scanResult.status === "fulfilled" && scanResult.value?.ok)) setScanFailed(true);
+      else if (!(scanResult.status === "fulfilled" && scanResult.value?.ok)) {
+        setScanFailed(true);
+        const why = scanResult.status === "rejected" ? String(scanResult.reason?.message || scanResult.reason || "") : String(scanResult.value?.error || scanResult.value?.message || scanResult.value?.code || "");
+        setScanWhy(why.slice(0, 120));
+        console.error("Document scan did not return fields:", scanResult.status === "rejected" ? scanResult.reason : scanResult.value);
+      }
       notifyStorageChanged();
 
       onChange({
@@ -19912,6 +19942,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
     const path = `${userId}/documents/${Date.now()}-${safeName}`;
     const { error } = await supabase.storage.from("expense-files").upload(path, file, { upsert:false, contentType:file.type });
     if (error) { setUploadError("Upload failed — " + error.message); setUploading(false); return; }
+    onUploaded && onUploaded(path);
     const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
     onChange({...data, file_url:urlData.publicUrl, file_type:file.type, name:data.name||file.name.replace(/\.[^/.]+$/,"")});
     setUploading(false);
@@ -19958,7 +19989,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
             <span style={{flex:1,fontSize:".82rem",fontWeight:600,color:"#2A7A5A"}}>
               {scanSuccess ? "File scanned and attached ✓" : "File attached ✓"}
             </span>
-            <button className="btn btn-ghost btn-sm" onClick={()=>{onChange({...data,file_url:"",file_type:""});setScanSuccess(false);setScanSkipped(false);setScanFailed(false);}}>Remove</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{ onDiscard && onDiscard(data.file_url); onChange({...data,file_url:"",file_type:""});setScanSuccess(false);setScanSkipped(false);setScanFailed(false);setScanWhy("");}}>Remove</button>
           </div>
         ) : (
           <div
@@ -19974,7 +20005,7 @@ function DocumentForm({ data, onChange, userId, assets=[], projects=[], planData
           </div>
         )}
         {uploading && <div style={{fontSize:".75rem",color:"var(--rust)",marginTop:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}><span className="spinner" style={{width:12,height:12,borderWidth:2}}/>Uploading…</div>}
-        {data.file_url && scanFailed && <div style={{fontSize:".74rem",color:"#8A6410",marginTop:".35rem",lineHeight:1.45}}>The file is attached, but the AI could not read it this time. Fill in the details below, or remove the file and try again.</div>}
+        {data.file_url && scanFailed && <div style={{fontSize:".74rem",color:"#8A6410",marginTop:".35rem",lineHeight:1.45}}>The file is attached, but the AI could not read it this time{scanWhy ? ` (${scanWhy})` : ""}. Fill in the details below, or remove the file and try again.</div>}
         {data.file_url && scanSkipped && <div style={{fontSize:".74rem",color:"#6E665D",marginTop:".35rem",lineHeight:1.45}}>Saved. This file is too large for the AI read, so fill in the details below. For insurance, you can also scan just the declarations page.</div>}
       </div>
 
@@ -20032,12 +20063,23 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
   const [search, setSearch] = useState("");
   const [saveErr, setSaveErr] = useState("");
   const [savingDoc, setSavingDoc] = useState(false);
+  // Files uploaded while the window is open. A file is uploaded the moment it is picked, so anything not saved is removed again.
+  const uploadedRef = useRef([]);
+  const origUrlRef = useRef("");
+  const dropFiles = async (keepUrl) => {
+    const keepPath = keepUrl ? storagePathFromUrl(keepUrl) : null;
+    const gone = uploadedRef.current.filter(pth => pth && pth !== keepPath);
+    uploadedRef.current = [];
+    if (gone.length) { try { await supabase.storage.from("expense-files").remove(gone); } catch { /* best effort */ } notifyStorageChanged(); }
+  };
+  const closeModal = () => { dropFiles(null); setModal(false); };
 
   const maxDocs = planData?.maxDocs ?? Infinity;
   const atLimit = documents.length >= maxDocs;
 
   const openNew = (category="") => {
     if (atLimit && onUpgrade) { onUpgrade(); return; }
+    uploadedRef.current = []; origUrlRef.current = "";
     setEditData({category}); setEditId(null); setSaveErr(""); setModal(true);
   };
 
@@ -20053,7 +20095,7 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
     });
   }, [userId, reloadKey, propertyId]);
 
-  const openEdit = d => { setEditData({...d}); setEditId(d.id); setSaveErr(""); setModal(true); };
+  const openEdit = d => { uploadedRef.current = []; origUrlRef.current = d.file_url || ""; setEditData({...d}); setEditId(d.id); setSaveErr(""); setModal(true); };
 
   const save = async () => {
     if (savingDoc) return;
@@ -20077,6 +20119,12 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
       console.error("Document save failed:", failed.code, failed.message);
       setSaveErr("This document could not be saved" + (failed.message && failed.message !== "not saved" ? " (" + failed.message + ")" : "") + ". Your file is still attached. Try Save again.");
       return;
+    }
+    // Saved: keep the file attached now, drop anything uploaded and replaced along the way, and the old file if it was swapped out.
+    await dropFiles(clean.file_url);
+    if (editId && origUrlRef.current && origUrlRef.current !== clean.file_url) {
+      const old = storagePathFromUrl(origUrlRef.current);
+      if (old) { try { await supabase.storage.from("expense-files").remove([old]); } catch { /* best effort */ } notifyStorageChanged(); }
     }
     setModal(false);
   };
@@ -20234,9 +20282,9 @@ function DocumentVault({ userId, warranties: assets=[], lightbox, setLightbox, p
       </div>
 
       {modal && (
-        <Modal title={editId?"Edit Document":"Add Document"} onClose={()=>setModal(false)} onSave={save}>
+        <Modal title={editId?"Edit Document":"Add Document"} onClose={closeModal} onSave={save}>
           {saveErr && <div role="alert" style={{fontSize:".82rem",color:"var(--red)",background:"#FBEDE9",border:"1px solid #E8C4B8",borderRadius:"var(--r-sm)",padding:".6rem .8rem",marginBottom:".8rem",lineHeight:1.45}}>{saveErr}</div>}
-          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects} planData={planData} onUpgrade={onUpgrade} homes={homes}/>
+          <DocumentForm data={editData} onChange={setEditData} userId={userId} assets={assets} projects={projects} planData={planData} onUpgrade={onUpgrade} homes={homes} onUploaded={pth=>{ uploadedRef.current.push(pth); }} onDiscard={async url=>{ const pth=storagePathFromUrl(url); if(pth && uploadedRef.current.includes(pth)){ uploadedRef.current=uploadedRef.current.filter(x=>x!==pth); try{ await supabase.storage.from("expense-files").remove([pth]); }catch{} notifyStorageChanged(); } }}/>
         </Modal>
       )}
       {confirm && <Confirm message="This document and its file will be permanently deleted." onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
@@ -21157,6 +21205,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
     setBusy(""); setConfirmKey("");
     if (error) { toast(PEOPLE_ERRORS[error] || "That did not work. Try again.", "error"); return false; }
     if (okMsg) toast(okMsg);
+    setReport([]);   // lines from the last invite no longer describe the list below
     refresh();
     return true;
   };
@@ -21286,7 +21335,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
         <p className="fc-lead">Invite people to {homes.length > 1 ? "your homes" : "your home"}. Each person needs a free Steadwell account with the email you use here, and the homes appear for them automatically.</p>
 
         <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
-        <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => setEmailsText(e.target.value)} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+        <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => { setEmailsText(e.target.value); setReport([]); }} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         {parsed.invalid.length > 0
           ? <div className="pp-bad" role="status" style={{fontSize:".8rem",margin:".25rem 0 0"}}>{parsed.invalid.length === 1 ? `${parsed.invalid[0]} isn't a valid email address.` : `${parsed.invalid.length} entries aren't valid email addresses: ${parsed.invalid.slice(0, 3).join(", ")}${parsed.invalid.length > 3 ? "…" : ""}.`}{emailCount > 0 ? " Only the valid ones will be sent." : ""}</div>
           : <div className="fc-quiet">Separate addresses with commas, spaces or new lines. You can paste contacts like Alice &lt;alice@example.com&gt;.</div>}
@@ -21318,7 +21367,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
           </div>
         )}
 
-        <button type="button" className="btn btn-primary pp-send" onClick={submit} disabled={sending || !!sendBlock}>{sending ? "Sending…" : sendLabel}</button>
+        <button type="button" className="btn btn-primary pp-send" onClick={submit} disabled={sending || emailCount === 0 || !!sendBlock}>{sending ? "Sending…" : sendLabel}</button>
         {sendBlock && !sending && emailCount > 0 && <div className="fc-quiet" style={{textAlign:"center"}}>{sendBlock}</div>}
         <div role="status" aria-live="polite" className="pp-report">
           {report.map((r, i) => <p key={i} className={r.ok === true ? "pp-ok" : r.ok === null ? "pp-note" : "pp-bad"}>{r.text}</p>)}
@@ -26348,7 +26397,7 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)}/><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
@@ -29969,7 +30018,8 @@ const IR_KINDS = [
   ["sump",         /sump/],
   ["detector",     /smoke|carbon monoxide|\bco detector|alarm/],
   ["softener",     /softener/],
-  ["pool",         /\bpool\b/],
+  ["poolequip",    /pool.{0,14}(pump|filter|heater|cleaner|equipment|motor)/],
+  ["pool",         /\bpool\b(?!.{0,14}(pump|filter|heater|cleaner|equipment|motor))/],
   ["fireplace",    /fireplace|chimney/],
 ];
 const irKinds = name => { const t = String(name || "").toLowerCase(); const out = new Set(); IR_KINDS.forEach(([k, re]) => { if (re.test(t)) out.add(k); }); return out; };
@@ -30007,6 +30057,19 @@ function irFindTask(finding, openTasks) {
   }
   return null;
 }
+// What the report knows that an existing record is missing. Only blanks are filled; nothing already saved is changed.
+function irFillFor(it, asset, inspYear) {
+  const patch = {}, bits = [];
+  if (it.brand && !cleanVal(asset.brand)) { patch.brand = it.brand; bits.push("brand " + it.brand); }
+  if (it.model && !cleanVal(asset.model)) { patch.model = it.model; bits.push("model " + it.model); }
+  if (it.serial_number && !cleanVal(asset.serial_number)) { patch.serial_number = it.serial_number; bits.push("serial number"); }
+  if (!asset.install_date && !asset.purchase_date) {
+    let year = it.year_made, est = false;
+    if (!year && it.age_years != null && Number.isFinite(inspYear)) { year = inspYear - it.age_years; est = true; }
+    if (year) { let d = `${year}-07-01`; const t = localISO(); if (d > t) d = t; patch.install_date = d; bits.push((est ? "installed about " : "installed ") + year); }
+  }
+  return { patch, bits };
+}
 // Safety items the report itself calls immediate are due today. Everything else keeps its normal window.
 const irDays = (f, sev) => (f && f.urgency === "immediate" ? 0 : sev.days);
 const irPriority = (f, sev) => (f && f.urgency === "immediate" ? "Urgent" : sev.priority);
@@ -30022,9 +30085,9 @@ const IR_ERRORS = {
 const irDue = days => localISO(new Date(Date.now() + days * 86400000));
 const irNice = iso => { try { return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return iso; } };
 
-function InspectionImportCard({ onOpen }) {
+function InspectionImportCard({ onOpen, imported = false }) {
   const [hidden, setHidden] = useState(() => { try { return localStorage.getItem("sw_insp_card_off") === "1"; } catch { return false; } });
-  if (hidden) return null;
+  if (hidden || imported) return null;
   const hide = () => { try { localStorage.setItem("sw_insp_card_off", "1"); } catch { /* ignore */ } setHidden(true); };
   return (
     <div style={{margin:"0 0 1rem",background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",padding:"1rem"}}>
@@ -30047,6 +30110,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
   const [res, setRes] = useState(null);
   const [pickItems, setPickItems] = useState({});
   const [pickFind, setPickFind] = useState({});
+  const [pickFill, setPickFill] = useState({});   // matched equipment whose blanks should be filled from the report
   const [keepCopy, setKeepCopy] = useState(true);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(null);
@@ -30088,10 +30152,16 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
       // Things already in the account start unticked, so nothing is doubled up by accident.
       const liveAssets = (warranties || []).filter(a => !a.retired_at);
       const openTasks = (tasks || []).filter(t => t.status !== "Completed");
-      const items = data.items.map(it => { const m = irFindAsset(it.item, liveAssets); return { ...it, dupe: !!m, dupeOf: m ? String(m.item || "") : "" }; });
+      const reportYear = data.meta && data.meta.inspection_date ? Number(String(data.meta.inspection_date).slice(0, 4)) : new Date().getFullYear();
+      const items = data.items.map(it => {
+        const m = irFindAsset(it.item, liveAssets);
+        const fill = m ? irFillFor(it, m, reportYear) : null;
+        return { ...it, dupe: !!m, dupeOf: m ? String(m.item || "") : "", dupeId: m ? m.id : null, fillPatch: fill && fill.bits.length ? fill.patch : null, fillBits: fill ? fill.bits : [] };
+      });
       const findings = data.findings.map(f => { const m = irFindTask(f, openTasks); return { ...f, dupe: !!m, dupeOf: m ? String(m.title || "") : "", dupeLate: !!m && (m.status === "Overdue" || (m.due_date && m.due_date < localISO())) }; });
       setRes({ meta: data.meta || {}, items, findings });
       setPickItems(Object.fromEntries(items.map((it, i) => [i, !it.dupe])));
+      setPickFill({});
       setPickFind(Object.fromEntries(findings.map((f, i) => [i, !f.dupe && f.severity !== "monitor"])));
       setFile(pick); setPhase("review");
     } catch (err) {
@@ -30103,10 +30173,11 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
 
   const nItems = res ? res.items.filter((_, i) => pickItems[i]).length : 0;
   const nFind = res ? res.findings.filter((_, i) => pickFind[i]).length : 0;
+  const nFill = res ? res.items.filter((it, i) => pickFill[i] && it.fillPatch).length : 0;
   const setAll = (setter, list, on) => setter(Object.fromEntries(list.map((_, i) => [i, on])));
 
   const apply = async () => {
-    if (!res || saving || nItems + nFind === 0) return;
+    if (!res || saving || nItems + nFind + nFill === 0) return;
     setSaving(true);
     const meta = res.meta || {};
     const today = localISO();
@@ -30114,6 +30185,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
     const from = `${meta.inspector_company ? " by " + meta.inspector_company : ""}${meta.inspection_date ? ", " + irNice(meta.inspection_date) : ""}`;
     const problems = [];
     let newAssets = [], newTasks = [], docRow = null, docPath = null;
+    const filled = [];
     try {
       // 1. Equipment the owner ticked.
       const chosen = res.items.filter((_, i) => pickItems[i]);
@@ -30132,6 +30204,15 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
         const { data, error } = await supabase.from("warranties").insert(rows).select();
         if (error || !data) throw new Error(error?.message || "The equipment could not be added.");
         newAssets = data;
+      }
+      // 1b. Blanks on equipment the home already has, filled from the report. The old values are kept so Undo can put them back.
+      for (const it of res.items.filter((x, i) => pickFill[i] && x.fillPatch && x.dupeId)) {
+        const old = (warranties || []).find(a => a.id === it.dupeId);
+        if (!old) continue;
+        const before = Object.fromEntries(Object.keys(it.fillPatch).map(k => [k, old[k] ?? null]));
+        const { error: upErr } = await supabase.from("warranties").update(it.fillPatch).eq("id", it.dupeId);
+        if (upErr) { problems.push(`Could not update ${it.dupeOf}.`); continue; }
+        filled.push({ id: it.dupeId, name: it.dupeOf, patch: it.fillPatch, before });
       }
       // 2. Findings the owner ticked become tasks, linked to the matching item when the report names one.
       const byName = new Map();
@@ -30179,16 +30260,17 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
         // Equipment went in but a later step threw: roll the equipment back so the owner is not left with half an import.
         await supabase.from("warranties").delete().in("id", newAssets.map(a => a.id)).eq("user_id", userId);
       }
+      for (const f of filled) { try { await supabase.from("warranties").update(f.before).eq("id", f.id); } catch { /* best effort */ } }
       toast("Could not add the report: " + (e?.message || "please try again"), "error");
       if (aliveRef.current) setSaving(false);
       return;
     }
-    if (newAssets.length) setWarranties(w => [...(w || []), ...newAssets]);
+    if (newAssets.length || filled.length) setWarranties(w => [...(w || []).map(a => { const f = filled.find(x => x.id === a.id); return f ? { ...a, ...f.patch } : a; }), ...newAssets]);
     if (newTasks.length) setTasks(t => [...(t || []), ...newTasks]);
     if (docRow) onImported && onImported();
-    trackEvent("inspection_import", { items: newAssets.length, tasks: newTasks.length });
+    trackEvent("inspection_import", { items: newAssets.length, tasks: newTasks.length, filled: filled.length });
     if (problems.length) toast(problems[0], "error");
-    if (aliveRef.current) { setDone({ assets: newAssets, tasks: newTasks, doc: docRow, docPath, problems }); setPhase("done"); setSaving(false); }
+    if (aliveRef.current) { setDone({ assets: newAssets, tasks: newTasks, filled, doc: docRow, docPath, problems }); setPhase("done"); setSaving(false); }
   };
 
   const undo = async () => {
@@ -30202,6 +30284,10 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
     if (done.assets.length) {
       const { error } = await supabase.from("warranties").delete().in("id", done.assets.map(a => a.id)).eq("user_id", userId);
       if (error) failed = true; else setWarranties(w => (w || []).filter(x => !done.assets.some(d => d.id === x.id)));
+    }
+    for (const f of (done.filled || [])) {
+      const { error } = await supabase.from("warranties").update(f.before).eq("id", f.id);
+      if (error) failed = true; else setWarranties(w => (w || []).map(a => a.id === f.id ? { ...a, ...f.before } : a));
     }
     if (done.doc) {
       const { error } = await supabase.from("home_documents").delete().eq("id", done.doc.id).eq("user_id", userId);
@@ -30219,7 +30305,7 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
       {phase === "choose" && <button className="btn btn-ghost" onClick={onClose} disabled={scanning}>Cancel</button>}
       {phase === "review" && <>
         <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="btn btn-primary" onClick={apply} disabled={saving || nItems + nFind === 0}>{saving ? "Adding…" : nItems + nFind === 0 ? "Nothing selected" : `Add ${nItems + nFind} selected`}</button>
+        <button className="btn btn-primary" onClick={apply} disabled={saving || nItems + nFind + nFill === 0}>{saving ? "Adding…" : nItems + nFind + nFill === 0 ? "Nothing selected" : nFill > 0 && nItems + nFind === 0 ? `Update ${nFill} ${nFill === 1 ? "item" : "items"}` : `Apply ${nItems + nFind + nFill} selected`}</button>
       </>}
       {phase === "done" && <>
         <button className="btn btn-ghost" onClick={undo} disabled={undoing}>{undoing ? "Undoing…" : "Undo"}</button>
@@ -30269,6 +30355,12 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
               <div className="ir-row" key={"i" + i}>
                 <FcCheck checked={!!pickItems[i]} onChange={v => setPickItems(p => ({ ...p, [i]: v }))} label={it.item}
                   help={(bits.join(", ") || it.category) + (it.dupe ? `. Looks like your "${it.dupeOf}", so this starts unticked. Ticking adds a second entry.` : "")} />
+                {it.dupe && it.fillPatch && (
+                  <div style={{ marginLeft: "1.6rem" }}>
+                    <FcCheck checked={!!pickFill[i]} onChange={v => setPickFill(p => ({ ...p, [i]: v }))}
+                      label={`Fill in blanks on your "${it.dupeOf}"`} help={`Adds ${it.fillBits.join(", ")}. Nothing already saved is changed.`} />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -30297,7 +30389,8 @@ function InspectionImportModal({ userId, propertyId, warranties, setWarranties, 
       {phase === "done" && done && (
         <div>
           <p className="fc-lead" role="status">
-            {done.assets.length === 0 && done.tasks.length === 0 ? "Nothing was added." : <>Added {done.assets.length > 0 && <b>{done.assets.length} {done.assets.length === 1 ? "item" : "items"}</b>}{done.assets.length > 0 && done.tasks.length > 0 && " and "}{done.tasks.length > 0 && <b>{done.tasks.length} {done.tasks.length === 1 ? "task" : "tasks"}</b>} to your home.</>}
+            {done.assets.length === 0 && done.tasks.length === 0 && !(done.filled && done.filled.length) ? "Nothing was added." : done.assets.length === 0 && done.tasks.length === 0 ? <>Updated <b>{done.filled.length} {done.filled.length === 1 ? "item" : "items"}</b> you already had.</> : <>Added {done.assets.length > 0 && <b>{done.assets.length} {done.assets.length === 1 ? "item" : "items"}</b>}{done.assets.length > 0 && done.tasks.length > 0 && " and "}{done.tasks.length > 0 && <b>{done.tasks.length} {done.tasks.length === 1 ? "task" : "tasks"}</b>} to your home.</>}
+            {done.filled && done.filled.length > 0 && (done.assets.length > 0 || done.tasks.length > 0) && ` Filled in blanks on ${done.filled.length} ${done.filled.length === 1 ? "item" : "items"} you already had.`}
             {done.doc && " The report is saved in Documents."}
           </p>
           {done.problems.map((p, i) => <p className="fc-warn" key={i}>{p}</p>)}
