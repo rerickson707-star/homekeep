@@ -1,4 +1,4 @@
-// Steadwell v397 — 2026-10-18
+// Steadwell v398 — 2026-10-19
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9246,7 +9246,218 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
   );
 }
 
-function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile, initialMode }) {
+// ─── LOCATIONS (rooms and places in a home) ─────────────────────────────────
+// A home's own list of places: "Main floor", "Kitchen", "Bedroom 1", "Garage". A place can sit inside another
+// (Kitchen inside Main floor). Assets can optionally say which place they are in (warranties.location_id).
+// Everything here is quiet when the property_locations table is missing, so the app can ship before or after the SQL.
+const LOC_KINDS = [["level","Floor or level"],["room","Room"],["area","Area"],["outdoor","Outdoor"],["other","Other"]];
+const LOC_QUICK = [
+  ["Main floor","level"],["Upstairs","level"],["Basement","level"],["Attic","level"],
+  ["Kitchen","room"],["Living room","room"],["Primary bedroom","room"],["Bedroom 1","room"],["Bedroom 2","room"],
+  ["Bathroom","room"],["Office","room"],["Laundry room","room"],["Garage","area"],["Yard","outdoor"],
+];
+const LOC_EVENT = "sw-locations-changed";
+function notifyLocationsChanged() { try { window.dispatchEvent(new Event(LOC_EVENT)); } catch {} }
+
+function useLocations(propertyId) {
+  const [state, setState] = useState({ locs: [], loaded: false, unavailable: false });
+  const load = useCallback(async () => {
+    if (!propertyId) { setState({ locs: [], loaded: true, unavailable: false }); return; }
+    const { data, error } = await supabase.from("property_locations")
+      .select("id,property_id,parent_id,name,kind,sort_order")
+      .eq("property_id", propertyId).order("sort_order").order("name");
+    if (error) { setState({ locs: [], loaded: true, unavailable: true }); return; }
+    setState({ locs: data || [], loaded: true, unavailable: false });
+  }, [propertyId]);
+  useEffect(() => {
+    load();
+    window.addEventListener(LOC_EVENT, load);
+    return () => window.removeEventListener(LOC_EVENT, load);
+  }, [load]);
+  return { ...state, reload: load };
+}
+
+// Depth-first list with indent depth and a readable path ("Main floor › Kitchen").
+function locFlatten(locs) {
+  const ids = new Set(locs.map(l => l.id));
+  const kids = {};
+  locs.forEach(l => {
+    const p = l.parent_id && ids.has(l.parent_id) ? l.parent_id : "root";
+    (kids[p] = kids[p] || []).push(l);
+  });
+  const cmp = (a, b) => ((a.sort_order || 0) - (b.sort_order || 0)) || String(a.name).localeCompare(String(b.name));
+  const out = [], seen = new Set();
+  const walk = (pid, depth, trail) => {
+    (kids[pid] || []).slice().sort(cmp).forEach(l => {
+      if (seen.has(l.id)) return;
+      seen.add(l.id);
+      const path = [...trail, l.name];
+      out.push({ loc: l, depth, path: path.join(" › ") });
+      walk(l.id, depth + 1, path);
+    });
+  };
+  walk("root", 0, []);
+  return out;
+}
+function locPathFor(locs, id) {
+  if (!id) return "";
+  const hit = locFlatten(locs).find(x => x.loc.id === id);
+  return hit ? hit.path : "";
+}
+function locDescendantIds(locs, id) {
+  const out = new Set([id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    locs.forEach(l => { if (l.parent_id && out.has(l.parent_id) && !out.has(l.id)) { out.add(l.id); grew = true; } });
+  }
+  return out;
+}
+
+function LocationsCard({ propertyId, userId, assets = [], toast }) {
+  const { locs, loaded, unavailable, reload } = useLocations(propertyId);
+  const [editing, setEditing] = useState(null);   // null | { id?, name, kind, parent_id }
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [showQuick, setShowQuick] = useState(null);
+  if (!propertyId || !loaded || unavailable) return null;
+
+  const flat = locFlatten(locs);
+  const counts = {};
+  (assets || []).forEach(a => { if (a.location_id) counts[a.location_id] = (counts[a.location_id] || 0) + 1; });
+  const quickOpen = showQuick === null ? locs.length < 6 : showQuick;
+  const have = new Set(locs.map(l => String(l.name).trim().toLowerCase()));
+  const quick = LOC_QUICK.filter(([n]) => !have.has(n.toLowerCase()));
+
+  const nextOrder = (parentId) => locs.filter(l => (l.parent_id || null) === (parentId || null)).reduce((m, l) => Math.max(m, l.sort_order || 0), 0) + 1;
+
+  const addQuick = async (name, kind) => {
+    if (saving) return;
+    setSaving(true);
+    const { error } = await supabase.from("property_locations").insert([{ property_id: propertyId, user_id: userId, name, kind, parent_id: null, sort_order: nextOrder(null) }]);
+    setSaving(false);
+    if (error) { toast("Could not add that — try again", "error"); return; }
+    await reload(); notifyLocationsChanged();
+  };
+
+  const save = async () => {
+    const name = (editing.name || "").trim();
+    if (!name) { toast("Give it a name", "error"); return; }
+    if (name.length > 80) { toast("Keep the name under 80 characters", "error"); return; }
+    setSaving(true);
+    const parent = editing.parent_id || null;
+    let error;
+    if (editing.id) {
+      const prev = locs.find(l => l.id === editing.id);
+      const patch = { name, kind: editing.kind || "room", parent_id: parent };
+      if (prev && (prev.parent_id || null) !== parent) patch.sort_order = nextOrder(parent);
+      ({ error } = await supabase.from("property_locations").update(patch).eq("id", editing.id));
+    } else {
+      ({ error } = await supabase.from("property_locations").insert([{ property_id: propertyId, user_id: userId, name, kind: editing.kind || "room", parent_id: parent, sort_order: nextOrder(parent) }]));
+    }
+    setSaving(false);
+    if (error) { toast("Could not save — try again", "error"); return; }
+    setEditing(null);
+    toast(editing.id ? "Location updated ✓" : "Location added ✓");
+    await reload(); notifyLocationsChanged();
+  };
+
+  const remove = async () => {
+    const target = confirmDel;
+    setConfirmDel(null);
+    if (!target) return;
+    // Things inside it move up one level, so nothing is lost from the list.
+    const { error: moveErr } = await supabase.from("property_locations").update({ parent_id: target.parent_id || null }).eq("parent_id", target.id);
+    if (moveErr) { toast("Could not delete — try again", "error"); return; }
+    const { error } = await supabase.from("property_locations").delete().eq("id", target.id);
+    if (error) { toast("Could not delete — try again", "error"); return; }
+    setEditing(null);
+    toast("Location deleted");
+    await reload(); notifyLocationsChanged();
+  };
+
+  const blocked = editing && editing.id ? locDescendantIds(locs, editing.id) : new Set();
+  const parentChoices = flat.filter(x => !blocked.has(x.loc.id));
+
+  return (
+    <div className="panel" style={{marginBottom:".85rem"}}>
+      <div className="panel-title">Rooms and locations</div>
+      <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,marginBottom:".85rem"}}>
+        {flat.length
+          ? "Where things are in this home. When you add an asset, you can say which place it is in."
+          : "List the floors and rooms in this home. When you add an asset, you can say which place it is in."}
+      </div>
+
+      {flat.length > 0 && (
+        <div style={{marginBottom:".75rem"}}>
+          {flat.map(({ loc, depth }) => (
+            <button key={loc.id} type="button" onClick={() => setEditing({ id: loc.id, name: loc.name, kind: loc.kind, parent_id: loc.parent_id || "" })}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",width:"100%",textAlign:"left",background:"none",border:"none",borderTop:"1px solid var(--cream2)",padding:".6rem 0",paddingLeft:(depth * 1.1) + "rem",cursor:"pointer",fontFamily:"inherit",color:"var(--dark)",minHeight:44}}>
+              <span style={{fontSize:".92rem",fontWeight:depth === 0 ? 700 : 500}}>{loc.name}</span>
+              <span style={{fontSize:".76rem",color:"#8A8178",whiteSpace:"nowrap"}}>
+                {counts[loc.id] ? counts[loc.id] + (counts[loc.id] === 1 ? " asset" : " assets") : (LOC_KINDS.find(k => k[0] === loc.kind)?.[1] || "")}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {quick.length > 0 && (
+        <div style={{marginBottom:".75rem"}}>
+          {quickOpen ? (
+            <>
+              <div style={{fontSize:".76rem",color:"#8A8178",marginBottom:".4rem"}}>Tap to add</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:".4rem"}}>
+                {quick.map(([n, k]) => (
+                  <button key={n} type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={() => addQuick(n, k)}>+ {n}</button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <button type="button" className="asm-link" onClick={() => setShowQuick(true)}>Show common rooms</button>
+          )}
+        </div>
+      )}
+
+      <button className="btn btn-primary" style={{width:"100%"}} onClick={() => setEditing({ name: "", kind: "room", parent_id: "" })}>+ Add a room or place</button>
+
+      {editing && (
+        <Modal title={editing.id ? "Edit location" : "Add a room or place"} onClose={() => setEditing(null)} onSave={save}
+          footer={(
+            <div className="modal-footer">
+              {editing.id && <button className="btn btn-ghost" style={{marginRight:"auto",color:"var(--rust, #A84E30)"}} onClick={() => setConfirmDel(locs.find(l => l.id === editing.id))}>Delete</button>}
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-primary" disabled={saving} onClick={save}>{saving ? "Saving…" : "Save"}</button>
+            </div>
+          )}>
+          <div className="fg">
+            <div className="field s2"><label>Name *</label>
+              <input value={editing.name} maxLength={80} autoFocus onChange={e => setEditing({ ...editing, name: e.target.value })} placeholder="e.g. Bedroom 1, Garage, Main floor" />
+            </div>
+            <div className="field"><label>Type</label>
+              <select value={editing.kind || "room"} onChange={e => setEditing({ ...editing, kind: e.target.value })}>
+                {LOC_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div className="field"><label>Inside</label>
+              <select value={editing.parent_id || ""} onChange={e => setEditing({ ...editing, parent_id: e.target.value })}>
+                <option value="">Nothing (top level)</option>
+                {parentChoices.map(x => <option key={x.loc.id} value={x.loc.id}>{x.path}</option>)}
+              </select>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {confirmDel && (
+        <Confirm
+          message={"Delete " + confirmDel.name + "? Anything inside it moves up one level, and assets here are left without a location. The assets themselves are not deleted."}
+          onConfirm={remove} onCancel={() => setConfirmDel(null)} />
+      )}
+    </div>
+  );
+}
+
+function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[], draftKey, profile, initialMode, locations=[] }) {
   const f = (k,v) => {
     const updated = {...data,[k]:v};
     onChange(updated);
@@ -9458,6 +9669,14 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
           {ASSET_CONDITIONS.map(c=><option key={c}>{c}</option>)}
         </select>
       </div>
+      {locations.length>0&&(
+        <div className="field s2"><label>Location</label>
+          <select value={locations.some(l=>l.id===data.location_id)?data.location_id:""} onChange={e=>f("location_id",e.target.value||null)}>
+            <option value="">Not set</option>
+            {locFlatten(locations).map(x=><option key={x.loc.id} value={x.loc.id}>{x.path}</option>)}
+          </select>
+        </div>
+      )}
       <div className="field"><label>Brand</label><input value={data.brand||""} onChange={e=>f("brand",e.target.value)} placeholder="e.g. Carrier, LG, Rheem"/></div>
       <div className="field"><label>Model Number</label><input value={data.model||""} onChange={e=>f("model",e.target.value)} placeholder="e.g. 50XC21-048"/></div>
       <SmartFillInline
@@ -15180,6 +15399,7 @@ function buildAttrRows(asset, d) {
 }
 
 function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, onNavigate, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0, assessments=[], onAssessed }) {
+  const { locs: assetLocs, loaded: assetLocsLoaded } = useLocations(propertyId);
   // Recall-aware health: Dashboard already runs this same hook (it shares
   // the "sw_recall_cache" localStorage cache, so this normally reads that
   // cache rather than re-hitting the CPSC endpoint). Previously an asset's
@@ -15503,6 +15723,8 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       // Only sent once the value exists (it comes from the DB row or the form
       // checkbox) so saves keep working on databases that predate the column.
       ...(editData.exclude_warranty_from_score !== undefined ? { exclude_warranty_from_score: !!editData.exclude_warranty_from_score } : {}),
+      // Same idea for the optional location: only sent once the value exists, and dropped if that place was deleted meanwhile.
+      ...(editData.location_id !== undefined ? { location_id: (editData.location_id && (!assetLocsLoaded || assetLocs.some(l => l.id === editData.location_id))) ? editData.location_id : null } : {}),
     };
 
     // Smart Fill needs at least brand OR model (model alone is often enough)
@@ -15915,6 +16137,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     };
     const dlRows = [
       ["Category", CAT_NORMALIZE_MAP[asset.category] || asset.category || "Other"],
+      ...(assetLocs.length ? [["Location", locPathFor(assetLocs, asset.location_id) || null]] : []),
       ["Brand", brandV, true],
       ["Model", modelV, true],
       ["Serial number", serialV],
@@ -16348,6 +16571,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 draftKey={draftKey(editId)}
                 profile={null}
                 initialMode={addMode}
+                locations={assetLocs}
               />
             </Modal>
           )
@@ -16735,6 +16959,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
               draftKey={draftKey(editId)}
               profile={null}
               initialMode={addMode}
+              locations={assetLocs}
             />
           </Modal>
         )
@@ -23143,6 +23368,11 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             );
           })}
         </div>
+      )}
+
+      {/* ── ROOMS AND LOCATIONS ── */}
+      {!showSetup && (
+        <LocationsCard propertyId={propertyId} userId={userId} assets={warranties} toast={toast} />
       )}
 
       {/* ── SHARED ACCESS ── */}
