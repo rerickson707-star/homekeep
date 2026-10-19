@@ -1,4 +1,4 @@
-// Steadwell v395 — 2026-10-18
+// Steadwell v397 — 2026-10-18
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -7207,11 +7207,16 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                   {resendState==="sent" ? "✓ Verification email sent — check your inbox" : resendState==="sending" ? "Sending…" : "Resend verification email"}
                 </button>
               )}
-              {!editEmail && session?.user?.new_email && String(session.user.new_email).toLowerCase() !== String(userEmail || "").toLowerCase() && (
-                <div className="acct-hint" role="status" style={{marginTop:".5rem"}}>
-                  Waiting for you to confirm <b>{session.user.new_email}</b>. Open the email we sent there and follow the link. Until you do, keep signing in with {userEmail}.
-                </div>
-              )}
+              {!editEmail && session?.user?.new_email && String(session.user.new_email).toLowerCase() !== String(userEmail || "").toLowerCase() && (() => {
+                const pend = String(session.user.new_email).trim();
+                const isAddr = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pend) && pend.length <= 254;   // never print anything that is not an email address
+                return (
+                  <div className="acct-hint" role="status" style={{marginTop:".5rem"}}>
+                    {isAddr ? <>Waiting for you to confirm <b>{pend}</b>. Open the email we sent there and follow the link.</> : <>A change to a new email address is waiting for your confirmation. Open the email we sent to the new address and follow the link.</>}
+                    {" "}Until you do, keep signing in with {userEmail}.
+                  </div>
+                );
+              })()}
               {editEmail && (
                 <div className="acct-form">
                   <input type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="New email address" className="acct-input"/>
@@ -8249,8 +8254,8 @@ function getAssetHealthCore(asset, serviceLogs = [], tasks = [], opts = {}) {
   // "Healthy" just because its condition/age/tasks look fine.
   if (hasOpenRecall) return { ...HEALTH_STATES.bad, reason:"Open safety recall", lifePct, ageYears, lifespan };
 
-  if (asset.condition === "Failed") return { ...HEALTH_STATES.bad, reason:"Marked as failed", lifePct, ageYears, lifespan };
-  if (asset.condition === "Needs Attention") return { ...HEALTH_STATES.bad, reason:"Marked as needs attention", lifePct, ageYears, lifespan };
+  if (asset.condition === "Failed") return { ...HEALTH_STATES.bad, reason:"Recorded condition: failed", lifePct, ageYears, lifespan };
+  if (asset.condition === "Needs Attention") return { ...HEALTH_STATES.bad, reason:"Recorded condition: poor", lifePct, ageYears, lifespan };
 
   const assetTasks = (tasks || []).filter(t => t.asset_id === asset.id && t.status !== "Completed");
   const overdue = assetTasks.some(t => { const d = t.due_date ? daysTo(t.due_date) : null; return d !== null && d < 0; });
@@ -8396,6 +8401,9 @@ const sfSentence = t => { const x = String(t).toLowerCase(); return x.charAt(0).
 const sfUrl = u => { const t = String(u || "").trim(); if (!/^https?:\/\//i.test(t)) return ""; try { const h = new URL(t.toLowerCase()).hostname; if (SF_BAD_HOSTS.test(h + ".")) return ""; } catch { return ""; } return sfIsShouting(t.replace(/^https?:\/\/[^/]*/i, "")) ? t.toLowerCase() : t.replace(/^(https?:\/\/[^/]*)/i, m => m.toLowerCase()); };
 function sfClean(asset, d0) {
   const d = { ...d0 };
+  // "Unknown", "N/A" and similar are not values: they are dropped so they are never offered or saved
+  ["item", "brand", "model", "category"].forEach(k => { if (typeof d[k] === "string") d[k] = cleanVal(d[k]); });
+  if (modelIsSpec(d.model)) d.model = "";
   ["item", "brand", "category"].forEach(k => { if (typeof d[k] === "string" && sfIsShouting(d[k])) d[k] = sfTitle(d[k]); });
   if (typeof d.maintenance_tip === "string" && sfIsShouting(d.maintenance_tip)) d.maintenance_tip = sfSentence(d.maintenance_tip);
   d.om_manual_url = sfUrl(d.om_manual_url); d.manual_url = sfUrl(d.manual_url); d.support_url = sfUrl(d.support_url);
@@ -8465,7 +8473,7 @@ function SmartFillReview({ asset, result, onApply, onCancel }) {
   const uw = (asset.item || "").toLowerCase().split(/\s+/).filter(w => w.length > 3);
   const rw = (result.item || "").toLowerCase().split(/\s+/).filter(w => w.length > 3);
   const mismatch = uw.length > 0 && rw.length > 0 && !uw.some(w => rw.includes(w)) && (asset.item || "").toLowerCase() !== (result.item || "").toLowerCase();
-  const sources = (Array.isArray(result.data_sources) ? result.data_sources : []).filter(u => /^https?:\/\//.test(u)).slice(0, 2);
+  const sources = (Array.isArray(result.data_sources) ? result.data_sources : []).filter(u => /^https?:\/\//.test(u) && sfUrl(u)).slice(0, 2);
   const apply = () => {
     const patch = {}; chosen.forEach(r => Object.assign(patch, r.fields));
     onApply(patch, chosen.map(r => r.label));
@@ -8486,7 +8494,7 @@ function SmartFillReview({ asset, result, onApply, onCancel }) {
         {rows.map(r => {
           const on = !!sel[r.id];
           return (
-          <label key={r.id} style={{ display: "flex", gap: ".7rem", padding: ".7rem .6rem", margin: "0 -.6rem", borderBottom: "1px solid var(--stone)", cursor: "pointer", alignItems: "flex-start", background: on ? "rgba(35,74,61,.07)" : "transparent", transition: "background .12s" }}>
+          <label key={r.id} style={{ textTransform: "none", letterSpacing: 0, fontSize: ".78rem", fontWeight: 400, color: "var(--dark)", display: "flex", gap: ".7rem", padding: ".7rem .6rem", margin: "0 -.6rem", borderBottom: "1px solid var(--stone)", cursor: "pointer", alignItems: "flex-start", background: on ? "rgba(35,74,61,.07)" : "transparent", transition: "background .12s" }}>
             <input type="checkbox" className="sf-cb" checked={on} onChange={e => setSel({ ...sel, [r.id]: e.target.checked })}
               style={{ position: "absolute", opacity: 0, width: 1, height: 1, padding: 0, margin: 0, border: 0, pointerEvents: "none" }} />
             <span className="sf-box" aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${on ? "#234A3D" : "#9E9690"}`, background: on ? "#234A3D" : "#fff", transition: "background .12s,border-color .12s" }}>
@@ -8512,7 +8520,7 @@ function SmartFillReview({ asset, result, onApply, onCancel }) {
         )}
         <div style={{ padding: ".5rem 0 .6rem", fontSize: ".66rem", color: "#B0A8A0", lineHeight: 1.5 }}>
           Based on typical US manufacturer specs. Check them against your unit's own documents.
-          {sources.length > 0 && <> Sources: {sources.map((u, i) => <a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{ color: "var(--sky)", marginRight: 6 }}>{u.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}</a>)}</>}
+          {sources.length > 0 && <> Sources: {sources.map((u, i) => <span key={i}>{i > 0 ? ", " : ""}<a href={u} target="_blank" rel="noopener noreferrer" style={{ color: "var(--sky)" }}>{u.replace(/^https?:\/\/(www\.)?/, "").split("/")[0].toLowerCase()}</a></span>)}</>}
         </div>
       </div>
       <div style={{ padding: ".7rem .95rem", borderTop: "1px solid var(--stone)", display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
@@ -11921,7 +11929,6 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
   }, [open, userId, propertyId]);
   // Anything not recorded against this home (an old row from before homes, or a leftover from another home) is left out.
   const inHome = (r) => !propertyId || !r?.property_id || r.property_id === propertyId;
-  useEffect(() => { setExpandedGroups({}); }, [q]);
 
   const trimmed = q.trim().toLowerCase();
   const match = (str) => str?.toLowerCase().includes(trimmed);
@@ -12074,7 +12081,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
       <input
         ref={inputRef}
         value={q}
-        onChange={e=>{ setQ(e.target.value); setOpen(true); }}
+        onChange={e=>{ setQ(e.target.value); setOpen(true); setExpandedGroups(g => Object.keys(g).length ? {} : g); }}
         onFocus={()=>{ setOpen(true); setFocused(true); }}
         onKeyDown={e=>{
           if(e.key==="Escape"){ setOpen(false); setFocused(false); setMobileOpen(false); inputRef.current?.blur(); }
@@ -12509,6 +12516,7 @@ const CPSC_EDGE_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/cps
 
 // A model number looks like letters and digits together ("TC4-5410"). Ratings such as "200A", "50 gal" or "120V" are specs, not models,
 // so a recall is never called a confirmed model match on those.
+const modelIsSpec = m => /^\d{1,5}\s*-?\s*(a|amp|amps|v|volt|volts|w|watt|watts|btu|btus|gal|gallon|gallons|hz|kw|hp|ton|tons|seer|sqft)$/i.test(String(m == null ? "" : m).trim());
 function modelLooksReal(m) {
   const t = String(m == null ? "" : m).trim();
   if (t.length < 4) return false;
@@ -15145,6 +15153,8 @@ function buildAttrRows(asset, d) {
   const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const add = (key, label, detected, current, col) => {
     if (!detected || norm(detected) === norm(current)) return;
+    // a rating on the label (200A, 50 gal, 120V) is not a model number, and "Unknown" is not a value
+    if (key === "model" && (modelIsSpec(detected) || !cleanVal(detected))) return;
     // read from the label and different from what is recorded: offered as a correction, ticked, applied on confirm
     rows.push({ key, label, shown: detected, value: detected, current: current || "", col, defaultOn: true });
   };
@@ -16934,6 +16944,7 @@ const fcMonthly = c => { const a = Number(c.amount) || 0; return c.frequency ===
 const fcWord = f => (FC_FREQ.find(x => x.k === f) || FC_FREQ[0]).word;
 const fcNum = v => { if (v === "" || v == null) return null; const x = Number(String(v).replace(/[$,\s]/g, "")); return Number.isFinite(x) ? x : null; };
 const fcDay = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); } catch { return iso; } };
+const fcDayY = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return iso; } };
 const fcJoin = list => list.length <= 1 ? (list[0] || "") : list.slice(0, -1).join(", ") + " and " + list[list.length - 1];
 
 // The next date this cost is due, rolled forward by its schedule when the saved date has passed.
@@ -17521,7 +17532,7 @@ function TaxScreen({ bills, costs, history, planData, onUpgrade, onBack, onAdd, 
 }
 
 // ── The Fixed costs tab ──────────────────────────────────────────────────────
-function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilities, bills, expenses, yr, onOpenUtilities, pendingAdd, onPendingAddHandled, profile, onOpenInsurance, onOpenProfile }) {
+function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilities, bills, expenses, serviceLogs = [], yr, onOpenUtilities, pendingAdd, onPendingAddHandled, profile, onOpenInsurance, onOpenProfile }) {
   const [costs, setCosts] = useState([]);
   const [taxBills, setTaxBills] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -17664,8 +17675,12 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
   const repairsMonthly = useMemo(() => {
     const d = new Date(); d.setFullYear(d.getFullYear() - 1);
     const from = localISO(d);
-    return (expenses || []).filter(e => !e.project_id && String(e.date || "").slice(0, 10) >= from && String(e.date || "").slice(0, 10) <= today).reduce((s, e) => s + (Number(e.amount) || 0), 0) / 12;
-  }, [expenses, today]);
+    const inRange = v => { const x = String(v || "").slice(0, 10); return x >= from && x <= today; };
+    const exp = (expenses || []).filter(e => !e.project_id && inRange(e.date)).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    // Logged service (a plumber visit, an HVAC tune-up) is repairs and upkeep too, and the dashboard already counts it in total spend
+    const svc = (serviceLogs || []).filter(l => inRange(l.service_date)).reduce((s, l) => s + (Number(l.cost) || 0), 0);
+    return (exp + svc) / 12;
+  }, [expenses, serviceLogs, today]);
   const counted = rows.filter(c => !c.in_escrow);
   const segSum = { loan: 0, tax: 0, services: 0, util: utilMonthly, repairs: repairsMonthly };
   counted.forEach(c => { segSum[fcKindOf(c).seg] += fcMonthly(c); });
@@ -17720,7 +17735,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               <div><span>Counts as</span><b>{linkRow.in_escrow ? "Nothing extra" : fcMoney2(fcMonthly(linkRow)) + " a month"}</b></div>
               {linkRow.provider && <div><span>Company</span><b>{linkRow.provider}</b></div>}
               {nd && <div><span>Renews</span><b>{fcDay(nd)}</b></div>}
-              {!nd && fromIns && /^\d{4}-\d{2}-\d{2}/.test(String(linkRow.next_due || "")) && <div><span>Renewal date</span><b>{fcDay(String(linkRow.next_due).slice(0, 10))} (passed)</b></div>}
+              {!nd && fromIns && /^\d{4}-\d{2}-\d{2}/.test(String(linkRow.next_due || "")) && <div><span>Renewal date</span><b>{fcDayY(String(linkRow.next_due).slice(0, 10))} (passed)</b></div>}
             </div>
             {FC_ESCROW_KINDS.includes(linkRow.kind) && (
               <FcCheck checked={!!linkRow.in_escrow} onChange={v => setLinkedEscrow(linkRow, v)} label="My lender pays this from my mortgage escrow"
@@ -17809,7 +17824,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
                   c.frequency === "monthly" ? "Paid monthly" : `${fmt$(c.amount)} ${c.frequency === "yearly" ? "a year" : "each quarter"}`,
                   c.linked === "insurance" && c.provider ? c.provider : "",
                   nd ? `${c.linked === "insurance" ? "renews" : isTax ? "due" : "next"} ${fcDay(nd)}` : "",
-                  !nd && c.linked === "insurance" && /^\d{4}-\d{2}-\d{2}/.test(String(c.next_due || "")) ? `renewal date passed (${fcDay(String(c.next_due).slice(0, 10))}) — update it in Insurance` : "",
+                  !nd && c.linked === "insurance" && /^\d{4}-\d{2}-\d{2}/.test(String(c.next_due || "")) ? `renewal date passed (${fcDayY(String(c.next_due).slice(0, 10))}), update it in Insurance` : "",
                   isTax && latestTax ? (latestTax.source === "scan" ? "read from your bill" : "from your bill") : "",
                 ].filter(Boolean).join(" · ");
                 const tag = c.linked === "insurance" ? "From Insurance" : c.linked === "profile" ? "From home details" : isRec ? "County records" : "";
@@ -17847,7 +17862,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               {repairsMonthly > 0 && (
                 <div className="fc-row static">
                   <span className="fc-ico" style={{ background: "#EEEAF6", color: "#5D4C94" }}><FcIcon kind="security" /></span>
-                  <span className="fc-main"><span className="fc-name">Repairs and upkeep</span><span className="fc-sub">Average of the last 12 months of expenses you logged, not counting projects.</span></span>
+                  <span className="fc-main"><span className="fc-name">Repairs and upkeep</span><span className="fc-sub">Average of the last 12 months of expenses and service records you logged, not counting projects.</span></span>
                   <span className="fc-amt"><b>{fmt$(repairsMonthly)}</b><span>a month</span></span>
                 </div>
               )}
@@ -19836,7 +19851,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
       {view==="fixed" && (
         <FixedCostsView
           userId={userId} propertyId={propertyId} planData={planData} onUpgrade={onUpgrade} toast={toast}
-          utilities={utilities} bills={bills} expenses={expenses} yr={yr}
+          utilities={utilities} bills={bills} expenses={expenses} serviceLogs={serviceLogs} yr={yr}
           onOpenUtilities={()=>setView("utilities")}
           pendingAdd={fcPending} onPendingAddHandled={()=>setFcPending(null)}
           profile={profile} onOpenInsurance={onOpenInsurance} onOpenProfile={()=>onNavigate?.("profile")}
@@ -20751,8 +20766,10 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
   const serviceTotal = serviceLogs.reduce((s,l) => s + Number(l.cost||0), 0);
   const expTotal = expenses.reduce((s,e) => s + Number(e.amount||0), 0) + serviceTotal;
   const byCat = {};
-  expenses.forEach(e => { byCat[e.category||"Other"] = (byCat[e.category||"Other"]||0) + Number(e.amount||0); });
-  if (serviceTotal > 0) byCat["Service records"] = (byCat["Service records"]||0) + serviceTotal;
+  // Same buckets as the Money tab: a project cost with no category is "Projects", anything else with none is "Uncategorized",
+  // and logged service counts as "Maintenance"
+  expenses.forEach(e => { const c = e.category || (e.project_id ? "Projects" : "Uncategorized"); byCat[c] = (byCat[c]||0) + Number(e.amount||0); });
+  if (serviceTotal > 0) byCat["Maintenance"] = (byCat["Maintenance"]||0) + serviceTotal;
   const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6);
 
   // Projects — value added, using the same computeProjectROI logic as the live ROI calculator
@@ -21745,13 +21762,21 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
   useEffect(() => {
     if (!profile?.address || !GMAPS_KEY) { setStreetViewUrl(null); return; }
     let cancelled = false;
+    const svImg = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(profile.address)}&fov=80&key=${GMAPS_KEY}`;
+    // The coverage answer for an address rarely changes, so it is remembered for a week instead of asked on every visit.
+    const svKey = "sw_sv_" + profile.address;
+    try {
+      const c = JSON.parse(localStorage.getItem(svKey) || "null");
+      if (c && Date.now() - c.t < 7 * 864e5) { setStreetViewUrl(c.ok ? svImg : null); return; }
+    } catch { /* no saved answer: ask Google */ }
     const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${encodeURIComponent(profile.address)}&key=${GMAPS_KEY}`;
     fetch(metaUrl)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
+        try { localStorage.setItem(svKey, JSON.stringify({ ok: data.status === "OK", t: Date.now() })); } catch { /* storage unavailable */ }
         if (data.status === "OK") {
-          setStreetViewUrl(`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(profile.address)}&fov=80&key=${GMAPS_KEY}`);
+          setStreetViewUrl(svImg);
         } else {
           setStreetViewUrl(null);
         }
@@ -22833,7 +22858,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                           color:insRenewalStatus==="ok"?"var(--ok)":insRenewalStatus==="soon"?"var(--warn)":"#B0432B",
                           border:`1px solid ${insRenewalStatus==="ok"?"#C5DCC9":insRenewalStatus==="soon"?"#EAD9A6":"#E3B2A6"}`}}>
                           {insRenewalStatus==="ok"?"✓":insRenewalStatus==="soon"?"⚠️":"🚨"}
-                          {" "}{insRenewalStatus==="ok"?`Renews ${fmtD(profile.ins_renewal_date)} · ${insRenewalDays} days away`:insRenewalStatus==="soon"?`Renews in ${insRenewalDays} days — ${fmtD(profile.ins_renewal_date)}`:insRenewalStatus==="urgent"?`Renews in ${insRenewalDays} days — contact your agent`:`Renewal date passed — verify your coverage`}
+                          {" "}{insRenewalStatus==="ok"?`Renews ${fmtD(profile.ins_renewal_date)} · ${insRenewalDays} days away`:insRenewalStatus==="soon"?`Renews in ${insRenewalDays} days — ${fmtD(profile.ins_renewal_date)}`:insRenewalStatus==="urgent"?`Renews in ${insRenewalDays} days — contact your agent`:`Renewal date passed (${fcDayY(String(profile.ins_renewal_date).slice(0,10))}). Update it, or confirm your coverage with your insurer.`}
                         </div>
                       )}
                       <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:"1rem 1rem .5rem"}}>
