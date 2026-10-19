@@ -1,4 +1,4 @@
-// Steadwell v399 — 2026-10-19
+// Steadwell v400 — 2026-10-19
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9246,6 +9246,191 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
   );
 }
 
+// ─── WEATHER ALERTS ─────────────────────────────────────────────────────────
+// Alerts come from the National Weather Service for the home's address (U.S. only). The weather-check function
+// finds them and emails the owner (opt-in); this just shows what it found and lets the owner choose what they get.
+// Everything here stays quiet if the weather tables are missing, so the app can ship before or after the SQL.
+const WX_CATS = [
+  ["freeze", "Freeze and frost"],
+  ["winter", "Winter storm, snow and ice"],
+  ["flood", "Flood and heavy rain"],
+  ["storm", "Severe thunderstorm, tornado and hurricane"],
+  ["heat", "Extreme heat"],
+];
+const WX_TASKS = {
+  freeze: [["Disconnect hoses and shut off outdoor faucets", "High", "Plumbing"], ["Open cabinet doors under sinks on exterior walls", "Medium", "Plumbing"], ["Locate your main water shutoff", "Medium", "Plumbing"]],
+  winter: [["Charge phones and set out flashlights", "Medium", "Other"], ["Stock water, food and medicine for a few days", "Medium", "Other"], ["Locate your main water shutoff", "Medium", "Plumbing"]],
+  flood:  [["Move valuables and papers off the floor", "High", "Other"], ["Clear gutters and storm drains near the house", "Medium", "Landscaping"], ["Photograph rooms and valuables for insurance records", "Medium", "Other"]],
+  storm:  [["Bring in or tie down outdoor furniture", "High", "Landscaping"], ["Charge phones and set out flashlights", "Medium", "Other"], ["Photograph the outside of the house and valuables for insurance records", "Medium", "Other"]],
+  heat:   [["Check air conditioning and replace a dirty filter", "High", "HVAC"], ["Close blinds on sun-facing windows", "Low", "Other"], ["Check on neighbors, older relatives and pets", "Medium", "Other"]],
+};
+const WX_EVENT = "sw-weather-changed";
+const WX_LEVEL_STYLE = {
+  warning:  { bg: "#F7E0DA", fg: "#8C2F1B", bar: "#B0432B", label: "Warning" },
+  watch:    { bg: "#FBF3DE", fg: "#7A5710", bar: "#D9A93E", label: "Watch" },
+  advisory: { bg: "var(--cream2)", fg: "#5E574F", bar: "#BFB5A8", label: "Advisory" },
+};
+
+function useWeather(propertyId) {
+  const [state, setState] = useState({ settings: null, alerts: [], loaded: false, unavailable: false });
+  const load = useCallback(async () => {
+    if (!propertyId) { setState({ settings: null, alerts: [], loaded: true, unavailable: false }); return; }
+    const [s, a] = await Promise.all([
+      supabase.from("weather_settings").select("property_id,enabled,categories,level").eq("property_id", propertyId).maybeSingle(),
+      supabase.from("weather_alerts").select("id,event,category,level,headline,expires").eq("property_id", propertyId)
+        .or("expires.is.null,expires.gt." + new Date().toISOString()).order("first_seen", { ascending: false }).limit(20),
+    ]);
+    if (s.error || a.error) { setState({ settings: null, alerts: [], loaded: true, unavailable: true }); return; }
+    setState({ settings: s.data || null, alerts: a.data || [], loaded: true, unavailable: false });
+  }, [propertyId]);
+  useEffect(() => {
+    load();
+    window.addEventListener(WX_EVENT, load);
+    return () => window.removeEventListener(WX_EVENT, load);
+  }, [load]);
+  return { ...state, reload: load };
+}
+
+// One quiet line on the Dashboard, only while a warning or watch is active near the home.
+function WeatherBanner({ propertyId, onOpen }) {
+  const { alerts, loaded, unavailable } = useWeather(propertyId);
+  if (!loaded || unavailable) return null;
+  const rank = { warning: 0, watch: 1, advisory: 2 };
+  const top = alerts.filter(a => a.level !== "advisory").sort((x, y) => rank[x.level] - rank[y.level])[0];
+  if (!top) return null;
+  const st = WX_LEVEL_STYLE[top.level];
+  const extra = alerts.filter(a => a.level !== "advisory").length - 1;
+  return (
+    <div role="status" style={{background:st.bg,color:st.fg,borderLeft:"4px solid " + st.bar,borderRadius:"var(--r-sm)",margin:".75rem 1rem 0",padding:".7rem .9rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexWrap:"wrap"}}>
+      <div style={{fontSize:".88rem",lineHeight:1.45,flex:"1 1 220px"}}>
+        <strong>{top.event}</strong> near your home{extra > 0 ? " (and " + extra + " more)" : ""}.
+      </div>
+      <button type="button" className="asm-link" style={{color:st.fg,textDecoration:"underline"}} onClick={onOpen}>See details and tasks</button>
+    </div>
+  );
+}
+
+function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast }) {
+  const { settings, alerts, loaded, unavailable, reload } = useWeather(propertyId);
+  const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState("");
+  const [addedTick, setAddedTick] = useState(0);
+  if (!propertyId || !loaded || unavailable) return null;
+
+  const isGuest = !!profile?._shared;
+  const canManage = !isGuest || profile?._role === "admin";
+  const us = addressRegion(profile?.address) === "us";
+  const enabled = !!settings?.enabled;
+  const cats = settings?.categories || ["freeze", "winter", "flood", "storm"];
+  const level = settings?.level || "watch";
+  // Nothing to show or choose for a visitor on a non-U.S. home, or a guest when alerts are off.
+  if (!us && !enabled && !canManage) return null;
+  if (isGuest && !canManage && !enabled && alerts.length === 0) return null;
+
+  const saveSettings = async (patch) => {
+    if (saving) return;
+    setSaving(true);
+    const next = { enabled, categories: cats, level, ...patch };
+    const { error } = await supabase.from("weather_settings").upsert(
+      { property_id: propertyId, user_id: userId, enabled: next.enabled, categories: next.categories, level: next.level },
+      { onConflict: "property_id" });
+    setSaving(false);
+    if (error) { toast("Could not save — try again", "error"); return; }
+    await reload();
+    try { window.dispatchEvent(new Event(WX_EVENT)); } catch {}
+  };
+  const toggleCat = (c) => saveSettings({ categories: cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c] });
+
+  const addedKey = (id) => "sw_wx_added_" + id;
+  const wasAdded = (id) => { try { return !!localStorage.getItem(addedKey(id)); } catch { return false; } };
+  const addTasks = async (alert) => {
+    if (adding) return;
+    const list = WX_TASKS[alert.category] || [];
+    const open = new Set((tasks || []).filter(t => t.status !== "Completed").map(t => String(t.title).toLowerCase()));
+    const rows = list.filter(([title]) => !open.has(title.toLowerCase())).map(([title, priority, category]) => ({
+      title, due_date: localISO(), status: "Scheduled", priority, category,
+      notes: "Suggested by Steadwell for the " + alert.event + " near your home.", user_id: userId, property_id: propertyId,
+    }));
+    if (!rows.length) { try { localStorage.setItem(addedKey(alert.id), "1"); } catch {} setAddedTick(n => n + 1); toast("Those tasks are already on your list"); return; }
+    setAdding(alert.id);
+    const { data, error } = await supabase.from("tasks").insert(rows).select();
+    setAdding("");
+    if (error || !data) { toast("Could not add the tasks — try again", "error"); return; }
+    setTasks && setTasks(p => [...data, ...p]);
+    try { localStorage.setItem(addedKey(alert.id), "1"); } catch {}
+    setAddedTick(n => n + 1);
+    toast(data.length + (data.length === 1 ? " task added ✓" : " tasks added ✓"));
+  };
+
+  const rank = { warning: 0, watch: 1, advisory: 2 };
+  const shown = alerts.slice().sort((x, y) => rank[x.level] - rank[y.level]);
+  const expText = (e) => { try { return e ? " Until " + new Date(e).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }) + "." : ""; } catch { return ""; } };
+
+  return (
+    <div className="panel" style={{marginBottom:".85rem"}} data-tick={addedTick}>
+      <div className="panel-title">Weather alerts</div>
+
+      {shown.length > 0 ? (
+        <div style={{marginBottom:".85rem"}}>
+          {shown.map(a => {
+            const st = WX_LEVEL_STYLE[a.level] || WX_LEVEL_STYLE.advisory;
+            const done = wasAdded(a.id);
+            return (
+              <div key={a.id} style={{background:st.bg,color:st.fg,borderLeft:"4px solid " + st.bar,borderRadius:"var(--r-sm)",padding:".7rem .85rem",marginBottom:".5rem"}}>
+                <div style={{fontWeight:700,fontSize:".92rem"}}>{a.event}</div>
+                <div style={{fontSize:".82rem",lineHeight:1.5,marginTop:".15rem"}}>{a.headline}{expText(a.expires) && !/until/i.test(a.headline || "") ? expText(a.expires) : ""}</div>
+                {canManage && (
+                  done
+                    ? <div style={{fontSize:".8rem",marginTop:".4rem",fontWeight:600}}>Suggested tasks added</div>
+                    : <button type="button" className="btn btn-ghost btn-sm" style={{marginTop:".5rem"}} disabled={adding === a.id} onClick={() => addTasks(a)}>{adding === a.id ? "Adding…" : "Add suggested tasks"}</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,marginBottom:".85rem"}}>
+          {enabled ? "No active alerts near this home right now." : "Get an email when the National Weather Service issues a freeze, storm, flood or similar alert near this home."}
+        </div>
+      )}
+
+      {!us ? (
+        <div style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.55}}>Weather alerts cover U.S. addresses. Add a U.S. address with a ZIP code to turn them on.</div>
+      ) : canManage ? (
+        <>
+          <label style={{display:"flex",alignItems:"center",gap:".7rem",padding:".5rem 0",borderTop:"1px solid var(--cream2)",fontSize:".92rem",cursor:"pointer",minHeight:44}}>
+            <input type="checkbox" style={{width:22,height:22,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={enabled} disabled={saving} onChange={e => saveSettings({ enabled: e.target.checked })} />
+            Email me about severe weather near this home
+          </label>
+          {enabled && (
+            <div style={{marginTop:".25rem"}}>
+              <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",margin:".5rem 0 .2rem"}}>Which alerts</div>
+              {WX_CATS.map(([c, label]) => (
+                <label key={c} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
+                  <input type="checkbox" style={{width:20,height:20,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={cats.includes(c)} disabled={saving} onChange={() => toggleCat(c)} />
+                  {label}
+                </label>
+              ))}
+              <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",margin:".6rem 0 .2rem"}}>How early</div>
+              {[["warning", "Warnings only (it is happening or about to)"], ["watch", "Watches, advisories and warnings"]].map(([v, label]) => (
+                <label key={v} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
+                  <input type="radio" name="wx-level" style={{width:20,height:20,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={level === v} disabled={saving} onChange={() => saveSettings({ level: v })} />
+                  {label}
+                </label>
+              ))}
+              <div style={{fontSize:".76rem",color:"#8A8178",lineHeight:1.55,marginTop:".5rem"}}>At most one weather email a day.</div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.55}}>Weather alerts for this home are managed by its owner or an Admin.</div>
+      )}
+
+      <div style={{fontSize:".72rem",color:"#A8A09A",lineHeight:1.5,marginTop:".75rem"}}>Alerts come from the National Weather Service. Steadwell is not an emergency warning system; follow local officials in an emergency.</div>
+    </div>
+  );
+}
+
 // ─── LOCATIONS (rooms and places in a home) ─────────────────────────────────
 // A home's own list of places: "Main floor", "Kitchen", "Bedroom 1", "Garage". A place can sit inside another
 // (Kitchen inside Main floor). Assets can optionally say which place they are in (warranties.location_id).
@@ -13769,6 +13954,8 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   return (
     <div className="dash-root" style={{paddingBottom:"1.5rem"}}>
 
+      {!isNewUser && profile?.id && <WeatherBanner propertyId={profile.id} onOpen={() => onNavigate && onNavigate("profile")} />}
+
       <div className="dash-top">
       {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
       {isNewUser && (
@@ -15439,6 +15626,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // How the list is grouped: by category (default) or, once a home has locations, by room/place.
   const [groupBy, setGroupByState] = useState(() => { try { return localStorage.getItem("sw_asset_groupby") === "location" ? "location" : "category"; } catch { return "category"; } });
   const setGroupBy = (v) => { setGroupByState(v); try { localStorage.setItem("sw_asset_groupby", v); } catch {} };
+  // The page stays mounted when you switch tabs, so the "See your assets by location" link on My Home tells it to re-read the choice.
+  useEffect(() => {
+    const h = () => { try { setGroupByState(localStorage.getItem("sw_asset_groupby") === "location" ? "location" : "category"); } catch {} };
+    window.addEventListener("sw-assets-groupby", h);
+    return () => window.removeEventListener("sw-assets-groupby", h);
+  }, []);
   // Category open/closed choices the user made (per device). Anything not in
   // here falls back to a smart default computed at render time.
   const [catPref, setCatPref] = useState(() => {
@@ -21968,7 +22161,7 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ profile, setProfile, tasks, setTasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const { roiData } = useProjectROIData();
   // ── Remove one home (Pro, owner only). The server decides what is allowed; see delete-property.
   const [homeToRemove, setHomeToRemove] = useState(null);
@@ -23403,9 +23596,14 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
         </div>
       )}
 
+      {/* ── WEATHER ALERTS ── */}
+      {!showSetup && (
+        <WeatherCard propertyId={propertyId} profile={profile} userId={userId} tasks={tasks} setTasks={setTasks} toast={toast} />
+      )}
+
       {/* ── ROOMS AND LOCATIONS ── */}
       {!showSetup && (
-        <LocationsCard propertyId={propertyId} userId={userId} assets={warranties} toast={toast} onViewAssets={onNavigate ? () => { try { localStorage.setItem("sw_asset_groupby", "location"); } catch {} onNavigate("warranties"); } : null} />
+        <LocationsCard propertyId={propertyId} userId={userId} assets={warranties} toast={toast} onViewAssets={onNavigate ? () => { try { localStorage.setItem("sw_asset_groupby", "location"); window.dispatchEvent(new Event("sw-assets-groupby")); } catch {} onNavigate("warranties"); } : null} />
       )}
 
       {/* ── SHARED ACCESS ── */}
@@ -26846,7 +27044,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
