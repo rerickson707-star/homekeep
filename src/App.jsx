@@ -1,4 +1,4 @@
-// Steadwell v393 — 2026-10-18
+// Steadwell v395 — 2026-10-18
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6373,8 +6373,9 @@ function readInviteEmail() {
 }
 
 function AuthScreen({ onAuth, initialMode = "login" }) {
-  const [mode, setMode] = useState(initialMode); // login | signup | reset | update
   const inviteEmail = useMemo(readInviteEmail, []);
+  // Someone arriving from an invitation email usually has no account yet, so open on sign-up (the login tab is one tap away)
+  const [mode, setMode] = useState(inviteEmail && initialMode === "login" ? "signup" : initialMode); // login | signup | reset | update
   const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -6387,11 +6388,14 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
 
   const handleLogin = async () => {
     clear();
-    if (!email || !password) { setError("Please enter your email and password."); return; }
+    const cleanEmail = email.trim().toLowerCase();   // phones add a trailing space or a capital letter; the address is the same
+    if (!cleanEmail || !password) { setError("Please enter your email and password."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     setLoading(false);
-    if (error) setError(error.message);
+    if (error) setError(/invalid login credentials/i.test(error.message)
+      ? "That email and password don't match. If you signed up with Google, tap Continue with Google. Otherwise tap Forgot password to set a new one."
+      : error.message);
   };
 
   const handleSignup = async () => {
@@ -6401,7 +6405,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (!agreedToTerms) { setError("Please agree to the Terms of Service and Privacy Policy to continue."); return; }
     setLoading(true);
-    const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
+    const { data: signUpData, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
     setLoading(false);
     if (error) { setError(error.message); return; }
     // An already-registered email comes back with no identities: that is not a new sign-up.
@@ -6426,7 +6430,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     clear();
     if (!email) { setError("Enter your email address."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
     setLoading(false);
     if (error) setError(error.message);
     else setSuccess("Password reset link sent! Check your email.");
@@ -6485,7 +6489,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <form onSubmit={e=>{e.preventDefault();handleLogin();}} autoComplete="on">
             <div className="auth-field">
               <label>Email</label>
-              <input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+              <input type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
             </div>
             <div className="auth-field">
               <label>Password</label>
@@ -6512,7 +6516,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <form onSubmit={e=>{e.preventDefault();handleSignup();}} autoComplete="on">
             <div className="auth-field">
               <label>Email</label>
-              <input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+              <input type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
             </div>
             <div className="auth-field">
               <label>Password</label>
@@ -6555,7 +6559,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <form onSubmit={e=>{e.preventDefault();handleReset();}}>
             <div className="auth-field">
               <label>Email</label>
-              <input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+              <input type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
             </div>
             <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
               {loading ? "Sending…" : "Send Reset Link"}
@@ -7064,11 +7068,11 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
   ];
 
   const saveEmail = async () => {
-    const addr = newEmail.trim();
+    const addr = newEmail.trim().toLowerCase();
     setSavingEmail(true);
     const { error } = await supabase.auth.updateUser({ email: addr });
     if (error) toast(error.message || "Could not update email — try again", "error");
-    else { toast("Confirmation sent — follow the link in the email to finish ✓"); setEditEmail(false); setNewEmail(""); }
+    else { toast(`Confirmation sent to ${addr}. Your sign-in email stays the same until you confirm it.`); setEditEmail(false); setNewEmail(""); }
     setSavingEmail(false);
   };
   const resendVerification = async () => {
@@ -7186,7 +7190,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
               <NameAndPasswordSection profile={profile} setProfile={setProfile} userId={session?.user?.id} user={session?.user} toast={toast} part="name"/>
             </AcctCard>
 
-            <AcctCard title="Email address" sub="Reminders, digests and receipts are sent here.">
+            <AcctCard title="Email address" sub="This is the email you sign in with. Reminders, digests and receipts are sent here too.">
               <div className="acct-row">
                 <div className="acct-wrap" style={{flex:1}}>
                   <div className="acct-val">{userEmail}</div>
@@ -7203,10 +7207,19 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
                   {resendState==="sent" ? "✓ Verification email sent — check your inbox" : resendState==="sending" ? "Sending…" : "Resend verification email"}
                 </button>
               )}
+              {!editEmail && session?.user?.new_email && String(session.user.new_email).toLowerCase() !== String(userEmail || "").toLowerCase() && (
+                <div className="acct-hint" role="status" style={{marginTop:".5rem"}}>
+                  Waiting for you to confirm <b>{session.user.new_email}</b>. Open the email we sent there and follow the link. Until you do, keep signing in with {userEmail}.
+                </div>
+              )}
               {editEmail && (
                 <div className="acct-form">
-                  <input type="email" autoComplete="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="New email address" className="acct-input"/>
-                  <div className="acct-hint">We'll send a confirmation link. Your email doesn't change until you confirm it.</div>
+                  <input type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="New email address" className="acct-input"/>
+                  <div className="acct-hint">
+                    This changes the email <b>you</b> sign in with. We'll send a confirmation link to the new address, and nothing changes until you open it.
+                    After that you sign in with the new address, and the old one stops working. Your homes, plan and data stay with your account.
+                    To give someone else access to your home, use <b>People</b> instead.
+                  </div>
                   <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
                     <button className="btn btn-primary btn-sm" disabled={savingEmail || !/^\S+@\S+\.\S+$/.test(newEmail.trim()) || newEmail.trim().toLowerCase()===(userEmail||"").toLowerCase()} onClick={saveEmail}>{savingEmail?"Sending…":"Send confirmation"}</button>
                     <button className="btn btn-ghost btn-sm" onClick={()=>setEditEmail(false)}>Cancel</button>
@@ -8374,7 +8387,24 @@ function smartFillPeek(asset, zip = "") {
 //   mode "replace" = the person already has a different value (NOT ticked: they must opt in to replace it).
 // The model's own warranty end date and years-remaining are deliberately ignored: they depend on someone
 // else's purchase date. The end date is worked out here from THIS asset's purchase date and the typical warranty length.
-function smartFillChanges(asset, d) {
+// Tidy what the lookup returns before it is shown or saved: ALL-CAPS text is put into normal case, web addresses are lower-cased,
+// a manual link must come from the maker (not a shop or a manual-reposting site), and panels do not get a guessed warranty.
+const SF_BAD_HOSTS = /(^|\.)(amazon|ebay|walmart|etsy|aliexpress|alibaba|manuals\.plus|manualslib|manualzz|manualsdir|manualsonline|pdfcoffee|scribd|yumpu|dokumen|vdocuments)\./i;
+const sfIsShouting = t => { const l = String(t).replace(/[^A-Za-z]/g, ""); return l.length >= 4 && l === l.toUpperCase(); };
+const sfTitle = t => String(t).toLowerCase().replace(/(^|[\s\-/(])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+const sfSentence = t => { const x = String(t).toLowerCase(); return x.charAt(0).toUpperCase() + x.slice(1); };
+const sfUrl = u => { const t = String(u || "").trim(); if (!/^https?:\/\//i.test(t)) return ""; try { const h = new URL(t.toLowerCase()).hostname; if (SF_BAD_HOSTS.test(h + ".")) return ""; } catch { return ""; } return sfIsShouting(t.replace(/^https?:\/\/[^/]*/i, "")) ? t.toLowerCase() : t.replace(/^(https?:\/\/[^/]*)/i, m => m.toLowerCase()); };
+function sfClean(asset, d0) {
+  const d = { ...d0 };
+  ["item", "brand", "category"].forEach(k => { if (typeof d[k] === "string" && sfIsShouting(d[k])) d[k] = sfTitle(d[k]); });
+  if (typeof d.maintenance_tip === "string" && sfIsShouting(d.maintenance_tip)) d.maintenance_tip = sfSentence(d.maintenance_tip);
+  d.om_manual_url = sfUrl(d.om_manual_url); d.manual_url = sfUrl(d.manual_url); d.support_url = sfUrl(d.support_url);
+  if (Array.isArray(d.pm_schedule)) d.pm_schedule = d.pm_schedule.map(t => (t && typeof t.title === "string" && sfIsShouting(t.title)) ? { ...t, title: sfSentence(t.title) } : t);
+  if (/panel|breaker|load center|fuse box|subpanel/i.test(`${asset.item || ""} ${asset.category || ""}`)) d.warranty_years = null;
+  return d;
+}
+function smartFillChanges(asset, d0) {
+  const d = sfClean(asset, d0);
   const rows = [];
   const add = (id, label, fields, current, next, mode, extra = {}) => rows.push({ id, label, fields, current, next, mode, ...extra });
   const same = (x, y) => String(x == null ? "" : x).trim() === String(y == null ? "" : y).trim();
@@ -8475,9 +8505,9 @@ function SmartFillReview({ asset, result, onApply, onCancel }) {
           </label>
           );
         })}
-        {result.warranty_years && !asset.purchase_date && (
+        {sfClean(asset, result).warranty_years && !asset.purchase_date && (
           <div style={{ padding: ".6rem 0", fontSize: ".74rem", color: "#6E665D", lineHeight: 1.5 }}>
-            Typical warranty for this model is about {result.warranty_years} year{result.warranty_years > 1 ? "s" : ""}. Add the purchase date and Smart Fill can work out the end date.
+            Typical warranty for this model is about {sfClean(asset, result).warranty_years} year{sfClean(asset, result).warranty_years > 1 ? "s" : ""}. Add the purchase date and Smart Fill can work out the end date.
           </div>
         )}
         <div style={{ padding: ".5rem 0 .6rem", fontSize: ".66rem", color: "#B0A8A0", lineHeight: 1.5 }}>
@@ -12477,6 +12507,26 @@ function DayDetail({ date, tasks, onClose, onEdit }) {
 // ─── PRODUCT RECALL CHECK ───────────────────────────────────────────────────
 const CPSC_EDGE_URL = "https://hjkyameroqufaojuerns.supabase.co/functions/v1/cpsc-recall-check";
 
+// A model number looks like letters and digits together ("TC4-5410"). Ratings such as "200A", "50 gal" or "120V" are specs, not models,
+// so a recall is never called a confirmed model match on those.
+function modelLooksReal(m) {
+  const t = String(m == null ? "" : m).trim();
+  if (t.length < 4) return false;
+  if (/^\d{1,5}\s*-?\s*(a|amp|amps|v|volt|volts|w|watt|watts|btu|btus|gal|gallon|gallons|hz|kw|hp|ton|tons|seer|sqft)$/i.test(t)) return false;
+  if (/^(unknown|unk|n\/?a|none|not sure|unsure|tbd)$/i.test(t)) return false;
+  return /\d/.test(t);
+}
+
+// Recalls the person has said are not their product. Kept on this device.
+const RECALL_DISMISS_KEY = "sw_recall_dismissed_v1";
+const recallDismissKey = (assetId, recall) => String(assetId || "") + "|" + String((recall && (recall.url || recall.title)) || "");
+function getRecallDismissed() { try { return JSON.parse(localStorage.getItem(RECALL_DISMISS_KEY) || "[]") || []; } catch { return []; } }
+function dismissRecallFor(assetId, recall) {
+  const k = recallDismissKey(assetId, recall); const cur = getRecallDismissed();
+  if (!cur.includes(k)) { try { localStorage.setItem(RECALL_DISMISS_KEY, JSON.stringify([...cur, k])); } catch { /* storage unavailable */ } }
+  try { window.dispatchEvent(new Event("sw-recall-dismissed")); } catch { /* ignore */ }
+}
+
 async function checkCPSCRecall(brand, productType, model, serialNumber) {
   // Call our Supabase edge function which proxies the CPSC API server-side
   // (Direct browser calls to saferproducts.gov are blocked by CORS)
@@ -12491,7 +12541,8 @@ async function checkCPSCRecall(brand, productType, model, serialNumber) {
   if (!res.ok) return [];
   const json = await res.json();
   if (!json.ok) return [];
-  return json.recalls || [];
+  const real = modelLooksReal(model);
+  return (json.recalls || []).map(r => (r && r.confidence === "high" && !real) ? { ...r, confidence: "brand", matchNote: "Brand match only — check your model" } : r);
 }
 
 // Which assets can meaningfully be checked against the CPSC consumer-product database.
@@ -12578,7 +12629,7 @@ async function scanRecalls(list) {
   return { found, failed };
 }
 
-const RECALL_CACHE_KEY = "sw_recall_cache_v3";
+const RECALL_CACHE_KEY = "sw_recall_cache_v4";
 const RECALL_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 let _recallInflight = null; // one scan at a time — Dashboard, Assets and My Home share it
 async function getRecallScan(list, force = false) {
@@ -12609,6 +12660,14 @@ function useRecallAlerts(assets) {
   const [checked, setChecked]     = useState(false);
   const [recallError, setRecallError] = useState("");
   const sig = recallSig(assets);
+  const [dismissTick, setDismissTick] = useState(0);
+  useEffect(() => {
+    const h = () => setDismissTick(n => n + 1);
+    window.addEventListener("sw-recall-dismissed", h);
+    return () => window.removeEventListener("sw-recall-dismissed", h);
+  }, []);
+  const dismissed = useMemo(() => getRecallDismissed(), [dismissTick]);
+  const visible = useMemo(() => recalls.filter(r => !dismissed.includes(recallDismissKey(r.asset.id, r.recall))), [recalls, dismissed]);
 
   const runCheck = async (assetList, force = false) => {
     setChecking(true);
@@ -12624,7 +12683,7 @@ function useRecallAlerts(assets) {
     if (assets.length > 0) runCheck(assets);
   }, [sig, assets.length > 0]);
 
-  return { recalls, checking, checked, recallError, runCheck: () => runCheck(assets, true) };
+  return { recalls: visible, checking, checked, recallError, runCheck: () => runCheck(assets, true), dismissRecall: (a, r) => dismissRecallFor(a.id, r) };
 }
 
 
@@ -14296,16 +14355,17 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 }
 
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
-function RecallBadge({ brand, category, model, serialNumber, installDate }) {
+function RecallBadge({ assetId, item, brand, category, model, serialNumber, installDate }) {
   const [status, setStatus] = useState("idle"); // idle | checking | found | none | error
   const [recalls, setRecalls] = useState([]);
+  const [hiddenTick, setHiddenTick] = useState(0);
 
   useEffect(() => {
     if (!brand) return;
     setStatus("checking");
     checkCPSCRecall(brand, category, model, serialNumber)
       .then(all => {
-        const results = all.filter(r => recallAppliesToAsset({ install_date: installDate }, r));
+        const results = all.filter(r => recallAppliesToAsset({ install_date: installDate, item, category, model }, r));
         setRecalls(results);
         setStatus(results.length > 0 ? "found" : "none");
       })
@@ -14319,16 +14379,19 @@ function RecallBadge({ brand, category, model, serialNumber, installDate }) {
     </div>
   );
 
+  const dismissedNow = hiddenTick >= 0 ? getRecallDismissed() : [];
+  const shown = recalls.filter(r => !dismissedNow.includes(recallDismissKey(assetId, r)));
+  if (status === "found" && shown.length === 0) return null;
   if (status === "found") return (
     <div style={{background:"#FEF2F2",border:"1.5px solid #FCA5A5",borderRadius:"var(--r-sm)",padding:".75rem .9rem",marginBottom:".75rem"}}>
       <div style={{fontWeight:700,fontSize:".82rem",color:"#991B1B",marginBottom:".3rem"}}>
-        ⚠️ {recalls.length} CPSC recall{recalls.length > 1 ? "s" : ""} found for {brand}
-        {model && <span style={{fontSize:".65rem",fontWeight:500,color:"#B91C1C",marginLeft:6}}>
-          {recalls.some(r=>r.confidence==="high") ? "· Model match confirmed" : "· Review — brand match only"}
-        </span>}
+        ⚠️ {shown.length} CPSC recall{shown.length > 1 ? "s" : ""} found for {brand}
+        <span style={{fontSize:".65rem",fontWeight:500,color:"#B91C1C",marginLeft:6}}>
+          {shown.some(r=>r.confidence==="high") ? "· Model match confirmed" : "· Review — brand match only"}
+        </span>
       </div>
-      {recalls.slice(0, 2).map((r, i) => (
-        <div key={i} style={{marginBottom: i < recalls.length - 1 ? ".4rem" : 0}}>
+      {shown.slice(0, 2).map((r, i) => (
+        <div key={i} style={{marginBottom: i < Math.min(shown.length, 2) - 1 ? ".4rem" : 0}}>
           <div style={{fontSize:".75rem",color:"#B91C1C",fontWeight:600}}>{r.title}</div>
           {r.hazard && <div style={{fontSize:".7rem",color:"#7F1D1D",marginTop:1}}>Hazard: {r.hazard}</div>}
           {r.remedy && <div style={{fontSize:".7rem",color:"#374151",marginTop:1}}>Remedy: {r.remedy}</div>}
@@ -14336,8 +14399,14 @@ function RecallBadge({ brand, category, model, serialNumber, installDate }) {
             style={{fontSize:".7rem",color:"#991B1B",fontWeight:700,display:"inline-block",marginTop:4}}>
             View full recall details →
           </a>
+          <button type="button" onClick={() => { dismissRecallFor(assetId, r); setHiddenTick(n => n + 1); }}
+            title="Hide this recall for this item. Use it when the recall is for a different product than yours."
+            style={{fontSize:".7rem",color:"#6B7280",fontWeight:600,background:"none",border:"none",cursor:"pointer",marginLeft:".75rem",padding:0,textDecoration:"underline",fontFamily:"inherit"}}>
+            Not my product
+          </button>
         </div>
       ))}
+      {shown.length > 2 && <div style={{fontSize:".68rem",color:"#7F1D1D",marginTop:".35rem"}}>+ {shown.length - 2} more. Hide the ones above to see the rest.</div>}
     </div>
   );
 
@@ -14569,7 +14638,19 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
   const aliveRef = useRef(true);
   const photosRef = useRef([]);
   photosRef.current = photos;
-  useEffect(() => () => { aliveRef.current = false; photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); }, []);
+  const confirmedRef = useRef(false);
+  // Photos are uploaded before the check runs. If the check is rejected, or the person leaves without saving, they are removed
+  // so they do not keep using storage.
+  const dropUploaded = () => {
+    const u = uploadRef.current; uploadRef.current = null;
+    if (u && u.paths && u.paths.length) {
+      supabase.storage.from("expense-files").remove(u.paths).then(() => { try { notifyStorageChanged(); } catch { /* ignore */ } }).catch(() => {});
+    }
+  };
+  useEffect(() => () => {
+    aliveRef.current = false; photosRef.current.forEach(p => URL.revokeObjectURL(p.url));
+    if (!confirmedRef.current) dropUploaded();
+  }, []);
 
   // what kind of asset this is (so the questions and photo guide fit it) comes from the database
   useEffect(() => {
@@ -14695,17 +14776,22 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
       } else if (json?.code === "type_mismatch" && json.seen?.key) {
         setErr({ message: json.error, mismatch: json.seen, kind: json.kind }); setStep("error");
       } else if (json?.code === "unclear_photos") {
+        dropUploaded();
         setErr({ message: json.error, tips: json.missing_views || [] }); setStep("error");
       } else if (json?.code === "limit_reached") {
+        dropUploaded();
         if (json.usage) setUsage(json.usage);
         setErr({ message: `You've used all ${json.usage?.limit ?? ""} assessments for this month${json.usage?.resets ? ` (resets ${fmtD(json.usage.resets)})` : ""}.`, limit: true }); setStep("error");
       } else if (json?.code === "plan_required") {
+        dropUploaded();
         setErr({ message: "Condition assessments are included with Plus and Pro.", upgrade: true }); setStep("error");
       } else if (status === 404 && json?.code !== "no_asset") {
+        dropUploaded();
         setErr({ message: "Condition assessments aren't available on your account yet. Please check back soon." }); setStep("error");
       } else if (status === 401) {
         setErr({ message: "Your session expired. Please refresh the page and sign in again." }); setStep("error");
       } else {
+        dropUploaded();
         setErr({ message: json?.error || "Something went wrong. Your assessment wasn't counted; please try again.", detail: json?.detail || null }); setStep("error");
       }
     } catch {
@@ -14736,6 +14822,7 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
         toast(json?.error || "Couldn't save the assessment. Please try again.", "error");
         return;
       }
+      confirmedRef.current = true;
       const row = json.assessment;
       // asset: condition from the grade + any nameplate details the owner ticked
       const updates = { condition: conditionFromScore(score) };
@@ -15962,7 +16049,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                 )}
 
                 {brandV && (
-                  <RecallBadge brand={brandV} category={asset.category} model={modelV} serialNumber={serialV} installDate={asset.install_date||asset.purchase_date} />
+                  <RecallBadge assetId={asset.id} item={asset.item} brand={brandV} category={asset.category} model={modelV} serialNumber={serialV} installDate={asset.install_date||asset.purchase_date} />
                 )}
 
                 {missingBits.length > 0 && (
@@ -16854,6 +16941,8 @@ function fcNextDue(c, today) {
   const s = String(c.next_due || "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
   if (s >= today) return s;
+  // A policy date the person typed in that has passed is not guessed forward: Insurance shows it as passed, so this does too.
+  if (c.linked === "insurance") return null;
   const step = c.frequency === "yearly" ? 12 : c.frequency === "quarterly" ? 3 : 1;
   const y = +s.slice(0, 4), m = +s.slice(5, 7) - 1, day = +s.slice(8, 10);
   for (let k = 1; k <= 1200; k++) {
@@ -17631,6 +17720,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
               <div><span>Counts as</span><b>{linkRow.in_escrow ? "Nothing extra" : fcMoney2(fcMonthly(linkRow)) + " a month"}</b></div>
               {linkRow.provider && <div><span>Company</span><b>{linkRow.provider}</b></div>}
               {nd && <div><span>Renews</span><b>{fcDay(nd)}</b></div>}
+              {!nd && fromIns && /^\d{4}-\d{2}-\d{2}/.test(String(linkRow.next_due || "")) && <div><span>Renewal date</span><b>{fcDay(String(linkRow.next_due).slice(0, 10))} (passed)</b></div>}
             </div>
             {FC_ESCROW_KINDS.includes(linkRow.kind) && (
               <FcCheck checked={!!linkRow.in_escrow} onChange={v => setLinkedEscrow(linkRow, v)} label="My lender pays this from my mortgage escrow"
@@ -17719,6 +17809,7 @@ function FixedCostsView({ userId, propertyId, planData, onUpgrade, toast, utilit
                   c.frequency === "monthly" ? "Paid monthly" : `${fmt$(c.amount)} ${c.frequency === "yearly" ? "a year" : "each quarter"}`,
                   c.linked === "insurance" && c.provider ? c.provider : "",
                   nd ? `${c.linked === "insurance" ? "renews" : isTax ? "due" : "next"} ${fcDay(nd)}` : "",
+                  !nd && c.linked === "insurance" && /^\d{4}-\d{2}-\d{2}/.test(String(c.next_due || "")) ? `renewal date passed (${fcDay(String(c.next_due).slice(0, 10))}) — update it in Insurance` : "",
                   isTax && latestTax ? (latestTax.source === "scan" ? "read from your bill" : "from your bill") : "",
                 ].filter(Boolean).join(" · ");
                 const tag = c.linked === "insurance" ? "From Insurance" : c.linked === "profile" ? "From home details" : isRec ? "County records" : "";
@@ -20614,7 +20705,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
 }
 
 // ─── HOME HISTORY REPORT GENERATOR ───────────────────────────────────────────
-async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null, projects = [], roiData = null }) {
+async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs = [], expenses = [], tasks = [], photoUrl = null, projects = [], roiData = null, recalledAssetIds = null }) {
   // Asset photos live in a private bucket — sign them before they're embedded in the report.
   // The tab is opened synchronously (popup blockers) and filled in once the HTML is ready.
   let popup = null;
@@ -20638,12 +20729,16 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
   const sqft     = profile?.sqft        ? `${Number(profile.sqft).toLocaleString()} sqft` : "";
   const beds     = profile?.bedrooms    ? `${profile.bedrooms} bed` : "";
   const baths    = profile?.bathrooms   ? `${profile.bathrooms} bath` : "";
-  const lot      = profile?.lot_size    ? `${Number(profile.lot_size).toLocaleString()} sqft lot` : "";
+  // lot_size is often saved as text such as "8,319 sqft", so read the number out of it instead of converting the whole string
+  const lotNum   = profile?.lot_size != null ? Number(String(profile.lot_size).replace(/[^0-9.]/g, "")) : 0;
+  const lot      = lotNum > 0 ? `${Math.round(lotNum).toLocaleString()} sqft lot` : "";
   const zest     = profile?.zestimate   ? `$${Number(profile.zestimate).toLocaleString()}` : "";
   const lastSale = profile?.last_sale_price ? `$${Number(profile.last_sale_price).toLocaleString()}` : "";
 
   // Assets — non-insurance items
-  const assets = warranties.filter(w => w.item && w.category !== "Insurance");
+  // Same set the Assets tab counts as systems: not retired, and not a warranty-only record
+  const assets = warranties.filter(w => w.item && w.category !== "Insurance" && !w.retired_at && !w.warranty_only);
+  const homeAgeYrs = profile?.year ? new Date().getFullYear() - Number(profile.year) : null;
   const now = new Date();
   const ageYrs  = d => d ? Math.floor((now - new Date(d+"T00:00:00")) / (365.25*86400000)) : null;
   const fmtDate = d => d ? new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -20652,9 +20747,12 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
   const logs = [...serviceLogs].sort((a,b) => (b.service_date||"") > (a.service_date||"") ? 1 : -1).slice(0, 20);
 
   // Expenses by category totals
-  const expTotal = expenses.reduce((s,e) => s + Number(e.amount||0), 0);
+  // Total invested = expenses plus the cost of logged service, the same total the dashboard shows
+  const serviceTotal = serviceLogs.reduce((s,l) => s + Number(l.cost||0), 0);
+  const expTotal = expenses.reduce((s,e) => s + Number(e.amount||0), 0) + serviceTotal;
   const byCat = {};
   expenses.forEach(e => { byCat[e.category||"Other"] = (byCat[e.category||"Other"]||0) + Number(e.amount||0); });
+  if (serviceTotal > 0) byCat["Service records"] = (byCat["Service records"]||0) + serviceTotal;
   const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6);
 
   // Projects — value added, using the same computeProjectROI logic as the live ROI calculator
@@ -20679,10 +20777,12 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
 
   // ── Asset rows: now includes warranty expiry + photo thumbnail ──
   const assetRows = assets.map(a => {
-    const age     = a.install_date ? ageYrs(a.install_date) : null;
-    const badge   = age === null ? "" : age < 6 ? "Good" : age < 12 ? "Fair" : "Aging";
-    const badgeBg = { Good:"#EAF3DE", Fair:"#FAEEDA", Aging:"#FCEBEB" }[badge] || "#F4EDDF";
-    const badgeFg = { Good:"#3B6D11", Fair:"#854F0B", Aging:"#A32D2D" }[badge] || "#5A534B";
+    // Condition comes from the same reading the app shows on the Assets tab, so the report and the app agree
+    let hs = null;
+    try { hs = getAssetHealth(a, serviceLogs, tasks, { hasOpenRecall: !!(recalledAssetIds && recalledAssetIds.has(a.id)), fallbackAgeYears: homeAgeYrs }); } catch { hs = null; }
+    const badge   = hs ? hs.label : "";
+    const badgeBg = hs ? hs.bg : "#F4EDDF";
+    const badgeFg = hs ? hs.color : "#5A534B";
     const warrantyCell = a.expiry_date ? (() => {
       const days = Math.ceil((new Date(a.expiry_date+"T00:00:00") - now) / 86400000);
       const expired = days < 0;
@@ -21333,6 +21433,7 @@ function PeopleModal({ profile, allProfiles, userId, userEmail, planData, onUpgr
       <div>
         {iAmAdmin && <p className="fc-quiet" style={{margin:"0 0 .6rem"}}>You are an Admin on this account: {homes.map(homeName).join(", ")}.</p>}
         <p className="fc-lead">Invite people to {homes.length > 1 ? "your homes" : "your home"}. Each person needs a free Steadwell account with the email you use here, and the homes appear for them automatically.</p>
+        <p className="fc-quiet" style={{margin:"-.35rem 0 .75rem"}}>Enter the other person's email here, not yours. To change the email you sign in with, go to Account → Email address.</p>
 
         <label className="pp-lab" htmlFor="pp-emails">Email addresses</label>
         <textarea id="pp-emails" className="pp-area" value={emailsText} onChange={e => { setEmailsText(e.target.value); setReport([]); }} placeholder="name@email.com, another@email.com" rows={2} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
@@ -21460,10 +21561,12 @@ function RecallCheckPanel({ warranties }) {
     setChecking(true); setError(""); setChecked(false);
     const res = await getRecallScan(warranties, true);
     if (res.failed) setError("Could not reach recall database — check your connection.");
-    setRecalls(res.found);
+    const gone = getRecallDismissed();
+    setRecalls(res.found.filter(f => !gone.includes(recallDismissKey(f.asset.id, f.recall))));
     setChecked(true);
     setChecking(false);
   };
+  const dismissRecall = (asset, recall) => { dismissRecallFor(asset.id, recall); setRecalls(list => list.filter(f => !(f.asset.id === asset.id && f.recall === recall))); };
 
   const handleOpen = () => {
     setOpen(true);
@@ -21556,6 +21659,11 @@ function RecallCheckPanel({ warranties }) {
                           style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".75rem",fontWeight:700,color:"#fff",background:"#DC2626",padding:".4rem .85rem",borderRadius:8,textDecoration:"none"}}>
                           View official recall →
                         </a>
+                        <button type="button" onClick={() => dismissRecall(r.asset, r.recall)}
+                          title="Hide this recall for this item. Use it when the recall is for a different product than yours."
+                          style={{marginLeft:".75rem",fontSize:".75rem",fontWeight:600,color:"#6B7280",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",padding:0,fontFamily:"'Hanken Grotesk',sans-serif"}}>
+                          Not my product
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -22430,6 +22538,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
                     ].filter(Boolean).join(" · ")}
                   </div>
                 </div>
+                {insRenewalStatus==="expired"&&<span style={{fontSize:".7rem",fontWeight:700,color:"#B0432B",background:"#F7E0DA",padding:"2px 7px",borderRadius:8}}>Date passed</span>}
                 {insRenewalStatus==="soon"&&<span style={{fontSize:".7rem",fontWeight:700,color:"var(--warn)",background:"var(--warn-bg)",padding:"2px 7px",borderRadius:8}}>⚠ {insRenewalDays}d</span>}
                 {insRenewalStatus==="urgent"&&<span style={{fontSize:".7rem",fontWeight:700,color:"#B0432B",background:"#F7E0DA",padding:"2px 7px",borderRadius:8}}>🚨 {insRenewalDays}d</span>}
                 <span style={{color:"#C2B8AE",fontSize:"1.1rem"}}>›</span>
@@ -22633,12 +22742,12 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
               </div>
             {/* ── CLAIM-READY EXPORT ── */}
             {!showCheckin && (
-              <div className="io io-2" onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
+              <div className="io io-2" onClick={()=>generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,recalledAssetIds,photoUrl:primaryPhotoUrl||streetViewUrl||null})}
                 style={{margin:"0 1rem 1rem",background:"linear-gradient(135deg,#1a3a2e,var(--pine-soft))",borderRadius:"var(--r-sm)",padding:"1.1rem 1.25rem",display:"flex",alignItems:"center",gap:"1rem",cursor:"pointer"}}>
                 <div style={{width:50,height:50,borderRadius:13,background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>📋</div>
                 <div style={{flex:1}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"#fff",marginBottom:".25rem"}}>Claim-ready package</div>
-                  <div style={{fontSize:".78rem",color:"rgba(244,237,223,.55)",lineHeight:1.4}}>Assets, photos, receipts, service records — everything an adjuster needs. Always free.</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1rem",fontWeight:500,color:"#fff",marginBottom:".25rem"}}>Home inventory report</div>
+                  <div style={{fontSize:".78rem",color:"rgba(244,237,223,.55)",lineHeight:1.4}}>Your assets with photos, warranties, service history and spending in one printable report. A useful start for an insurance claim. Always free.</div>
                 </div>
                 <span style={{color:"rgba(244,237,223,.4)",fontSize:"1.3rem"}}>›</span>
               </div>
@@ -22918,7 +23027,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
             {[
               {ico:"📄", name:"Documents",       desc:"Deeds, permits, inspection reports",        action:onShowDocs},
               {ico:"👷", name:"Contractors",      desc:contractors.length>0?`${contractors.length} saved pro${contractors.length>1?"s":""}`: "Trusted pros & service history", action:onShowContractors},
-              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,photoUrl:primaryPhotoUrl||streetViewUrl||null});}},
+              {ico:"📊", name:"Home report",      desc:"Generate a full PDF history",               action:()=>{const isPaid=planData?.plan==="plus"||planData?.plan==="pro";if(!isPaid){onUpgrade();return;}generateHomeHistoryReport({profile,warranties,serviceLogs,expenses,tasks,projects,roiData,recalledAssetIds,photoUrl:primaryPhotoUrl||streetViewUrl||null});}},
               {ico:"🔖", name:"Track a warranty", desc:"Scan a receipt or link to an asset",        action:()=>{if(onOpenWarrantyTracker){onOpenWarrantyTracker();}else{onNavigate&&onNavigate("warranties");}}},
               {ico:"🔧", name:"Setup wizard",     desc:"Update your home systems profile",          action:()=>setShowSetup(true)},
               {ico:"📬", name:"Email inbox",      desc:gmailCodeWaiting?"Gmail code waiting for you":pendingCaptures.length>0?`${pendingCaptures.length} item${pendingCaptures.length>1?"s":""} to review`:"Forward receipts & docs to Steadwell", action:()=>setShowEmailInbox(true)},
@@ -24266,6 +24375,50 @@ const TASK_STOPWORDS = new Set(["the","a","an","and","or","of","to","for","your"
 const taskTokens = (title) => (title||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/)
   .filter(w => w && !TASK_STOPWORDS.has(w))
   .map(w => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) ? w.slice(0,-1) : w);
+// Same-job matching for wording that differs ("Inspect the roof" / "Annual roof inspection", "Clean gutters" / "Gutter cleaning",
+// "AC tune-up" / "HVAC service"). Every title is reduced to what it is about (roof, gutter, ac...) and what is done to it
+// (inspect, clean, service...). Two titles are the same job when they are about the same thing and do not do different things to it.
+const TASK_ACTIONS = {
+  inspect: ["inspect","inspection","inspecting","check","checkup","examine","review","assess","assessment","walkthrough","survey"],
+  clean:   ["clean","cleaning","cleanout","clear","clearing","wash","washing","sweep","sweeping","flush","flushing","scrub"],
+  service: ["service","servicing","serviced","tune","tuning","tuneup","maintenance","maintain","tuned","pm"],
+  test:    ["test","testing"],
+  replace: ["replace","replacement","replacing","change","changing","swap"],
+  seal:    ["seal","sealing","reseal","caulk","caulking","paint","painting","repaint","stain","staining","treat","treatment"],
+};
+const TASK_NOUN_SYN = {
+  ac: ["ac","hvac","condenser","cooling","conditioner","conditioning","aircon"],
+  gutter: ["gutter","downspout","downspouts","gutters"],
+  roof: ["roof","roofing","shingle","shingles"],
+  stucco: ["stucco","siding","exterior"],
+  furnace: ["furnace","heater","boiler"],
+  smoke: ["smoke","co","carbon","monoxide","alarm","detector"],
+};
+const TASK_FILLER = new Set(["book","schedule","annual","annually","yearly","year","monthly","quarterly","seasonal","routine","regular","full","complete","professional","pro","licensed","technician","before","after","season","home","house","your","up","time","once","twice","each","every","per","do","get","have","hire"]);
+function taskSense(title) {
+  const raw = String(title || "").toLowerCase().replace(/tune[- ]?up/g, "tuneup").replace(/a\/c/g, "ac").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
+  const acts = new Set(), nouns = new Set();
+  raw.forEach(w0 => {
+    if (TASK_STOPWORDS.has(w0) || TASK_FILLER.has(w0)) return;
+    let hit = false;
+    for (const [k, list] of Object.entries(TASK_ACTIONS)) if (list.includes(w0)) { acts.add(k); hit = true; }
+    if (hit) return;
+    let n = (w0.length > 3 && w0.endsWith("s") && !w0.endsWith("ss")) ? w0.slice(0, -1) : w0;
+    for (const [k, list] of Object.entries(TASK_NOUN_SYN)) if (list.includes(w0) || list.includes(n)) { n = k; break; }
+    nouns.add(n);
+  });
+  return { acts, nouns };
+}
+function sameJob(titleA, titleB) {
+  const A = taskSense(titleA), B = taskSense(titleB);
+  if (!A.nouns.size || !B.nouns.size) return false;
+  let shared = 0; A.nouns.forEach(n => { if (B.nouns.has(n)) shared++; });
+  if (!shared) return false;
+  const small = A.nouns.size <= B.nouns.size ? A.nouns : B.nouns, big = A.nouns.size <= B.nouns.size ? B.nouns : A.nouns;
+  for (const n of small) if (!big.has(n)) return false;
+  if (A.acts.size && B.acts.size) { let both = false; A.acts.forEach(x => { if (B.acts.has(x)) both = true; }); if (!both) return false; }
+  return true;
+}
 function findSimilarTask(title, date, existing) {
   const a = taskTokens(title);
   if (!a.length) return null;
@@ -24275,8 +24428,10 @@ function findSimilarTask(title, date, existing) {
     const B = new Set(taskTokens(t.title));
     if (!B.size) return false;
     const [small, big] = A.size <= B.size ? [A, B] : [B, A];
-    if (small.size < 2 && A.size !== B.size) return false;   // one-word titles must match exactly
-    for (const w of small) if (!big.has(w)) return false;
+    let same = false;
+    if (!(small.size < 2 && A.size !== B.size)) { same = true; for (const w of small) if (!big.has(w)) { same = false; break; } }   // one-word titles must match exactly
+    if (!same) same = sameJob(title, t.title);
+    if (!same) return false;
     if (t.recurring) return true;
     if (!date || !t.due_date) return true;
     return Math.abs(new Date(t.due_date+"T00:00:00") - new Date(date+"T00:00:00")) <= 45 * 86400000;
@@ -24837,6 +24992,7 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
   const [suggestions, setSuggestions] = useState([]);
   const [suggesting, setSuggesting] = useState(false);
   const [lookupState, setLookupState] = useState("idle");
+  const [addrErr, setAddrErr] = useState(false);
   const [propertyData, setPropertyData] = useState(null);
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef(null);
@@ -24938,12 +25094,13 @@ function AddPropertyModal({ userId, onClose, onCreated }) {
                   </div>
                 )}
               </div>
+              {addrErr && !address.trim() && <div role="alert" style={{fontSize:".82rem",color:"var(--red)",fontWeight:600,marginBottom:".75rem"}}>Enter the property's address to continue.</div>}
               {lookupState === "loading" && <div style={{fontSize:".82rem",color:"#9E9690",marginBottom:".75rem"}}>Looking up property…</div>}
               {lookupState === "found" && <div style={{fontSize:".82rem",color:"var(--pine)",fontWeight:600,marginBottom:".75rem"}}>✓ Property found</div>}
               {lookupState === "notfound" && <div style={{fontSize:".82rem",color:"#9E9690",marginBottom:".75rem"}}>Address saved — you can add details later.</div>}
               <div style={{display:"flex",gap:".6rem",justifyContent:"flex-end"}}>
                 <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-                <button className="btn btn-primary" disabled={!address.trim() || lookupState==="loading"} onClick={() => setStep(2)}>
+                <button className="btn btn-primary" disabled={lookupState==="loading"} onClick={() => { if (!address.trim()) { setAddrErr(true); return; } setStep(2); }}>
                   Continue →
                 </button>
               </div>
