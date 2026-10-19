@@ -1,4 +1,4 @@
-// Steadwell v398 — 2026-10-19
+// Steadwell v399 — 2026-10-19
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9314,7 +9314,7 @@ function locDescendantIds(locs, id) {
   return out;
 }
 
-function LocationsCard({ propertyId, userId, assets = [], toast }) {
+function LocationsCard({ propertyId, userId, assets = [], toast, onViewAssets }) {
   const { locs, loaded, unavailable, reload } = useLocations(propertyId);
   const [editing, setEditing] = useState(null);   // null | { id?, name, kind, parent_id }
   const [confirmDel, setConfirmDel] = useState(null);
@@ -9420,6 +9420,9 @@ function LocationsCard({ propertyId, userId, assets = [], toast }) {
       )}
 
       <button className="btn btn-primary" style={{width:"100%"}} onClick={() => setEditing({ name: "", kind: "room", parent_id: "" })}>+ Add a room or place</button>
+      {flat.length > 0 && onViewAssets && (
+        <button type="button" className="asm-link" style={{display:"block",margin:".7rem auto 0"}} onClick={onViewAssets}>See your assets by location</button>
+      )}
 
       {editing && (
         <Modal title={editing.id ? "Edit location" : "Add a room or place"} onClose={() => setEditing(null)} onSave={save}
@@ -15433,6 +15436,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   const [retireConfirm, setRetireConfirm] = useState(null); // second stage: confirm hard delete
   const [showRetired, setShowRetired]     = useState(false);
   const [filter, setFilter] = useState("All");
+  // How the list is grouped: by category (default) or, once a home has locations, by room/place.
+  const [groupBy, setGroupByState] = useState(() => { try { return localStorage.getItem("sw_asset_groupby") === "location" ? "location" : "category"; } catch { return "category"; } });
+  const setGroupBy = (v) => { setGroupByState(v); try { localStorage.setItem("sw_asset_groupby", v); } catch {} };
   // Category open/closed choices the user made (per device). Anything not in
   // here falls back to a smart default computed at render time.
   const [catPref, setCatPref] = useState(() => {
@@ -16686,7 +16692,25 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
   // nothing loses its context).
   const singleKeys = groupKeys.filter(c => grouped[c].length === 1);
   const mergeSingles = singleKeys.length >= 2;
-  const displayGroups = [
+  // By-location grouping: one group per place that has assets (in the home's own order), then "No location set".
+  const byLoc = groupBy === "location" && assetLocs.length > 0 && !showRetired;
+  const locGroups = !byLoc ? [] : (() => {
+    const flat = locFlatten(assetLocs);
+    const known = new Set(flat.map(x => x.loc.id));
+    const sys = list.filter(a => !a.warranty_only);
+    const out = [];
+    flat.forEach(x => {
+      const items = sys.filter(a => a.location_id === x.loc.id);
+      if (items.length) out.push({ key:"loc:" + x.loc.id, label:x.path, items, merged:true });
+    });
+    const none = sys.filter(a => !a.location_id || !known.has(a.location_id));
+    if (none.length) out.push({ key:"__noloc", label:"No location set", items:none, merged:true });
+    return out;
+  })();
+  const displayGroups = byLoc ? [
+    ...locGroups,
+    ...(woList.length ? [{ key:"__warranty_only", label:"Warranty-only records", items:woList, merged:false }] : []),
+  ] : [
     ...groupKeys.filter(c => !(mergeSingles && singleKeys.includes(c))).map(c => ({ key:c, label:catLabelOf(c), items:grouped[c], merged:false })),
     ...(mergeSingles ? [{ key:"__singles", label:"Other systems", items:singleKeys.map(c => grouped[c][0]), merged:true }] : []),
     ...(woList.length ? [{ key:"__warranty_only", label:"Warranty-only records", items:woList, merged:false }] : []),
@@ -16802,6 +16826,15 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
           {displayGroups.length > 1 && !forceOpen && (
             <button onClick={()=>setAllGroups(!allOpen)} className="ag-toggle-all">{allOpen ? "Collapse all" : "Expand all"}</button>
           )}
+        </div>
+      )}
+
+      {!showRetired && activeAssets.length > 0 && assetLocs.length > 0 && (
+        <div className="toolbar" style={{margin:"-.15rem 0 .85rem"}}>
+          <span style={{fontSize:".78rem",color:"#8A8178",alignSelf:"center",marginRight:".2rem"}}>Group by</span>
+          {[["category","Category"],["location","Location"]].map(([v,label])=>(
+            <button key={v} className={`chip ${groupBy===v?"on":""}`} onClick={()=>setGroupBy(v)} aria-pressed={groupBy===v}>{label}</button>
+          ))}
         </div>
       )}
 
@@ -23372,7 +23405,7 @@ function Profile({ profile, setProfile, tasks, expenses, warranties, serviceLogs
 
       {/* ── ROOMS AND LOCATIONS ── */}
       {!showSetup && (
-        <LocationsCard propertyId={propertyId} userId={userId} assets={warranties} toast={toast} />
+        <LocationsCard propertyId={propertyId} userId={userId} assets={warranties} toast={toast} onViewAssets={onNavigate ? () => { try { localStorage.setItem("sw_asset_groupby", "location"); } catch {} onNavigate("warranties"); } : null} />
       )}
 
       {/* ── SHARED ACCESS ── */}
