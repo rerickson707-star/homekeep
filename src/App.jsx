@@ -1,4 +1,4 @@
-// Steadwell v401 — 2026-10-19
+// Steadwell v402 — 2026-10-20
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9300,7 +9300,7 @@ function WeatherBanner({ alerts = [], ready, onOpen }) {
   const st = WX_LEVEL_STYLE[top.level];
   const extra = alerts.filter(a => a.level !== "advisory").length - 1;
   return (
-    <div role="status" style={{background:st.bg,color:st.fg,borderLeft:"4px solid " + st.bar,borderRadius:"var(--r-sm)",margin:".75rem 1rem 0",padding:".7rem .9rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexWrap:"wrap"}}>
+    <div role="status" style={{background:st.bg,color:st.fg,borderLeft:"4px solid " + st.bar,borderBottom:"1px solid var(--stone)",padding:".7rem 1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".75rem",flexWrap:"wrap"}}>
       <div style={{fontSize:".88rem",lineHeight:1.45,flex:"1 1 220px"}}>
         <strong>{top.event}</strong> near your home{extra > 0 ? " (and " + extra + " more)" : ""}.
       </div>
@@ -9311,17 +9311,37 @@ function WeatherBanner({ alerts = [], ready, onOpen }) {
 
 // ── Current weather and the next few days, on the Dashboard ──────────────────
 // Comes from the weather-now function (National Weather Service, U.S. addresses). Quiet if it can't load.
-function wxIcon(text, isDay = true) {
+function wxKind(text, isDay = true) {
   const t = String(text || "").toLowerCase();
-  if (/thunder|tornado/.test(t)) return "⛈️";
-  if (/snow|sleet|blizzard|ice|freezing/.test(t)) return "❄️";
-  if (/rain|shower|drizzle/.test(t)) return "🌧️";
-  if (/fog|haze|smoke/.test(t)) return "🌫️";
-  if (/wind|breezy/.test(t) && !/cloud|sun/.test(t)) return "💨";
-  if (/partly|mostly sunny|mostly clear/.test(t)) return isDay ? "🌤️" : "☁️";
-  if (/cloud|overcast/.test(t)) return "☁️";
-  if (/sun|clear|fair/.test(t)) return isDay ? "☀️" : "🌙";
-  return isDay ? "🌤️" : "☁️";
+  if (/thunder|tornado/.test(t)) return "storm";
+  if (/snow|sleet|blizzard|ice|freezing/.test(t)) return "snow";
+  if (/rain|shower|drizzle/.test(t)) return "rain";
+  if (/fog|haze|smoke/.test(t)) return "fog";
+  if (/wind|breezy/.test(t) && !/cloud|sun/.test(t)) return "wind";
+  if (/partly|mostly sunny|mostly clear/.test(t)) return isDay ? "partly" : "cloud";
+  if (/cloud|overcast/.test(t)) return "cloud";
+  if (/sun|clear|fair/.test(t)) return isDay ? "sun" : "moon";
+  return isDay ? "partly" : "cloud";
+}
+// Simple line icons in the app's own colors (emoji looked pasted on).
+function WxGlyph({ kind, size = 24 }) {
+  const cloud = "M7.5 15.5h9a4 4 0 0 0 .5-7.97 5.5 5.5 0 0 0-10.6 1.6A3.2 3.2 0 0 0 7.5 15.5z";
+  const shapes = {
+    sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></>,
+    moon: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>,
+    partly: <><circle cx="8" cy="8.5" r="2.8"/><path d="M8 2.8v1.2M2.3 8.5h1.2M3.9 4.4l.9.9M12.1 4.4l-.9.9"/><path d="M10 20h7.5a3.6 3.6 0 0 0 .4-7.18A4.9 4.9 0 0 0 9.2 13 3.5 3.5 0 0 0 10 20z"/></>,
+    cloud: <path d="M7.5 19h9.5a4.2 4.2 0 0 0 .5-8.37A5.8 5.8 0 0 0 6.4 11.8 3.7 3.7 0 0 0 7.5 19z"/>,
+    rain: <><path d={cloud}/><path d="M8.5 19l-1 2.2M12.5 19l-1 2.2M16.5 19l-1 2.2"/></>,
+    storm: <><path d={cloud}/><path d="M12.8 15.8l-2.6 3.6h3.2l-2 3.1"/></>,
+    snow: <><path d={cloud}/><path d="M8 19.5h.01M12 21h.01M16 19.5h.01" strokeWidth="2.6"/></>,
+    fog: <path d="M4 9h16M6 13h12M4 17h14"/>,
+    wind: <path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 14h15a2.5 2.5 0 1 1-2.5 2.5"/>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flex:"0 0 auto"}}>
+      {shapes[kind] || shapes.partly}
+    </svg>
+  );
 }
 const WX_SIGNAL_TITLE = { storm: "Thunderstorms likely", flood: "Heavy rain expected", winter: "Winter weather possible", freeze: "Freezing temperatures", heat: "Very hot weather" };
 
@@ -9379,25 +9399,25 @@ function WeatherForecast({ propertyId, alerts = [], tasks = [], setTasks, userId
   const strip = (data.days || []).slice(0, 5);
 
   return (
-    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:".75rem 1rem 0",padding:".9rem 1rem"}}>
-      <div style={{display:"flex",flexWrap:"wrap",gap:".9rem 1.5rem",alignItems:"center"}}>
-        <div style={{display:"flex",alignItems:"center",gap:".7rem",flex:"1 1 200px",minWidth:0}}>
-          <span style={{fontSize:"2.3rem",lineHeight:1}} aria-hidden="true">{wxIcon(data.now.text, data.now.isDaytime)}</span>
-          <div style={{minWidth:0}}>
+    <div style={{background:"var(--white)",borderBottom:"1px solid var(--stone)",padding:".85rem 1.25rem"}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:".85rem 1.75rem",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".75rem",flex:"1 1 220px",minWidth:0,color:"var(--pine)"}}>
+          <WxGlyph kind={wxKind(data.now.text, data.now.isDaytime)} size={34} />
+          <div style={{minWidth:0,color:"var(--dark)"}}>
             <div style={{display:"flex",alignItems:"baseline",gap:".5rem",flexWrap:"wrap"}}>
-              <span style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"var(--dark)",lineHeight:1}}>{data.now.temp}°</span>
-              <span style={{fontSize:".9rem",color:"#5E574F"}}>{data.now.text}</span>
+              <span style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:500,lineHeight:1}}>{data.now.temp}°</span>
+              <span style={{fontSize:".88rem",color:"#5E574F"}}>{data.now.text}</span>
             </div>
-            <div style={{fontSize:".76rem",color:"#8A8178",marginTop:".25rem"}}>
+            <div style={{fontSize:".74rem",color:"#8A8178",marginTop:".25rem"}}>
               {[data.place, today && today.hi != null ? "High " + today.hi + "°" : null, today && today.lo != null ? "Low " + today.lo + "°" : null, data.now.wind ? "Wind " + data.now.wind : null].filter(Boolean).join(" · ")}
             </div>
           </div>
         </div>
-        <div style={{display:"flex",gap:".25rem",flex:"1 1 260px",justifyContent:"space-between"}} aria-label="Forecast for the next days">
+        <div style={{display:"flex",gap:".25rem",flex:"1 1 280px",justifyContent:"space-between"}} aria-label="Forecast for the next days">
           {strip.map((d, i) => (
-            <div key={d.date} style={{textAlign:"center",flex:"1 1 0",minWidth:44,fontSize:".74rem",color:"#5E574F"}}>
+            <div key={d.date} style={{textAlign:"center",flex:"1 1 0",minWidth:40,fontSize:".72rem",color:"#5E574F"}}>
               <div style={{fontWeight:600}}>{dayName(d, i)}</div>
-              <div style={{fontSize:"1.25rem",margin:".15rem 0"}} aria-hidden="true">{wxIcon(d.text, true)}</div>
+              <div style={{margin:".2rem 0",color:"var(--pine)",display:"flex",justifyContent:"center"}}><WxGlyph kind={wxKind(d.text, true)} size={22} /></div>
               <div style={{color:"var(--dark)",fontWeight:600}}>{d.hi != null ? d.hi + "°" : "–"}<span style={{color:"#8A8178",fontWeight:500}}> {d.lo != null ? d.lo + "°" : ""}</span></div>
             </div>
           ))}
@@ -14069,8 +14089,6 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
   return (
     <div className="dash-root" style={{paddingBottom:"1.5rem"}}>
 
-      {!isNewUser && profile?.id && <WeatherPanel propertyId={profile.id} onOpen={() => onNavigate && onNavigate("profile")} tasks={tasks} setTasks={setTasks} userId={userId} />}
-
       <div className="dash-top">
       {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
       {isNewUser && (
@@ -14185,6 +14203,9 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
         </div>
         );
       })()}
+
+      {/* ── WEATHER — alerts and forecast, part of the same card as the status above ── */}
+      {!isNewUser && profile?.id && <WeatherPanel propertyId={profile.id} onOpen={() => onNavigate && onNavigate("profile")} tasks={tasks} setTasks={setTasks} userId={userId} />}
 
       {/* ── QUICK ACTIONS — front and center ── */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".65rem",padding:".85rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)"}}>
