@@ -1,4 +1,4 @@
-// Steadwell v400 — 2026-10-19
+// Steadwell v401 — 2026-10-19
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9292,9 +9292,8 @@ function useWeather(propertyId) {
 }
 
 // One quiet line on the Dashboard, only while a warning or watch is active near the home.
-function WeatherBanner({ propertyId, onOpen }) {
-  const { alerts, loaded, unavailable } = useWeather(propertyId);
-  if (!loaded || unavailable) return null;
+function WeatherBanner({ alerts = [], ready, onOpen }) {
+  if (!ready) return null;
   const rank = { warning: 0, watch: 1, advisory: 2 };
   const top = alerts.filter(a => a.level !== "advisory").sort((x, y) => rank[x.level] - rank[y.level])[0];
   if (!top) return null;
@@ -9307,6 +9306,122 @@ function WeatherBanner({ propertyId, onOpen }) {
       </div>
       <button type="button" className="asm-link" style={{color:st.fg,textDecoration:"underline"}} onClick={onOpen}>See details and tasks</button>
     </div>
+  );
+}
+
+// ── Current weather and the next few days, on the Dashboard ──────────────────
+// Comes from the weather-now function (National Weather Service, U.S. addresses). Quiet if it can't load.
+function wxIcon(text, isDay = true) {
+  const t = String(text || "").toLowerCase();
+  if (/thunder|tornado/.test(t)) return "⛈️";
+  if (/snow|sleet|blizzard|ice|freezing/.test(t)) return "❄️";
+  if (/rain|shower|drizzle/.test(t)) return "🌧️";
+  if (/fog|haze|smoke/.test(t)) return "🌫️";
+  if (/wind|breezy/.test(t) && !/cloud|sun/.test(t)) return "💨";
+  if (/partly|mostly sunny|mostly clear/.test(t)) return isDay ? "🌤️" : "☁️";
+  if (/cloud|overcast/.test(t)) return "☁️";
+  if (/sun|clear|fair/.test(t)) return isDay ? "☀️" : "🌙";
+  return isDay ? "🌤️" : "☁️";
+}
+const WX_SIGNAL_TITLE = { storm: "Thunderstorms likely", flood: "Heavy rain expected", winter: "Winter weather possible", freeze: "Freezing temperatures", heat: "Very hot weather" };
+
+function useForecast(propertyId) {
+  const key = "sw_wx_now_" + propertyId;
+  const readCache = () => { try { const c = JSON.parse(localStorage.getItem(key) || "null"); return c && Date.now() - c.t < 20 * 60 * 1000 ? c.data : null; } catch { return null; } };
+  const [data, setData] = useState(readCache);
+  useEffect(() => {
+    if (!propertyId || readCache()) return;
+    let alive = true;
+    (async () => {
+      try {
+        const { data: d, error } = await supabase.functions.invoke("weather-now", { body: { propertyId } });
+        if (!alive || error || !d) return;
+        setData(d);
+        try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), data: d })); } catch {}
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, [propertyId]);
+  return data;
+}
+
+function WeatherForecast({ propertyId, alerts = [], tasks = [], setTasks, userId }) {
+  const data = useForecast(propertyId);
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!data || !data.available || !data.now) return null;
+
+  const today = data.days?.[0];
+  const alertCats = new Set((alerts || []).map(a => a.category));
+  const signal = (data.signals || []).find(s => !alertCats.has(s.cat));
+  const sigKey = signal ? "sw_wx_fc_" + propertyId + "_" + signal.cat + "_" + localISO() : "";
+  const sigDone = () => { try { return !!localStorage.getItem(sigKey); } catch { return false; } };
+
+  const addTips = async () => {
+    if (busy || !signal) return;
+    setBusy(true);
+    const open = new Set((tasks || []).filter(t => t.status !== "Completed").map(t => String(t.title).toLowerCase()));
+    const rows = (WX_TASKS[signal.cat] || []).filter(([title]) => !open.has(title.toLowerCase())).map(([title, priority, category]) => ({
+      title, due_date: localISO(), status: "Scheduled", priority, category,
+      notes: "Suggested by Steadwell because of the forecast.", user_id: userId, property_id: propertyId,
+    }));
+    if (rows.length) {
+      const { data: ins, error } = await supabase.from("tasks").insert(rows).select();
+      if (error || !ins) { setBusy(false); setMsg("Could not add the tasks. Try again."); return; }
+      setTasks && setTasks(p => [...ins, ...p]);
+      setMsg(ins.length + (ins.length === 1 ? " task added" : " tasks added") + " ✓");
+    } else setMsg("Those tasks are already on your list");
+    try { localStorage.setItem(sigKey, "1"); } catch {}
+    setBusy(false);
+  };
+
+  const dayName = (d, i) => i === 0 ? "Today" : new Date(d.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+  const strip = (data.days || []).slice(0, 5);
+
+  return (
+    <div style={{background:"var(--white)",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",margin:".75rem 1rem 0",padding:".9rem 1rem"}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:".9rem 1.5rem",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".7rem",flex:"1 1 200px",minWidth:0}}>
+          <span style={{fontSize:"2.3rem",lineHeight:1}} aria-hidden="true">{wxIcon(data.now.text, data.now.isDaytime)}</span>
+          <div style={{minWidth:0}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:".5rem",flexWrap:"wrap"}}>
+              <span style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:500,color:"var(--dark)",lineHeight:1}}>{data.now.temp}°</span>
+              <span style={{fontSize:".9rem",color:"#5E574F"}}>{data.now.text}</span>
+            </div>
+            <div style={{fontSize:".76rem",color:"#8A8178",marginTop:".25rem"}}>
+              {[data.place, today && today.hi != null ? "High " + today.hi + "°" : null, today && today.lo != null ? "Low " + today.lo + "°" : null, data.now.wind ? "Wind " + data.now.wind : null].filter(Boolean).join(" · ")}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:".25rem",flex:"1 1 260px",justifyContent:"space-between"}} aria-label="Forecast for the next days">
+          {strip.map((d, i) => (
+            <div key={d.date} style={{textAlign:"center",flex:"1 1 0",minWidth:44,fontSize:".74rem",color:"#5E574F"}}>
+              <div style={{fontWeight:600}}>{dayName(d, i)}</div>
+              <div style={{fontSize:"1.25rem",margin:".15rem 0"}} aria-hidden="true">{wxIcon(d.text, true)}</div>
+              <div style={{color:"var(--dark)",fontWeight:600}}>{d.hi != null ? d.hi + "°" : "–"}<span style={{color:"#8A8178",fontWeight:500}}> {d.lo != null ? d.lo + "°" : ""}</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {signal && (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",flexWrap:"wrap",background:"#FBF3DE",color:"#7A5710",borderRadius:"var(--r-sm)",padding:".55rem .75rem",marginTop:".8rem",fontSize:".85rem",lineHeight:1.45}}>
+          <span><strong>{WX_SIGNAL_TITLE[signal.cat]}:</strong> {signal.when}{signal.detail ? ", " + signal.detail.charAt(0).toLowerCase() + signal.detail.slice(1) : ""}.</span>
+          {msg || sigDone()
+            ? <span style={{fontWeight:600}}>{msg || "Tasks added ✓"}</span>
+            : <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={addTips}>{busy ? "Adding…" : "Add tips as tasks"}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WeatherPanel({ propertyId, onOpen, tasks, setTasks, userId }) {
+  const { alerts, loaded, unavailable } = useWeather(propertyId);
+  return (
+    <>
+      <WeatherBanner alerts={alerts} ready={loaded && !unavailable} onOpen={onOpen} />
+      <WeatherForecast propertyId={propertyId} alerts={loaded && !unavailable ? alerts : []} tasks={tasks} setTasks={setTasks} userId={userId} />
+    </>
   );
 }
 
@@ -13684,7 +13799,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
   );
 }
 
-function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[], onOpenWarranties, onOpenInsurance, onViewAsset }) {
+function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[], onOpenWarranties, onOpenInsurance, onViewAsset }) {
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   // The ONE Home Health score — same computeHealthScore() the "My Home" tab's
   // HealthScoreWidget shows, so this never disagrees with it. This hero stays
@@ -13954,7 +14069,7 @@ function Dashboard({ tasks, warranties, expenses, profile, onNavigate, greeting,
   return (
     <div className="dash-root" style={{paddingBottom:"1.5rem"}}>
 
-      {!isNewUser && profile?.id && <WeatherBanner propertyId={profile.id} onOpen={() => onNavigate && onNavigate("profile")} />}
+      {!isNewUser && profile?.id && <WeatherPanel propertyId={profile.id} onOpen={() => onNavigate && onNavigate("profile")} tasks={tasks} setTasks={setTasks} userId={userId} />}
 
       <div className="dash-top">
       {/* ── NEW USER WELCOME (only shown pre-setup) ── */}
@@ -27040,7 +27155,7 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} setTasks={setTasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
