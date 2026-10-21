@@ -1,4 +1,4 @@
-// Steadwell v402 — 2026-10-20
+// Steadwell v404 — 2026-10-20
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4236,6 +4236,8 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .asm-check{display:flex;gap:.6rem;align-items:flex-start;padding:.45rem 0;font-size:.84rem;font-weight:400;letter-spacing:0;text-transform:none;line-height:1.4;cursor:pointer;color:#4A443E}
 .asm-check b{font-weight:700}
 .asm-check input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;margin:2px 0 0;padding:0;width:18px;height:18px;min-width:18px;flex:0 0 18px;border-radius:4px;accent-color:var(--pine)}
+.wx-opt{text-transform:none;letter-spacing:normal;font-weight:500;color:var(--dark)}
+.wx-opt input[type=checkbox],.wx-opt input[type=radio]{-webkit-appearance:auto;appearance:auto;padding:0;margin:0;border:none;border-radius:0;background:none;box-shadow:none;accent-color:var(--pine);cursor:pointer}
 .asm-type{background:#F4EFE6;border:1px solid var(--stone);border-radius:12px;padding:.7rem .8rem;margin-bottom:.9rem}
 .asm-type-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;font-size:.86rem;color:#4A443E}
 .asm-type-sel{width:100%;margin-top:.5rem;padding:.55rem .6rem;border:1.5px solid var(--stone);border-radius:10px;background:var(--white);font-family:inherit;font-size:.9rem}
@@ -9345,8 +9347,9 @@ function WxGlyph({ kind, size = 24 }) {
 }
 const WX_SIGNAL_TITLE = { storm: "Thunderstorms likely", flood: "Heavy rain expected", winter: "Winter weather possible", freeze: "Freezing temperatures", heat: "Very hot weather" };
 
-function useForecast(propertyId) {
-  const key = "sw_wx_now_" + propertyId;
+// The forecast belongs to the home's address (not the person), so the saved copy is keyed by home and address.
+function useForecast(propertyId, address = "") {
+  const key = "sw_wx_now_" + propertyId + "_" + String(address || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 80);
   const readCache = () => { try { const c = JSON.parse(localStorage.getItem(key) || "null"); return c && Date.now() - c.t < 20 * 60 * 1000 ? c.data : null; } catch { return null; } };
   const [data, setData] = useState(readCache);
   useEffect(() => {
@@ -9361,12 +9364,12 @@ function useForecast(propertyId) {
       } catch {}
     })();
     return () => { alive = false; };
-  }, [propertyId]);
+  }, [propertyId, address]);
   return data;
 }
 
-function WeatherForecast({ propertyId, alerts = [], tasks = [], setTasks, userId }) {
-  const data = useForecast(propertyId);
+function WeatherForecast({ propertyId, address = "", alerts = [], tasks = [], setTasks, userId }) {
+  const data = useForecast(propertyId, address);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   if (!data || !data.available || !data.now) return null;
@@ -9425,7 +9428,7 @@ function WeatherForecast({ propertyId, alerts = [], tasks = [], setTasks, userId
       </div>
       {signal && (
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",flexWrap:"wrap",background:"#FBF3DE",color:"#7A5710",borderRadius:"var(--r-sm)",padding:".55rem .75rem",marginTop:".8rem",fontSize:".85rem",lineHeight:1.45}}>
-          <span><strong>{WX_SIGNAL_TITLE[signal.cat]}:</strong> {signal.when}{signal.detail ? ", " + signal.detail.charAt(0).toLowerCase() + signal.detail.slice(1) : ""}.</span>
+          <span><strong>{WX_SIGNAL_TITLE[signal.cat]}:</strong> {signal.when}{(signal.cat === "freeze" || signal.cat === "heat") && signal.detail ? ", " + signal.detail.charAt(0).toLowerCase() + signal.detail.slice(1) : ""}.</span>
           {msg || sigDone()
             ? <span style={{fontWeight:600}}>{msg || "Tasks added ✓"}</span>
             : <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={addTips}>{busy ? "Adding…" : "Add tips as tasks"}</button>}
@@ -9435,12 +9438,12 @@ function WeatherForecast({ propertyId, alerts = [], tasks = [], setTasks, userId
   );
 }
 
-function WeatherPanel({ propertyId, onOpen, tasks, setTasks, userId }) {
+function WeatherPanel({ propertyId, address = "", onOpen, tasks, setTasks, userId }) {
   const { alerts, loaded, unavailable } = useWeather(propertyId);
   return (
     <>
       <WeatherBanner alerts={alerts} ready={loaded && !unavailable} onOpen={onOpen} />
-      <WeatherForecast propertyId={propertyId} alerts={loaded && !unavailable ? alerts : []} tasks={tasks} setTasks={setTasks} userId={userId} />
+      <WeatherForecast propertyId={propertyId} address={address} alerts={loaded && !unavailable ? alerts : []} tasks={tasks} setTasks={setTasks} userId={userId} />
     </>
   );
 }
@@ -9533,7 +9536,7 @@ function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast 
         <div style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.55}}>Weather alerts cover U.S. addresses. Add a U.S. address with a ZIP code to turn them on.</div>
       ) : canManage ? (
         <>
-          <label style={{display:"flex",alignItems:"center",gap:".7rem",padding:".5rem 0",borderTop:"1px solid var(--cream2)",fontSize:".92rem",cursor:"pointer",minHeight:44}}>
+          <label className="wx-opt" style={{display:"flex",alignItems:"center",gap:".7rem",padding:".5rem 0",borderTop:"1px solid var(--cream2)",fontSize:".92rem",cursor:"pointer",minHeight:44}}>
             <input type="checkbox" style={{width:22,height:22,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={enabled} disabled={saving} onChange={e => saveSettings({ enabled: e.target.checked })} />
             Email me about severe weather near this home
           </label>
@@ -9541,14 +9544,14 @@ function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast 
             <div style={{marginTop:".25rem"}}>
               <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",margin:".5rem 0 .2rem"}}>Which alerts</div>
               {WX_CATS.map(([c, label]) => (
-                <label key={c} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
+                <label key={c} className="wx-opt" style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
                   <input type="checkbox" style={{width:20,height:20,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={cats.includes(c)} disabled={saving} onChange={() => toggleCat(c)} />
                   {label}
                 </label>
               ))}
               <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",margin:".6rem 0 .2rem"}}>How early</div>
               {[["warning", "Warnings only (it is happening or about to)"], ["watch", "Watches, advisories and warnings"]].map(([v, label]) => (
-                <label key={v} style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
+                <label key={v} className="wx-opt" style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
                   <input type="radio" name="wx-level" style={{width:20,height:20,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={level === v} disabled={saving} onChange={() => saveSettings({ level: v })} />
                   {label}
                 </label>
@@ -14205,7 +14208,7 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
       })()}
 
       {/* ── WEATHER — alerts and forecast, part of the same card as the status above ── */}
-      {!isNewUser && profile?.id && <WeatherPanel propertyId={profile.id} onOpen={() => onNavigate && onNavigate("profile")} tasks={tasks} setTasks={setTasks} userId={userId} />}
+      {!isNewUser && profile?.id && <WeatherPanel propertyId={profile.id} address={profile.address || ""} onOpen={() => onNavigate && onNavigate("profile")} tasks={tasks} setTasks={setTasks} userId={userId} />}
 
       {/* ── QUICK ACTIONS — front and center ── */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".65rem",padding:".85rem 1.25rem",background:"var(--white)",borderBottom:"1px solid var(--stone)"}}>
