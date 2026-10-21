@@ -1,4 +1,4 @@
-// Steadwell v411 — 2026-10-21
+// Steadwell v413 — 2026-10-21
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -34784,9 +34784,79 @@ const BLOG_SEO_TITLES = {
 };
 
 // Posts rewritten in src/blog-overrides.js replace the Sanity text for that slug.
+// BLOG_ADDITIONS (below) then adds to a post without replacing it: a new section before a named heading, extra FAQ entries,
+// and a new title or description. Adding twice is harmless (the section carries a marker).
 function applyBlogOverrides(posts) {
-  return posts.map(p => (BLOG_OVERRIDES && BLOG_OVERRIDES[p.slug]) ? { ...p, ...BLOG_OVERRIDES[p.slug] } : p);
+  return posts.map(p => {
+    const merged = (BLOG_OVERRIDES && BLOG_OVERRIDES[p.slug]) ? { ...p, ...BLOG_OVERRIDES[p.slug] } : p;
+    return applyBlogAdditions(merged);
+  });
 }
+
+const BLOG_ADD_MARK = "data-sw-add";
+function blogH2Index(html, re) {
+  const m = new RegExp("<h2[^>]*>(?:(?!</h2>)[\\s\\S])*?(?:" + re + ")(?:(?!</h2>)[\\s\\S])*?</h2>", "i").exec(html);
+  return m ? m.index : -1;
+}
+function applyBlogAdditions(post) {
+  const add = BLOG_ADDITIONS[post.slug];
+  if (!add) return post;
+  let html = post.content || "";
+  if (html && !html.includes(BLOG_ADD_MARK)) {
+    if (add.section) {
+      let at = blogH2Index(html, add.before || "$^");
+      if (at < 0) at = blogH2Index(html, "faq|frequently asked|common questions");
+      const sec = '<div ' + BLOG_ADD_MARK + '="1"></div>' + add.section;
+      html = at < 0 ? html + sec : html.slice(0, at) + sec + html.slice(at);
+    }
+    if (add.faq && add.faq.length) {
+      const items = add.faq.map(([q, a]) => "<h3>" + q + "</h3>" + a).join("");
+      const f = blogH2Index(html, "faq|frequently asked|common questions");
+      if (f < 0) html += "<h2>Frequently asked questions</h2>" + items;
+      else {
+        const afterHead = html.indexOf("</h2>", f) + 5;
+        const next = html.indexOf("<h2", afterHead);
+        html = next < 0 ? html + items : html.slice(0, next) + items + html.slice(next);
+      }
+    }
+  }
+  return { ...post, content: html, ...(add.title ? { title: add.title } : {}), ...(add.description ? { description: add.description } : {}), ...(add.modified ? { modified: add.modified } : {}), ...(add.time ? { time: add.time } : {}) };
+}
+
+// Sources for the brand notes: Rheem (rheem.com/how-to-locate-and-read-your-rheem-water-heating-serial-numbers), Goodman FAQ, Lennox FAQ and
+// warranty page, Carrier warranty lookup, HVAC.com (How Old Is My AC Unit?, March 2025). Checked 2026-10-21.
+const BLOG_ADDITIONS = {
+  "how-to-find-age-of-house": {
+    title: "How Old Is My House? 6 Ways to Find the Year Built",
+    description: "How old is my house? Find the year built with the county assessor, permits and deeds, then check clues inside the house. Records vary by state.",
+    modified: "2026-10-21",
+    before: "what the age tells you to check",
+    section: `<p>The house is often older than its equipment. The water heater, furnace and air conditioner were usually replaced at some point, and their serial numbers date the unit, not the house. To read those, see <a href="/blog/find-appliance-serial-number">how to find an appliance serial number and read its date code</a> and the <a href="/blog/how-old-is-my-water-heater">water heater age guide</a>.</p>`,
+    faq: [
+      ["How do I find the age of a house by address?", `<p>Search the website of the county assessor, appraisal district or property appraiser for your street address or parcel number. Most list the year built along with square footage and lot size. Then confirm it with the original building permit or certificate of occupancy from the local building department, since tax records can be estimates.</p>`],
+      ["Can I look up building permits for my house online?", `<p>Often, but it depends on the city or county. Some building departments have an online permit search. New York City's Department of Buildings, for example, runs a Building Information Search for permits and certificates of occupancy, though filings in its newer DOB NOW system sit in a separate portal. Where nothing is online, call the permit office and ask how to request the records for your address.</p>`],
+      ["What does effective year built mean?", `<p>It is a tax-roll figure, not always the year the house was constructed. The Broward County Property Appraiser explains that its effective year built generally reflects the tax year the building value was first added to the roll, may change after major renovation, and should not replace official building department records.</p>`],
+    ],
+  },
+  "find-appliance-serial-number": {
+    modified: "2026-10-21",
+    time: "7 min read",
+    before: "if the label is missing",
+    section: `<h2>Finding the age of an HVAC unit, brand by brand</h2>
+<p>Air conditioners, heat pumps and furnaces are where age matters most for replacement planning, and where the date code is hardest to find. Manufacturers differ in what they publish, so look first for a manufacture date printed on the rating plate, then use the notes below.</p>
+<ul>
+<li><strong>Carrier.</strong> Carrier's <a href="https://www.carrier.com/us/en/residential/homeowner-resources/warranty-lookup/" target="_blank" rel="noopener noreferrer">warranty lookup</a> takes a serial number and returns your warranty record with coverage lengths and end dates. It does not explain the date code, so for the build date check the label or call Carrier customer care at 1-800-227-7437.</li>
+<li><strong>Goodman.</strong> Goodman describes the serial number as a ten-digit code that identifies when the unit was produced, along with its model and many of its components, but its FAQ does not give the position-by-position breakdown. Many installers attach the traveler label from the shipping box to the owner's paperwork, so check your closing or installation file. <a href="https://www.goodmanmfg.com/resources/faq/registration/how-can-i-confirm-the-model-and-serial-numbers-for-my-cooling-system" target="_blank" rel="noopener noreferrer">Goodman's FAQ</a>.</li>
+<li><strong>Lennox.</strong> For a cooling system, Lennox says the model and serial numbers are on the nameplate sticker near the service panel. Its <a href="https://www.lennox.com/residential/owners/assistance/warranty/" target="_blank" rel="noopener noreferrer">warranty lookup</a> accepts the serial number printed on the equipment label.</li>
+</ul>
+<p>HVAC.com describes two patterns that many HVAC manufacturers use: the first four digits give the year, or the first two digits give the production week and the next two give the year, so a serial starting 3915 would read as week 39 of 2015. It does not say which brand uses which, so treat a decoded date as an estimate and confirm it with the manufacturer or an HVAC technician. <a href="https://www.hvac.com/expert-advice/how-old-is-my-ac-unit/" target="_blank" rel="noopener noreferrer">HVAC.com's guide</a> (March 2025).</p>`,
+    faq: [
+      ["How can I tell how old my Carrier, Lennox or Goodman air conditioner or furnace is?", `<p>Check the rating plate for a printed manufacture date first. If there is none, the serial number usually encodes it, but these manufacturers do not publish the date code on their homeowner pages. Carrier and Lennox both offer a serial-number warranty lookup, Goodman describes the serial as a ten-digit code that identifies when the unit was produced, and an HVAC technician or the manufacturer's customer care can confirm the build date.</p>`],
+      ["Where is the serial number on an air conditioner or furnace?", `<p>On the rating plate or nameplate. Trane puts it at the top right-rear of the outdoor unit, Goodman says it is generally slightly above the refrigerant valves on the back, and Lennox says the model and serial numbers on a cooling system are on the nameplate sticker near the service panel. On a furnace, check a side panel of the furnace or the front panel of the air handler. Photograph it so you do not have to go back.</p>`],
+      ["Can I tell the age of an air conditioner or furnace from any serial number?", `<p>Not with one rule. Formats vary by brand and model line, and some manufacturers do not publish theirs. HVAC.com notes two common patterns, a four-digit year or a two-digit week followed by a two-digit year, but a decoded date is still an estimate. Confirm it with the manufacturer, your installation paperwork or an HVAC technician.</p>`],
+    ],
+  },
+};
 
 async function fetchSanityPosts() {
   try {
