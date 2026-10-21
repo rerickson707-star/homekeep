@@ -1,4 +1,4 @@
-// Steadwell v410 — 2026-10-21
+// Steadwell v411 — 2026-10-21
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30271,7 +30271,7 @@ function LPFooter() {
   const cols = [
     { h:"Features", items: LP_FEATURE_PAGES.slice(0, half).map(p => ({h:p.href,l:p.label})) },
     { h:"More features", items: LP_FEATURE_PAGES.slice(half).map(p => ({h:p.href,l:p.label})) },
-    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},...liveGuides().map(g=>({h:g.path,l:g.kind==="state"?`${g.stateName} Buyer Guide`:`${g.countyName} County Guide`})),{h:"/blog",l:"Blog"},{h:"/for-real-estate-agents",l:"For Real Estate Agents"},{h:"/affiliates",l:"Affiliates"}] },
+    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-real-estate-agents",l:"For Real Estate Agents"},{h:"/affiliates",l:"Affiliates"}] },
     { h:"Company", items:[{h:"mailto:hello@trysteadwell.app",l:"Contact"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"/ada",l:"Accessibility"}] },
   ];
   return (
