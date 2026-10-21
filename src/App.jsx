@@ -1,4 +1,4 @@
-// Steadwell v406 — 2026-10-21
+// Steadwell v407 — 2026-10-21
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -9265,6 +9265,8 @@ const WX_CATS = [
 // severe:  only for a hard freeze, a warning, or a forecast low of 28°F or below.
 // ins:     insurance readiness, only for National Weather Service alerts (not forecasts): "photos" when the home is not
 //          fully claim-ready, "policy" when the policy number or claims phone is missing, "log" after a warning.
+// lead:    days before the last day to be ready that the task is due (default 1 = the last day; 2 or 3 = earlier, for things that may
+//          need a technician or a trip, like testing the generator or checking the heat). Never earlier than today.
 // Fast-moving warnings (tornado, severe thunderstorm, flash flood, extreme wind) give no time to prep, so they only add the checks.
 // The same rules live in the weather-check function (emails and automatic tasks): keep the two in step.
 const WX_RULES = {
@@ -9272,7 +9274,7 @@ const WX_RULES = {
     before: [
       { t: "Disconnect hoses and cover outdoor faucets", p: "High", c: "Plumbing" },
       { t: "Shut off and drain the irrigation system", p: "High", c: "Landscaping", needs: "irrigation" },
-      { t: "Check that the heat works before the freeze", p: "Medium", c: "HVAC", needs: "hvac" },
+      { t: "Check that the heat works before the freeze", p: "Medium", c: "HVAC", needs: "hvac", lead: 3 },
       { t: "Open cabinet doors under sinks on exterior walls", p: "Medium", c: "Plumbing", severe: true },
       { t: "Keep the pool pump running overnight", p: "Medium", c: "Other", needs: "pool" },
     ],
@@ -9282,11 +9284,11 @@ const WX_RULES = {
   },
   winter: {
     before: [
-      { t: "Test the generator and check fuel", p: "High", c: "Electrical", needs: "generator" },
-      { t: "Disconnect hoses and cover outdoor faucets", p: "High", c: "Plumbing" },
-      { t: "Clear gutters and downspouts so melting snow can drain", p: "Medium", c: "Roofing" },
-      { t: "Make sure your policy number and claims phone are in Steadwell", p: "Medium", c: "Other", ins: "policy" },
-      { t: "Check that the heat works before the storm", p: "Medium", c: "HVAC", needs: "hvac" },
+      { t: "Test the generator and check fuel", p: "High", c: "Electrical", needs: "generator", lead: 3 },
+      { t: "Disconnect hoses and cover outdoor faucets", p: "High", c: "Plumbing", lead: 2 },
+      { t: "Clear gutters and downspouts so melting snow can drain", p: "Medium", c: "Roofing", lead: 2 },
+      { t: "Make sure your policy number and claims phone are in Steadwell", p: "Medium", c: "Other", ins: "policy", lead: 3 },
+      { t: "Check that the heat works before the storm", p: "Medium", c: "HVAC", needs: "hvac", lead: 3 },
     ],
     after: [
       { t: "Clear snow from furnace, water heater and dryer vents", p: "High", c: "HVAC" },
@@ -9297,12 +9299,12 @@ const WX_RULES = {
   },
   flood: {
     before: [
-      { t: "Test the sump pump", p: "High", c: "Plumbing", needs: "sump" },
-      { t: "Clean gutters and point downspouts away from the house", p: "High", c: "Roofing" },
-      { t: "Update your home photos in the Insurance check-in", p: "High", c: "Other", ins: "photos" },
+      { t: "Test the sump pump", p: "High", c: "Plumbing", needs: "sump", lead: 2 },
+      { t: "Clean gutters and point downspouts away from the house", p: "High", c: "Roofing", lead: 2 },
+      { t: "Update your home photos in the Insurance check-in", p: "High", c: "Other", ins: "photos", lead: 3 },
       { t: "Raise stored items off the floor in the basement, crawl space or garage", p: "Medium", c: "Other" },
-      { t: "Make sure your policy number and claims phone are in Steadwell", p: "Medium", c: "Other", ins: "policy" },
-      { t: "Clear yard drains and the storm drain by the driveway", p: "Medium", c: "Landscaping" },
+      { t: "Make sure your policy number and claims phone are in Steadwell", p: "Medium", c: "Other", ins: "policy", lead: 3 },
+      { t: "Clear yard drains and the storm drain by the driveway", p: "Medium", c: "Landscaping", lead: 2 },
       { t: "Pause the irrigation schedule", p: "Low", c: "Landscaping", needs: "irrigation" },
     ],
     after: [
@@ -9315,11 +9317,11 @@ const WX_RULES = {
   storm: {
     before: [
       { t: "Secure or bring in patio furniture, grills and planters", p: "High", c: "Landscaping" },
-      { t: "Close or install storm shutters", p: "High", c: "Structure", needs: "shutters", when: /hurricane|tropical/i },
-      { t: "Update your home photos in the Insurance check-in", p: "High", c: "Other", ins: "photos" },
-      { t: "Test the generator and check fuel", p: "High", c: "Electrical", needs: "generator" },
-      { t: "Make sure your policy number and claims phone are in Steadwell", p: "Medium", c: "Other", ins: "policy" },
-      { t: "Clean gutters and downspouts", p: "Medium", c: "Roofing", when: /hurricane|tropical/i },
+      { t: "Close or install storm shutters", p: "High", c: "Structure", needs: "shutters", when: /hurricane|tropical/i, lead: 2 },
+      { t: "Update your home photos in the Insurance check-in", p: "High", c: "Other", ins: "photos", lead: 3 },
+      { t: "Test the generator and check fuel", p: "High", c: "Electrical", needs: "generator", lead: 3 },
+      { t: "Make sure your policy number and claims phone are in Steadwell", p: "Medium", c: "Other", ins: "policy", lead: 3 },
+      { t: "Clean gutters and downspouts", p: "Medium", c: "Roofing", when: /hurricane|tropical/i, lead: 2 },
     ],
     after: [
       { t: "Inspect the roof, gutters and siding for storm damage", p: "High", c: "Roofing" },
@@ -9331,9 +9333,9 @@ const WX_RULES = {
   },
   heat: {
     before: [
-      { t: "Replace the AC filter", p: "High", c: "HVAC", needs: "hvac" },
-      { t: "Clear plants and debris from around the outdoor AC unit", p: "Medium", c: "HVAC", needs: "hvac" },
-      { t: "Flush the AC condensate drain line", p: "Medium", c: "HVAC", needs: "hvac" },
+      { t: "Replace the AC filter", p: "High", c: "HVAC", needs: "hvac", lead: 3 },
+      { t: "Clear plants and debris from around the outdoor AC unit", p: "Medium", c: "HVAC", needs: "hvac", lead: 3 },
+      { t: "Flush the AC condensate drain line", p: "Medium", c: "HVAC", needs: "hvac", lead: 3 },
       { t: "Set irrigation to run before sunrise", p: "Low", c: "Landscaping", needs: "irrigation" },
     ],
     after: [],
@@ -9349,7 +9351,8 @@ const WX_NEEDS = {
 };
 const WX_SHORT_FUSE = /tornado warning|severe thunderstorm warning|flash flood warning|extreme wind warning/i;
 
-// The tasks for one weather event. beforeDue/afterDue null = skip that phase.
+const wxShiftISO = (iso, back) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - back); return localISO(d); };
+// The tasks for one weather event. beforeDue = the last day to be ready; afterDue = the day for the checks. null = skip that phase.
 function wxPlan({ cat, text = "", severe = false, beforeDue = null, afterDue = null, assets = [], ins = null }) {
   const r = WX_RULES[cat];
   if (!r) return [];
@@ -9360,7 +9363,9 @@ function wxPlan({ cat, text = "", severe = false, beforeDue = null, afterDue = n
     .map(x => {
       let asset = null;
       if (x.needs) { asset = live.find(WX_NEEDS[x.needs]) || null; if (!asset) return null; }
-      return { title: x.t, priority: x.p, category: x.c, due_date: due, asset_id: asset ? asset.id : null, phase };
+      let when = due;
+      if (phase === "before" && (x.lead || 1) > 1 && /^\d{4}-\d{2}-\d{2}$/.test(due)) { const e = wxShiftISO(due, x.lead - 1), t = localISO(); when = e > t ? e : t; }
+      return { title: x.t, priority: x.p, category: x.c, due_date: when, asset_id: asset ? asset.id : null, phase };
     })
     .filter(Boolean);
   const before = beforeDue ? pick(r.before, beforeDue, "before").slice(0, 5) : [];
@@ -9381,17 +9386,17 @@ function wxAlertPlan(alert, assets, ins = null) {
     afterDue: alert.level === "warning" && ends ? atLeastToday(ends) : null,
   });
 }
-// A forecast heads-up: prep is due the day before (the same day for an overnight low). No checks: it may not happen.
+// A forecast heads-up: prep is done by the day before (the same day for an overnight low); earlier items follow their lead.
+// No checks for after: it may not happen.
 function wxSignalPlan(signal, assets) {
   const today = localISO();
-  let due = today;
+  let latest = today;
   if (signal.date) {
-    const d = new Date(signal.date + "T12:00:00");
-    if (!/night/i.test(signal.when || "")) d.setDate(d.getDate() - 1);
-    const s = localISO(d);
-    due = s > today ? s : today;
+    const night = signal.night != null ? !!signal.night : /night/i.test(signal.when || "");
+    const d = night ? signal.date : wxShiftISO(signal.date, 1);
+    latest = d > today ? d : today;
   }
-  return wxPlan({ cat: signal.cat, text: signal.detail || "", severe: !!signal.severe, beforeDue: due, assets });
+  return wxPlan({ cat: signal.cat, text: (signal.match || "") + " " + (signal.detail || ""), severe: !!signal.severe, beforeDue: latest, assets });
 }
 async function wxInsertPlan(plan, { tasks, userId, propertyId, note }) {
   const open = new Set((tasks || []).filter(t => t.status !== "Completed").map(t => String(t.title).toLowerCase()));
@@ -9454,7 +9459,15 @@ const wxOpenInsurance = (checkin = false, goToHome = null) => {
 };
 // Drop what is already open on the list, so a second alert never offers the same task again.
 const wxFresh = (plan, tasks) => { const open = new Set((tasks || []).filter(t => t.status !== "Completed").map(t => String(t.title).toLowerCase())); return plan.filter(x => !open.has(x.title.toLowerCase())); };
-const wxPlanLine = (x) => x.title + (x.phase === "after" ? " (after it passes)" : "");
+const wxDueText = (iso) => {
+  if (!iso) return "";
+  const t = localISO();
+  if (iso <= t) return "today";
+  const tm = new Date(); tm.setDate(tm.getDate() + 1);
+  if (iso === localISO(tm)) return "tomorrow";
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+};
+const wxPlanLine = (x) => x.title + (x.phase === "after" ? " (after it passes)" : x.due_date ? " — due " + wxDueText(x.due_date) : "");
 const WX_EVENT = "sw-weather-changed";
 const WX_LEVEL_STYLE = {
   warning:  { bg: "#F7E0DA", fg: "#8C2F1B", bar: "#B0432B", label: "Warning" },
@@ -9539,7 +9552,13 @@ function WxGlyph({ kind, size = 24 }) {
     </svg>
   );
 }
+// Older copies of the weather-now function sent these (no "label"); kept so the card still reads well until it is redeployed.
 const WX_SIGNAL_TITLE = { storm: "Thunderstorms likely", flood: "Heavy rain expected", winter: "Winter weather possible", freeze: "Freezing temperatures", heat: "Very hot weather" };
+const wxSignalTitle = (s) => s.cat === "freeze" ? (s.severe ? "Hard freeze expected" : "Freeze expected")
+  : s.cat === "flood" ? "Heavy rain expected"
+  : s.cat === "storm" ? (/hurricane|tropical/i.test((s.match || "") + " " + (s.detail || "")) ? "Tropical weather possible" : "Strong wind expected")
+  : s.cat === "winter" ? "Snow or ice expected"
+  : s.cat === "heat" ? "Very hot weather expected" : "Weather ahead";
 
 // The forecast belongs to the home's address (not the person), so the saved copy is keyed by home and address.
 function useForecast(propertyId, address = "") {
@@ -9562,30 +9581,56 @@ function useForecast(propertyId, address = "") {
   return data;
 }
 
-function WeatherForecast({ propertyId, address = "", alerts = [], tasks = [], setTasks, userId, assets = [] }) {
-  const data = useForecast(propertyId, address);
+// One forecast heads-up ("Hard freeze expected Friday night, in 2 days") with the prep tasks it would add, each due when it makes sense.
+function WxSignalRow({ signal, propertyId, tasks = [], setTasks, userId, assets = [] }) {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  if (!data || !data.available || !data.now) return null;
-
-  const today = data.days?.[0];
-  const alertCats = new Set((alerts || []).map(a => a.category));
-  const signal = (data.signals || []).find(s => !alertCats.has(s.cat));
-  const sigKey = signal ? "sw_wx_fc_" + propertyId + "_" + signal.cat + "_" + localISO() : "";
+  const sigKey = "sw_wx_fc_" + propertyId + "_" + signal.cat + "_" + (signal.date || localISO());
   const sigDone = () => { try { return !!localStorage.getItem(sigKey); } catch { return false; } };
-  const sigAll = signal ? wxSignalPlan(signal, assets) : [];
-  const sigPlan = wxFresh(sigAll, tasks);
+  const all = wxSignalPlan(signal, assets);
+  const plan = wxFresh(all, tasks);
+  const title = signal.label ? wxSignalTitle(signal) : (WX_SIGNAL_TITLE[signal.cat] || "Weather ahead");
+  const when = signal.label || signal.when;
+  const done = !!msg || sigDone();
 
-  const addTips = async () => {
-    if (busy || !signal || !sigPlan.length) return;
+  const add = async () => {
+    if (busy || !plan.length) return;
     setBusy(true);
-    const { data: ins, error } = await wxInsertPlan(sigPlan, { tasks, userId, propertyId, note: "Suggested by Steadwell because of the forecast: " + (WX_SIGNAL_TITLE[signal.cat] || "weather").toLowerCase() + ", " + signal.when + "." });
+    const { data: ins, error } = await wxInsertPlan(plan, { tasks, userId, propertyId, note: "Suggested by Steadwell because of the forecast: " + title.toLowerCase() + " " + when + ". Forecasts change, so delete this if the weather does." });
     if (error) { setBusy(false); setMsg("Could not add the tasks. Try again."); return; }
     if (ins.length) { setTasks && setTasks(p => [...ins, ...p]); setMsg(ins.length + (ins.length === 1 ? " task added" : " tasks added") + " ✓"); }
     else setMsg("Those tasks are already on your list");
     try { localStorage.setItem(sigKey, "1"); } catch {}
     setBusy(false);
   };
+
+  return (
+    <div style={{background:"#FBF3DE",color:"#7A5710",borderRadius:"var(--r-sm)",padding:".55rem .75rem",marginTop:".8rem",fontSize:".85rem",lineHeight:1.45}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",flexWrap:"wrap"}}>
+        <span><strong>{title}</strong> {when}.{signal.detail ? " " + signal.detail + "." : ""}</span>
+        {done
+          ? <span style={{fontWeight:600}}>{msg || "Tasks added ✓"}</span>
+          : all.length > 0 && plan.length === 0 ? <span style={{fontWeight:600}}>Prep tasks are on your list</span>
+          : plan.length > 0 && <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={add}>{busy ? "Adding…" : "Add " + plan.length + " prep " + (plan.length === 1 ? "task" : "tasks")}</button>}
+      </div>
+      {!done && plan.length > 0 && (
+        <details style={{marginTop:".35rem",fontSize:".8rem"}}>
+          <summary style={{cursor:"pointer",fontWeight:600}}>See the {plan.length === 1 ? "task" : plan.length + " tasks"}</summary>
+          <ul style={{margin:".3rem 0 0",paddingLeft:"1.1rem",lineHeight:1.5}}>{plan.map(x => <li key={x.title}>{wxPlanLine(x)}</li>)}</ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function WeatherForecast({ propertyId, address = "", alerts = [], tasks = [], setTasks, userId, assets = [] }) {
+  const data = useForecast(propertyId, address);
+  if (!data || !data.available || !data.now) return null;
+
+  const today = data.days?.[0];
+  // The soonest two heads-ups, except for weather that already has a real alert (the alert has its own tasks).
+  const alertCats = new Set((alerts || []).map(a => a.category));
+  const signals = (data.signals || []).filter(s => !alertCats.has(s.cat)).slice(0, 2);
 
   const dayName = (d, i) => i === 0 ? "Today" : new Date(d.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
   const strip = (data.days || []).slice(0, 5);
@@ -9615,15 +9660,7 @@ function WeatherForecast({ propertyId, address = "", alerts = [], tasks = [], se
           ))}
         </div>
       </div>
-      {signal && (
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:".6rem",flexWrap:"wrap",background:"#FBF3DE",color:"#7A5710",borderRadius:"var(--r-sm)",padding:".55rem .75rem",marginTop:".8rem",fontSize:".85rem",lineHeight:1.45}}>
-          <span><strong>{WX_SIGNAL_TITLE[signal.cat]}:</strong> {signal.when}{(signal.cat === "freeze" || signal.cat === "heat") && signal.detail ? ", " + signal.detail.charAt(0).toLowerCase() + signal.detail.slice(1) : ""}.</span>
-          {msg || sigDone()
-            ? <span style={{fontWeight:600}}>{msg || "Tasks added ✓"}</span>
-            : sigAll.length > 0 && sigPlan.length === 0 ? <span style={{fontWeight:600}}>Prep tasks are on your list</span>
-            : sigPlan.length > 0 && <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={addTips} title={sigPlan.map(wxPlanLine).join("\n")}>{busy ? "Adding…" : "Add " + sigPlan.length + " prep " + (sigPlan.length === 1 ? "task" : "tasks")}</button>}
-        </div>
-      )}
+      {signals.map(sg => <WxSignalRow key={sg.cat + (sg.date || "")} signal={sg} propertyId={propertyId} tasks={tasks} setTasks={setTasks} userId={userId} assets={assets} />)}
     </div>
   );
 }
@@ -9657,6 +9694,8 @@ function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast,
   // Only offered once the database has the column (steadwell-weather-tasks.sql) and the home has a settings row.
   const hasAutoCol = !!settings && Object.prototype.hasOwnProperty.call(settings, "auto_tasks");
   const autoTasks = !!settings?.auto_tasks;
+  // The forecast part of automatic tasks needs steadwell-weather-forecast.sql; say nothing about it until the database has it.
+  const hasFcCol = !!settings && Object.prototype.hasOwnProperty.call(settings, "forecast_handled");
   // Nothing to show or choose for a visitor on a non-U.S. home, or a guest when alerts are off.
   if (!us && !enabled && !canManage) return null;
   if (isGuest && !canManage && !enabled && alerts.length === 0) return null;
@@ -9754,7 +9793,7 @@ function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast,
                 </label>
               ))}
               <div style={{fontSize:".78rem",fontWeight:700,color:"#6E665D",margin:".6rem 0 .2rem"}}>How early</div>
-              {[["warning", "Warnings only (it is happening or about to)"], ["watch", "Watches, advisories and warnings"]].map(([v, label]) => (
+              {[["warning", "Warnings only (it is happening or about to)"], ["watch", "Early heads-ups too (forecast, watches and advisories)"]].map(([v, label]) => (
                 <label key={v} className="wx-opt" style={{display:"flex",alignItems:"center",gap:".7rem",padding:".4rem 0",fontSize:".88rem",cursor:"pointer",minHeight:40}}>
                   <input type="radio" name="wx-level" style={{width:20,height:20,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={level === v} disabled={saving} onChange={() => saveSettings({ level: v })} />
                   {label}
@@ -9765,6 +9804,13 @@ function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast,
                   <input type="checkbox" style={{width:20,height:20,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={autoTasks} disabled={saving} onChange={e => saveSettings({ auto_tasks: e.target.checked })} />
                   Add the home tasks to my list automatically
                 </label>
+              )}
+              {hasAutoCol && hasFcCol && autoTasks && (
+                <div style={{fontSize:".76rem",color:"#8A8178",lineHeight:1.55,margin:"0 0 .2rem 1.7rem"}}>
+                  {level === "watch"
+                    ? "Tasks are added days ahead when the forecast shows a hard freeze, heavy rain, strong wind, snow or ice, or extreme heat."
+                    : "Choose early heads-ups above to also get tasks days ahead, from the forecast."}
+                </div>
               )}
               <div style={{fontSize:".76rem",color:"#8A8178",lineHeight:1.55,marginTop:".5rem"}}>At most one weather email a day. Tasks only cover equipment this home has on record.</div>
             </div>
