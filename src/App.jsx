@@ -1,4 +1,4 @@
-// Steadwell v407 — 2026-10-21
+// Steadwell v409 — 2026-10-21
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4784,6 +4784,12 @@ function seoClip(str, max) {
 function seoTitle(title) {
   const siteName = "Steadwell";
   if (!title) return `${siteName} — Home Maintenance Tracking & Asset Management`;
+  // A title that already names the brand ("Steadwell: ...", "... How Steadwell Compares") does not get it added a second time.
+  if (/steadwell/i.test(title)) {
+    if (title.length <= SEO_TITLE_MAX) return title;
+    const head = title.split(/:\s|\s[—–]\s|\s\(/)[0].trim();
+    return head.length >= 15 && head.length <= SEO_TITLE_MAX ? head : seoClip(title, SEO_TITLE_MAX);
+  }
   const full = `${title} | ${siteName}`;
   if (full.length <= SEO_TITLE_MAX) return full;
   // Too long: prefer the part before a subtitle ("Title: subtitle", "Title (note)") over a mid-word cut.
@@ -4903,7 +4909,7 @@ function LandingPage({ onSignIn, onSignUp }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useSEO({
-    title: "Free Home Maintenance, Warranty & Utility Tracker",
+    title: "Steadwell: Free Home Maintenance, Warranty & Utility Tracker",
     description: "Track warranties, maintenance, utility bills, insurance and home value in one place, plus AI condition assessments from photos. Free to start.",
     canonical: "https://www.trysteadwell.app/",
     jsonLd: {
@@ -4914,7 +4920,7 @@ function LandingPage({ onSignIn, onSignUp }) {
           "name": "Steadwell",
           "url": "https://www.trysteadwell.app/",
           "description": "Home management app that tracks maintenance, warranties, recalls, utility bills, expenses, insurance and documents, with AI scanning and condition assessments.",
-          "applicationCategory": "HomeAndGarden",
+          "applicationCategory": "LifestyleApplication",
           "operatingSystem": "Web",
           "featureList": ["Warranty tracking and expiry alerts","Federal safety recall alerts","Maintenance schedules and reminders","Utility and bill tracking with spike alerts","AI condition assessment from photos","AI before-and-after project review","AI receipt, nameplate and bill scanning","Ask Steadwell AI assistant","5-year cost forecast","Document vault","Calendar sync","Contractor rolodex","Insurance and claims tracking"],
           "offers": [
@@ -5569,7 +5575,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a href="/pricing">Pricing</a>
               <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
-              <a href="/for-agents">For Agents</a>
+              <a href="/for-real-estate-agents">For Real Estate Agents</a>
               <a href="/affiliates">Affiliates</a>
             </nav>
             <nav className="foot-col" aria-label="Company">
@@ -26576,7 +26582,8 @@ export default function App() {
   if (_path === "/home-insurance-tracker" || _path === "/home-insurance-tracker/") return <InsuranceTrackerPage />;
   if (_path === "/home-expense-tracker" || _path === "/home-expense-tracker/") return <HomeExpenseTrackerPage />;
   if (_path === "/home-projects" || _path === "/home-projects/") return <HomeProjectsPage />;
-  if (_path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
+  // The agent partner page. "/for-agents" read like a page for AI agents, so its address is now /for-real-estate-agents; the old one keeps working.
+  if (_path === "/for-real-estate-agents" || _path === "/for-real-estate-agents/" || _path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
   if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
   if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
   if (_path === "/agent" || _path === "/agent/" || _path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
@@ -29022,7 +29029,7 @@ function AgentPortalPage() {
               <input type="email" placeholder="you@brokerage.com" value={signInEmail} onChange={e=>setSignInEmail(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && sendCode()} style={S.input}/>
               <button onClick={sendCode} disabled={sendingCode} style={S.btn}>{sendingCode ? "Sending…" : "Send code"}</button>
-              <div style={{fontSize:13, color:"#7A7370", marginTop:18}}>Not an approved agent yet? <a href="/for-agents" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Apply here →</a></div>
+              <div style={{fontSize:13, color:"#7A7370", marginTop:18}}>Not an approved agent yet? <a href="/for-real-estate-agents" style={{color:"#C16140",fontWeight:600,textDecoration:"none"}}>Apply here →</a></div>
             </>
           )}
           <div style={{fontSize:12, color:"#A8A09A", marginTop:24, paddingTop:16, borderTop:"1px solid #E6DECF"}}>Trouble signing in? Email <a href="mailto:hello@trysteadwell.app" style={{color:"#C16140"}}>hello@trysteadwell.app</a></div>
@@ -29721,7 +29728,7 @@ function ForAgentsPage() {
   useSEO({
     title:"For Real Estate Agents — A Closing Gift Clients Remember",
     description:"Give every client a closing gift that keeps your name in their home all year. Free to you, valuable to them. Apply to the Steadwell agent partner program.",
-    canonical:"https://www.trysteadwell.app/for-agents",
+    canonical:"https://www.trysteadwell.app/for-real-estate-agents",
     noindex:true,
   });
   const [form, setForm] = useState({ name:"", email:"", brokerage:"", market:"", volume:"", note:"" });
@@ -29753,7 +29760,7 @@ function ForAgentsPage() {
           type:    "agent_application",
           subject: `New agent application — ${form.name.trim()}`,
           message: `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nBrokerage: ${form.brokerage.trim()||"—"}\nMarket: ${form.market.trim()||"—"}\nClosings/yr: ${form.volume.trim()||"—"}\nNote: ${form.note.trim()||"—"}\n\nReview at: https://www.trysteadwell.app/admin`,
-          page:    "/for-agents",
+          page:    "/for-real-estate-agents",
         }),
       }).catch(() => {}); // best-effort, don't block the success state
       setDone(true);
@@ -29767,7 +29774,7 @@ function ForAgentsPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
-      <LPHero eyebrow="Steadwell for Agents" h1="The closing gift your" h1em="clients won't forget." sub="Give every client three months of Steadwell Plus — a housewarming gift that keeps your name in their home all year. Free to you. Genuinely useful to them." badge="Partner program · Now accepting local agents"/>
+      <LPHero eyebrow="Steadwell for Real Estate Agents" h1="The closing gift your" h1em="clients won't forget." sub="Give every client three months of Steadwell Plus — a housewarming gift that keeps your name in their home all year. Free to you. Genuinely useful to them." badge="Partner program · Now accepting local agents"/>
       <main id="main" tabIndex={-1}>
         <LPSection>
           <LPSectionHead h2="The relationship shouldn't end at the closing table" sub="Most agents lose touch the moment the deal closes. This keeps you in the home — and top of mind for referrals."/>
@@ -29983,7 +29990,7 @@ function AffiliatesPage() {
               {title:"Personal finance writers",desc:"Home costs are one of the biggest financial blind spots. Steadwell gives your audience a concrete tool."},
               {title:"YouTube creators",desc:"Home improvement and how-to channels convert well. Show the product in action."},
               {title:"First-time buyer educators",desc:"New homeowners need everything Steadwell offers. High intent, high conversion."},
-              {title:"Mortgage brokers",desc:"You're already talking to buyers. A Steadwell link in your closing packet converts passively."},
+              {title:"Mortgage brokers",desc:"You're already talking to buyers. A Steadwell link in your closing packet reaches buyers right when they need it."},
             ].map((c,i)=>(
               <LPCard key={i}>
                 <div style={{fontWeight:700,fontSize:".9rem",color:"#234A3D",marginBottom:6,textAlign:"left"}}>{c.title}</div>
@@ -29995,7 +30002,7 @@ function AffiliatesPage() {
 
         {/* How it works */}
         <LPSection>
-          <LPSectionHead h2="How it works" sub="Apply once. Earn passively."/>
+          <LPSectionHead h2="How it works" sub="Apply once, then share your link."/>
           <LPGrid gap={14}>
             {[
               {num:"01",title:"Apply below",text:"Fill out the short application. We review within 3 business days and email you when you're approved."},
@@ -30263,7 +30270,7 @@ function LPFooter() {
   const cols = [
     { h:"Features", items: LP_FEATURE_PAGES.slice(0, half).map(p => ({h:p.href,l:p.label})) },
     { h:"More features", items: LP_FEATURE_PAGES.slice(half).map(p => ({h:p.href,l:p.label})) },
-    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-agents",l:"For Agents"},{h:"/affiliates",l:"Affiliates"}] },
+    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-real-estate-agents",l:"For Real Estate Agents"},{h:"/affiliates",l:"Affiliates"}] },
     { h:"Company", items:[{h:"mailto:hello@trysteadwell.app",l:"Contact"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"/ada",l:"Accessibility"}] },
   ];
   return (
@@ -30400,15 +30407,16 @@ const LP_NAV_DEFAULT = [
 
 // schema.org graph for a feature page. FAQ entries are the same strings the page
 // renders, so structured data always matches the visible content.
-function lpJsonLd({ name, path, description, features = [], faq = [], offers = [] }) {
+// appName: the app's own name when it differs from the page name (the pricing page is a page about Steadwell, not an app called "Pricing").
+function lpJsonLd({ name, appName, path, description, features = [], faq = [], offers = [] }) {
   const url = `https://www.trysteadwell.app${path}`;
   const graph = [
     {
       "@type": "SoftwareApplication",
-      "name": name,
+      "name": appName || name,
       "url": url,
       "description": description,
-      "applicationCategory": "HomeAndGarden",
+      "applicationCategory": "LifestyleApplication",
       "operatingSystem": "Web",
       "featureList": features,
       "offers": offers.map(o => ({ "@type": "Offer", "name": o.name, "price": o.price, "priceCurrency": "USD" })),
@@ -30494,7 +30502,7 @@ function LPPlanTiles({ plans = [], maxWidth }) {
             <div style={{fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8,minHeight:12,visibility:p.popular?"visible":"hidden"}}>Most popular</div>
             <h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:"0 0 4px"}}>{p.plan}</h3>
             <div style={{fontSize:"1.6rem",fontWeight:700,marginBottom:2,color:"#2A2723"}}>{p.price}<span style={{fontSize:".78rem",fontWeight:500,color:"#7A7370"}}>{p.period}</span></div>
-            <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:10,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "placeholder"}</div>
+            <div aria-hidden={p.annual ? undefined : "true"} style={{fontSize:".78rem",color:"#7A7370",marginBottom:10,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "\u00A0"}</div>
             {p.desc && <div style={{fontSize:".84rem",color:"#5E574F",lineHeight:1.5,marginBottom:14,paddingBottom:14,borderBottom:"1px solid #E6DECF"}}>{p.desc}</div>}
             <div style={{flex:1,marginBottom:18}}>
               {(p.features||[]).map((f,j)=>(
@@ -30928,7 +30936,7 @@ function HomeForecastPage() {
           <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"20pt",fontWeight:600,color:"#234A3D"}}>Steadwell</div>
           <div style={{fontSize:"10pt",color:"#555"}}>Home replacement forecast, prepared {new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})}</div>
         </div>
-        <h1 style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:500,fontSize:"20pt",margin:"0 0 4px",color:"#111"}}>What your home may need in the next 5 years</h1>
+        <h2 style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:500,fontSize:"20pt",margin:"0 0 4px",color:"#111"}}>What your home may need in the next 5 years</h2>
         {!custom && <p style={{fontSize:"10pt",color:"#555",margin:"0 0 10px"}}>This is an example home. Enter your own at trysteadwell.app/home-replacement-forecast.</p>}
         <div style={{fontSize:"10pt",color:"#555",margin:"12px 0 2px"}}>Estimated replacements through {lastYear}</div>
         <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"32pt",fontWeight:600,color:"#C16140",lineHeight:1.1}}>{hfMoney(result.total)}</div>
@@ -31518,7 +31526,7 @@ function PricingPage() {
     description,
     canonical:`https://www.trysteadwell.app${path}`,
     jsonLd: lpJsonLd({
-      name:"Steadwell Pricing",
+      name:"Pricing", appName:"Steadwell",
       path, description,
       features:["Free plan with no time limit","Plus plan with AI scanning and condition assessments","Pro plan with up to three properties and shared access"],
       faq: PRICING_FAQ,
@@ -32456,7 +32464,7 @@ function WarrantyTrackerPage() {
                 <div style={{fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8,minHeight:12,visibility:p.popular?"visible":"hidden"}}>Most popular</div>
                 <div style={{fontWeight:700,color:"#234A3D",marginBottom:4}}>{p.plan}</div>
                 <div style={{fontSize:"1.4rem",fontWeight:700,marginBottom:2}}>{p.price}<span style={{fontSize:".75rem",fontWeight:500}}>{p.period}</span></div>
-                <div style={{fontSize:".78rem",color:"#7A7370",marginBottom:6,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "placeholder"}</div>
+                <div aria-hidden={p.annual ? undefined : "true"} style={{fontSize:".78rem",color:"#7A7370",marginBottom:6,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "\u00A0"}</div>
                 <div style={{fontSize:".82rem",color:"#7A7370",flex:1,marginBottom:16}}>{p.desc}</div>
                 <a href="/" style={{display:"block",textAlign:"center",background:p.popular?"#C16140":"transparent",color:p.popular?"#fff":"#234A3D",border:p.popular?"none":"1.5px solid #234A3D",textDecoration:"none",padding:".6rem 1rem",borderRadius:9,fontWeight:700,fontSize:".85rem"}}>{p.cta}</a>
               </LPCard>
@@ -32493,7 +32501,7 @@ function AIScanPage() {
   const seoPath = "/ai-scan";
   const seoDesc = "Scan receipts, appliance nameplates, utility bills and insurance documents with your camera. Steadwell AI fills in the details so you don't have to type.";
   useSEO({
-    title:"AI Receipt & Nameplate Scanner for Home Management",
+    title:"AI Nameplate Scanner for Appliances & Receipts",
     description:seoDesc,
     canonical:`https://www.trysteadwell.app${seoPath}`,
     jsonLd: lpJsonLd({
@@ -33615,7 +33623,8 @@ async function guideFnErrorCode(error) {
   try { const body = await error.context.json(); return body && body.error; } catch { return null; }
 }
 
-function guideJsonLd({ name, path, description, trail, faq = [], list }) {
+// product: { name, price, image } adds Product and Offer markup for a paid PDF guide (no ratings: there are no reviews to report).
+function guideJsonLd({ name, path, description, trail, faq = [], list, product }) {
   const url = `https://www.trysteadwell.app${path}`;
   const graph = [
     {
@@ -33631,6 +33640,18 @@ function guideJsonLd({ name, path, description, trail, faq = [], list }) {
       "itemListElement": trail.map((t, i) => ({ "@type": "ListItem", "position": i + 1, "name": t.name, "item": `https://www.trysteadwell.app${t.path}` })),
     },
   ];
+  if (product) {
+    graph.push({
+      "@type": "Product",
+      "name": product.name,
+      "description": description,
+      "url": url,
+      "category": "First-time buyer guide (PDF)",
+      ...(product.image ? { "image": [product.image] } : {}),
+      "brand": { "@type": "Brand", "name": "Steadwell" },
+      "offers": { "@type": "Offer", "url": url, "price": Number(product.price).toFixed(2), "priceCurrency": "USD", "availability": "https://schema.org/InStock", "seller": { "@type": "Organization", "name": "Steadwell" } },
+    });
+  }
   if (list) {
     graph.push({
       "@type": "ItemList",
@@ -33955,7 +33976,8 @@ function GuideDetailPage({ guide: g }) {
     title: g.seo.title,
     description: g.seo.description,
     canonical: `${SEO_SITE_URL}${g.path}`,
-    jsonLd: guideJsonLd({ name: g.title, path: g.path, description: g.seo.description, trail, faq }),
+    jsonLd: guideJsonLd({ name: g.title, path: g.path, description: g.seo.description, trail, faq,
+      product: { name: g.title, price, image: g.images?.cover?.src ? (/^https?:/.test(g.images.cover.src) ? g.images.cover.src : SEO_SITE_URL + g.images.cover.src) : "" } }),
   });
 
   // The mobile price bar shows only while the hero, the preview form and the buy cards are all off screen.
@@ -34532,6 +34554,11 @@ const BLOG_DEFAULT_IMAGE = SEO_SITE_URL + "/og-image.png";
 // Posts that were merged into another post. They stay in Sanity but are hidden from the blog,
 // related-guide lists and the pre-render; vercel.json 301-redirects each to its replacement.
 const BLOG_HIDDEN_SLUGS = new Set(["first-30-days-new-home-checklist"]);
+
+// Search-result titles for posts whose page title (and H1) should stay as written. A title that already says "Steadwell" gets no brand suffix.
+const BLOG_SEO_TITLES = {
+  "steadwell-vs-homezada": "HomeZada Alternatives: How Steadwell Compares",
+};
 
 // Posts rewritten in src/blog-overrides.js replace the Sanity text for that slug.
 function applyBlogOverrides(posts) {
@@ -35233,7 +35260,7 @@ function BlogPostView({ post, posts, url, slug }) {
   const faqs = post ? blogFaqFromHtml(post.content) : [];
 
   useSEO(post ? {
-    title: post.title,
+    title: BLOG_SEO_TITLES[post.slug] || post.title,
     description: post.description,
     canonical: url,
     image,
@@ -36842,7 +36869,8 @@ export const PRERENDER_PAGES = {
   ...Object.fromEntries(guidePagePaths().filter((p) => p !== "/guides").map((p) => [p, GuideRoute])),
   "/affiliates": AffiliatesPage,
   "/affiliate-agreement": AffiliateAgreementPage,
-  "/for-agents": ForAgentsPage,
+  "/for-real-estate-agents": ForAgentsPage,
+  "/for-agents": ForAgentsPage, // old address, kept until it redirects at the host (its canonical points to the new one)
 };
 export {
   CSS as APP_CSS, LandingPage, BlogIndex, BlogPost, NotFoundPage,
