@@ -1,4 +1,4 @@
-// Steadwell v414 — 2026-10-21
+// Steadwell v415 — 2026-10-21
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2886,7 +2886,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .auth-logo-icon{width:44px;height:44px;background:var(--pine);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
 .auth-logo-text{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:var(--dark)}
 .auth-logo-sub{font-size:.63rem;color:#9E9690;letter-spacing:1.5px;text-transform:uppercase}
-.auth-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;margin-bottom:.3rem;color:var(--dark)}
+.auth-title{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;line-height:1.2;margin:0 0 .3rem;color:var(--dark)}
 .auth-sub{font-size:.84rem;color:#9E9690;margin-bottom:1.7rem}
 .auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:1rem}
 .auth-field label{font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A827A}
@@ -6390,6 +6390,8 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Short title for the sign-in screens (the page shell's default title is over 70 characters). They stay noindexed.
+  useSEO({ title: mode === "signup" ? "Create your account" : mode === "login" ? "Log in" : "Reset your password", canonical: `${SEO_SITE_URL}/${mode === "signup" ? "signup" : "login"}`, noindex: true });
   const [success, setSuccess] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -6486,7 +6488,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
         </>}
 
         {mode === "login" && <>
-          <div className="auth-title">Welcome back</div>
+          <h1 className="auth-title">Welcome back</h1>
           <div className="auth-sub">Sign in to manage your home</div>
           {inviteEmail && (mode === "login" || mode === "signup") && (
             <div className="auth-invite" role="note">
@@ -6513,7 +6515,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
         </>}
 
         {mode === "signup" && <>
-          <div className="auth-title">Create account</div>
+          <h1 className="auth-title">Create account</h1>
           <div className="auth-sub">Start managing your home today</div>
           {inviteEmail && (mode === "login" || mode === "signup") && (
             <div className="auth-invite" role="note">
@@ -6561,7 +6563,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
         </>}
 
         {mode === "reset" && <>
-          <div className="auth-title">Reset password</div>
+          <h1 className="auth-title">Reset password</h1>
           <div className="auth-sub">We'll send you a reset link</div>
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
@@ -6578,7 +6580,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
         </>}
 
         {mode === "update" && <>
-          <div className="auth-title">Set new password</div>
+          <h1 className="auth-title">Set new password</h1>
           <div className="auth-sub">Choose a strong password for your account</div>
           {error && <div className="auth-error">{error}</div>}
           {success && <div className="auth-success">{success}</div>}
@@ -34224,7 +34226,7 @@ function GuideDetailPage({ guide: g }) {
             <p style={{fontSize:".98rem",color:"rgba(244,237,223,.85)",margin:"14px 0 0"}}>Checkout opens soon. The free preview is available now.</p>
           </div>
           <div className="gd-art">
-            <img className="gd-back" src={im.pages[0].src} width={im.pages[0].w} height={im.pages[0].h} alt="" aria-hidden="true"/>
+            <img className="gd-back" src={im.pages[0].src} width={im.pages[0].w} height={im.pages[0].h} alt={im.pages[0].alt || im.cover.alt} aria-hidden="true"/>
             <img className="gd-front" src={im.cover.src} width={im.cover.w} height={im.cover.h} alt={im.cover.alt}/>
           </div>
         </div>
@@ -34333,7 +34335,7 @@ function GuideDetailPage({ guide: g }) {
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16}}>
                 {(stateG ? [stateG] : counties).map((o) => (
                   <a key={o.id} className="gd-link gd-gcard" href={o.path} style={{display:"flex",gap:16,alignItems:"center",boxSizing:"border-box",background:"#fff",border:"1px solid "+GD_LINE,borderRadius:14,padding:"18px",textDecoration:"none",color:GD_INK}}>
-                    <img src={o.images.cover.src} width={o.images.cover.w} height={o.images.cover.h} alt="" loading="lazy" style={{width:84,height:"auto",borderRadius:4,flexShrink:0,boxShadow:"0 6px 16px rgba(35,74,61,.2)"}}/>
+                    <img src={o.images.cover.src} width={o.images.cover.w} height={o.images.cover.h} alt={o.images.cover.alt} loading="lazy" style={{width:84,height:"auto",borderRadius:4,flexShrink:0,boxShadow:"0 6px 16px rgba(35,74,61,.2)"}}/>
                     <span>
                       <span style={{display:"block",fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.2rem",color:"#234A3D",marginBottom:6,lineHeight:1.25}}>{o.title}</span>
                       <span style={{display:"block",fontSize:"1rem",color:"#3A352F",lineHeight:1.45,marginBottom:8}}>{o.tagline}</span>
@@ -34429,7 +34431,7 @@ function GuidesPage() {
           </div>
           {front && front.images && (
             <div className="gd-art">
-              <img className="gd-back" src={front.images.pages[0].src} width={front.images.pages[0].w} height={front.images.pages[0].h} alt="" aria-hidden="true"/>
+              <img className="gd-back" src={front.images.pages[0].src} width={front.images.pages[0].w} height={front.images.pages[0].h} alt={front.images.pages[0].alt || front.images.cover.alt} aria-hidden="true"/>
               <img className="gd-front" src={front.images.cover.src} width={front.images.cover.w} height={front.images.cover.h} alt={front.images.cover.alt}/>
             </div>
           )}
