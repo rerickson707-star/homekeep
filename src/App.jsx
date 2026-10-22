@@ -1,4 +1,4 @@
-// Steadwell v415 — 2026-10-21
+// Steadwell v416 — 2026-10-22
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -34905,13 +34905,15 @@ function useBlogPosts() {
   const prerendered = typeof globalThis !== "undefined" ? globalThis.__SW_BLOG_POSTS__ : null;
   const [posts, setPosts] = useState(prerendered || BLOG_POSTS_FALLBACK);
   const [loading, setLoading] = useState(!prerendered);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     fetchSanityPosts().then(sanityPosts => {
       if (sanityPosts && sanityPosts.length > 0) setPosts(sanityPosts);
+      else setFailed(true);
       setLoading(false);
     });
   }, []);
-  return { posts, loading };
+  return { posts, loading, failed };
 }
 
 // ─── INTERNAL LINKING (blog <-> feature pages) ───────────────────────────────
@@ -35374,13 +35376,15 @@ function BlogIndex() {
 }
 
 function BlogPost({ slug }) {
-  const { posts, loading } = useBlogPosts();
+  const { posts, loading, failed } = useBlogPosts();
   const cleanSlug = String(slug || "").replace(/\/+$/, "");
   const post = loading ? null : posts.find(p => p.slug === cleanSlug);
   const url = `${SEO_SITE_URL}/blog/${cleanSlug}`;
 
   // Unknown article: a noindexed not-found page, not a blank "post not found" shell.
-  if (!loading && !post) return <NotFoundPage what="article"/>;
+  // If the post list could not be loaded (Sanity unreachable or slow), the article is not known to be missing,
+  // so never show the noindexed not-found page: that would tell search engines to drop a real article.
+  if (!loading && !post && !failed) return <NotFoundPage what="article"/>;
   return <BlogPostView post={post} posts={posts} url={url} slug={cleanSlug}/>;
 }
 
