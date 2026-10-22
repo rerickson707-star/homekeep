@@ -1,4 +1,4 @@
-// Steadwell v413 — 2026-10-21
+// Steadwell v414 — 2026-10-21
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -34856,6 +34856,19 @@ const BLOG_ADDITIONS = {
       ["Can I tell the age of an air conditioner or furnace from any serial number?", `<p>Not with one rule. Formats vary by brand and model line, and some manufacturers do not publish theirs. HVAC.com notes two common patterns, a four-digit year or a two-digit week followed by a two-digit year, but a decoded date is still an estimate. Confirm it with the manufacturer, your installation paperwork or an HVAC technician.</p>`],
     ],
   },
+  "how-old-is-my-water-heater": {
+    modified: "2026-10-21",
+    faq: [
+      ["How do I find the age of a Rheem, Ruud or Richmond water heater?", `<p>Read the serial number on the rating plate. The first four digits are the month and the year, so a serial starting 0719 was built in July 2019. InterNACHI's dating chart lists Ruud and Richmond with the same pattern as Rheem. See <a href="https://www.rheem.com/how-to-locate-and-read-your-rheem-water-heating-serial-numbers/" target="_blank" rel="noopener noreferrer">Rheem's guide to reading its serial numbers</a>.</p>`],
+      ["How do I find the age of an A. O. Smith water heater?", `<p>On an A. O. Smith serial number, the second character is a letter for the month (A is January, B is February, and so on) and the third and fourth characters are the year. A serial starting AB22 was built in February 2022, according to <a href="https://www.nachi.org/water-heater-dating-chart.htm" target="_blank" rel="noopener noreferrer">InterNACHI's water heater dating chart</a>.</p>`],
+      ["How do I find the age of a State water heater?", `<p>On a State water heater, the first character is a letter for the month (A is January, B is February, and so on) and the next two characters are the year. A serial starting C22 was built in March 2022, according to InterNACHI's dating chart.</p>`],
+      ["How do I find the age of a Bradford White water heater?", `<p>The first two characters of a Bradford White serial number are letters: the first is the year and the second is the month. Month letters run from A (January) to M (December) and skip I. Year letters repeat every 20 years and skip some letters, so each letter fits two possible years: A is 2004 or 2024, and W is 2000 or 2020. A serial starting WC would be March 2000 or March 2020, and your home's records or the unit's condition usually show which. See <a href="https://forthepro.bradfordwhite.com/determining-the-age-of-a-water-heater/" target="_blank" rel="noopener noreferrer">Bradford White's age guide</a>.</p>`],
+      ["How do I read an American, U.S. Craftsmaster or Whirlpool water heater serial number?", `<p>InterNACHI's dating chart lists these brands with the same pattern: the first two digits are the year and the next two are the week of the year. A serial starting 2206 was built in the sixth week of 2022.</p>`],
+      ["How do I find the age of a GE or Hotpoint water heater?", `<p>InterNACHI's chart lists GE and Hotpoint as trade names that follow Rheem's pattern: the first two digits are the month and the next two are the year. Check that the result is a believable date, and confirm with the manufacturer if it is not.</p>`],
+      ["How do I read a Marathon, John Wood or GSW water heater serial number?", `<p>According to InterNACHI's chart, Marathon serial numbers start with the month and then the year. GSW brands such as John Wood do the reverse: the first four digits are the year and then the month. Treat either as an estimate and confirm with the manufacturer if the date does not look right.</p>`],
+      ["How old is my Kenmore water heater?", `<p>InterNACHI's chart lists Kenmore but gives no decoding rule for it. Look for a manufacture date printed on the rating plate, or contact the manufacturer with the model and serial number. Our guide to <a href="/blog/find-appliance-serial-number">finding an appliance serial number</a> shows where the label sits.</p>`],
+    ],
+  },
 };
 
 async function fetchSanityPosts() {
@@ -35097,10 +35110,11 @@ const BLOG_POSTS_BASE = [
 
       <h2>How to find your water heater's age</h2>
       <p>The manufacture date is encoded in the serial number on the label near the top of the tank. The format varies by brand, but here are the most common ones:</p>
-      <p><strong>Rheem / Ruud:</strong> The first two digits are the year, the next two are the week. Serial starting with "2317" = manufactured in the 17th week of 2023.</p>
-      <p><strong>A.O. Smith / American / State:</strong> The first letter represents the month (A=January, B=February, etc.) and the next two digits are the year. "C22" = March 2022.</p>
-      <p><strong>Bradford White:</strong> Uses a letter-based code for both year and month. "FG" means the unit was made in 2010.</p>
-      <p><strong>Whirlpool:</strong> The 2nd and 3rd characters are the year, the 4th and 5th are the week.</p>
+      <p><strong>Rheem / Ruud:</strong> The first four digits are the month and the year. A serial starting "0719" = July 2019.</p>
+      <p><strong>A.O. Smith:</strong> The second character is a letter for the month (A=January) and the third and fourth are the year. "AB22" = February 2022.</p>
+      <p><strong>State:</strong> The first character is a letter for the month (A=January) and the next two digits are the year. "C22" = March 2022.</p>
+      <p><strong>American / U.S. Craftsmaster:</strong> The first two digits are the year and the next two are the week. "2206" = the sixth week of 2022.</p>
+      <p><strong>Bradford White:</strong> The first letter is the year and the second is the month. The year letters repeat every 20 years, so decide which cycle fits your home. Formats change by brand and year, so treat a decoded date as an estimate.</p>
 
       <h2>When to replace vs. repair</h2>
       <p>If your water heater is under 6 years old and has a minor issue (bad thermostat, failed heating element), repair makes sense. If it's over 10 years old, replacement is almost always the right call — parts are harder to find, and a second failure is likely soon after the first. Signs to watch for: rumbling or popping sounds (sediment buildup), rust-colored water, visible corrosion around the tank base, or water pooling underneath.</p>
