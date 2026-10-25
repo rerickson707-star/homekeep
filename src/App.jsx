@@ -1,4 +1,4 @@
-// Steadwell v423 — 2026-10-25
+// Steadwell v424 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -7205,7 +7205,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
         </div>
         <div className="acct-layout">
           <div className="acct-nav" role="tablist" aria-label="Account sections">
-            {ACCT_SECTIONS.filter(sec => sec.id !== "categories" || catCtx?.available).map(sec => (
+            {ACCT_SECTIONS.filter(sec => sec.id !== "categories" || (catCtx?.available && catCtx?.canEdit)).map(sec => (
               <button key={sec.id} role="tab" aria-selected={acctTab===sec.id} className={"acct-nav-btn"+(acctTab===sec.id?" on":"")} onClick={()=>setAcctTab(sec.id)}>
                 <span className="acct-nav-ico" aria-hidden="true">{sec.ico}</span>{sec.label}
               </button>
@@ -7443,7 +7443,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
           </>)}
 
           {/* ───────────── CATEGORIES ───────────── */}
-          {acctTab==="categories" && catCtx?.available && (
+          {acctTab==="categories" && catCtx?.available && catCtx?.canEdit && (
             <CategoryManager homeName={profile ? homeShortName(profile) : ""}/>
           )}
 
@@ -27636,7 +27636,8 @@ export default function App() {
     return {
       list,
       available: !!profile && Object.prototype.hasOwnProperty.call(profile, "custom_categories"),
-      canEdit: accessLevel !== "limited",
+      // Only the home's owner and admins change the list. Everyone else just picks from it.
+      canEdit: accessLevel === "owner" || accessLevel === "admin",
       usage: (name) => tasks.filter(t => t.category === name).length + expenses.filter(e => e.category === name).length + contractors.filter(c => c.trade === name).length,
       // Returns {status:"added"|"exists"|"error", value, msg}
       add: async (raw) => {
