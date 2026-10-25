@@ -1,4 +1,4 @@
-// Steadwell v416 — 2026-10-22
+// Steadwell v417 — 2026-10-22
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -8422,6 +8422,24 @@ function sfClean(asset, d0) {
   if (/panel|breaker|load center|fuse box|subpanel/i.test(`${asset.item || ""} ${asset.category || ""}`)) d.warranty_years = null;
   return d;
 }
+// A manual link is only offered as a link when it points at something specific: a page the lookup actually found,
+// or an address that carries this model number. A folder-style address ("…/manuals/ranges") is a guess that often
+// doesn't open, so it becomes a search for the manual, which always works.
+const sfFlat = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function sfManualLink(asset, d) {
+  const url = d.om_manual_url || d.manual_url;
+  const model = sfFlat(cleanVal(asset.model) || d.model);
+  if (url) {
+    let exact = (Array.isArray(d.data_sources) ? d.data_sources : []).some(s => sfFlat(s) === sfFlat(url));
+    if (!exact && model.length >= 4) { try { const u = new URL(url); exact = sfFlat(u.pathname + u.search).includes(model); } catch { /* not a link */ } }
+    if (exact) return { url, exact: true };
+  }
+  const brand = cleanVal(asset.brand) || cleanVal(d.brand) || "";
+  const what = cleanVal(asset.model) || cleanVal(d.model) || cleanVal(asset.item) || cleanVal(d.item) || "";
+  if (!what) return null;
+  const query = [brand, what, "owner's manual"].filter(Boolean).join(" ");
+  return { url: "https://www.google.com/search?q=" + encodeURIComponent(query), exact: false, query };
+}
 function smartFillChanges(asset, d0) {
   const d = sfClean(asset, d0);
   const rows = [];
@@ -8463,10 +8481,11 @@ function smartFillChanges(asset, d0) {
     add("contractor_cost_low", "Installed cost", { contractor_cost_low: d.contractor_cost_low, contractor_cost_high: d.contractor_cost_high },
       blank ? null : sfMoney(asset.contractor_cost_low), `${sfMoney(d.contractor_cost_low)} to ${sfMoney(d.contractor_cost_high || d.contractor_cost_low)}`, blank ? "add" : "replace");
   }
-  const manual = d.om_manual_url || d.manual_url;
-  if (manual && !same(asset.document_ref, manual)) {
+  const manual = sfManualLink(asset, d);
+  if (manual && !same(asset.document_ref, manual.url)) {
     const blank = sfBlank(asset.document_ref);
-    add("document_ref", "Owner's manual link", { document_ref: manual }, blank ? null : String(asset.document_ref), manual, blank ? "add" : "replace");
+    add("document_ref", manual.exact ? "Owner's manual link" : "Owner's manual search", { document_ref: manual.url }, blank ? null : String(asset.document_ref),
+      manual.exact ? manual.url : `A web search for “${manual.query}”. The maker's exact manual page couldn't be confirmed, so this link always works.`, blank ? "add" : "replace");
   }
   if (d.support_url && !String(asset.notes || "").includes("Support:"))
     add("notes", "Manufacturer support link", { notes: [asset.notes, `Support: ${d.support_url}`].filter(Boolean).join("\n") }, null, d.support_url, "add");
@@ -9484,15 +9503,26 @@ const WX_LEVEL_STYLE = {
   advisory: { bg: "var(--cream2)", fg: "#5E574F", bar: "#BFB5A8", label: "Advisory" },
 };
 
+// Screens that stay mounted side by side (Dashboard, Assets, My Home) ask for the same rows at the same moment.
+// They share one request instead of each sending their own. A change (an event, or a save) always asks again.
+const _sharedReq = new Map();
+function sharedRequest(key, run, fresh) {
+  const hit = _sharedReq.get(key);
+  if (!fresh && hit && Date.now() - hit.t < 3000) return hit.p;
+  const p = Promise.resolve(run());   // a real promise, so sharing it never sends the request twice
+  _sharedReq.set(key, { t: Date.now(), p });
+  return p;
+}
+
 function useWeather(propertyId) {
   const [state, setState] = useState({ settings: null, alerts: [], loaded: false, unavailable: false });
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh) => {
     if (!propertyId) { setState({ settings: null, alerts: [], loaded: true, unavailable: false }); return; }
-    const [s, a] = await Promise.all([
+    const [s, a] = await sharedRequest("wx:" + propertyId, () => Promise.all([
       supabase.from("weather_settings").select("*").eq("property_id", propertyId).maybeSingle(),
       supabase.from("weather_alerts").select("*").eq("property_id", propertyId)
         .or("expires.is.null,expires.gt." + new Date().toISOString()).order("first_seen", { ascending: false }).limit(20),
-    ]);
+    ]), !!fresh);
     if (s.error || a.error) { setState({ settings: null, alerts: [], loaded: true, unavailable: true }); return; }
     setState({ settings: s.data || null, alerts: a.data || [], loaded: true, unavailable: false });
   }, [propertyId]);
@@ -9501,7 +9531,7 @@ function useWeather(propertyId) {
     window.addEventListener(WX_EVENT, load);
     return () => window.removeEventListener(WX_EVENT, load);
   }, [load]);
-  return { ...state, reload: load };
+  return { ...state, reload: () => load(true) };
 }
 
 // One quiet line on the Dashboard, only while a warning or watch is active near the home.
@@ -9686,7 +9716,7 @@ function WeatherPanel({ propertyId, address = "", onOpen, tasks, setTasks, userI
   );
 }
 
-function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast, assets = [] }) {
+function WeatherCard({ emailUnverified = false, propertyId, profile, userId, tasks = [], setTasks, toast, assets = [] }) {
   const { settings, alerts, loaded, unavailable, reload } = useWeather(propertyId);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState("");
@@ -9788,6 +9818,11 @@ function WeatherCard({ propertyId, profile, userId, tasks = [], setTasks, toast,
         <div style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.55}}>Weather alerts cover U.S. addresses. Add a U.S. address with a ZIP code to turn them on.</div>
       ) : canManage ? (
         <>
+          {emailUnverified && (
+            <div role="note" style={{background:"#FBF3DE",color:"#7A5710",borderRadius:"var(--r-sm)",padding:".6rem .8rem",marginBottom:".5rem",fontSize:".82rem",lineHeight:1.5}}>
+              <strong>Your email isn't verified yet.</strong> Weather alert emails may not reach you until it is. Check your inbox for the confirmation email, or open Account from the menu to send it again.
+            </div>
+          )}
           <label className="wx-opt" style={{display:"flex",alignItems:"center",gap:".7rem",padding:".5rem 0",borderTop:"1px solid var(--cream2)",fontSize:".92rem",cursor:"pointer",minHeight:44}}>
             <input type="checkbox" style={{width:22,height:22,accentColor:"var(--pine)",flex:"0 0 auto"}} checked={enabled} disabled={saving} onChange={e => saveSettings({ enabled: e.target.checked })} />
             Email me about severe weather near this home
@@ -9849,11 +9884,11 @@ function notifyLocationsChanged() { try { window.dispatchEvent(new Event(LOC_EVE
 
 function useLocations(propertyId) {
   const [state, setState] = useState({ locs: [], loaded: false, unavailable: false });
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh) => {
     if (!propertyId) { setState({ locs: [], loaded: true, unavailable: false }); return; }
-    const { data, error } = await supabase.from("property_locations")
+    const { data, error } = await sharedRequest("loc:" + propertyId, () => supabase.from("property_locations")
       .select("id,property_id,parent_id,name,kind,sort_order")
-      .eq("property_id", propertyId).order("sort_order").order("name");
+      .eq("property_id", propertyId).order("sort_order").order("name"), !!fresh);
     if (error) { setState({ locs: [], loaded: true, unavailable: true }); return; }
     setState({ locs: data || [], loaded: true, unavailable: false });
   }, [propertyId]);
@@ -9862,7 +9897,7 @@ function useLocations(propertyId) {
     window.addEventListener(LOC_EVENT, load);
     return () => window.removeEventListener(LOC_EVENT, load);
   }, [load]);
-  return { ...state, reload: load };
+  return { ...state, reload: () => load(true) };
 }
 
 // Depth-first list with indent depth and a readable path ("Main floor › Kitchen").
@@ -12569,7 +12604,7 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
     else if (s.type === "expense") { if (onOpenExpense) onOpenExpense(s.id); else onNavigate && onNavigate("expenses"); }
     else if (s.type === "doc") onOpenDocs && onOpenDocs();
     else if (s.type === "log") onNavigate && onNavigate("warranties");
-    else if (s.type === "contractor") onNavigate && onNavigate("profile");
+    else if (s.type === "contractor" || s.type === "location" || s.type === "weather") onNavigate && onNavigate("profile");
     else onNavigate && onNavigate("expenses");
     if (phone) setOpen(false);
   };
@@ -12581,7 +12616,7 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
 
   if (!open) return null;
 
-  const SRC_ICON = { asset: "🔧", task: "✓", expense: "💸", doc: "📄", log: "⚙️", project: "🔨", contractor: "👷", utility: "💡" };
+  const SRC_ICON = { asset: "🔧", task: "✓", expense: "💸", doc: "📄", log: "⚙️", project: "🔨", contractor: "👷", utility: "💡", location: "📍", weather: "⛈️" };
   const pill = usage ? (usage.period === "lifetime"
     ? `${usage.remaining} free question${usage.remaining === 1 ? "" : "s"} left`
     : `${usage.remaining} left this month`) : "";
@@ -12604,7 +12639,7 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
         {msgs.length === 0 && (
           <div className="ask-empty">
             <div className="ask-empty-title">Ask anything about your home</div>
-            <div className="ask-empty-sub">I read the assets, warranties, tasks, service history, expenses and documents for {homeCount > 1 ? homeShortName(profile) : "your home"}, then help you plan what's next.</div>
+            <div className="ask-empty-sub">I read the assets and where they are, warranties, tasks, service history, expenses, documents and weather alerts for {homeCount > 1 ? homeShortName(profile) : "your home"}, then help you plan what's next.</div>
             <div className="ask-chips">
               {suggestions.map(s => <button key={s} type="button" className="ask-chip" disabled={atLimit} onClick={() => send(s)}>{s}</button>)}
             </div>
@@ -16655,6 +16690,9 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       }
     } else if (health.key === "estimated") {
       heroStatusLine = "Add install date for an accurate reading";
+    } else if (health.key === "ok") {
+      // "Healthy" already says it is in good shape; only add something the label doesn't.
+      heroStatusLine = health.assessed ? "Confirmed by a condition review" : "";
     }
 
     // ── Detail view model: tabs, condition summary, notices ──
@@ -17092,8 +17130,13 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
                     {hasManualLink && (
                       <a href={asset.document_ref} target="_blank" rel="noopener noreferrer" className="ad-row" style={{textDecoration:"none"}}>
                         <span className="ad-row-main">
-                          <span className="ad-row-t" style={{color:"var(--pine)"}}>Owner's manual</span>
-                          <span className="ad-row-s">{asset.document_ref.replace(/^https?:\/\//,"")}</span>
+                          {/^https?:\/\/(www\.)?google\.com\/search\?/i.test(asset.document_ref) ? (<>
+                            <span className="ad-row-t" style={{color:"var(--pine)"}}>Find the owner's manual</span>
+                            <span className="ad-row-s">Web search for this model</span>
+                          </>) : (<>
+                            <span className="ad-row-t" style={{color:"var(--pine)"}}>Owner's manual</span>
+                            <span className="ad-row-s">{asset.document_ref.replace(/^https?:\/\//,"")}</span>
+                          </>)}
                         </span>
                         <span className="ad-row-r" style={{color:"var(--pine)"}}>Open</span>
                       </a>
@@ -21581,7 +21624,10 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
   let popup = null;
   const signedPhoto = {};
   const needsSigning = warranties.some(w => storagePathFromUrl(w.asset_photo_url)) || !!storagePathFromUrl(photoUrl);
-  if (needsSigning) {
+  // Where each item is: the report names the room or place (looked up here, so it works from every button that opens the report).
+  const hasPlaces = !!profile?.id && warranties.some(w => w.location_id);
+  const locPath = {};
+  if (needsSigning || hasPlaces) {
     try {
       popup = window.open("", "_blank");
       if (popup) { popup.opener = null; popup.document.write('<p style="font-family:sans-serif;padding:2rem;color:#5A534B">Preparing your report…</p>'); }
@@ -21589,8 +21635,19 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
     await Promise.all([
       ...warranties.map(async w => { if (storagePathFromUrl(w.asset_photo_url)) signedPhoto[w.id] = await getSignedFileUrl(w.asset_photo_url); }),
       (async () => { if (storagePathFromUrl(photoUrl)) photoUrl = await getSignedFileUrl(photoUrl); })(),
+      (async () => {
+        if (!hasPlaces) return;
+        try {
+          const { data: rows, error } = await supabase.from("property_locations").select("id,parent_id,name").eq("property_id", profile.id);
+          if (error || !rows) return;
+          const byId = Object.fromEntries(rows.map(l => [l.id, l]));
+          rows.forEach(l => { const out = []; let cur = l, hops = 0; while (cur && hops++ < 10) { out.unshift(cur.name); cur = cur.parent_id ? byId[cur.parent_id] : null; } locPath[l.id] = out.join(" › "); });
+        } catch { /* the report still works without places */ }
+      })(),
     ]);
   }
+  const whereOf = a => (a.location_id && locPath[a.location_id]) || "";
+  const escP = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const photoOf = a => (signedPhoto[a.id] !== undefined ? signedPhoto[a.id] : a.asset_photo_url) || "";
   const addr     = profile?.address || "Your Home";
   const owner    = ownerLabel(profile);
@@ -21669,7 +21726,7 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
       : `<div style="width:36px;height:36px;border-radius:6px;background:#F4EDDF;border:1px dashed #C2B8AE;"></div>`;
     return `<tr>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;">${thumb}</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:600;color:#2A2723;">${a.item}${a.brand?`<div style="font-size:10px;font-weight:400;color:#8A8178;margin-top:1px;">${a.brand}${a.model?" · "+a.model:""}</div>`:""}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;font-weight:600;color:#2A2723;">${a.item}${a.brand?`<div style="font-size:10px;font-weight:400;color:#8A8178;margin-top:1px;">${a.brand}${a.model?" · "+a.model:""}</div>`:""}${whereOf(a)?`<div style="font-size:10px;font-weight:500;color:#234A3D;margin-top:1px;">Location: ${escP(whereOf(a))}</div>`:""}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.category||"—"}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.install_date ? fmtDate(a.install_date) : "—"}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #E8E0D0;font-size:12px;color:#5A534B;">${a.last_serviced ? fmtDate(a.last_serviced) : "—"}</td>
@@ -21720,10 +21777,18 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
       <div style="padding:10px 12px;">
         <div style="font-size:12px;font-weight:700;color:#2A2723;">${a.item}</div>
         <div style="font-size:11px;color:#8A8178;margin-top:2px;">${[a.brand,a.model].filter(Boolean).join(" · ")||a.category||""}</div>
+        ${whereOf(a)?`<div style="font-size:10px;color:#234A3D;margin-top:3px;">Location: ${escP(whereOf(a))}</div>`:""}
         ${a.install_date?`<div style="font-size:10px;color:#A8A09A;margin-top:3px;">Installed ${fmtDate(a.install_date)}</div>`:""}
         ${a.expiry_date?`<div style="font-size:10px;color:#A8A09A;margin-top:1px;">Warranty ${new Date(a.expiry_date+"T00:00:00")>now?"until":"expired"} ${fmtDate(a.expiry_date)}</div>`:""}
       </div>
     </div>`).join("");
+
+  // Items by room: handy for an insurance claim ("what was in the kitchen?").
+  const roomGroups = {};
+  assets.forEach(a => { const p = whereOf(a); if (p) (roomGroups[p] = roomGroups[p] || []).push(a); });
+  const roomKeys = Object.keys(roomGroups).sort((x, y) => x.localeCompare(y));
+  const unplacedCount = assets.filter(a => !whereOf(a)).length;
+  const roomHtml = roomKeys.map(k => `<div style="break-inside:avoid;margin-bottom:10px;"><div style="font-size:12px;font-weight:700;color:#234A3D;">${escP(k)} <span style="font-weight:400;color:#A8A09A;">(${roomGroups[k].length})</span></div><div style="font-size:12px;color:#5A534B;line-height:1.6;">${roomGroups[k].map(a => escP(a.item + (a.brand ? " (" + a.brand + ")" : ""))).join(", ")}</div></div>`).join("");
 
   const specs = [year, profile?.type, sqft, beds, baths, lot].filter(Boolean);
 
@@ -21845,6 +21910,13 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
       </tr></thead>
       <tbody>${assetRows}</tbody>
     </table>
+  </div>` : ""}
+
+  <!-- Where everything is — only when at least one item has a room or place -->
+  ${roomKeys.length > 0 ? `<div class="section">
+    <div class="sec-title">Items by Room</div>
+    ${roomHtml}
+    ${unplacedCount > 0 ? `<p style="font-size:11px;color:#A8A09A;margin-top:6px;">${unplacedCount} ${unplacedCount === 1 ? "item has" : "items have"} no room or place saved yet.</p>` : ""}
   </div>` : ""}
 
   <!-- Photo Record — only renders if any asset has a photo -->
@@ -22565,7 +22637,7 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ profile, setProfile, tasks, setTasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ emailUnverified=false, profile, setProfile, tasks, setTasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
   const { roiData } = useProjectROIData();
   // ── Remove one home (Pro, owner only). The server decides what is allowed; see delete-property.
   const [homeToRemove, setHomeToRemove] = useState(null);
@@ -24004,7 +24076,7 @@ function Profile({ profile, setProfile, tasks, setTasks, expenses, warranties, s
 
       {/* ── WEATHER ALERTS ── */}
       {!showSetup && (
-        <WeatherCard propertyId={propertyId} profile={profile} userId={userId} tasks={tasks} setTasks={setTasks} toast={toast} assets={warranties} />
+        <WeatherCard emailUnverified={emailUnverified} propertyId={propertyId} profile={profile} userId={userId} tasks={tasks} setTasks={setTasks} toast={toast} assets={warranties} />
       )}
 
       {/* ── ROOMS AND LOCATIONS ── */}
@@ -26902,25 +26974,37 @@ export default function App() {
       // This is done on the server by accept_home_invites(); the invite link no longer has to carry anything.
       let acceptedNow = 0;
       try { const { data: nAccepted } = await supabase.rpc("accept_home_invites"); acceptedNow = Number(nAccepted) || 0; } catch { /* not installed yet: nothing to accept */ }
-      pingNotifications();   // sends anything team activity queued, including "invite accepted" for the owner
+      // Not on every page load: a scheduled job on the server sends queued emails every few minutes (steadwell-notify-schedule.sql).
+      // An invite accepted just now is the one case worth a prompt send, so the owner hears about it right away.
+      if (acceptedNow > 0) pingNotifications();
 
-      // Load shared memberships — wrapped in try/catch so 403 doesn't crash the app
+      // Load shared memberships and any invitations still waiting, one request per table.
+      // Wrapped in try/catch so a 403 doesn't crash the app.
+      const emailLc = String(userEmail || "").toLowerCase();
       let sharedMembersResult = { data: [], error: null };
+      let pendingHome = 0;
       try {
-        sharedMembersResult = await supabase.from("home_members")
-          .select("property_id, role, status")
-          .or(`member_id.eq.${uid},member_email.eq.${String(userEmail || "").toLowerCase()}`)
-          .eq("status", "accepted");
+        const r = await supabase.from("home_members")
+          .select("property_id, role, status, member_email")
+          .or(`member_id.eq.${uid},member_email.eq.${emailLc}`)
+          .in("status", ["accepted", "pending"]);
+        const rows = r.data || [];
+        sharedMembersResult = { data: rows.filter(x => x.status === "accepted"), error: r.error };
+        pendingHome = rows.filter(x => x.status === "pending" && String(x.member_email || "").toLowerCase() === emailLc).length;
       } catch(e) { /* RLS may block this — fail silently */ }
 
-      // Invitations still waiting (for example until the email address is verified).
+      // Same for Admin invitations: the accepted ones are used below, the waiting ones are counted.
+      let adminInviteRows = [];
+      let pendingAdmin = 0;
       try {
-        const [pm, pa] = await Promise.all([
-          supabase.from("home_members").select("id", { count: "exact", head: true }).eq("status", "pending").eq("member_email", String(userEmail || "").toLowerCase()),
-          supabase.from("account_admins").select("id", { count: "exact", head: true }).eq("status", "pending").eq("member_email", String(userEmail || "").toLowerCase()),
-        ]);
-        setPendingInviteCount((pm.count || 0) + (pa.count || 0));
-      } catch { setPendingInviteCount(0); }
+        const r = await supabase.from("account_admins")
+          .select("owner_id, status, member_id, member_email")
+          .or(`member_id.eq.${uid},member_email.eq.${emailLc}`)
+          .in("status", ["accepted", "pending"]);
+        adminInviteRows = r.data || [];
+        pendingAdmin = adminInviteRows.filter(x => x.status === "pending" && String(x.member_email || "").toLowerCase() === emailLc).length;
+      } catch { /* the Admin list could not be read */ }
+      setPendingInviteCount(pendingHome + pendingAdmin);
 
       // For each shared membership, fetch the profile separately
       const sharedMemberRows = sharedMembersResult.data || [];
@@ -26943,7 +27027,7 @@ export default function App() {
 
       // Homes of every account this person is an Admin on, including homes added later.
       try {
-        const { data: admRows } = await supabase.from("account_admins").select("owner_id").eq("member_id", uid).eq("status", "accepted");
+        const admRows = adminInviteRows.filter(x => x.status === "accepted" && x.member_id === uid);
         const ownerIds = [...new Set((admRows || []).map(r => r.owner_id))].filter(id => id !== uid);
         if (ownerIds.length) {
           const { data: admHomes } = await supabase.from("profiles").select("*").in("user_id", ownerIds).order("created_at", { ascending: true });
@@ -27352,7 +27436,7 @@ export default function App() {
              wizard), and stays visible over Contractors like bottom-nav does. ── */}
         <nav className="sidebar" aria-label="Primary" style={showSetup ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&!showWarrantyModule&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs||showWarrantyModule; setShowContractors(false); setShowDocs(false); setShowWarrantyModule(false); window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:t.id})); if(!wasOverlay&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&!showWarrantyModule&&tab===t.id)?"page":undefined}>
+            <button key={t.id} className={`sbar-btn ${(!showContractors&&!showDocs&&!showWarrantyModule&&tab===t.id)?"active":""}`} onClick={()=>{ const wasOverlay = showContractors||showDocs||showWarrantyModule; setShowContractors(false); setShowDocs(false); setShowWarrantyModule(false); window.dispatchEvent(new CustomEvent("sw:tab-reselect",{detail:t.id})); if(t.id==="warranties") setAssetsResetSignal(s=>s+1); if(!wasOverlay&&tab===t.id){ /* already here: the reset above backs out to the list */ } else setTab(t.id); }} aria-current={(!showContractors&&!showDocs&&!showWarrantyModule&&tab===t.id)?"page":undefined}>
               <span className="sbar-icon" aria-hidden="true">{t.icon}</span>
               <span>{t.label}</span>
               {t.badge>0 && <span className="sbar-badge">{t.badge}</span>}
@@ -27467,7 +27551,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} emailUnverified={session?.user?.app_metadata?.email_verified === false} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
             </>
           )}
         </main>
@@ -27479,7 +27563,7 @@ export default function App() {
              Contractors like it would exit any other view. ── */}
         <nav className="bottom-nav" style={(showDocs||showSetup) ? {display:"none"} : {}}>
           {TABS.map(t=>(
-            <button key={t.id} className={`bnav-btn ${(!showContractors&&tab===t.id)?"active":""}`} onClick={()=>{ setShowContractors(false); if(!showContractors&&tab===t.id){ if(t.id==="warranties") setAssetsResetSignal(s=>s+1); } else setTab(t.id); }} aria-label={t.label} aria-current={(!showContractors&&tab===t.id)?"page":undefined}>
+            <button key={t.id} className={`bnav-btn ${(!showContractors&&tab===t.id)?"active":""}`} onClick={()=>{ setShowContractors(false); if(t.id==="warranties") setAssetsResetSignal(s=>s+1); if(!showContractors&&tab===t.id){ /* already here: the reset above backs out to the list */ } else setTab(t.id); }} aria-label={t.label} aria-current={(!showContractors&&tab===t.id)?"page":undefined}>
               {t.badge>0 && <span className="bnav-badge">{t.badge}</span>}
               <span className="bnav-icon" aria-hidden="true">{t.icon}</span>
               <span className="bnav-label">{t.label}</span>
