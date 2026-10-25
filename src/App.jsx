@@ -1,4 +1,4 @@
-// Steadwell v420 — 2026-10-25
+// Steadwell v421 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6,11 +6,38 @@ import { BLOG_OVERRIDES } from "./blog-overrides.js";
 import { GUIDE_PRICES, GUIDE_EDITION, GUIDE_CURRENT_AS_OF, BUNDLE_TRIAL, GUIDE_CONSENT_VERSION, GUIDE_CONSENT_TEXT, GUIDE_LEAD_OPTIONS, guideByPath, guideStates, guidePagePaths, bundleFor, stateGuide, countyGuides, liveGuides } from "./guides-registry.js";
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const CATEGORIES = ["HVAC","Plumbing","Electrical","Appliance","Roofing","Landscaping","Structure","Safety","Other"];
+// One grouped list shared by tasks, expenses and contractors. CATEGORIES (flat) keeps the
+// original eight in their original positions so existing chart colors don't shift.
+const CATEGORY_GROUPS = [
+  { label:"Home systems", items:["HVAC","Plumbing","Electrical","Appliance","Safety","Security","Generator & Solar","Septic & Well","Fireplace & Chimney"] },
+  { label:"Exterior", items:["Roofing","Gutters","Landscaping","Irrigation","Tree Service","Fencing & Gates","Concrete & Driveway","Pool & Spa","Garage Door","Pest Control"] },
+  { label:"Interior & general", items:["Structure","Painting","Flooring","Windows & Doors","Mold & Water Damage","Cleaning","Handyman","General Contractor"] },
+  { label:"Vehicles", items:["Car","Boat","Motorcycle","RV & Trailer"] },
+  { label:"Other", items:["Other"] },
+];
+const CATEGORIES = (() => {
+  const first = ["HVAC","Plumbing","Electrical","Appliance","Roofing","Landscaping","Structure","Safety"];
+  const rest = CATEGORY_GROUPS.flatMap(g => g.items).filter(c => !first.includes(c) && c !== "Other");
+  return [...first, ...rest, "Other"];
+})();
+// Older records can hold names we no longer offer. They stay valid and display as-is.
+const LEGACY_CATEGORY_ALIASES = { "Appliance Repair":"Appliance", "Foundation":"Structure", "Appliances":"Appliance", "Structural":"Structure" };
+// <option>s grouped for a <select>. A stored value that isn't in the list is kept as its own option so editing never drops it.
+function GroupedOptions({ groups, value }) {
+  const known = groups.some(g => g.items.includes(value));
+  return (
+    <>
+      {value && !known && <option value={value}>{value}</option>}
+      {groups.map(g => g.items.length === 1 && g.label === g.items[0]
+        ? <option key={g.label} value={g.items[0]}>{g.items[0]}</option>
+        : <optgroup key={g.label} label={g.label}>{g.items.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>)}
+    </>
+  );
+}
 const STATUS_OPTIONS = ["Scheduled","In Progress","Completed","Overdue"];
 const PRIORITY = ["Low","Medium","High","Urgent"];
 const HOME_TYPES = ["Single Family","Townhouse","Condo","Mobile Home","Multi-Family","Other"];
-const CAT_ICONS = { HVAC:"🌡️", Plumbing:"🚰", Electrical:"⚡", Appliance:"🍳", Appliances:"🍳", Roofing:"🏚️", Landscaping:"🌿", Structure:"🧱", Structural:"🧱", Safety:"🔒", Maintenance:"🔧", Utilities:"💡", Projects:"🔨", Uncategorized:"🏷️", Other:"🔧" };
+const CAT_ICONS = { HVAC:"🌡️", Plumbing:"🚰", Electrical:"⚡", Appliance:"🍳", Appliances:"🍳", Roofing:"🏚️", Landscaping:"🌿", Structure:"🧱", Structural:"🧱", Safety:"🔒", Maintenance:"🔧", Utilities:"💡", Projects:"🔨", Uncategorized:"🏷️", Other:"🔧", Security:"📷", "Generator & Solar":"☀️", "Septic & Well":"💧", "Fireplace & Chimney":"🔥", Gutters:"🌧️", Irrigation:"💦", "Tree Service":"🌳", "Fencing & Gates":"🚧", "Concrete & Driveway":"🛣️", "Pool & Spa":"🏊", "Garage Door":"🚪", "Pest Control":"🐜", Painting:"🎨", Flooring:"🪵", "Windows & Doors":"🪟", "Mold & Water Damage":"🌊", Cleaning:"🧽", Handyman:"🛠️", "General Contractor":"👷", Car:"🚗", Boat:"⛵", Motorcycle:"🏍️", "RV & Trailer":"🚐", Vehicle:"🚗", "Appliance Repair":"🍳", Foundation:"🧱" };
 const STATUS_STYLE = {
   "Scheduled":   { bg:"#EBF5FF", text:"#1A6FA0", border:"#93C5E8" },
   "In Progress": { bg:"#FFF8E6", text:"#92610A", border:"#F5CC76" },
@@ -7804,7 +7831,7 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
   return (
     <div className="fg">
       <div className="field s2"><label>Task Title *</label><input value={data.title||""} onChange={e=>handleTitle(e.target.value)} placeholder="e.g. Replace HVAC Filter" /></div>
-      <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+      <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option><GroupedOptions groups={CATEGORY_GROUPS} value={data.category||""}/></select></div>
       <div className="field"><label>Priority</label><select value={data.priority||""} onChange={e=>f("priority",e.target.value)}><option value="">Select…</option>{PRIORITY.map(p=><option key={p}>{p}</option>)}</select></div>
       <div className="field"><label>Status</label><select value={data.status||""} onChange={e=>f("status",e.target.value)}><option value="">Select…</option>{STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Due Date</label><input type="date" value={data.due_date||""} onChange={e=>f("due_date",e.target.value)} /></div>
@@ -7892,11 +7919,15 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
   );
 }
 
-const ASSET_CATEGORIES = [
-  "HVAC","Appliance","Electronics","Vehicle","Tools",
-  "Roofing","Plumbing","Electrical","Structure","Safety",
-  "Landscaping","Jewelry & Valuables","Outdoor","Other"
+const ASSET_CATEGORY_GROUPS = [
+  { label:"Home systems", items:["HVAC","Plumbing","Electrical","Roofing","Structure","Safety","Generator & Solar"] },
+  { label:"Appliances & belongings", items:["Appliance","Electronics","Furniture","Fitness Equipment","Tools","Jewelry & Valuables"] },
+  { label:"Vehicles", items:["Car","Boat","Motorcycle","RV & Trailer"] },
+  { label:"Outdoor", items:["Landscaping","Outdoor","Pool & Spa"] },
+  { label:"Other", items:["Other"] },
 ];
+// "Vehicle" is the old catch-all; existing items keep it, new items pick a specific type.
+const ASSET_CATEGORIES = ASSET_CATEGORY_GROUPS.flatMap(g => g.items);
 const ASSET_CONDITIONS = ["Good","Fair","Needs Attention","Failed"];
 const CONDITION_STYLE = {
   "Good":            {bg:"var(--sage-light)",  text:"var(--sage)",  border:"#B8D9CC"},
@@ -7909,6 +7940,8 @@ const DEFAULT_LIFESPAN = {
   HVAC:20, Appliance:12, Electronics:5, Vehicle:12, Tools:15,
   Roofing:25, Plumbing:50, Electrical:40, Structure:50,
   Safety:10, Landscaping:15, "Jewelry & Valuables":50, Outdoor:15, Other:15,
+  Car:12, Boat:15, Motorcycle:12, "RV & Trailer":20, Furniture:15, "Fitness Equipment":10,
+  "Pool & Spa":12, "Generator & Solar":20,
 };
 
 // A handful of items share a broad category with things that age
@@ -7927,11 +7960,15 @@ const ASSET_ICONS = {
   HVAC:"🌡️", Appliance:"🍳", Electronics:"💻", Vehicle:"🚗", Tools:"🔧",
   Roofing:"🏚️", Plumbing:"🚿", Electrical:"⚡", Structure:"🧱",
   Safety:"🔒", Landscaping:"🌿", "Jewelry & Valuables":"💎", Outdoor:"🌳", Other:"🔧",
+  Car:"🚗", Boat:"⛵", Motorcycle:"🏍️", "RV & Trailer":"🚐", Furniture:"🛋️", "Fitness Equipment":"🏋️",
+  "Pool & Spa":"🏊", "Generator & Solar":"☀️",
 };
 const CATEGORY_ORDER = [
-  "HVAC","Appliance","Electronics","Vehicle","Tools",
-  "Plumbing","Electrical","Roofing","Structure","Safety",
-  "Landscaping","Outdoor","Jewelry & Valuables","Other"
+  "HVAC","Appliance","Electronics","Furniture","Fitness Equipment","Tools",
+  "Plumbing","Electrical","Roofing","Structure","Safety","Generator & Solar",
+  "Landscaping","Outdoor","Pool & Spa",
+  "Car","Boat","Motorcycle","RV & Trailer","Vehicle",
+  "Jewelry & Valuables","Other"
 ];
 const CATEGORY_COLORS = {
   HVAC:        {bg:"rgba(58,122,175,.1)",  border:"rgba(58,122,175,.2)",  icon:"rgba(58,122,175,.8)"},
@@ -7948,6 +7985,14 @@ const CATEGORY_COLORS = {
   "Jewelry & Valuables":{bg:"rgba(184,134,30,.1)",border:"rgba(184,134,30,.2)",icon:"var(--gold)"},
   Outdoor:     {bg:"rgba(35,74,61,.08)",  border:"rgba(35,74,61,.18)",  icon:"var(--pine)"},
   Other:       {bg:"rgba(122,115,112,.08)",border:"rgba(122,115,112,.15)",icon:"var(--mid)"},
+  Car:         {bg:"rgba(42,39,35,.07)",  border:"rgba(42,39,35,.15)",  icon:"var(--dark)"},
+  Boat:        {bg:"rgba(58,122,175,.1)", border:"rgba(58,122,175,.2)", icon:"rgba(58,122,175,.8)"},
+  Motorcycle:  {bg:"rgba(193,97,64,.08)", border:"rgba(193,97,64,.18)", icon:"var(--rust)"},
+  "RV & Trailer":{bg:"rgba(122,83,62,.1)",border:"rgba(122,83,62,.2)",  icon:"var(--brown)"},
+  Furniture:   {bg:"rgba(122,83,62,.1)",  border:"rgba(122,83,62,.2)",  icon:"var(--brown)"},
+  "Fitness Equipment":{bg:"rgba(88,86,214,.1)",border:"rgba(88,86,214,.2)",icon:"#5856D6"},
+  "Pool & Spa":{bg:"rgba(58,122,175,.1)", border:"rgba(58,122,175,.2)", icon:"rgba(58,122,175,.8)"},
+  "Generator & Solar":{bg:"rgba(184,134,30,.1)",border:"rgba(184,134,30,.2)",icon:"var(--gold)"},
 };
 
 const CAT_NORMALIZE_MAP = {
@@ -7955,6 +8000,8 @@ const CAT_NORMALIZE_MAP = {
   "Electronics":"Electronics", "Vehicles":"Vehicle",
   "Tools & Equipment":"Tools", "Jewelry":"Jewelry & Valuables",
   "Outdoor & Garden":"Outdoor",
+  "Cars":"Car", "Boats":"Boat", "Motorcycles":"Motorcycle", "RV":"RV & Trailer", "RVs":"RV & Trailer", "Trailer":"RV & Trailer",
+  "Fitness":"Fitness Equipment", "Pool":"Pool & Spa", "Generator":"Generator & Solar", "Solar":"Generator & Solar",
 };
 
 // ─── ASSET ICON SYSTEM (inline SVG, Lucide-derived) ──────────────────────────
@@ -7993,6 +8040,11 @@ const ICON_PATHS = {
   extinguisher:'<path d="M15 6.5V3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3.5"/><path d="M9 18h8"/><path d="M18 3h-3"/><path d="M11 3a6 6 0 0 0-6 6v11"/><path d="M5 13h4"/><path d="M17 10a4 4 0 0 0-8 0v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1Z"/>',
   sprout:  '<path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>',
   tree:    '<path d="M12 22v-7l-2-2"/><path d="M17 8v.8A6 6 0 0 1 13.8 20v0H10v0A6.5 6.5 0 0 1 7 8h0a5 5 0 0 1 10 0Z"/><path d="m14 14-2 2"/>',
+  boat:    '<path d="M22 18H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4Z"/><path d="M21 14 10 2 3 14h18Z"/><path d="M10 2v16"/>',
+  bike:    '<circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
+  rv:      '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  sofa:    '<path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M4 18v2"/><path d="M20 18v2"/><path d="M12 4v9"/>',
+  dumbbell:'<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>',
   wrench:  '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
 };
 
@@ -8018,10 +8070,17 @@ const ICON_KEYWORDS = [
   [/phone|iphone|android|smartphone/i, "phone"],
   [/tv|television|monitor|display/i, "tv"],
   [/headphone|earbud|airpod|speaker|audio/i, "headphones"],
+  // Vehicles (specific types before the generic car rule)
+  [/\bboats?\b|pontoon|kayak|canoe|jet.?ski|yacht|sailboat|outboard/i, "boat"],
+  [/motorcycle|motorbike|scooter|harley|dirt.?bike|\batv\b|moped/i, "bike"],
+  [/\brvs?\b|camper|trailer|motorhome|travel trailer/i, "rv"],
+  [/sofa|couch|furniture|mattress|recliner|sectional/i, "sofa"],
+  [/treadmill|peloton|elliptical|dumbbell|fitness|weight bench|exercise|rowing machine/i, "dumbbell"],
   // Vehicle
   [/car|truck|suv|vehicle|automobile|tesla|honda|toyota|ford|chevy|bmw/i, "car"],
   // Tools
-  [/drill|saw|mower|blower|trimmer|tool|nailer|compressor|generator/i, "drill"],
+  [/drill|saw|mower|blower|trimmer|tool|nailer|compressor/i, "drill"],
+  [/generator/i, "zap"],
   // Jewelry
   [/ring|necklace|bracelet|watch|earring|jewelry|diamond|gold|silver/i, "gem"],
   // Structural
@@ -8046,6 +8105,8 @@ const CATEGORY_ICON = {
   Tools:"drill", Plumbing:"droplet", Electrical:"zap",
   Roofing:"roof", Structure:"wall", Safety:"shield",
   Landscaping:"sprout", "Jewelry & Valuables":"gem", Outdoor:"outdoor", Other:"wrench",
+  Car:"car", Boat:"boat", Motorcycle:"bike", "RV & Trailer":"rv", Furniture:"sofa",
+  "Fitness Equipment":"dumbbell", "Pool & Spa":"outdoor", "Generator & Solar":"zap",
 };
 
 function pickIconName(asset) {
@@ -9228,7 +9289,7 @@ function WarrantyOnlyForm({ data, onChange, userId, planData, onUpgrade, assets=
           <label>Category</label>
           <select value={data.category||""} onChange={e=>f("category",e.target.value)}>
             <option value="">Select…</option>
-            {ASSET_CATEGORIES.map(c=><option key={c}>{c}</option>)}
+            <GroupedOptions groups={ASSET_CATEGORY_GROUPS} value={data.category||""}/>
           </select>
         </div>
         <div className="field">
@@ -10292,7 +10353,7 @@ function AssetForm({ data, onChange, userId, planData, onUpgrade, contractors=[]
       <div className="field"><label>Category</label>
         <select value={data.category||""} onChange={e=>handleCategory(e.target.value)}>
           <option value="">Select…</option>
-          {ASSET_CATEGORIES.map(c=><option key={c}>{c}</option>)}
+          <GroupedOptions groups={ASSET_CATEGORY_GROUPS} value={data.category||""}/>
         </select>
       </div>
       <div className="field"><label>Condition</label>
@@ -11088,7 +11149,7 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
         <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. HVAC Service Call" /></div>
-        <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+        <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option><GroupedOptions groups={CATEGORY_GROUPS} value={data.category||""}/></select></div>
         <div className="field"><label>Amount ($)</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
         <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
         <div className="field s2"><label>Contractor</label>
@@ -13435,7 +13496,7 @@ async function checkCPSCRecall(brand, productType, model, serialNumber) {
 
 // Which assets can meaningfully be checked against the CPSC consumer-product database.
 // Structural / landscaping / valuables / vehicles / insurance records aren't CPSC products.
-const RECALL_SKIP_CATS = ["Insurance","Roofing","Structure","Structural","Landscaping","Jewelry & Valuables","Vehicle"];
+const RECALL_SKIP_CATS = ["Insurance","Roofing","Structure","Structural","Landscaping","Jewelry & Valuables","Vehicle","Car","Boat","Motorcycle","RV & Trailer"];
 const isRecallEligible = a => !!a && !a.retired_at && !!a.item && !RECALL_SKIP_CATS.includes(a.category);
 // Placeholder text people (or lookups) leave in a field: treat as empty everywhere it is shown or used.
 const cleanVal = v => { const t = String(v == null ? "" : v).trim(); return /^(unknown|unk|n\/?a|none|not sure|unsure|tbd|-+|\?+)$/i.test(t) ? "" : t; };
@@ -14110,8 +14171,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate, project
                         <select value={editData.category || ""} onChange={e => setEditData(d => ({ ...d, category: e.target.value }))}
                           style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}>
                           <option value="">Select…</option>
-                          {editData.category && !CATEGORIES.includes(editData.category) && <option value={editData.category}>{editData.category}</option>}
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          <GroupedOptions groups={CATEGORY_GROUPS} value={editData.category||""}/>
                         </select>
                       </div>
                     )}
@@ -14908,6 +14968,15 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
 
   const [statusF, setStatusF] = useState("Active"); // default to Active — what needs doing
   const [catF, setCatF] = useState("All");
+  // Only categories that have tasks (so "Other" and the long tail don't clutter the filter)
+  const taskCatsInUse = useMemo(() => {
+    const used = new Set(tasks.map(t => t.category).filter(Boolean));
+    const ordered = CATEGORIES.filter(c => used.has(c));
+    const extra = [...used].filter(c => !CATEGORIES.includes(c)).sort();
+    const out = [...ordered, ...extra];
+    if (catF !== "All" && !out.includes(catF)) out.push(catF);
+    return out;
+  }, [tasks, catF]);
   const [sort, setSort] = useState("due_date");
   const [modal, setModal] = useState(false);
   const [editData, setEditData] = useState({});
@@ -15302,7 +15371,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           </button>
           {showCatFilter && (
             <div style={{position:"absolute",top:"110%",left:0,background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:".35rem",zIndex:60,minWidth:170,boxShadow:"0 4px 16px rgba(0,0,0,.1)"}}>
-              {["All",...CATEGORIES].map(c => (
+              {["All",...taskCatsInUse].map(c => (
                 <button key={c} onClick={()=>{setCatF(c);setShowCatFilter(false);}} style={{
                   display:"block",width:"100%",textAlign:"left",padding:".42rem .75rem",
                   borderRadius:"6px",border:"none",fontFamily:"'Hanken Grotesk',sans-serif",
@@ -16750,7 +16819,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const due = new Date(); due.setMonth(due.getMonth() + 3);
     setNewTaskData({
       title: "", status: "Scheduled", priority: "Medium", due_date: localISO(due),
-      category: CATEGORIES.includes(asset.category) ? asset.category : "Other",
+      category: CATEGORIES.includes(asset.category) ? asset.category : (LEGACY_CATEGORY_ALIASES[asset.category] || "Other"),
       asset_id: asset.id, recurring: "",
     });
   };
@@ -17511,13 +17580,16 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
 
   const CAT_LABELS = {
     HVAC:"Heating & cooling", Appliance:"Appliances",
-    Electronics:"Electronics", Vehicle:"Vehicles",
+    Electronics:"Electronics", Vehicle:"Other vehicles",
     Tools:"Tools & equipment", Plumbing:"Plumbing",
     Electrical:"Electrical", Roofing:"Roofing",
     Structure:"Structure", Safety:"Safety & security",
     Landscaping:"Outdoor & landscaping",
     "Jewelry & Valuables":"Jewelry & valuables",
-    Outdoor:"Outdoor structures", Other:"Other"
+    Outdoor:"Outdoor structures", Other:"Other",
+    Car:"Cars", Boat:"Boats", Motorcycle:"Motorcycles", "RV & Trailer":"RVs & trailers",
+    Furniture:"Furniture", "Fitness Equipment":"Fitness equipment", "Pool & Spa":"Pool & spa",
+    "Generator & Solar":"Generators & solar"
   };
   const catLabelOf = (c) => CAT_LABELS[c] || c;
 
@@ -21526,9 +21598,9 @@ function DocItem({ doc, assets, onEdit, onDelete, onView, fileTypeBadge, getExpi
   );
 }
 // ─── CONTRACTOR ROLODEX ───────────────────────────────────────────────────────
-const TRADES = ["HVAC","Plumbing","Electrical","Roofing","Landscaping","Painting",
-  "Flooring","General Contractor","Pest Control","Pool & Spa","Appliance Repair",
-  "Cleaning","Windows & Doors","Foundation","Security","Other"];
+// Contractors use the same list as tasks and expenses (minus vehicles, which aren't trades).
+const TRADE_GROUPS = CATEGORY_GROUPS.filter(g => g.label !== "Vehicles");
+const TRADES = TRADE_GROUPS.flatMap(g => g.items);
 
 function ContractorForm({ data, onChange }) {
   const f = (k,v) => onChange({...data,[k]:v});
@@ -21540,7 +21612,7 @@ function ContractorForm({ data, onChange }) {
         <label>Trade / Specialty</label>
         <select value={data.trade||""} onChange={e=>f("trade",e.target.value)}>
           <option value="">Select…</option>
-          {TRADES.map(t=><option key={t}>{t}</option>)}
+          <GroupedOptions groups={TRADE_GROUPS} value={data.trade||""}/>
         </select>
       </div>
       <div className="field"><label>Phone</label><input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000"/></div>
@@ -21646,7 +21718,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     toast("Contractor removed","error");
   };
 
-  const trades = ["All",...TRADES.filter(t=>contractors.some(c=>c.trade===t))];
+  const tradesUsed = new Set(contractors.map(c=>c.trade).filter(Boolean));
+  const trades = ["All",...TRADES.filter(t=>tradesUsed.has(t)),...[...tradesUsed].filter(t=>!TRADES.includes(t)).sort()];
   const filtered = contractors.filter(c=>{
     const tradeMatch = tradeF==="All" || c.trade===tradeF;
     const searchMatch = !search || [c.name,c.company,c.trade].some(v=>v?.toLowerCase().includes(search.toLowerCase()));
@@ -25982,7 +26055,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                   <label>Category</label>
                   <select value={addData.category||""} onChange={e=>setAddData(d=>({...d,category:e.target.value}))}>
                     <option value="">Select…</option>
-                    {ASSET_CATEGORIES.map(c=><option key={c}>{c}</option>)}
+                    <GroupedOptions groups={ASSET_CATEGORY_GROUPS} value={addData.category||""}/>
                   </select>
                 </div>
                 <div className="field">
@@ -36401,6 +36474,9 @@ const FORECAST_DEFAULT_COST = {
   HVAC:10000, Appliance:900, Electronics:600, Vehicle:4000, Tools:300,
   Roofing:16000, Plumbing:1200, Electrical:3500, Structure:8000,
   Safety:150, Landscaping:2000, "Jewelry & Valuables":0, Outdoor:2500, Other:1000,
+  // Vehicles aren't a home cost; they only count when the owner enters a replacement cost.
+  Car:0, Boat:0, Motorcycle:0, "RV & Trailer":0,
+  Furniture:1500, "Fitness Equipment":1200, "Pool & Spa":5000, "Generator & Solar":6000,
 };
 
 function computeCostForecast(warranties, years=5) {
