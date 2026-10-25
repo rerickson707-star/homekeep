@@ -3,15 +3,18 @@
 //   invite accepted, task assigned to you, task completed, someone left or was removed,
 //   access changed, and the owner of a home you were on closed their account.
 //
-// How it is used: the app calls this right after something happens (and once when it opens), so emails go out
-// within seconds. The recipient and the content come only from the database rows the triggers wrote.
+// How it is used: the app calls this right after something happens, and a scheduled job on the server calls it
+// every 5 minutes (see steadwell-notify-schedule.sql), so emails go out within seconds or minutes without any
+// browser having to be open. The recipient and the content come only from the database rows the triggers wrote.
 // The browser sends nothing but its login token, so it cannot make this email anyone.
 // Each person's choices live in notification_prefs (no row = everything on).
 //
 // Run steadwell-notifications.sql FIRST.
 // Needs the secrets DB_URL, SERVICE_ROLE_KEY and RESEND_API_KEY (already set).
-// Deploy: npx supabase functions deploy send-notifications --project-ref hjkyameroqufaojuerns
-// (JWT verification stays ON.)
+// Also needs the secret CRON_SECRET (any long random string; the schedule sends the same string).
+// Deploy: npx supabase functions deploy send-notifications --no-verify-jwt --project-ref hjkyameroqufaojuerns
+// (--no-verify-jwt because the scheduled job has no login. The function still checks every call itself:
+//  it needs either a signed-in person's token or the CRON_SECRET.)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -22,6 +25,7 @@ const SERVICE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const FROM = "Steadwell <hello@trysteadwell.app>";
 const APP_URL = "https://www.trysteadwell.app/";
 const BATCH = 25;
+const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
@@ -225,10 +229,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!token) return json(401, { error: "not_signed_in" });
-  const { data: u, error: uErr } = await admin.auth.getUser(token);
-  if (uErr || !u?.user) return json(401, { error: "not_signed_in" });
+  // Two ways in: the scheduled job (shared secret), or a signed-in person (their login token).
+  const fromSchedule = CRON_SECRET.length >= 16 && (req.headers.get("x-cron-secret") || "") === CRON_SECRET;
+  if (!fromSchedule) {
+    const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    if (!token) return json(401, { error: "not_signed_in" });
+    const { data: u, error: uErr } = await admin.auth.getUser(token);
+    if (uErr || !u?.user) return json(401, { error: "not_signed_in" });
+  }
 
   try {
     const { data: claimed, error: cErr } = await admin.rpc("sw_notify_claim", { p_limit: BATCH });

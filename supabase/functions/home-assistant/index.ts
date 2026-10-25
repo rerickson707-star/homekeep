@@ -1,4 +1,5 @@
 // Supabase Edge Function: home-assistant  ("Ask Steadwell")
+// v417: can also read where things are (rooms and places) and the saved weather alerts for the home.
 // Deploy:  supabase functions deploy home-assistant
 // Secrets: ANTHROPIC_API_KEY   (required)
 //          ASSISTANT_HASH_SECRET (required, any long random string; keys the pseudonymous log id)
@@ -128,8 +129,9 @@ type Ctx = {
   counters: Record<string, number>;
   proposals: Row[];
   toolsUsed: Set<string>;
+  locPath?: Map<string, string>;
 };
-const PREFIX: Record<string, string> = { asset: "a", task: "t", expense: "e", doc: "d", log: "l", project: "p", contractor: "c", utility: "u" };
+const PREFIX: Record<string, string> = { asset: "a", task: "t", expense: "e", doc: "d", log: "l", project: "p", contractor: "c", utility: "u", location: "r", weather: "w" };
 
 function ref(ctx: Ctx, type: string, id: string, label: string): string {
   const key = type + ":" + id;
@@ -158,6 +160,9 @@ function load(ctx: Ctx, name: string): Promise<Row[]> {
         case "utilities":  r = await ctx.db.from("utilities").select("*").eq("property_id", pid).limit(30); break;
         case "docs":       r = await ctx.db.from("home_documents").select("*").eq("user_id", owner).eq("property_id", pid).limit(300); break;   // documents belong to one home
         case "contractors":r = await ctx.db.from("contractors").select("*").eq("user_id", owner).limit(200); break;
+        case "locations":  r = await ctx.db.from("property_locations").select("id,parent_id,name,kind,sort_order").eq("property_id", pid).order("sort_order").limit(300); break;
+        case "weather_alerts": r = await ctx.db.from("weather_alerts").select("*").eq("property_id", pid).or("expires.is.null,expires.gt." + new Date().toISOString()).order("first_seen", { ascending: false }).limit(20); break;
+        case "weather_settings": r = await ctx.db.from("weather_settings").select("*").eq("property_id", pid).limit(1); break;
         default: return [];
       }
       return r?.data ?? [];
@@ -190,6 +195,8 @@ function assetView(ctx: Ctx, a: Row) {
     lifespan_used_pct: f.lifePct,
     age_source: f.installed ? "recorded install/purchase date" : "unknown (no install date saved)",
   };
+  const place = a.location_id ? ctx.locPath?.get(a.location_id) : "";
+  view.location = place || undefined;   // room or place the person saved, like "Main floor › Kitchen"
   if (a.retired_at) view.retired = String(a.retired_at).slice(0, 10);
   if (a.warranty_only) view.warranty_only = true;
   if (a.expiry_date) view.warranty_expires = String(a.expiry_date).slice(0, 10);
@@ -217,7 +224,7 @@ const logView = (ctx: Ctx, s: Row, assetName?: string) => ({
 // ─── tools ───────────────────────────────────────────────────────────────────
 const TOOLS = [
   { name: "get_home_overview", description: "Start here for broad or 'what should I do' questions. Returns counts, assets nearing/past typical lifespan, assets with unknown age, overdue and upcoming tasks, warranties and documents expiring soon, insurance renewal, and 12-month spending by category.", input_schema: { type: "object", properties: {} } },
-  { name: "search_assets", description: "Find the user's assets (appliances, systems, roof, etc.) with age and lifespan facts. Filters are optional.", input_schema: { type: "object", properties: { query: { type: "string", description: "text to match in name/brand/model/category" }, category: { type: "string" }, include_retired: { type: "boolean" } } } },
+  { name: "search_assets", description: "Find the user's assets (appliances, systems, roof, etc.) with age, lifespan and location facts. Filters are optional.", input_schema: { type: "object", properties: { query: { type: "string", description: "text to match in name/brand/model/category/location" }, category: { type: "string" }, location: { type: "string", description: "room or place name, e.g. kitchen" }, include_retired: { type: "boolean" } } } },
   { name: "get_asset", description: "One asset in detail: its service history, tasks and warranty. Use the ref returned by search_assets.", input_schema: { type: "object", properties: { ref: { type: "string" } }, required: ["ref"] } },
   { name: "search_tasks", description: "Find tasks. status: open | overdue | completed | all (default open).", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string", enum: ["open", "overdue", "completed", "all"] }, due_within_days: { type: "integer" } } } },
   { name: "spending_summary", description: "Total money spent on the home between two dates (YYYY-MM-DD). Counts BOTH saved expenses AND the costs on service records, exactly like the Steadwell dashboard does, and reports utility bills on their own line (not inside the total). Use this for any 'how much did I spend' question, then name the biggest items.", input_schema: { type: "object", properties: { since: { type: "string" }, until: { type: "string" } }, required: ["since", "until"] } },
@@ -227,6 +234,8 @@ const TOOLS = [
   { name: "list_contractors", description: "The user's saved contractors (name, trade, rating, notes). Contact details are not shared with you.", input_schema: { type: "object", properties: { query: { type: "string" } } } },
   { name: "list_projects", description: "Home projects with status and budget, plus spending linked to each.", input_schema: { type: "object", properties: {} } },
   { name: "get_utilities", description: "Utilities and their recent bills (last 12).", input_schema: { type: "object", properties: {} } },
+  { name: "list_locations", description: "The rooms and places the person saved for this home (like Main floor > Kitchen), with the assets and equipment in each one. Use for any 'what is in my kitchen / garage / upstairs' question, or where something is. Also says how many assets have no location saved.", input_schema: { type: "object", properties: { query: { type: "string", description: "optional room or place name to look at, e.g. kitchen" } } } },
+  { name: "get_weather_alerts", description: "Weather alerts saved for this home from the National Weather Service (freeze, winter, flood, storm), plus whether weather alert monitoring is turned on. This is NOT a live forecast. Use for any question about weather alerts, warnings or watches near the home.", input_schema: { type: "object", properties: {} } },
   { name: "propose_task", description: "Suggest a task/reminder for the user to add. Does NOT save anything; the user must tap Add. Check search_tasks first to avoid duplicates. Max 3 per reply.", input_schema: { type: "object", properties: { title: { type: "string" }, due_date: { type: "string", description: "YYYY-MM-DD, today or later" }, category: { type: "string", enum: TASK_CATEGORIES }, priority: { type: "string", enum: ["High", "Medium", "Low"] }, notes: { type: "string" }, asset_ref: { type: "string" } }, required: ["title", "due_date"] } },
 ];
 
@@ -236,8 +245,23 @@ function matchText(q: unknown, ...fields: unknown[]) {
   return s.split(/\s+/).every((w) => hay.includes(w));
 }
 
+// Builds "Main floor › Kitchen" style names once per question, so every asset can say where it is.
+async function primeLocations(ctx: Ctx) {
+  if (ctx.locPath) return;
+  const locs = await load(ctx, "locations");
+  const byId = new Map<string, Row>(locs.map((l) => [l.id, l]));
+  const m = new Map<string, string>();
+  for (const l of locs) {
+    const parts: string[] = []; let cur: Row | undefined = l, hops = 0;
+    while (cur && hops++ < 10) { parts.unshift(String(cur.name)); cur = cur.parent_id ? byId.get(cur.parent_id) : undefined; }
+    m.set(l.id, parts.join(" › "));
+  }
+  ctx.locPath = m;
+}
+
 async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
   ctx.toolsUsed.add(name);
+  await primeLocations(ctx);
   const today = ctx.today;
   switch (name) {
     case "get_home_overview": {
@@ -264,8 +288,13 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
       const topCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([category, total]) => ({ category, total: Math.round(total) }));
       const lastService = facts.filter((x) => x.a.pm_schedule).length;
       const h = ctx.home;
+      const [alertsNow, wxSet] = await Promise.all([load(ctx, "weather_alerts"), load(ctx, "weather_settings")]);
+      const rank: Record<string, number> = { warning: 0, watch: 1, advisory: 2 };
+      const topAlert = [...alertsNow].sort((x, y) => (rank[x.level] ?? 3) - (rank[y.level] ?? 3))[0];
       return {
         today, home: { type: h.type, year_built: h.year, sqft: h.sqft, bedrooms: h.bedrooms, bathrooms: h.bathrooms, location: locationOf(h), insurance_renewal: h.ins_renewal_date || undefined },
+        places_saved: ctx.locPath ? ctx.locPath.size : 0, assets_without_a_place: live.filter((a) => !a.location_id).length,
+        weather_alerts: { monitoring_on: !!wxSet[0]?.enabled, active: alertsNow.length, most_serious: topAlert ? `${topAlert.event} (${topAlert.level})` : undefined },
         counts: { assets: live.length, warranty_only_items: assets.filter((a) => a.warranty_only).length, open_tasks: open.length, overdue_tasks: overdue.length, service_log_entries: logs.length, documents: docs.length },
         assets_aging: aging, assets_needing_attention: needsAttention, assets_with_unknown_age: unknownAge, assets_with_maintenance_schedule: lastService,
         overdue_tasks: overdue, upcoming_tasks_45d: upcoming, warranties_expiring_90d: warrantiesSoon, documents_expiring_90d: docsSoon,
@@ -274,7 +303,8 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
     }
     case "search_assets": {
       const assets = await load(ctx, "assets");
-      const list = assets.filter((a) => (input.include_retired ? true : !a.retired_at) && matchText(input.query, a.item, a.brand, a.model, a.category) && (!input.category || lc(CAT_NORMALIZE[a.category] || a.category).includes(lc(input.category))));
+      const where = (a: Row) => (a.location_id ? ctx.locPath?.get(a.location_id) || "" : "");
+      const list = assets.filter((a) => (input.include_retired ? true : !a.retired_at) && matchText(input.query, a.item, a.brand, a.model, a.category, where(a)) && (!input.category || lc(CAT_NORMALIZE[a.category] || a.category).includes(lc(input.category))) && (!input.location || lc(where(a)).includes(lc(input.location))));
       return { total: list.length, assets: list.slice(0, 20).map((a) => assetView(ctx, a)) };
     }
     case "get_asset": {
@@ -370,6 +400,37 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
       try { const r = await ctx.db.from("utility_bills").select("*").in("utility_id", us.map((u) => u.id)).order("bill_date", { ascending: false }).limit(120); bills = r?.data ?? []; } catch { /* ignore */ }
       return { utilities: us.map((u) => ({ ref: ref(ctx, "utility", u.id, u.name || u.type || "Utility"), ...scalars(u), recent_bills: bills.filter((b) => b.utility_id === u.id).slice(0, 12).map((b) => ({ date: b.bill_date, amount: Number(b.amount) || 0, usage: b.usage ?? b.kwh ?? undefined })) })) };
     }
+    case "list_locations": {
+      const [locs, assets] = await Promise.all([load(ctx, "locations"), load(ctx, "assets")]);
+      const live = assets.filter((a) => !a.retired_at);
+      const want = lc(input.query).trim();
+      const rows = locs
+        .map((l) => ({ l, path: ctx.locPath?.get(l.id) || String(l.name) }))
+        .filter((x) => !want || lc(x.path).includes(want))
+        .sort((a, b) => a.path.localeCompare(b.path));
+      const out = rows.slice(0, 40).map(({ l, path }) => {
+        const here = live.filter((a) => a.location_id === l.id);
+        return { ref: ref(ctx, "location", l.id, path), place: path, kind: l.kind, item_count: here.length, items: here.slice(0, 15).map((a) => ({ ref: ref(ctx, "asset", a.id, a.item || "Asset"), item: a.item, brand: a.brand || undefined, model: a.model || undefined })) };
+      });
+      return {
+        places_saved: locs.length, showing: out.length, places: out,
+        assets_without_a_place: live.filter((a) => !a.location_id).length,
+        note: locs.length === 0 ? "No rooms or places are saved yet. They can add them in My Home > Locations, then choose a place on each asset." : undefined,
+      };
+    }
+    case "get_weather_alerts": {
+      const [alerts, set] = await Promise.all([load(ctx, "weather_alerts"), load(ctx, "weather_settings")]);
+      const s = set[0];
+      return {
+        monitoring: s ? { on: !!s.enabled, kinds: s.categories, how_early: s.level === "warning" ? "warnings only" : "early heads-ups too", adds_tasks_automatically: !!s.auto_tasks } : { on: false, note: "Weather alerts have not been set up for this home." },
+        active_alerts: alerts.slice(0, 8).map((a) => ({
+          ref: ref(ctx, "weather", a.id, a.event || "Weather alert"), event: a.event, level: a.level, kind: a.category,
+          headline: clip(a.headline, 240), area: clip(a.area, 160), starts: a.effective || undefined, ends: a.expires || undefined,
+          what_to_do: a.instruction ? clip(a.instruction, 300) : undefined,
+        })),
+        note: "Saved National Weather Service alerts only; there is no live forecast here. Alerts are checked about every 30 minutes while monitoring is on. If monitoring is off, nothing is being checked: say so, and that it can be turned on in My Home > Weather alerts. U.S. addresses only.",
+      };
+    }
     case "propose_task": {
       if (ctx.proposals.length >= 3) return { error: "limit of 3 suggestions reached" };
       const title = clip(input.title, 120);
@@ -407,7 +468,7 @@ async function callClaude(body: Row): Promise<Row> {
 function buildSystem(home: Row, today: string, tz: string): string {
   const bits = [home.type, home.year ? `built ${home.year}` : "", home.sqft ? `${home.sqft} sqft` : "", home.bedrooms ? `${home.bedrooms} bed` : "", home.bathrooms ? `${home.bathrooms} bath` : "", home.lot_size ? `lot ${home.lot_size}` : ""].filter(Boolean).join(", ");
   const loc = locationOf(home);
-  return `You are Ask Steadwell, the assistant inside Steadwell, a home-management app. You help one homeowner understand and look after their own home using the records they saved: assets, warranties, tasks, service history, expenses, projects, documents, contractors and utilities.
+  return `You are Ask Steadwell, the assistant inside Steadwell, a home-management app. You help one homeowner understand and look after their own home using the records they saved: assets, warranties, tasks, service history, expenses, projects, documents, contractors, utilities, the rooms and places they saved, and the weather alerts saved for the home.
 
 THIS HOME
 Today is ${weekdayOf(today)}, ${today}${tz ? ` (${tz})` : ""}. Calendar for the next two weeks: ${Array.from({ length: 14 }, (_, i) => `${weekdayOf(addDays(today, i + 1)).slice(0, 3)} ${addDays(today, i + 1)}`).join(", ")}. Use this calendar for every weekday date; never work out a weekday yourself. ${bits ? "Home: " + bits + "." : "Home details not filled in."} ${loc ? "Location: " + loc + "." : "Location unknown."}
@@ -419,6 +480,8 @@ HOW TO ANSWER
 - You can read records and you CAN suggest tasks. When the person asks you to add, create, schedule or remind them of a task: check search_tasks once for a duplicate, then you MUST call propose_task. The Add button only appears if you call it. Never say "tap Add" unless you called propose_task in this reply.
 - You cannot mark tasks done, edit or delete anything. If asked, say so in your first sentence and tell them where to do it in Steadwell (for example, open the task and tap Complete). Then help with the rest of the request.
 - Start with the answer. Do not narrate your checks ("No duplicate found", "Let me look"). Use **bold** sparingly and never a lone asterisk.
+- Where things are: assets can have a room or place saved (like Main floor › Kitchen). For "what is in my kitchen" or where something is, call list_locations (or search_assets with location). Only say an item is in a place if its location says so. If an item has no place saved, say that and that they can set it on the asset. Never assume a range or dishwasher is in the kitchen.
+- Weather: call get_weather_alerts for any question about weather alerts, warnings, watches or storms near the home. Report only what it returns. You have no live forecast, so never say what the weather will be. If monitoring is off, say no alerts are being checked and point to My Home > Weather alerts to turn them on. If it is on and the list is empty, say there are no active alerts saved right now. For a combined question, answer both parts.
 - Utility bills (electric, water, gas, trash) are tracked separately from home spending. spending_summary reports them on their own line; give the home total first, then say what the utility bills came to in the same period.
 - For general home knowledge (typical lifespans, typical costs, seasonal care, climate risks) use your own knowledge, say it is a general estimate, and adapt to the home's age and location. Give cost ranges, never a single number, and note that local quotes vary.
 - Recommendations: specific and prioritized: what, why now, rough cost, how urgent. At most 3 items unless asked for more. Base urgency on recorded facts, and say when age is unknown instead of assuming.
