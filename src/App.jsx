@@ -1,4 +1,4 @@
-// Steadwell v419 — 2026-10-25
+// Steadwell v420 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4028,7 +4028,8 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 }
 
 /* Phones: calendar header wraps so the next-month arrow is never clipped, the
-   task list comes before the calendar, and the calendar is more compact. */
+   the calendar comes first (tap a day, see that day's tasks right under it), and
+   the calendar is more compact. */
 @media(max-width:599px){
   .ct-cal-hdr{flex-wrap:wrap;gap:.55rem;padding:.75rem .85rem}
   .ct-cal-hdr>div:first-child{width:100%;justify-content:space-between;align-items:center!important;gap:.5rem!important}
@@ -4037,8 +4038,9 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
   .ct-navs .ct-nav-btn{flex:0 0 40px;width:40px;height:34px}
   .ct-navs .ct-today-btn{flex:1 1 auto}
   .ct-day{min-height:46px;padding:.28rem .3rem .3rem}
-  .tasks-cal{order:2;scroll-margin-top:76px}
-  .tasks-main{order:1}
+  .tasks-cal{order:1;scroll-margin-top:76px}
+  .tasks-main{order:2;scroll-margin-top:76px}
+  .tasks-cal .ct-panel{scroll-margin-top:76px}
   .tasks-cal-jump{display:inline-flex!important}
   .vb-full{display:none}
   .vb-short{display:inline!important}
@@ -13309,48 +13311,79 @@ function HomeAuditChecklist({ warranties, onNavigate, onOpenAsset, userId, profi
 }
 
 
-function DayDetail({ date, tasks, onClose, onEdit }) {
+function DayDetail({ date, events = [], tasks = [], people = [], userId, onClose, onOpenTask, onFullCalendar }) {
   const dt = new Date(date + "T00:00:00");
-  const label = dt.toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric", year:"numeric"});
+  const label = dt.toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric"});
   const STATUS_STYLE_LOCAL = {
     "Scheduled":   {bg:"#EBF5FF",text:"#1A6FA0",border:"#93C5E8"},
     "In Progress": {bg:"#FFF8E6",text:"#92610A",border:"#F5CC76"},
     "Completed":   {bg:"#E8F6EE",text:"#1A7A44",border:"#7DCBA1"},
     "Overdue":     {bg:"#FDEEEE",text:"#B91C1C",border:"#F5A0A0"},
   };
+  const peopleById = Object.fromEntries((people || []).map(pp => [pp.id, pp]));
+  const [mineOnly, setMineOnly] = useState(false);
+  const anyAssigned = tasks.some(t => taskAssignees(t).length > 0);
+  const shownTasks = tasks
+    .filter(t => !mineOnly || taskAssignees(t).includes(userId))
+    .sort((a, b) => (a.status === "Completed") - (b.status === "Completed"));
+  const others = events.filter(e => !String(e.type).startsWith("task") && e.type !== "seasonal");
+  const OTHER_ICON = { warranty:"🛡️", warranty_warn:"🛡️", insurance:"📄", insurance_warn:"📄", service:"🔧" };
+  const nothing = shownTasks.length === 0 && others.length === 0;
   return (
     <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal" role="dialog" aria-label={"Tasks for " + label}>
         <div className="modal-handle"/>
         <div className="modal-hdr">
           <span className="modal-title">📅 {label}</span>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-body">
-          {tasks.length === 0 ? (
-            <div className="cal-modal-empty">No tasks scheduled for this day</div>
-          ) : tasks.map(t => {
-            const sc = STATUS_STYLE_LOCAL[t.status] || STATUS_STYLE_LOCAL.Scheduled;
-            return (
-              <div key={t.id} className="cal-task-item">
-                <span style={{fontSize:"1.2rem",flexShrink:0}}>{CAT_ICONS[t.category]||"🔧"}</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div className="cal-task-title">{t.title}</div>
-                  <div className="cal-task-meta">
-                    <span className="badge" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{t.status}</span>
-                    {t.category && <span>{t.category}</span>}
-                    {t.vendor && <span>👤 {t.vendor}</span>}
-                    {t.cost > 0 && <span>{fmt$(t.cost)}</span>}
+          {anyAssigned && (
+            <div style={{display:"flex",gap:".4rem",marginBottom:".75rem"}}>
+              {[[false,"Everyone"],[true,"Just mine"]].map(([v, l]) => (
+                <button key={l} type="button" aria-pressed={mineOnly === v} onClick={() => setMineOnly(v)}
+                  style={{padding:".35rem .8rem",borderRadius:999,border:"1.5px solid " + (mineOnly === v ? "var(--pine)" : "var(--stone)"),background:mineOnly === v ? "var(--pine)" : "var(--white)",color:mineOnly === v ? "#F4EDDF" : "#5A534B",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,cursor:"pointer"}}>{l}</button>
+              ))}
+            </div>
+          )}
+          {nothing ? (
+            <div className="cal-modal-empty">{mineOnly ? "Nothing assigned to you on this day" : "No tasks scheduled for this day"}</div>
+          ) : (<>
+            {shownTasks.map(t => {
+              const done = t.status === "Completed";
+              const overdue = !done && t.status !== "In Progress" && t.due_date && t.due_date < localISO();
+              const stKey = overdue ? "Overdue" : t.status;
+              const sc = STATUS_STYLE_LOCAL[stKey] || STATUS_STYLE_LOCAL.Scheduled;
+              const ids = taskAssignees(t);
+              const names = [...ids].sort((x, y) => (y === userId) - (x === userId)).map(id => id === userId ? "You" : (peopleById[id]?.label || "Teammate"));
+              return (
+                <div key={t.id} className="cal-task-item" style={done ? {opacity:.6} : undefined}>
+                  <span style={{fontSize:"1.2rem",flexShrink:0}}>{CAT_ICONS[t.category]||"🔧"}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="cal-task-title" style={done ? {textDecoration:"line-through"} : undefined}>{t.title}</div>
+                    <div className="cal-task-meta">
+                      <span className="badge" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{stKey}</span>
+                      {t.category && <span>{t.category}</span>}
+                      {names.length > 0 && <span>👤 {names.length > 3 ? names.slice(0, 2).join(", ") + " +" + (names.length - 2) : names.join(", ")}</span>}
+                      {t.vendor && <span>{t.vendor}</span>}
+                    </div>
+                    {t.notes && !t.notes.startsWith("[") && <div style={{fontSize:".76rem",color:"#7A7370",marginTop:"4px",lineHeight:1.4}}>{t.notes.length > 140 ? t.notes.slice(0, 139) + "…" : t.notes}</div>}
                   </div>
-                  {t.notes && <div style={{fontSize:".76rem",color:"#7A7370",marginTop:"4px",lineHeight:1.4}}>{t.notes}</div>}
+                  {onOpenTask && <button className="btn btn-ghost btn-sm" onClick={()=>onOpenTask(t.id)} style={{flexShrink:0}}>Open</button>}
                 </div>
-                <button className="btn btn-ghost btn-sm" onClick={()=>onEdit(t)} style={{flexShrink:0}}>Edit</button>
+              );
+            })}
+            {others.map(e => (
+              <div key={e.id} className="cal-task-item">
+                <span style={{fontSize:"1.2rem",flexShrink:0}}>{OTHER_ICON[e.type] || "📌"}</span>
+                <div style={{flex:1,minWidth:0}}><div className="cal-task-title">{e.title}</div></div>
               </div>
-            );
-          })}
+            ))}
+          </>)}
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Close</button>
+          {onFullCalendar && <button className="btn btn-primary" onClick={onFullCalendar}>Full calendar</button>}
         </div>
       </div>
     </div>
@@ -14275,7 +14308,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate, project
   );
 }
 
-function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[], onOpenWarranties, onOpenInsurance, onViewAsset }) {
+function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate, greeting, username, serviceLogs=[], planData, onUpgrade, onOpenAsset, userId, onLaunchSetup, projects=[], contractors=[], onOpenWarranties, onOpenInsurance, onViewAsset, people=[], onOpenTask }) {
   const { recalls, checking, checked, recallError, runCheck } = useRecallAlerts(warranties);
   // The ONE Home Health score — same computeHealthScore() the "My Home" tab's
   // HealthScoreWidget shows, so this never disagrees with it. This hero stays
@@ -14293,8 +14326,7 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
   const warrantyBuckets = getWarrantyBuckets(warranties);
   const expiringW = warrantyBuckets.soon.map(x => x.w);
   const completed = tasks.filter(t=>t.status==="Completed").length;
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [selectedDayTasks, setSelectedDayTasks] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null);   // YYYY-MM-DD of the day tapped in the week strip
   const [showScoreInfo, setShowScoreInfo] = useState(false);
   const [showAllFeed, setShowAllFeed] = useState(false);
   // "Got it" acknowledgements for informational feed items (warranty and
@@ -14307,11 +14339,6 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
   });
   const saveAcks = (next) => { setAckKeys(next); try { localStorage.setItem(ACK_KEY, JSON.stringify(next)); } catch {} };
   const ackItem = (key) => { if (!ackKeys.includes(key)) saveAcks([...ackKeys, key]); };
-
-  const handleDayClick = (date, dayTasks) => {
-    setSelectedDay(date);
-    setSelectedDayTasks(dayTasks);
-  };
 
   // ── Seasonal tip — climate aware
   const month = new Date().getMonth();
@@ -14785,9 +14812,12 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
           <button onClick={()=>onNavigate("tasks")} style={{fontSize:".78rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Full calendar →</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
-          {weekDays.map(({d, allEvs, isToday}, i) => (
-            <div key={i} onClick={()=>allEvs.length>0&&onNavigate("tasks")}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:".5rem .2rem",borderRadius:10,cursor:allEvs.length>0?"pointer":"default",
+          {weekDays.map(({d, dateStr, allEvs, isToday}, i) => (
+            <div key={i} role="button" tabIndex={0}
+              aria-label={d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}) + (allEvs.length ? ", " + allEvs.length + (allEvs.length === 1 ? " item" : " items") : ", nothing scheduled")}
+              onClick={()=>setSelectedDay(dateStr)}
+              onKeyDown={e=>{ if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedDay(dateStr); } }}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:".5rem .2rem",borderRadius:10,cursor:"pointer",
                 background:isToday?"var(--pine)":allEvs.length>0?"var(--cream)":"transparent",
                 transition:"background .1s"}}>
               <span style={{fontSize:".62rem",fontWeight:700,color:isToday?"rgba(244,237,223,.6)":"#BFB5A8",letterSpacing:".04em",textTransform:"uppercase"}}>
@@ -14851,16 +14881,20 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
       {selectedDay && (
         <DayDetail
           date={selectedDay}
-          tasks={selectedDayTasks}
+          events={evMap[selectedDay] || []}
+          tasks={tasks.filter(t => t.due_date && String(t.due_date).slice(0, 10) === selectedDay)}
+          people={people}
+          userId={userId}
           onClose={() => setSelectedDay(null)}
-          onEdit={() => { setSelectedDay(null); onNavigate("tasks"); }}
+          onOpenTask={onOpenTask ? (id) => { setSelectedDay(null); onOpenTask(id); } : undefined}
+          onFullCalendar={() => { setSelectedDay(null); onNavigate("tasks"); }}
         />
       )}
     </div>
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
-function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[], people=[] }) {
+function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[], people=[], pendingSelectedTask=null, onClearPendingSelectedTask }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone, profile);
   const month = new Date().getMonth();
@@ -14901,6 +14935,14 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     setModal(true);
   };
   const openEdit = t => { setEditData({...t}); setEditId(t.id); setModal(true); };
+
+  // Opened from the dashboard day pop-up: go straight to that task.
+  useEffect(() => {
+    if (!pendingSelectedTask) return;
+    const t = tasks.find(x => x.id === pendingSelectedTask);
+    if (t) openEdit(t);
+    onClearPendingSelectedTask?.();
+  }, [pendingSelectedTask]);
 
   // Close category dropdown on outside click
   useEffect(() => {
@@ -15178,7 +15220,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-          <button className="btn btn-ghost btn-sm tasks-cal-jump" onClick={()=>document.querySelector(".tasks-cal")?.scrollIntoView({behavior:"smooth",block:"start"})}>📅 Calendar</button>
+          <button className="btn btn-ghost btn-sm tasks-cal-jump" onClick={()=>document.querySelector(".tasks-main")?.scrollIntoView({behavior:"smooth",block:"start"})}>📋 All tasks</button>
           <button className="btn btn-primary" onClick={()=>openNew()}>＋ Add Task</button>
         </div>
       </div>
@@ -25804,7 +25846,12 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                 return (
                   <div key={i}
                     className={`ct-day ${cell.other?"ct-other":""} ${cell.date===todayStr?"ct-today":""} ${cell.date===selDate?"ct-sel":""}`}
-                    onClick={()=>{ if(!cell.other && cell.date) setSelDate(cell.date); }}
+                    onClick={()=>{
+                      if(cell.other || !cell.date) return;
+                      setSelDate(cell.date);
+                      // On a phone the day's list sits below the grid; bring it into view so a tap visibly does something.
+                      try { if (window.matchMedia("(max-width:599px)").matches) setTimeout(()=>document.querySelector(".tasks-cal .ct-panel")?.scrollIntoView({behavior:"smooth",block:"start"}), 60); } catch {}
+                    }}
                   >
                     <div className="ct-dn">{cell.day}</div>
                     {evs.length > 0 && (
@@ -26918,6 +26965,7 @@ export default function App() {
   const [pendingWarrantyTracker, setPendingWarrantyTracker] = useState(false);
   const [pendingSelectedAsset, setPendingSelectedAsset] = useState(null);
   const [pendingSelectedExpense, setPendingSelectedExpense] = useState(null);
+  const [pendingSelectedTask, setPendingSelectedTask] = useState(null);
   const [assetsResetSignal, setAssetsResetSignal] = useState(0);
   const [showWarrantyModule, setShowWarrantyModule] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -27715,8 +27763,8 @@ export default function App() {
           ) : (
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
-              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} setTasks={setTasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
-              <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
+              <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} setTasks={setTasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} people={people} onOpenTask={(id)=>{setPendingSelectedTask(id);setTab("tasks");}} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
+              <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people} pendingSelectedTask={pendingSelectedTask} onClearPendingSelectedTask={()=>setPendingSelectedTask(null)}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} emailUnverified={session?.user?.app_metadata?.email_verified === false} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}} onOpenExpense={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedExpense(id);setTab("expenses");}} onViewAsset={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedAsset(id);setTab("warranties");}} onExpenseAdded={(row)=>setExpenses(prev=>[row,...prev.filter(e=>e.id!==row.id)])} onAssetAdded={(row)=>setWarranties(prev=>[row,...prev.filter(w=>w.id!==row.id)])}/></div>
