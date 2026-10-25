@@ -1,5 +1,5 @@
-// Steadwell v421 — 2026-10-25
-import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
+// Steadwell v423 — 2026-10-25
+import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 import { BLOG_OVERRIDES } from "./blog-overrides.js";
@@ -6998,11 +6998,13 @@ const ACCT_SECTIONS = [
   { id:"plan",    label:"Plan & billing",   ico:"💳" },
   { id:"notify",  label:"Notifications",    ico:"🔔" },
   { id:"connect", label:"Inbox & calendar", ico:"📬" },
+  { id:"categories", label:"Categories",    ico:"🏷️" },
   { id:"data",    label:"Data & privacy",   ico:"🔒" },
 ];
 
-function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow, onCheckout, checkoutLoading, onSignOut, onExport, onFeedback }) {
-  const [acctTab, setAcctTab] = useState("profile");
+function AccountModal({ session, profile, setProfile, planData, toast, onClose, onUpgradeFlow, onCheckout, checkoutLoading, onSignOut, onExport, onFeedback, initialTab }) {
+  const catCtx = useContext(CustomCatsContext);
+  const [acctTab, setAcctTab] = useState(initialTab || "profile");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editEmail, setEditEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -7203,7 +7205,7 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
         </div>
         <div className="acct-layout">
           <div className="acct-nav" role="tablist" aria-label="Account sections">
-            {ACCT_SECTIONS.map(sec => (
+            {ACCT_SECTIONS.filter(sec => sec.id !== "categories" || catCtx?.available).map(sec => (
               <button key={sec.id} role="tab" aria-selected={acctTab===sec.id} className={"acct-nav-btn"+(acctTab===sec.id?" on":"")} onClick={()=>setAcctTab(sec.id)}>
                 <span className="acct-nav-ico" aria-hidden="true">{sec.ico}</span>{sec.label}
               </button>
@@ -7439,6 +7441,11 @@ function AccountModal({ session, profile, setProfile, planData, toast, onClose, 
               {session?.user?.id && <CalendarSyncWidget userId={session.user.id} calendarToken={profile?.calendar_token} />}
             </AcctCard>
           </>)}
+
+          {/* ───────────── CATEGORIES ───────────── */}
+          {acctTab==="categories" && catCtx?.available && (
+            <CategoryManager homeName={profile ? homeShortName(profile) : ""}/>
+          )}
 
           {/* ───────────── DATA & PRIVACY ───────────── */}
           {acctTab==="data" && (<>
@@ -7831,7 +7838,7 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
   return (
     <div className="fg">
       <div className="field s2"><label>Task Title *</label><input value={data.title||""} onChange={e=>handleTitle(e.target.value)} placeholder="e.g. Replace HVAC Filter" /></div>
-      <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option><GroupedOptions groups={CATEGORY_GROUPS} value={data.category||""}/></select></div>
+      <div className="field"><label>Category</label><CategorySelect value={data.category||""} onChange={v=>f("category",v)}/></div>
       <div className="field"><label>Priority</label><select value={data.priority||""} onChange={e=>f("priority",e.target.value)}><option value="">Select…</option>{PRIORITY.map(p=><option key={p}>{p}</option>)}</select></div>
       <div className="field"><label>Status</label><select value={data.status||""} onChange={e=>f("status",e.target.value)}><option value="">Select…</option>{STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Due Date</label><input type="date" value={data.due_date||""} onChange={e=>f("due_date",e.target.value)} /></div>
@@ -11149,7 +11156,7 @@ function ExpenseForm({ data, onChange, projects=[], userId, planData, onUpgrade,
       <div className="scan-divider">or fill in manually</div>
       <div className="fg">
         <div className="field s2"><label>Description *</label><input value={data.description||""} onChange={e=>f("description",e.target.value)} placeholder="e.g. HVAC Service Call" /></div>
-        <div className="field"><label>Category</label><select value={data.category||""} onChange={e=>f("category",e.target.value)}><option value="">Select…</option><GroupedOptions groups={CATEGORY_GROUPS} value={data.category||""}/></select></div>
+        <div className="field"><label>Category</label><CategorySelect value={data.category||""} onChange={v=>f("category",v)}/></div>
         <div className="field"><label>Amount ($)</label><input type="number" min="0" value={data.amount||""} onChange={e=>f("amount",e.target.value)} placeholder="0" /></div>
         <div className="field"><label>Date</label><input type="date" value={data.date||""} onChange={e=>f("date",e.target.value)} /></div>
         <div className="field s2"><label>Contractor</label>
@@ -14168,11 +14175,9 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate, project
                     {fileAs === "expense" && (
                       <div style={{marginBottom:".75rem"}}>
                         <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".3rem"}}>Category</div>
-                        <select value={editData.category || ""} onChange={e => setEditData(d => ({ ...d, category: e.target.value }))}
-                          style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}>
-                          <option value="">Select…</option>
-                          <GroupedOptions groups={CATEGORY_GROUPS} value={editData.category||""}/>
-                        </select>
+                        <div className="field" style={{margin:0}}>
+                          <CategorySelect value={editData.category || ""} onChange={v => setEditData(d => ({ ...d, category: v }))}/>
+                        </div>
                       </div>
                     )}
                     {fileAs === "document" && (
@@ -21597,6 +21602,151 @@ function DocItem({ doc, assets, onEdit, onDelete, onView, fileTypeBadge, getExpi
     </div>
   );
 }
+// ─── YOUR OWN CATEGORIES ─────────────────────────────────────────────────────
+// Each home can keep a few categories of its own for tasks, expenses and contractors. They live on
+// profiles.custom_categories (jsonb array of names) and are managed in My Account > Categories.
+// The forms only get a one-line "+ Add your own…" so they stay short. Assets stay on the curated
+// list so icons, lifespans and recall checks keep working.
+const MAX_CUSTOM_CATS = 12;
+const ADD_OWN_VALUE = "__add_own__";
+const CustomCatsContext = createContext(null);
+const normCatKey = (v) => String(v||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().replace(/s$/,"");
+function findExistingCategory(name, custom) {
+  const k = normCatKey(name);
+  const pool = [...(custom||[]), ...CATEGORIES, ...Object.keys(LEGACY_CATEGORY_ALIASES)];
+  for (const c of pool) if (normCatKey(c) === k) return LEGACY_CATEGORY_ALIASES[c] || c;
+  return null;
+}
+function catToast(msg, type="success") { try { window.dispatchEvent(new CustomEvent("sw:toast",{detail:{msg,type}})); } catch {} }
+const openCategorySettings = () => { try { window.dispatchEvent(new CustomEvent("sw:open-account",{detail:{tab:"categories"}})); } catch {} };
+
+// A category <select> that ends with "+ Add your own…" (one short line, no extra clutter).
+function CategorySelect({ value, onChange, groups=CATEGORY_GROUPS, placeholder="Select…" }) {
+  const cc = useContext(CustomCatsContext);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const custom = cc?.list || [];
+  const canAdd = !!(cc?.available && cc?.canEdit);
+  const allGroups = custom.length ? [{ label:"Your categories", items:custom }, ...groups] : groups;
+  const close = () => { setAdding(false); setName(""); setMsg(""); };
+  const submit = async () => {
+    setBusy(true);
+    const r = await cc.add(name);
+    setBusy(false);
+    if (r.status === "error") { setMsg(r.msg); return; }
+    onChange(r.value);
+    catToast(r.status === "exists" ? `"${r.value}" is already in your list, so we selected it.` : `Added "${r.value}"`);
+    close();
+  };
+  return (
+    <>
+      <select value={value||""} onChange={e => { if (e.target.value === ADD_OWN_VALUE) { setAdding(true); return; } onChange(e.target.value); }}>
+        <option value="">{placeholder}</option>
+        <GroupedOptions groups={allGroups} value={value||""}/>
+        {canAdd && <option value={ADD_OWN_VALUE}>+ Add your own…</option>}
+      </select>
+      {adding && (
+        <div style={{marginTop:".45rem"}}>
+          <div style={{display:"flex",gap:".4rem"}}>
+            <input value={name} maxLength={30} autoFocus onChange={e=>{setName(e.target.value);setMsg("");}}
+              onKeyDown={e=>{ if (e.key==="Enter") { e.preventDefault(); submit(); } if (e.key==="Escape") { e.preventDefault(); close(); } }}
+              placeholder="Name it, e.g. Hot tub" aria-label="New category name" style={{flex:1,minWidth:0}}/>
+            <button type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={busy}>{busy?"Saving…":"Add"}</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={close}>Cancel</button>
+          </div>
+          {msg && <div role="alert" style={{fontSize:".78rem",color:"var(--red)",marginTop:".35rem"}}>{msg}</div>}
+          <button type="button" onClick={openCategorySettings} style={{border:"none",background:"none",padding:0,marginTop:".35rem",fontFamily:"inherit",fontSize:".76rem",color:"var(--pine)",fontWeight:600,cursor:"pointer"}}>Manage your categories in settings</button>
+        </div>
+      )}
+    </>
+  );
+}
+
+// My Account > Categories: add, review and remove this home's own categories.
+function CategoryManager({ homeName }) {
+  const cc = useContext(CustomCatsContext);
+  const [name, setName] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirmRm, setConfirmRm] = useState(null);
+  const custom = cc?.list || [];
+  const canEdit = !!cc?.canEdit;
+  const add = async () => {
+    setBusy(true);
+    const r = await cc.add(name);
+    setBusy(false);
+    if (r.status === "error") { setMsg(r.msg); return; }
+    setName(""); setMsg("");
+    catToast(r.status === "exists" ? `"${r.value}" is already in your list.` : `Added "${r.value}". It's now in your category menus.`);
+  };
+  const remove = async (c) => {
+    setBusy(true);
+    const ok = await cc.remove(c);
+    setBusy(false); setConfirmRm(null);
+    if (!ok) { setMsg("We couldn't remove that. Try again."); return; }
+    catToast(`Removed "${c}"`);
+  };
+  const smallBtn = { border:"none", background:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, padding:".2rem 0" };
+  return (
+    <>
+      <AcctCard title="Your categories" sub={<>Add categories that Steadwell's list doesn't cover. They show up in the category menu for tasks, expenses and contractors{homeName ? <> on <strong>{homeName}</strong></> : " on this home"}, for everyone who uses it.</>}>
+        {canEdit ? (
+          <>
+            <div style={{display:"flex",gap:".5rem"}}>
+              <input value={name} maxLength={30} onChange={e=>{setName(e.target.value);setMsg("");}}
+                onKeyDown={e=>{ if (e.key==="Enter") { e.preventDefault(); add(); } }}
+                placeholder="e.g. Hot tub, Workshop, Guest house" aria-label="New category name" style={{flex:1,minWidth:0}}/>
+              <button className="btn btn-primary btn-sm" onClick={add} disabled={busy || !name.trim() || custom.length >= MAX_CUSTOM_CATS}>Add</button>
+            </div>
+            {msg && <div role="alert" className="acct-hint" style={{color:"var(--red)"}}>{msg}</div>}
+            <div className="acct-hint">{custom.length >= MAX_CUSTOM_CATS ? `You've used all ${MAX_CUSTOM_CATS}. Remove one you no longer need to add another.` : `${custom.length} of ${MAX_CUSTOM_CATS} used.`}</div>
+          </>
+        ) : (
+          <div className="acct-hint" style={{marginTop:0}}>Only the home's owner, admins and full-access people can change these. You can still pick them in any menu.</div>
+        )}
+        {custom.length === 0 ? (
+          <div className="acct-hint" style={{marginTop:".8rem"}}>You haven't added any yet. Anything you add will also appear under "Your categories" at the top of each menu.</div>
+        ) : (
+          <div style={{marginTop:".8rem"}}>
+            {custom.map(c => {
+              const u = cc.usage(c);
+              return (
+                <div key={c} className="acct-row acct-rowline" style={{alignItems:"center"}}>
+                  <div className="acct-wrap" style={{flex:1}}>
+                    <div className="acct-val">{c}</div>
+                    <div className="acct-hint" style={{marginTop:1}}>{u > 0 ? `Used by ${u} item${u!==1?"s":""}` : "Not used yet"}</div>
+                  </div>
+                  {canEdit && (confirmRm === c ? (
+                    <span style={{display:"flex",gap:".7rem",flexShrink:0}}>
+                      <button type="button" onClick={()=>remove(c)} disabled={busy} style={{...smallBtn,color:"var(--red)"}}>{u>0?"Remove anyway":"Remove"}</button>
+                      <button type="button" onClick={()=>setConfirmRm(null)} style={{...smallBtn,color:"#5A534B"}}>Keep</button>
+                    </span>
+                  ) : (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setConfirmRm(c)} aria-label={`Remove ${c}`}>Remove</button>
+                  ))}
+                </div>
+              );
+            })}
+            {confirmRm && cc.usage(confirmRm) > 0 && (
+              <div className="acct-hint">Items already using "{confirmRm}" keep that name. It just stops showing in the menus for new items.</div>
+            )}
+          </div>
+        )}
+      </AcctCard>
+      <AcctCard title="Already built in" sub="Check here before adding your own. These are in every menu already.">
+        {CATEGORY_GROUPS.filter(g => g.label !== "Other").map(g => (
+          <div key={g.label} style={{marginBottom:".6rem"}}>
+            <div className="acct-val" style={{fontSize:".82rem"}}>{g.label}</div>
+            <div className="acct-hint" style={{marginTop:1}}>{g.items.join(", ")}</div>
+          </div>
+        ))}
+      </AcctCard>
+    </>
+  );
+}
+
 // ─── CONTRACTOR ROLODEX ───────────────────────────────────────────────────────
 // Contractors use the same list as tasks and expenses (minus vehicles, which aren't trades).
 const TRADE_GROUPS = CATEGORY_GROUPS.filter(g => g.label !== "Vehicles");
@@ -21610,10 +21760,7 @@ function ContractorForm({ data, onChange }) {
       <div className="field s2"><label>Company</label><input value={data.company||""} onChange={e=>f("company",e.target.value)} placeholder="e.g. Smith HVAC Services"/></div>
       <div className="field s2">
         <label>Trade / Specialty</label>
-        <select value={data.trade||""} onChange={e=>f("trade",e.target.value)}>
-          <option value="">Select…</option>
-          <GroupedOptions groups={TRADE_GROUPS} value={data.trade||""}/>
-        </select>
+        <CategorySelect value={data.trade||""} onChange={v=>f("trade",v)} groups={TRADE_GROUPS}/>
       </div>
       <div className="field"><label>Phone</label><input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000"/></div>
       <div className="field"><label>Email</label><input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com"/></div>
@@ -27032,6 +27179,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showPrivacySettings, setShowPrivacySettings] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [acctInitialTab, setAcctInitialTab] = useState(null);
   const [showExport,   setShowExport]   = useState(false);
   const [pendingAssetEdit, setPendingAssetEdit] = useState(null);
   const [pendingNewAsset, setPendingNewAsset] = useState(null); // {category, item} — pre-fill new asset form
@@ -27474,6 +27622,43 @@ export default function App() {
   const canManagePeople = !!profile && (profile._shared ? profile._role === "admin" : planData?.plan === "pro");
   const canSeeMoney = accessLevel !== "limited";
   useEffect(() => { if (!canSeeMoney && tab === "expenses") setTab("dashboard"); }, [canSeeMoney, tab]);
+  // The home's own categories (profiles.custom_categories). Hidden until the column exists in the database.
+  const customCatsApi = useMemo(() => {
+    let list = [];
+    try { const v = profile?.custom_categories; const a = Array.isArray(v) ? v : typeof v === "string" ? JSON.parse(v) : []; list = a.filter(x => typeof x === "string" && x.trim()); } catch {}
+    const persist = async (next) => {
+      if (!profile?.id) return false;
+      const { data, error } = await supabase.from("profiles").update({ custom_categories: next }).eq("id", profile.id).select("id");
+      if (error || !data || !data.length) return false;
+      setProfile(p => ({ ...p, custom_categories: next }));
+      return true;
+    };
+    return {
+      list,
+      available: !!profile && Object.prototype.hasOwnProperty.call(profile, "custom_categories"),
+      canEdit: accessLevel !== "limited",
+      usage: (name) => tasks.filter(t => t.category === name).length + expenses.filter(e => e.category === name).length + contractors.filter(c => c.trade === name).length,
+      // Returns {status:"added"|"exists"|"error", value, msg}
+      add: async (raw) => {
+        const clean = String(raw||"").trim().replace(/\s+/g," ");
+        if (!clean) return { status:"error", msg:"Type a name first." };
+        if (clean.length > 30) return { status:"error", msg:"Keep it to 30 characters or fewer." };
+        const existing = findExistingCategory(clean, list);
+        if (existing) return { status:"exists", value:existing };
+        if (list.length >= MAX_CUSTOM_CATS) return { status:"error", msg:`You can keep up to ${MAX_CUSTOM_CATS} of your own. Remove one you no longer use to add another.` };
+        const display = clean.charAt(0).toUpperCase() + clean.slice(1);
+        const ok = await persist([...list, display]);
+        return ok ? { status:"added", value:display } : { status:"error", msg:"We couldn't save that. Check your connection and try again." };
+      },
+      remove: (name) => persist(list.filter(x => x !== name)),
+    };
+  }, [profile, accessLevel, tasks, expenses, contractors]);
+  // "Manage your categories in settings" (from any category menu) opens My Account on the Categories section.
+  useEffect(() => {
+    const h = (e) => { setAcctInitialTab(e?.detail?.tab || null); setShowAccount(true); };
+    window.addEventListener("sw:open-account", h);
+    return () => window.removeEventListener("sw:open-account", h);
+  }, []);
 
   // ── Switch active property and reload all scoped data
   const switchProperty = async (propertyId) => {
@@ -27675,6 +27860,7 @@ export default function App() {
   return (
     <AppErrorBoundary>
       <style>{CSS}</style>
+      <CustomCatsContext.Provider value={customCatsApi}>
       <div className={"app"+(showSetup?" app-nosb":"")}>
         {/* ── Header ── */}
         <header className="hdr" role="banner">
@@ -27897,12 +28083,13 @@ export default function App() {
         )}
         {showAccount && (
           <AccountModal
+            initialTab={acctInitialTab}
             session={session}
             profile={profile}
             setProfile={setProfile}
             planData={planData}
             toast={toast}
-            onClose={()=>setShowAccount(false)}
+            onClose={()=>{setShowAccount(false);setAcctInitialTab(null);}}
             onUpgradeFlow={()=>{setShowAccount(false);setShowUpgrade(true);}}
             onCheckout={startCheckout}
             checkoutLoading={checkoutLoading}
@@ -27942,6 +28129,7 @@ export default function App() {
         {inspOpen && <InspectionImportModal userId={uid} propertyId={activePropertyId} warranties={warranties} setWarranties={setWarranties} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>{setInspOpen(false);setShowUpgrade(true);}} onClose={()=>setInspOpen(false)} onImported={()=>setDocsVersion(v=>v+1)} toast={toast}/>}
         {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} onCheckout={startCheckout} checkoutLoading={checkoutLoading} postSetup={showUpgrade === "post-setup"} />}
       </div>
+      </CustomCatsContext.Provider>
     </AppErrorBoundary>
   );
 }
