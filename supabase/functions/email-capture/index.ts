@@ -189,6 +189,8 @@ Rules:
 
 // ── Send confirmation email to user ──────────────────────────────────────────
 // v419: same look as the other Steadwell emails (real logo image, tables and inline styles only).
+// ── Send confirmation email to user ──────────────────────────────────────────
+// v419: same look as the other Steadwell emails (real logo image, tables and inline styles only).
 async function sendConfirmation(
   toEmail: string,
   userName: string,
