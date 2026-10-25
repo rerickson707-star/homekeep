@@ -188,6 +188,7 @@ Rules:
 }
 
 // ── Send confirmation email to user ──────────────────────────────────────────
+// v419: same look as the other Steadwell emails (real logo image, tables and inline styles only).
 async function sendConfirmation(
   toEmail: string,
   userName: string,
@@ -195,76 +196,62 @@ async function sendConfirmation(
   type: string,
   confidence: string,
 ) {
+  const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const typeLabel: Record<string, string> = {
-    warranty: "Warranty",
-    expense:  "Expense",
-    document: "Document",
-    asset:    "Asset",
-    unknown:  "Email",
-  };
-  const typeColor: Record<string, string> = {
-    warranty: "#234A3D",
-    expense:  "#B8861E",
-    document: "#3B5EA6",
-    asset:    "#C16140",
-    unknown:  "#8A8178",
+    warranty: "Warranty", expense: "Expense", document: "Document", asset: "Item", utility_bill: "Utility bill", unknown: "Email",
   };
   const label = typeLabel[type] || "Email";
-  const color = typeColor[type] || "#8A8178";
-  const confidenceNote = confidence === "low"
-    ? "<p style='font-size:13px;color:#C16140;margin:0 0 16px;'>⚠ We weren't fully confident in our parsing — please review this in your Email Inbox.</p>"
-    : "";
-
+  const C = { cream: "#F4EDDF", pine: "#234A3D", clay: "#C16140", ink: "#2A2723", body: "#4A443E", muted: "#7A7168", panel: "#F7F2E8", line: "#E8E0D0" };
+  const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+  const SERIF = "Georgia,'Times New Roman',serif";
+  const LINK = "https://www.trysteadwell.app/?open=inbox";
+  const first = esc(userName || "there");
+  const low = confidence === "low";
+  const intro = `We read the email you forwarded to your Steadwell capture address and filled in what we could. Nothing is saved to your records until you confirm it.`;
   const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#ECE3D2;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <div style="max-width:560px;margin:40px auto;background:#FBF7EE;border-radius:16px;overflow:hidden;">
-    <div style="background:#234A3D;padding:26px 32px;display:flex;align-items:center;gap:12px;">
-      <div style="width:34px;height:34px;background:#C16140;border-radius:9px;display:flex;align-items:center;justify-content:center;">
-        <svg viewBox="0 0 48 48" fill="none" width="19" height="19">
-          <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
-        </svg>
-      </div>
-      <span style="color:#F4EDDF;font-size:19px;font-weight:700;">Steadwell</span>
-    </div>
-    <div style="padding:32px;">
-      <div style="display:inline-block;background:${color};color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:16px;">${label} Captured</div>
-      <h1 style="font-family:Georgia,serif;font-size:22px;color:#234A3D;font-weight:400;margin:0 0 8px;line-height:1.3;">
-        Hi ${userName} — we captured your email
-      </h1>
-      <p style="font-size:14px;color:#5A534B;line-height:1.6;margin:0 0 20px;">${summary}</p>
-      ${confidenceNote}
-      <p style="font-size:13px;color:#8A8178;margin:0 0 24px;">Review and confirm this in your Steadwell Email Inbox. You can edit any details before saving it to your home records.</p>
-      <div style="text-align:center;">
-        <a href="https://www.trysteadwell.app" style="background:#C16140;color:#fff;text-decoration:none;padding:13px 28px;border-radius:40px;font-size:14px;font-weight:700;display:inline-block;">
-          Review in Steadwell →
-        </a>
-      </div>
-    </div>
-    <div style="padding:16px 32px;border-top:1px solid #E0D8C9;text-align:center;">
-      <p style="font-size:11px;color:#A8A09A;margin:0;">Steadwell · <a href="https://www.trysteadwell.app" style="color:#A8A09A;">trysteadwell.app</a></p>
-    </div>
-  </div>
-</body>
-</html>`;
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>We captured your email</title></head>
+<body style="margin:0;padding:0;background:${C.cream}">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${C.cream}">${esc(summary)}&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.cream}" style="background:${C.cream}"><tr><td align="center" style="padding:32px 14px">
+  <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
+    <tr><td align="center" bgcolor="${C.pine}" style="background:${C.pine};padding:24px 24px 22px">
+      <a href="https://www.trysteadwell.app" style="text-decoration:none"><img src="https://www.trysteadwell.app/icon-192.png" width="48" height="48" alt="Steadwell" style="display:block;margin:0 auto 10px;width:48px;height:48px;border-radius:12px;border:0;color:${C.cream};font:700 14px/48px ${FONT}"></a>
+      <span style="font:700 22px/1 ${SERIF};color:${C.cream};letter-spacing:.2px">Steadwell</span>
+    </td></tr>
+    <tr><td style="padding:32px 36px 8px">
+      <h1 style="margin:0 0 12px;font:700 24px/1.25 ${SERIF};color:${C.ink}">Hi ${first}, we captured your email</h1>
+      <p style="margin:0 0 22px;font:16px/1.6 ${FONT};color:${C.body}">${intro}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.panel}" style="background:${C.panel};border-radius:12px"><tr><td style="padding:18px 22px">
+        <div style="font:13px/1.4 ${FONT};color:${C.muted};margin:0 0 3px">Looks like</div>
+        <div style="font:16px/1.45 ${FONT};color:${C.ink};font-weight:700;margin:0 0 14px">${esc(label)}</div>
+        <div style="font:13px/1.4 ${FONT};color:${C.muted};margin:0 0 3px">What we found</div>
+        <div style="font:16px/1.45 ${FONT};color:${C.ink}">${esc(summary)}</div>
+      </td></tr></table>
+      ${low ? `<p style="margin:16px 0 0;font:14px/1.5 ${FONT};color:${C.clay}">We weren't fully sure about this one, so please check the details before you save it.</p>` : ""}
+      <p style="margin:18px 0 0;font:14px/1.6 ${FONT};color:${C.muted}">In your Email Inbox you can fix any detail, choose how to file it (expense, item you own, document or utility bill), and add an expense to a project.</p>
+    </td></tr>
+    <tr><td style="padding:24px 36px 28px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td align="center" bgcolor="${C.clay}" style="background:${C.clay};border-radius:10px">
+          <a href="${LINK}" style="display:block;padding:15px 24px;font:700 16px/1.2 ${FONT};color:#ffffff !important;text-decoration:none"><span style="color:#ffffff">Review in Steadwell</span></a>
+        </td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:18px 36px 24px;border-top:1px solid ${C.line}">
+      <p style="margin:0;font:12px/1.6 ${FONT};color:${C.muted};text-align:center">You got this because an email was sent to your Steadwell capture address.<br>Steadwell &middot; <a href="https://www.trysteadwell.app" style="color:${C.muted};text-decoration:underline">trysteadwell.app</a></p>
+    </td></tr>
+  </table>
+</td></tr></table>
+</body></html>`;
+  const text = `Hi ${userName || "there"},\n\nWe captured the email you forwarded to your Steadwell capture address.\n\nLooks like: ${label}\nWhat we found: ${summary}\n${low ? "We weren't fully sure about this one, so please check the details before you save it.\n" : ""}\nReview and save it here: ${LINK}\n\nSteadwell · trysteadwell.app`;
 
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: FROM,
-      to: [toEmail],
-      subject: `✓ ${label} captured — review it in Steadwell`,
-      html,
-    }),
+    headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM, to: [toEmail], subject: `We captured your ${label.toLowerCase()}. Review it in Steadwell`, html, text }),
   });
+  if (!res.ok) console.error("sendConfirmation: Resend status", res.status);
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-// Steadwell v418 — 2026-10-25
+// Steadwell v419 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -13701,13 +13701,21 @@ function AutoForwardGuide({ address, lastCaptureText }) {
   );
 }
 
-function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
+function EmailInboxModal({ captures, profile, userId, onClose, onUpdate, projects=[], planData, onNavigate, onOpenExpense, onViewAsset, onShowDocs, onExpenseAdded, onAssetAdded }) {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState({});
   const [addressCopied, setAddressCopied] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [codeCopied, setCodeCopied] = useState("");
+  const [fileAs, setFileAs] = useState("expense");      // where a reviewed capture is filed: expense | asset | document | bill
+  const [projectId, setProjectId] = useState("");
+  const [attachReceipt, setAttachReceipt] = useState(true);
+  const [docCat, setDocCat] = useState("other");
+  const toastMsg = (msg, type) => window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg, type } }));
+  const hasFile = (c) => Array.isArray(c?.attachment_urls) && c.attachment_urls.some(a => a && (a.path || a.url));
+  const defaultKind = (c) => ({ expense: "expense", warranty: "asset", asset: "asset", document: hasFile(c) ? "document" : "expense", utility_bill: "bill" }[c?.extracted_type] || "expense");
+  const KIND_LABEL = { expense: "Expenses", asset: "Assets", document: "Documents", bill: "Utility bills" };
 
   // Gmail's forwarding-confirmation emails are shown as a code card, not as a record to save.
   const verifications = captures.filter(c => c.status === "pending" && c.extracted_type === "forwarding_verification");
@@ -13742,16 +13750,45 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
   const openCapture = (c) => {
     setSelected(c);
     setEditData(c.extracted_data || {});
+    setFileAs(defaultKind(c));
+    setProjectId("");
+    setAttachReceipt(true);
+    setDocCat("other");
+  };
+
+  // Copies the first attachment out of the private inbox storage into the file storage that expenses and documents use.
+  const copyAttachment = async (pathFor) => {
+    const a = (selected.attachment_urls || []).find(x => x && (x.path || x.url));
+    if (!a) return { none: true };
+    let blob = null;
+    try {
+      if (a.path) { const { data } = await supabase.storage.from("email-attachments").download(a.path); blob = data || null; }
+      if (!blob && a.url) { const r = await fetch(a.url); if (r.ok) blob = await r.blob(); }
+    } catch { blob = null; }
+    if (!blob) return { error: "We couldn't read the attached file." };
+    const lim = await checkFileLimit(userId, planData, blob.size);
+    if (!lim.ok) return { error: lim.reason === "storage" ? "Your storage is full, so the file wasn't kept." : "You've reached your file limit, so the file wasn't kept." };
+    const ext = String((a.filename || "").split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "") || "pdf";
+    const MIME = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", heic: "image/heic", webp: "image/webp" };
+    const type = blob.type && blob.type !== "application/octet-stream" ? blob.type : (MIME[ext] || "application/octet-stream");
+    const path = pathFor(ext);
+    const { error: upErr } = await supabase.storage.from("expense-files").upload(path, blob, { upsert: true, contentType: type });
+    if (upErr) return { error: "The file didn't upload: " + upErr.message };
+    const { data: pub } = supabase.storage.from("expense-files").getPublicUrl(path);
+    notifyStorageChanged();
+    return { path, url: pub.publicUrl + "?t=" + Date.now(), type, name: a.filename || "" };
   };
 
   const handleSave = async () => {
-    if (!selected) return;
+    if (!selected || saving) return;
     setSaving(true);
     const finalData = { ...editData };
+    const filed = { filed_as: fileAs };
+    let fileNote = "";
 
     // A combined city bill may carry a split by service. It must add up to the bill total.
     let billSplit = null;
-    if (selected.extracted_type === "utility_bill" && finalData.utility_type === "bundle") {
+    if (fileAs === "bill" && finalData.utility_type === "bundle") {
       const clean = {};
       UTIL_SPLIT.forEach(sp => { const n = Number(finalData.line_items && finalData.line_items[sp.k]); if (Number.isFinite(n) && n > 0) clean[sp.k] = Math.round(n * 100) / 100; });
       if (Object.keys(clean).length) {
@@ -13767,9 +13804,9 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
     }
     if (billSplit) finalData.line_items = billSplit; else delete finalData.line_items;
 
-    // Write to the appropriate table based on type
-    if (selected.extracted_type === "warranty") {
-      await supabase.from("warranties").insert({
+    // Write to the appropriate table. Nothing is marked saved unless the record itself was written.
+    if (fileAs === "asset") {
+      const { data: row, error: insErr } = await supabase.from("warranties").insert({
         user_id:      userId,
         property_id:  profile.id,
         item:         finalData.item || selected.subject,
@@ -13781,19 +13818,50 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
         cost:         finalData.amount || null,
         notes:        finalData.notes || null,
         serial_number: finalData.serial_number || null,
-      });
-    } else if (selected.extracted_type === "expense") {
-      await supabase.from("expenses").insert({
+      }).select().single();
+      if (insErr || !row) { setSaving(false); toastMsg(`Couldn't save this: ${(insErr && insErr.message) || "unknown error"}`, "error"); return; }
+      filed.filed_id = row.id;
+      if (onAssetAdded) onAssetAdded(row);
+    } else if (fileAs === "expense") {
+      const proj = projects.find(p => String(p.id) === String(projectId));
+      let file = null;
+      if (attachReceipt && hasFile(selected)) {
+        const r = await copyAttachment(ext => `${userId}/expense-${Date.now()}.${ext}`);
+        if (r.error) fileNote = r.error; else if (!r.none) file = r;
+      }
+      const { data: row, error: insErr } = await supabase.from("expenses").insert({
         user_id:     userId,
         property_id: profile.id,
         description: finalData.item || selected.subject,
-        amount:      finalData.amount || 0,
+        amount:      Number(finalData.amount) || 0,
         date:        finalData.purchase_date || new Date().toISOString().slice(0, 10),
         category:    finalData.category || "Other",
         notes:       finalData.notes || null,
         vendor:      finalData.vendor || null,
+        project_id:  proj ? proj.id : null,
+        ...(file ? { file_url: file.url, file_type: file.type } : {}),
+      }).select().single();
+      if (insErr || !row) {
+        if (file?.path) { try { await supabase.storage.from("expense-files").remove([file.path]); } catch { /* ignore */ } }
+        setSaving(false); toastMsg(`Couldn't save this: ${(insErr && insErr.message) || "unknown error"}`, "error"); return;
+      }
+      filed.filed_id = row.id;
+      if (proj) { filed.project_id = proj.id; filed.project_name = proj.name; }
+      if (onExpenseAdded) onExpenseAdded(row);
+    } else if (fileAs === "document") {
+      const slug = String(finalData.item || selected.subject || "email").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "email";
+      const r = await copyAttachment(ext => `${userId}/documents/${Date.now()}-${slug}.${ext}`);
+      if (r.none || r.error) { setSaving(false); toastMsg(r.error || "This email has no file to keep as a document. File it as an expense instead.", "error"); return; }
+      const { data: docRow, error: docErr } = await insertHomeDocument({
+        user_id: userId, name: finalData.item || selected.subject || "Emailed document", category: docCat || "other",
+        description: finalData.notes || "Saved from an emailed document", file_url: r.url, file_type: r.type,
       });
-    } else if (selected.extracted_type === "utility_bill") {
+      if (docErr || !docRow) {
+        try { await supabase.storage.from("expense-files").remove([r.path]); } catch { /* ignore */ }
+        setSaving(false); toastMsg(`Couldn't save this: ${(docErr && docErr.message) || "unknown error"}`, "error"); return;
+      }
+      filed.filed_id = docRow.id;
+    } else if (fileAs === "bill") {
       // Find or create a matching utility record for this property
       const utilityName = finalData.vendor || finalData.item || "Unknown Utility";
       // The review screen now shows the type, so a bill is no longer filed as Electric by default.
@@ -13836,16 +13904,21 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
       }
     }
 
-    // Mark capture as saved
+    // Mark capture as saved, and remember where it went so it can be found again.
+    const savedData = { ...finalData, ...filed };
     const { error } = await supabase.from("email_captures")
-      .update({ status: "saved", final_data: finalData, reviewed_at: new Date().toISOString() })
+      .update({ status: "saved", final_data: savedData, reviewed_at: new Date().toISOString() })
       .eq("id", selected.id);
 
-    if (!error) {
-      onUpdate(selected.id, { status: "saved", final_data: finalData });
-      setSelected(null);
-    }
     setSaving(false);
+    const where = KIND_LABEL[fileAs] + (filed.project_name ? ` · ${filed.project_name}` : "");
+    if (error) {
+      toastMsg(`Saved to ${where}, but this email still shows as waiting. Open ${KIND_LABEL[fileAs]} to check before saving it again.`, "error");
+      return;
+    }
+    onUpdate(selected.id, { status: "saved", final_data: savedData });
+    setSelected(null);
+    toastMsg(`Saved to ${where}${fileNote ? ". " + fileNote : ""}`, fileNote ? "error" : "success");
   };
 
   const handleDismiss = async () => {
@@ -13955,32 +14028,100 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
               </div>
               <div style={{fontSize:".82rem",color:"#8A8178",marginBottom:"1rem"}}>{selected.subject}</div>
 
+              {selected.status !== "saved" && selected.extracted_type !== "forwarding_verification" && (
+                <div style={{marginBottom:"1rem"}}>
+                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".35rem"}}>Save it as</div>
+                  <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+                    {[["expense","Expense"],["asset","Item I own"],["document","Document"],["bill","Utility bill"]].filter(([k]) => k !== "document" || hasFile(selected)).map(([k, label]) => (
+                      <button key={k} type="button" aria-pressed={fileAs === k} onClick={() => setFileAs(k)}
+                        style={{padding:".4rem .8rem",borderRadius:999,border:"1.5px solid " + (fileAs === k ? "var(--pine)" : "var(--stone)"),background:fileAs === k ? "var(--pine)" : "var(--white)",color:fileAs === k ? "#F4EDDF" : "#5A534B",fontFamily:"inherit",fontSize:".8rem",fontWeight:600,cursor:"pointer"}}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selected.status === "saved" && (() => {
+                const fd = selected.final_data || {};
+                const kind = fd.filed_as || defaultKind(selected);
+                const open = () => {
+                  onClose();
+                  if (kind === "expense" && fd.filed_id && onOpenExpense) onOpenExpense(fd.filed_id);
+                  else if (kind === "asset" && fd.filed_id && onViewAsset) onViewAsset(fd.filed_id);
+                  else if (kind === "document" && onShowDocs) onShowDocs();
+                  else if (onNavigate) onNavigate("expenses");
+                };
+                return (
+                  <div style={{background:"var(--white)",borderRadius:10,padding:"1rem",marginBottom:"1rem",border:"1px solid var(--stone)"}}>
+                    <div style={{fontWeight:700,color:"var(--pine)",marginBottom:".3rem"}}>✓ Saved to {KIND_LABEL[kind] || "Steadwell"}{fd.project_name ? ` · ${fd.project_name}` : ""}</div>
+                    <div style={{fontSize:".82rem",color:"#5A534B",lineHeight:1.5,marginBottom:".8rem"}}>
+                      {fd.filed_as ? "It is already filed, so it won't be added a second time." : "This was saved before Steadwell kept track of where it went. Look for it by name in " + (KIND_LABEL[kind] || "your records") + "."}
+                    </div>
+                    <button type="button" onClick={open} style={{background:"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:9,padding:".6rem 1.1rem",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,cursor:"pointer"}}>
+                      {kind === "expense" && fd.filed_id ? "Open this expense" : kind === "asset" && fd.filed_id ? "Open this item" : "Open " + (KIND_LABEL[kind] || "Steadwell")}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {selected.status !== "saved" && (
               <div style={{background:"var(--white)",borderRadius:10,padding:"1rem",marginBottom:"1rem",border:"1px solid var(--stone)"}}>
-                {selected.extracted_type !== "utility_bill" && (
+                {fileAs !== "bill" && (
                   <>
-                    <FieldRow label="Item name" field="item" />
-                    <FieldRow label="Brand" field="brand" />
-                    <FieldRow label="Model" field="model" />
-                    <FieldRow label="Category" field="category" />
+                    <FieldRow label={fileAs === "document" ? "Document name" : "Item name"} field="item" />
+                    {fileAs === "asset" && <FieldRow label="Brand" field="brand" />}
+                    {fileAs === "asset" && <FieldRow label="Model" field="model" />}
+                    {fileAs === "asset" && <FieldRow label="Category" field="category" />}
+                    {fileAs === "expense" && (
+                      <div style={{marginBottom:".75rem"}}>
+                        <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".3rem"}}>Category</div>
+                        <select value={editData.category || ""} onChange={e => setEditData(d => ({ ...d, category: e.target.value }))}
+                          style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}>
+                          <option value="">Select…</option>
+                          {editData.category && !CATEGORIES.includes(editData.category) && <option value={editData.category}>{editData.category}</option>}
+                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {fileAs === "document" && (
+                      <div style={{marginBottom:".75rem"}}>
+                        <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".3rem"}}>Folder</div>
+                        <select value={docCat} onChange={e => setDocCat(e.target.value)}
+                          style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}>
+                          {DOC_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                        </select>
+                      </div>
+                    )}
                   </>
                 )}
-                {(selected.extracted_type==="warranty"||selected.extracted_type==="expense") && (
+                {(fileAs==="asset"||fileAs==="expense") && (
                   <FieldRow label="Amount ($)" field="amount" type="number" />
                 )}
-                {selected.extracted_type !== "utility_bill" && (
+                {(fileAs==="asset"||fileAs==="expense") && (
                   <FieldRow label="Vendor / Store" field="vendor" />
                 )}
-                {selected.extracted_type==="warranty" && (
+                {fileAs==="asset" && (
                   <>
                     <FieldRow label="Purchase date" field="purchase_date" type="date" />
                     <FieldRow label="Warranty expiry" field="expiry_date" type="date" />
                     <FieldRow label="Serial number" field="serial_number" />
                   </>
                 )}
-                {selected.extracted_type==="expense" && (
-                  <FieldRow label="Date" field="purchase_date" type="date" />
+                {fileAs==="expense" && (
+                  <>
+                    <FieldRow label="Date" field="purchase_date" type="date" />
+                    {projects.length > 0 && (
+                      <div style={{marginBottom:".75rem"}}>
+                        <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#8A8178",marginBottom:".3rem"}}>Project (optional)</div>
+                        <select value={projectId} onChange={e => setProjectId(e.target.value)}
+                          style={{width:"100%",padding:".55rem .7rem",border:"1.5px solid var(--stone)",borderRadius:8,fontFamily:"inherit",fontSize:".88rem",color:"var(--dark)",background:"var(--white)",boxSizing:"border-box"}}>
+                          <option value="">No project</option>
+                          {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </>
                 )}
-                {selected.extracted_type==="utility_bill" && (
+                {fileAs==="bill" && (
                   <>
                     <FieldRow label="Utility / Provider" field="vendor" />
                     <div style={{marginBottom:".75rem"}}>
@@ -14007,6 +14148,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                 )}
                 <FieldRow label="Notes" field="notes" />
               </div>
+              )}
 
               {selected.body_text && (
                 <div style={{background:"var(--cream2)",borderRadius:8,padding:".75rem",marginBottom:"1rem",fontSize:".78rem",color:"#5A534B",lineHeight:1.6,maxHeight:120,overflow:"auto"}}>
@@ -14029,12 +14171,20 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                 </div>
               )}
 
+              {selected.status !== "saved" && fileAs === "expense" && hasFile(selected) && (
+                <label style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".82rem",color:"#5A534B",marginBottom:"1rem",cursor:"pointer"}}>
+                  <input type="checkbox" checked={attachReceipt} onChange={e => setAttachReceipt(e.target.checked)} />
+                  Keep the attached file with this expense
+                </label>
+              )}
+
+              {selected.status !== "saved" && (
               <div style={{display:"flex",gap:".65rem"}}>
                 <button
                   onClick={handleSave}
                   disabled={saving}
                   style={{flex:1,padding:".85rem",background:"var(--pine)",color:"#F4EDDF",border:"none",borderRadius:10,fontFamily:"inherit",fontSize:".92rem",fontWeight:700,cursor:saving?"default":"pointer",opacity:saving?.6:1}}>
-                  {saving ? "Saving…" : "Save to Steadwell ✓"}
+                  {saving ? "Saving…" : fileAs === "expense" && projectId ? "Save to Expenses and project ✓" : "Save to " + KIND_LABEL[fileAs] + " ✓"}
                 </button>
                 <button
                   onClick={handleDismiss}
@@ -14042,6 +14192,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                   Dismiss
                 </button>
               </div>
+              )}
             </div>
           ) : (
             /* List view */
@@ -14110,7 +14261,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate }) {
                       </div>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontWeight:600,fontSize:".88rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.extracted_data?.item || c.subject}</div>
-                        <div style={{fontSize:".75rem",color:"#8A8178"}}>{new Date(c.created_at).toLocaleDateString()} · Saved</div>
+                        <div style={{fontSize:".75rem",color:"#8A8178"}}>{new Date(c.created_at).toLocaleDateString()} · Saved{c.final_data?.filed_as ? " to " + KIND_LABEL[c.final_data.filed_as] + (c.final_data.project_name ? " · " + c.final_data.project_name : "") : ""}</div>
                       </div>
                     </div>
                   ))}
@@ -22639,7 +22790,7 @@ function RecallCheckPanel({ warranties }) {
   );
 }
 
-function Profile({ emailUnverified=false, profile, setProfile, tasks, setTasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset }) {
+function Profile({ emailUnverified=false, profile, setProfile, tasks, setTasks, expenses, warranties, serviceLogs=[], projects=[], toast, userId, userEmail, propertyId, onNavigate, planData, onUpgrade, onCheckout, onShowDocs, onShowContractors, contractors=[], autoOpenSetup, onSetupOpened, showSetup, setShowSetup, allProfiles=[], onSwitchProperty, onAddProperty, onOpenPeople, onHomeRemoved, onOpenWarrantyTracker, onOpenAsset, onOpenNewAsset, onOpenExpense, onViewAsset, onExpenseAdded, onAssetAdded }) {
   const { roiData } = useProjectROIData();
   // ── Remove one home (Pro, owner only). The server decides what is allowed; see delete-property.
   const [homeToRemove, setHomeToRemove] = useState(null);
@@ -22725,6 +22876,13 @@ function Profile({ emailUnverified=false, profile, setProfile, tasks, setTasks, 
       .limit(100)
       .then(({ data }) => { if (data) setEmailCaptures(data); });
   }, [userId, profile?.id]);
+
+  // "Review in Steadwell" in the capture email opens the inbox straight away.
+  useEffect(() => {
+    const open = () => setShowEmailInbox(true);
+    window.addEventListener("sw:open-inbox", open);
+    return () => window.removeEventListener("sw:open-inbox", open);
+  }, []);
 
   const pendingCaptures = emailCaptures.filter(c => c.status === "pending" && c.extracted_type !== "forwarding_verification");
   const gmailCodeWaiting = emailCaptures.some(c => c.status === "pending" && c.extracted_type === "forwarding_verification");
@@ -23966,6 +24124,14 @@ function Profile({ emailUnverified=false, profile, setProfile, tasks, setTasks, 
           captures={emailCaptures}
           profile={profile}
           userId={userId}
+          projects={projects}
+          planData={planData}
+          onNavigate={onNavigate}
+          onOpenExpense={onOpenExpense}
+          onViewAsset={onViewAsset}
+          onShowDocs={onShowDocs}
+          onExpenseAdded={onExpenseAdded}
+          onAssetAdded={onAssetAdded}
           onClose={() => setShowEmailInbox(false)}
           onUpdate={(id, updates) => setEmailCaptures(prev =>
             prev.map(c => c.id === id ? { ...c, ...updates } : c)
@@ -26908,14 +27074,14 @@ export default function App() {
     if (deepOpenDone.current || !profile?.id) return;
     let target = "";
     try { target = new URLSearchParams(window.location.search).get("open") || ""; } catch { target = ""; }
-    if (target !== "insurance" && target !== "checkin") return;
+    if (target !== "insurance" && target !== "checkin" && target !== "inbox") return;
     deepOpenDone.current = true;
     try {
       const params = new URLSearchParams(window.location.search); params.delete("open");
       window.history.replaceState({}, "", window.location.pathname + (params.toString() ? "?" + params.toString() : ""));
     } catch {}
     setTab("profile");
-    setTimeout(() => { try { window.dispatchEvent(new Event(target === "checkin" ? "sw:open-checkin" : "sw:open-insurance")); } catch {} }, 300);
+    setTimeout(() => { try { window.dispatchEvent(new Event(target === "checkin" ? "sw:open-checkin" : target === "inbox" ? "sw:open-inbox" : "sw:open-insurance")); } catch {} }, 300);
   }, [profile?.id]);
 
   const handleResendVerification = async () => {
@@ -27553,7 +27719,7 @@ export default function App() {
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
-              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} emailUnverified={session?.user?.app_metadata?.email_verified === false} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}}/></div>
+              <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} emailUnverified={session?.user?.app_metadata?.email_verified === false} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}} onOpenExpense={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedExpense(id);setTab("expenses");}} onViewAsset={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedAsset(id);setTab("warranties");}} onExpenseAdded={(row)=>setExpenses(prev=>[row,...prev.filter(e=>e.id!==row.id)])} onAssetAdded={(row)=>setWarranties(prev=>[row,...prev.filter(w=>w.id!==row.id)])}/></div>
             </>
           )}
         </main>
