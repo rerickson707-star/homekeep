@@ -125,6 +125,7 @@ type Ctx = {
   db: any; home: Row; propertyId: string; today: string;
   cache: Map<string, Promise<Row[]>>;
   refs: Map<string, { type: string; id: string; label: string }>;
+  assessIdx?: Map<string, Row>;
   refById: Map<string, string>;
   counters: Record<string, number>;
   proposals: Row[];
@@ -161,6 +162,7 @@ function load(ctx: Ctx, name: string): Promise<Row[]> {
         case "docs":       r = await ctx.db.from("home_documents").select("*").eq("user_id", owner).eq("property_id", pid).limit(300); break;   // documents belong to one home
         case "contractors":r = await ctx.db.from("contractors").select("*").eq("user_id", owner).limit(200); break;
         case "locations":  r = await ctx.db.from("property_locations").select("id,parent_id,name,kind,sort_order").eq("property_id", pid).order("sort_order").limit(300); break;
+        case "assessments": r = await ctx.db.from("asset_assessments").select("asset_id,status,final_score,final_remaining_years,score_overridden,created_at,ai_summary,ai_findings,ai_checks").eq("property_id", pid).eq("status", "confirmed").order("created_at", { ascending: false }).limit(400); break;
         case "weather_alerts": r = await ctx.db.from("weather_alerts").select("*").eq("property_id", pid).or("expires.is.null,expires.gt." + new Date().toISOString()).order("first_seen", { ascending: false }).limit(20); break;
         case "weather_settings": r = await ctx.db.from("weather_settings").select("*").eq("property_id", pid).limit(1); break;
         default: return [];
@@ -201,6 +203,8 @@ function assetView(ctx: Ctx, a: Row) {
   if (a.warranty_only) view.warranty_only = true;
   if (a.expiry_date) view.warranty_expires = String(a.expiry_date).slice(0, 10);
   if (a.maintenance_tip) view.maintenance_tip = clip(a.maintenance_tip, 200);
+  const as = ctx.assessIdx?.get(a.id);
+  if (as) view.condition_assessment = { score_of_5: as.score, rating: as.label, assessed_on: as.date, years_left: as.years_left ?? undefined, out_of_date: as.stale || undefined, summary: as.summary ? clip(as.summary, 160) : undefined };
   return view;
 }
 
@@ -259,9 +263,60 @@ async function primeLocations(ctx: Ctx) {
   ctx.locPath = m;
 }
 
+// One short line under each source chip so the person can tell records apart without opening them.
+async function describeSource(ctx: Ctx, r: { type: string; id: string }): Promise<string> {
+  const money = (n: unknown) => "$" + Math.round(Number(n) || 0).toLocaleString("en-US");
+  const md = (d: unknown) => { const t = String(d || "").slice(0, 10); return isoDate(t) ? t : ""; };
+  try {
+    switch (r.type) {
+      case "asset": {
+        const a = (await load(ctx, "assets")).find((x) => x.id === r.id); if (!a) return "";
+        await primeLocations(ctx); await primeAssessments(ctx);
+        const f = assetFacts(ctx, a);
+        const as = ctx.assessIdx?.get(a.id);
+        return [[a.brand, a.model].filter(Boolean).join(" "), a.location_id ? ctx.locPath?.get(a.location_id) : "", f.ageYears != null ? (f.ageYears < 1 ? "under 1 yr old" : Math.round(f.ageYears) + " yrs old") : "", as ? `assessed ${as.label.toLowerCase()}` : (a.condition || "")].filter(Boolean).join(" · ");
+      }
+      case "task": { const t = (await load(ctx, "tasks")).find((x) => x.id === r.id); return t ? [t.due_date ? "Due " + md(t.due_date) : "", t.status, t.priority ? t.priority + " priority" : ""].filter(Boolean).join(" · ") : ""; }
+      case "expense": { const e = (await load(ctx, "expenses")).find((x) => x.id === r.id); return e ? [money(e.amount), md(e.date), e.vendor].filter(Boolean).join(" · ") : ""; }
+      case "log": { const l = (await load(ctx, "logs")).find((x) => x.id === r.id); return l ? [md(l.service_date), l.vendor, l.cost != null ? money(l.cost) : ""].filter(Boolean).join(" · ") : ""; }
+      case "project": { const p = (await load(ctx, "projects")).find((x) => x.id === r.id); return p ? [p.status, p.budget != null ? money(p.budget) + " budget" : ""].filter(Boolean).join(" · ") : ""; }
+      case "doc": { const d = (await load(ctx, "docs")).find((x) => x.id === r.id); return d ? [d.category, d.expiry_date ? "expires " + md(d.expiry_date) : ""].filter(Boolean).join(" · ") : ""; }
+      case "contractor": { const c = (await load(ctx, "contractors")).find((x) => x.id === r.id); return c ? [c.trade, c.company && c.company !== c.name ? c.company : "", c.rating ? c.rating + " of 5" : ""].filter(Boolean).join(" · ") : ""; }
+      case "location": { const n = (await load(ctx, "assets")).filter((a) => !a.retired_at && a.location_id === r.id).length; return n === 1 ? "1 item saved here" : `${n} items saved here`; }
+      case "weather": { const w = (await load(ctx, "weather_alerts")).find((x) => x.id === r.id); return w ? [w.level, w.area ? clip(w.area, 50) : ""].filter(Boolean).join(" · ") : ""; }
+      case "utility": { const u = (await load(ctx, "utilities")).find((x) => x.id === r.id); return u ? String(u.type || "") : ""; }
+    }
+  } catch { /* a missing detail line never breaks an answer */ }
+  return "";
+}
+
+const SCORE_LABEL: Record<number, string> = { 5: "Excellent", 4: "Good", 3: "Fair", 2: "Poor", 1: "Failing" };
+
+// Newest confirmed photo assessment per asset (same rule the app uses: ignored once it is over 2 years old
+// or older than a later install date).
+async function primeAssessments(ctx: Ctx) {
+  if (ctx.assessIdx) return;
+  const [rows, assets] = await Promise.all([load(ctx, "assessments"), load(ctx, "assets")]);
+  const byAsset = new Map<string, Row>(assets.map((a) => [a.id, a]));
+  const m = new Map<string, Row>();
+  for (const r of rows) {
+    if (!r.asset_id || m.has(r.asset_id)) continue;           // rows are newest first
+    const sc = Number(r.final_score); if (!(sc >= 1 && sc <= 5)) continue;
+    const date = String(r.created_at).slice(0, 10);
+    const ageY = daysBetween(date, ctx.today) / 365.25;
+    const a = byAsset.get(r.asset_id);
+    const inst = a ? String(a.install_date || a.purchase_date || "").slice(0, 10) : "";
+    if (inst && inst > date) continue;                         // unit was replaced after the assessment
+    const left = r.final_remaining_years != null ? Math.max(0, Math.round((Number(r.final_remaining_years) - ageY) * 10) / 10) : (sc <= 1 ? 0 : null);
+    m.set(r.asset_id, { score: sc, label: SCORE_LABEL[sc], date, stale: ageY > 2, years_left: left, you_changed_the_score: !!r.score_overridden, summary: r.ai_summary ? clip(r.ai_summary, 320) : undefined, raw: r });
+  }
+  ctx.assessIdx = m;
+}
+
 async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
   ctx.toolsUsed.add(name);
   await primeLocations(ctx);
+  await primeAssessments(ctx);
   const today = ctx.today;
   switch (name) {
     case "get_home_overview": {
@@ -312,8 +367,15 @@ async function runTool(ctx: Ctx, name: string, input: Row): Promise<unknown> {
       const [assets, logs, tasks, expenses] = await Promise.all([load(ctx, "assets"), load(ctx, "logs"), load(ctx, "tasks"), load(ctx, "expenses")]);
       const a = assets.find((x) => x.id === r.id); if (!a) return { error: "not found" };
       const view = assetView(ctx, a);
+      const as = ctx.assessIdx?.get(a.id);
+      let pm: Row[] = []; try { const v = typeof a.pm_schedule === "string" ? JSON.parse(a.pm_schedule) : a.pm_schedule; pm = Array.isArray(v) ? v : []; } catch { pm = []; }
       return {
         asset: view,
+        condition_assessment_details: as ? {
+          findings: (Array.isArray(as.raw.ai_findings) ? as.raw.ai_findings : []).slice(0, 6).map((f: Row) => ({ area: clip(f.area, 40), severity: f.severity, observation: clip(f.observation, 160) })),
+          checks_needing_a_look: (Array.isArray(as.raw.ai_checks) ? as.raw.ai_checks : []).filter((c: Row) => c.status && c.status !== "ok").slice(0, 6).map((c: Row) => ({ check: clip(c.label, 80), status: c.status, note: c.note ? clip(c.note, 120) : undefined })),
+        } : "no photo assessment on file for this item",
+        maintenance_schedule: pm.slice(0, 10).map((t: Row) => ({ task: clip(t.title, 80), every_months: t.interval_months ?? undefined, notes: t.notes || t.description ? clip(t.notes || t.description, 120) : undefined })),
         service_history: logs.filter((s) => s.asset_id === a.id).slice(0, 15).map((s) => logView(ctx, s)),
         tasks: tasks.filter((t) => t.asset_id === a.id).slice(0, 10).map((t) => taskView(ctx, t)),
         linked_expenses: expenses.filter((e) => e.asset_id === a.id).slice(0, 10).map((e) => expenseView(ctx, e)),
@@ -481,6 +543,7 @@ HOW TO ANSWER
 - You cannot mark tasks done, edit or delete anything. If asked, say so in your first sentence and tell them where to do it in Steadwell (for example, open the task and tap Complete). Then help with the rest of the request.
 - Start with the answer. Do not narrate your checks ("No duplicate found", "Let me look"). Use **bold** sparingly and never a lone asterisk.
 - Where things are: assets can have a room or place saved (like Main floor › Kitchen). For "what is in my kitchen" or where something is, call list_locations (or search_assets with location). Only say an item is in a place if its location says so. If an item has no place saved, say that and that they can set it on the asset. Never assume a range or dishwasher is in the kitchen.
+- Condition: an asset can carry a photo assessment (rating 1 to 5 with a short summary and findings, shown as condition_assessment). Use it when asked how something is holding up, and say when it was assessed. If it is marked out_of_date, say a fresh assessment would help. get_asset also lists the recommended maintenance schedule.
 - Weather: call get_weather_alerts for any question about weather alerts, warnings, watches or storms near the home. Report only what it returns. You have no live forecast, so never say what the weather will be. If monitoring is off, say no alerts are being checked and point to My Home > Weather alerts to turn them on. If it is on and the list is empty, say there are no active alerts saved right now. For a combined question, answer both parts.
 - Utility bills (electric, water, gas, trash) are tracked separately from home spending. spending_summary reports them on their own line; give the home total first, then say what the utility bills came to in the same period.
 - For general home knowledge (typical lifespans, typical costs, seasonal care, climate risks) use your own knowledge, say it is a general estimate, and adapt to the home's age and location. Give cost ranges, never a single number, and note that local quotes vary.
@@ -654,7 +717,7 @@ export async function handler(req: Request): Promise<Response> {
 
   // citations -> sources, then strip markers
   const { topic, answered, clean } = parseTail(finalText);
-  const sources: Array<{ type: string; id: string; label: string }> = [];
+  const sources: Array<{ type: string; id: string; label: string; sub?: string }> = [];
   // Refs are normally one per bracket, but the model sometimes groups them: [e1, e2]. Read and remove both forms.
   const GROUP = /\[\s*[a-z]\d{1,3}(?:\s*[,;]\s*[a-z]\d{1,3})*\s*\]/g;
   for (const grp of clean.match(GROUP) || []) {
@@ -663,6 +726,7 @@ export async function handler(req: Request): Promise<Response> {
       if (r && !sources.find((s) => s.id === r.id && s.type === r.type) && sources.length < 6) sources.push(r);
     }
   }
+  for (const sc of sources) { const sub = await describeSource(ctx, sc); if (sub) sc.sub = clip(sub, 90); }
   let answer = clean.replace(new RegExp("\\s?" + GROUP.source, "g"), "").replace(/[ \t]+\n/g, "\n").trim();
   // Never point at an Add button that is not there.
   if (ctx.proposals.length === 0) answer = answer.replace(/[^.!?\n]*\btap\s+\**add\**[^.!?\n]*[.!?]?/gi, "").replace(/[ \t]{2,}/g, " ").trim();

@@ -1,4 +1,4 @@
-// Steadwell v417 — 2026-10-22
+// Steadwell v418 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4168,9 +4168,12 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ask-msg p{margin:0 0 .5rem}.ask-msg p:last-child{margin-bottom:0}
 .ask-msg ul{margin:.1rem 0 .5rem;padding-left:1.1rem}.ask-msg li{margin:.15rem 0}
 .ask-srcs{display:flex;flex-wrap:wrap;gap:.35rem;max-width:94%}
-.ask-src{display:inline-flex;align-items:center;gap:.3rem;background:var(--white);border:1px solid var(--stone);border-radius:999px;padding:.25rem .6rem;font-family:inherit;font-size:.72rem;color:#5E574F;cursor:pointer;max-width:100%}
+.ask-src{display:inline-flex;align-items:center;gap:.4rem;background:var(--white);border:1px solid var(--stone);border-radius:14px;padding:.35rem .7rem;text-align:left;font-family:inherit;font-size:.72rem;color:#5E574F;cursor:pointer;max-width:100%}
 .ask-src:hover{border-color:var(--pine);color:var(--pine)}
-.ask-src-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.ask-src-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;font-weight:600;color:var(--dark)}
+.ask-src-b{display:flex;flex-direction:column;align-items:flex-start;min-width:0;line-height:1.25}
+.ask-src-s{font-size:.66rem;color:#7A7268;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:260px}
+.ask-src-go{color:var(--pine);font-size:.95rem;margin-left:.15rem}
 .ask-act{display:flex;align-items:center;gap:.7rem;background:#fff;border:1.5px solid #CFE0D6;border-radius:14px;padding:.65rem .75rem;max-width:94%;width:100%;box-sizing:border-box}
 .ask-act-t{font-size:.86rem;font-weight:700;color:var(--dark);line-height:1.3;overflow-wrap:anywhere}
 .ask-act-s{font-size:.72rem;color:#7A7370;margin-top:2px}
@@ -12598,7 +12601,6 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
   };
 
   const openSource = (s) => {
-    const phone = isPhone();
     if (s.type === "asset") onOpenAsset && onOpenAsset(s.id);
     else if (s.type === "task") onNavigate && onNavigate("tasks");
     else if (s.type === "expense") { if (onOpenExpense) onOpenExpense(s.id); else onNavigate && onNavigate("expenses"); }
@@ -12606,7 +12608,7 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
     else if (s.type === "log") onNavigate && onNavigate("warranties");
     else if (s.type === "contractor" || s.type === "location" || s.type === "weather") onNavigate && onNavigate("profile");
     else onNavigate && onNavigate("expenses");
-    if (phone) setOpen(false);
+    setOpen(false);   // the record opens underneath; on a wide screen the panel would otherwise sit on top of it
   };
 
   const dismissNotice = () => {
@@ -12664,7 +12666,7 @@ function AskSteadwell({ session, propertyId, profile, homeCount = 1, planData, w
             </div>
             {m.sources && m.sources.length > 0 && (
               <div className="ask-srcs" aria-label="Records used for this answer">
-                {m.sources.map(s => <button key={s.type + s.id} type="button" className="ask-src" onClick={() => openSource(s)}><span aria-hidden="true">{SRC_ICON[s.type] || "•"}</span><span className="ask-src-t">{s.label}</span></button>)}
+                {m.sources.map(s => <button key={s.type + s.id} type="button" className="ask-src" onClick={() => openSource(s)}><span aria-hidden="true">{SRC_ICON[s.type] || "•"}</span><span className="ask-src-b"><span className="ask-src-t">{s.label}</span>{s.sub && <span className="ask-src-s">{s.sub}</span>}</span><span className="ask-src-go" aria-hidden="true">›</span></button>)}
               </div>
             )}
             {m.actions && m.actions.map((a, i) => (
