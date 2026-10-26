@@ -1,4 +1,4 @@
-// Steadwell v435 — 2026-10-26
+// Steadwell v436 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -31571,7 +31571,8 @@ function HomeForecastPage() {
   const ghost = { background:"#fff", border:"1.5px solid #D8CFBD", color:"#234A3D", borderRadius:10, padding:"9px 14px", minHeight:44, fontWeight:700, fontSize:".84rem", cursor:"pointer", fontFamily:"'Hanken Grotesk',sans-serif", flex:"1 1 130px" };
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <style>{`
         .hf-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
         .hf-panel{order:-1;min-width:0}
@@ -32317,14 +32318,25 @@ function PricingPage() {
   });
   const planNames = ["Free","Plus","Pro"];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
       <LPHero kw="Steadwell Pricing &amp; Plans" eyebrow="Pricing" h1="Start free." h1em="Upgrade when you need more." sub="Steadwell is free for as long as you like. Add AI scanning, condition assessments and shared access when you want them." badge="No credit card to start · Cancel any time" cta="Get started free"/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
+        <LPShort>Steadwell is free to start and the Free plan has no time limit. Plus is $7.99 a month ($63.99 a year) and adds the AI tools, the home health score breakdown and the 5-year cost forecast. Pro is $14.99 a month ($119.99 a year) and adds up to three properties, shared access, higher AI limits and 50 GB of storage. You do not need a card to start, and you can cancel any time.</LPShort>
+        <LPSection alt>
           <LPSectionHead h2="Pick the plan that fits your home" sub="Pay monthly, or save about a third by paying yearly."/>
           <LPPlanTiles plans={plans}/>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="Which plan fits you?" sub="Start where you are. Moving up later keeps everything you have already tracked."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
+            <LPChipCard icon="🏡" title="Free: get organized" fields={["One home","Unlimited tasks, assets and expenses","Warranty and recall alerts","Bills, contractors, email capture"]}/>
+            <LPChipCard icon="✨" title="Plus: let AI do the typing" fields={["Scan receipts and nameplates","Condition assessments","Ask Steadwell","Health score breakdown","5-year forecast"]}/>
+            <LPChipCard icon="🔑" title="Pro: more homes, more people" fields={["Up to 3 properties","Shared access","Assign tasks","Higher AI limits","50 GB storage"]}/>
+          </LPGrid>
         </LPSection>
 
         <LPSection alt>
@@ -33163,6 +33175,328 @@ function SpendByTradeMock() {
   );
 }
 
+// ── Batch 3 mocks: assessment, health score, Ask Steadwell, calendar, sharing, projects ──
+function AssessScoreMock() {
+  const checks=[["Tank and fittings","OK","ok"],["Anode and sediment","Watch","warn"],["Temperature and pressure valve","OK","ok"],["Venting","Can’t see","mute"],["Leaks or rust at the base","Concern","bad"]];
+  return (
+    <MockShell title="Water heater" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+        <span style={{width:56,height:56,borderRadius:16,background:"#FBF3DE",color:"#B8861E",fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.9rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>3</span>
+        <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:".95rem"}}>Fair condition</div><div style={{fontSize:".72rem",color:"#8A8178"}}>3 photos checked against the tank checklist</div></div>
+      </div>
+      {checks.map(([t,l,tone])=>(
+        <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"7px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{fontSize:".8rem",color:"#5E574F"}}>{t}</span><MockPill tone={tone}>{l}</MockPill>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function YearsLeftMock() {
+  return (
+    <MockShell title="Years left" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.9rem",color:"#234A3D"}}>About 2</span>
+        <span style={{fontSize:".78rem",color:"#8A8178"}}>years left on the water heater</span>
+      </div>
+      <div style={{position:"relative",height:12,background:"#EFE7D7",borderRadius:7,marginBottom:6}}>
+        <div style={{width:"83%",height:"100%",background:"linear-gradient(90deg,#2F5E4E,#B8861E 75%,#C16140)",borderRadius:7}}/>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:".66rem",color:"#A8A09A",marginBottom:14}}><span>Installed 2015</span><span>Typical life 12 years</span></div>
+      {[["Home health score","Updated"],["5-year cost forecast","Moved up to 2028"]].map(([t,m])=>(
+        <div key={t} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderTop:"1px solid #E6DECF",fontSize:".78rem"}}><span style={{color:"#5E574F"}}>{t}</span><b style={{color:"#234A3D"}}>{m}</b></div>
+      ))}
+    </MockShell>
+  );
+}
+function NextStepsMock() {
+  return (
+    <MockShell title="Review before saving" note="(example)" style={{maxWidth:440}}>
+      {[["Flush the tank","Suggested task · every 12 months",true],["Test the pressure relief valve","Suggested task · every 12 months",true],["Replace the anode rod","Suggested task · one time",false]].map(([t,m,on])=>(
+        <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{width:20,height:20,borderRadius:6,border:on?"none":"1.5px solid #CFC6B6",background:on?"#234A3D":"#fff",color:"#fff",fontSize:".7rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{on?"✓":""}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{m}</div></div>
+        </div>
+      ))}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:10,padding:"9px 11px",background:"#F7E0DA",borderRadius:10,fontSize:".74rem",color:"#8E3622"}}><span aria-hidden="true">⚠️</span>Have a licensed plumber look at the base of the tank.</div>
+      <div style={{display:"flex",gap:8,marginTop:12}}>
+        <span style={{flex:1,textAlign:"center",background:"#234A3D",color:"#F4EDDF",borderRadius:9,padding:"8px 6px",fontSize:".76rem",fontWeight:700}}>Confirm and save</span>
+        <span style={{flex:1,textAlign:"center",border:"1.5px solid #E6DECF",color:"#5E574F",borderRadius:9,padding:"8px 6px",fontSize:".76rem",fontWeight:600}}>Change the grade</span>
+      </div>
+    </MockShell>
+  );
+}
+
+function HealthScoreMock() {
+  const r=52, c=2*Math.PI*r, score=78;
+  const rows=[["Assets",72,"#B8861E"],["Tasks",90,"#2E7050"],["Warranties",70,"#B8861E"],["Profile",88,"#2E7050"]];
+  return (
+    <MockShell title="Home health score" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"center",gap:18,marginBottom:14}}>
+        <svg width="124" height="124" viewBox="0 0 124 124" style={{flexShrink:0}}>
+          <circle cx="62" cy="62" r={r} fill="none" stroke="#EFE7D7" strokeWidth="11"/>
+          <circle cx="62" cy="62" r={r} fill="none" stroke="#234A3D" strokeWidth="11" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c*(1-score/100)} transform="rotate(-90 62 62)"/>
+          <text x="62" y="68" textAnchor="middle" style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"34px",fill:"#234A3D"}}>{score}</text>
+        </svg>
+        <div><MockPill tone="ok">Good</MockPill><div style={{fontSize:".74rem",color:"#8A8178",marginTop:8,lineHeight:1.5}}>Clear one overdue task and renew a warranty to move up.</div></div>
+      </div>
+      {rows.map(([n,v,col])=>(
+        <div key={n} style={{marginBottom:9}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".76rem",marginBottom:3}}><span style={{color:"#5E574F"}}>{n}</span><b>{v}</b></div>
+          <div style={{height:7,background:"#EFE7D7",borderRadius:4}}><div style={{width:v+"%",height:"100%",background:col,borderRadius:4}}/></div>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function HealthDropMock() {
+  return (
+    <MockShell title="What moved your score" note="(example)" style={{maxWidth:440}}>
+      {[["Water heater near end of life","Assets","bad"],["Dishwasher warranty ended","Warranties","warn"],["1 task is past due","Tasks","warn"],["Insurance renewal date added","Profile","ok"]].map(([t,f,tone])=>(
+        <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <div style={{minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>Factor: {f}</div></div>
+          <MockPill tone={tone}>{tone==="ok"?"Helping":tone==="bad"?"Pulling down":"Watch"}</MockPill>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function ScoreBandsMock() {
+  const b=[["Excellent","90+","#2A9D6A"],["Good","75–89","#234A3D"],["Fair","60–74","#B8861E"],["At risk","Below 60","#C16140"]];
+  return (
+    <MockShell title="What the score means" note="" style={{maxWidth:440}}>
+      <div style={{display:"flex",height:14,borderRadius:8,overflow:"hidden",marginBottom:12}}>{[...b].reverse().map(([n,,c])=><div key={n} style={{flex:1,background:c}}/>)}</div>
+      {b.map(([n,r,c])=>(
+        <div key={n} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0"}}>
+          <span style={{width:10,height:10,borderRadius:3,background:c}}/><span style={{fontWeight:600,fontSize:".84rem",flex:1}}>{n}</span><span style={{fontSize:".78rem",color:"#8A8178"}}>{r}</span>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+
+function AskChatMock() {
+  const bubble={borderRadius:14,padding:"10px 14px",fontSize:".82rem",lineHeight:1.5,maxWidth:"92%"};
+  return (
+    <MockShell title="✨ Ask Steadwell" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><div style={{...bubble,background:"#234A3D",color:"#F4EDDF"}}>Is my water heater near the end of its life?</div></div>
+      <div style={{...bubble,background:"#EFE7D7",marginBottom:10}}>Your water heater is about 11 years old. Tank models often last 8 to 12 years, so it is worth planning for a replacement soon. Your last service was 14 months ago.</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+        {["🔧 Water heater","⚙️ Service log"].map(s=><span key={s} style={{fontSize:".7rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.09)",padding:"3px 10px",borderRadius:20}}>{s}</span>)}
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",background:"#fff",borderRadius:12,padding:"9px 12px"}}>
+        <div style={{fontSize:".8rem"}}><div style={{fontWeight:700}}>Flush the water heater tank</div><div style={{color:"#8A8178",fontSize:".7rem"}}>Suggested task · due Nov 15</div></div>
+        <span style={{background:"#C16140",color:"#fff",fontWeight:700,fontSize:".74rem",padding:"6px 14px",borderRadius:9}}>Add</span>
+      </div>
+    </MockShell>
+  );
+}
+function AskSourcesMock() {
+  return (
+    <MockShell title="✨ Ask Steadwell" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><div style={{borderRadius:14,padding:"9px 14px",fontSize:".82rem",background:"#234A3D",color:"#F4EDDF"}}>What did I spend on repairs this year?</div></div>
+      <div style={{borderRadius:14,padding:"10px 14px",fontSize:".82rem",lineHeight:1.5,background:"#EFE7D7",marginBottom:10}}>You have spent <b>$2,600</b> on repairs so far this year across 5 expenses. The largest was the water heater flush at $385.</div>
+      <div style={{fontSize:".66rem",color:"#A8A09A",marginBottom:6}}>Sources</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {["💳 Water heater flush","💳 Leak repair","💳 +3 expenses"].map(s=><span key={s} style={{fontSize:".7rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.09)",padding:"3px 10px",borderRadius:20}}>{s}</span>)}
+      </div>
+    </MockShell>
+  );
+}
+function AskTaskMock() {
+  return (
+    <MockShell title="Suggested tasks" note="(example)" style={{maxWidth:440}}>
+      {[["Replace HVAC filter","Due Nov 1 · every 3 months"],["Flush the water heater tank","Due Nov 15 · every 12 months"]].map(([t,m],i)=>(
+        <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",background:"#fff",borderRadius:12,padding:"10px 12px",marginBottom:9}}>
+          <div style={{fontSize:".82rem",minWidth:0}}><div style={{fontWeight:700}}>{t}</div><div style={{color:"#8A8178",fontSize:".7rem"}}>{m}</div></div>
+          {i===0 ? <MockPill tone="ok">Added</MockPill> : <span style={{background:"#C16140",color:"#fff",fontWeight:700,fontSize:".74rem",padding:"6px 14px",borderRadius:9}}>Add</span>}
+        </div>
+      ))}
+      <div style={{fontSize:".72rem",color:"#8A8178",marginTop:4}}>Nothing is added until you tap Add.</div>
+    </MockShell>
+  );
+}
+function AskPrivacyMock() {
+  return (
+    <MockShell title="Ask Steadwell settings" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,padding:"4px 0 12px"}}>
+        <div><div style={{fontWeight:700,fontSize:".86rem"}}>Save my questions</div><div style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.5,marginTop:3}}>Emails, phone numbers and addresses are removed first. Turning this off also deletes saved questions.</div></div>
+        <span style={{width:42,height:24,borderRadius:14,background:"#CFC6B6",position:"relative",flexShrink:0}}><span style={{position:"absolute",left:3,top:3,width:18,height:18,borderRadius:"50%",background:"#fff"}}/></span>
+      </div>
+      <div style={{borderTop:"1px solid #E6DECF",paddingTop:10,fontSize:".74rem",color:"#8A8178"}}>Never sold or used for ads.</div>
+    </MockShell>
+  );
+}
+
+function CalMonthMock() {
+  const days=[]; for(let i=1;i<=30;i++) days.push(i);
+  const lead=0; // November 2026 starts on a Sunday
+  const ev={1:"t",15:"t",22:"t",28:"w"};
+  return (
+    <MockShell title="November" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,textAlign:"center",marginBottom:4}}>
+        {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{fontSize:".62rem",color:"#A8A09A",fontWeight:700}}>{d}</div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+        {Array.from({length:lead}).map((_,i)=><div key={"l"+i}/>)}
+        {days.map(d=>(
+          <div key={d} style={{textAlign:"center",padding:"5px 0 4px",borderRadius:7,background:ev[d]?"#fff":"transparent",border:ev[d]?"1px solid #E6DECF":"1px solid transparent",fontSize:".72rem",color:"#5E574F"}}>
+            {d}<div style={{height:5,display:"flex",justifyContent:"center",marginTop:1}}>{ev[d] && <span style={{width:5,height:5,borderRadius:"50%",background:ev[d]==="t"?"#234A3D":"#C16140"}}/>}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:14,marginTop:10,fontSize:".68rem",color:"#8A8178"}}>
+        <span><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#234A3D",marginRight:5}}/>Maintenance</span>
+        <span><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#C16140",marginRight:5}}/>Warranty ends</span>
+      </div>
+    </MockShell>
+  );
+}
+function CalAgendaMock() {
+  const rows=[["Nov 1","Replace HVAC filter","Steadwell · task","#234A3D"],["Nov 15","Flush the water heater","Steadwell · task","#234A3D"],["Nov 28","Dishwasher warranty ends","Steadwell · warranty","#C16140"]];
+  return (
+    <MockShell title="Upcoming" note="(example)" style={{maxWidth:440}}>
+      {rows.map(([d,t,m,c])=>(
+        <div key={t} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{width:4,alignSelf:"stretch",background:c,borderRadius:3}}/>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{m}</div></div>
+          <b style={{fontSize:".74rem",color:"#5E574F"}}>{d}</b>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function CalSubscribeMock() {
+  const btn={display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 12px",border:"1px solid #E6DECF",background:"#fff",borderRadius:11,marginBottom:8,fontSize:".82rem",fontWeight:600};
+  return (
+    <MockShell title="Calendar sync" note="(example)" style={{maxWidth:440}}>
+      <div style={btn}><span>Google Calendar</span><span style={{color:"#C16140",fontSize:".72rem"}}>Open</span></div>
+      <div style={btn}><span>Apple Calendar</span><span style={{color:"#C16140",fontSize:".72rem"}}>Copy link</span></div>
+      <div style={btn}><span>Outlook and others</span><span style={{color:"#C16140",fontSize:".72rem"}}>Copy link</span></div>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginTop:6,lineHeight:1.5}}>Your link includes a private key. Keep it to yourself.</div>
+    </MockShell>
+  );
+}
+
+function PeopleMock() {
+  const rows=[["You","Owner","All homes",""],["partner@example.com","Full access","Both homes",""],["manager@example.com","Admin","All homes",""],["handyman@example.com","Tasks & assets","Rental only","Pending"]];
+  return (
+    <MockShell title="People" note="(example)" style={{maxWidth:440}}>
+      {rows.map(([n,l,h,p])=>(
+        <div key={n} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{width:30,height:30,borderRadius:"50%",background:"#EFE7D7",color:"#234A3D",fontWeight:700,fontSize:".78rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{n[0].toUpperCase()}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{l} · {h}</div></div>
+          {p && <MockPill tone="warn">{p}</MockPill>}
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function InviteMock() {
+  return (
+    <MockShell title="Invite people" note="(example)" style={{maxWidth:440}}>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:4}}>Email addresses</div>
+      <div style={{border:"1px solid #E6DECF",background:"#fff",borderRadius:9,padding:"8px 11px",fontSize:".78rem",color:"#5E574F",marginBottom:11}}>partner@example.com</div>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:5}}>Access level</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:11}}>
+        {[["Admin",false],["Full access",true],["Tasks & assets",false]].map(([l,on])=><span key={l} style={{fontSize:".74rem",fontWeight:600,padding:"5px 11px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{l}</span>)}
+      </div>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:5}}>Homes</div>
+      {[["Main house",true],["Rental",true]].map(([h,on])=>(
+        <div key={h} style={{display:"flex",alignItems:"center",gap:8,fontSize:".78rem",marginBottom:5}}><span style={{width:16,height:16,borderRadius:5,background:on?"#234A3D":"#fff",border:on?"none":"1.5px solid #CFC6B6",color:"#fff",fontSize:".6rem",display:"flex",alignItems:"center",justifyContent:"center"}}>{on?"✓":""}</span>{h}</div>
+      ))}
+      <div style={{marginTop:10,textAlign:"center",background:"#C16140",color:"#fff",borderRadius:9,padding:"8px",fontSize:".78rem",fontWeight:700}}>Send invite</div>
+    </MockShell>
+  );
+}
+function AssignMock() {
+  const rows=[["Replace HVAC filter","Nov 1","You"],["Test smoke alarms","Nov 5","Partner"],["Clean gutters","Nov 12","Handyman"],["Renew insurance quote","Nov 20",""]];
+  return (
+    <MockShell title="Tasks" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+        {[["All",false],["Assigned to me",true],["Unassigned",false]].map(([l,on])=><span key={l} style={{fontSize:".7rem",fontWeight:600,padding:"4px 10px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{l}</span>)}
+      </div>
+      {rows.map(([t,d,a])=>(
+        <div key={t} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{width:16,height:16,borderRadius:5,border:"1.5px solid #CFC6B6",flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600}}>{t}</div><div style={{fontSize:".66rem",color:"#A8A09A"}}>Due {d}</div></div>
+          {a ? <MockPill tone="mute">{a}</MockPill> : <span style={{fontSize:".68rem",color:"#A8A09A"}}>Unassigned</span>}
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function AccessLevelsMock() {
+  const rows=[["Tasks",1,1],["Assets and warranties",1,1],["Service history",1,1],["Contractors",1,1],["Expenses",1,0],["Projects",1,0],["Documents",1,0]];
+  const cell=(v)=>v?<span style={{color:"#2E7050",fontWeight:700}} aria-label="Can see">✓</span>:<span style={{color:"#A8A09A"}} aria-label="Hidden">—</span>;
+  return (
+    <MockShell title="What each level can see" note="" style={{maxWidth:440}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 74px 92px",gap:0,fontSize:".76rem"}}>
+        <div/><div style={{textAlign:"center",fontWeight:700,color:"#234A3D",padding:"0 0 7px"}}>Full</div><div style={{textAlign:"center",fontWeight:700,color:"#234A3D",padding:"0 0 7px"}}>Tasks &amp; assets</div>
+        {rows.map(([n,a,b])=>(<div key={n} style={{display:"contents"}}><div style={{padding:"7px 0",borderTop:"1px solid #E6DECF",color:"#5E574F"}}>{n}</div><div style={{padding:"7px 0",borderTop:"1px solid #E6DECF",textAlign:"center"}}>{cell(a)}</div><div style={{padding:"7px 0",borderTop:"1px solid #E6DECF",textAlign:"center"}}>{cell(b)}</div></div>))}
+      </div>
+    </MockShell>
+  );
+}
+
+function ProjectMock() {
+  return (
+    <MockShell title="Kitchen remodel" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}><MockPill tone="warn">In progress</MockPill><span style={{fontSize:".72rem",color:"#8A8178"}}>Example Kitchens · ends Dec 12</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:".76rem",marginBottom:4}}><span style={{color:"#5E574F"}}>Spent</span><b>$31,200 of $38,000</b></div>
+      <div style={{height:9,background:"#EFE7D7",borderRadius:5,marginBottom:14}}><div style={{width:"82%",height:"100%",background:"#234A3D",borderRadius:5}}/></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{background:"#F4EDDF",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D"}}>$28,900</div><div style={{fontSize:".62rem",color:"#8A8178",marginTop:2}}>Estimated value added</div></div>
+        <div style={{background:"rgba(35,74,61,.09)",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D"}}>76%</div><div style={{fontSize:".62rem",color:"#234A3D",marginTop:2}}>Return on cost</div></div>
+      </div>
+    </MockShell>
+  );
+}
+function ProjectListMock() {
+  const rows=[["Kitchen remodel","In progress","warn",82,"$31.2k of $38k"],["Deck replacement","Planning","mute",0,"$0 of $14k"],["Bathroom refresh","Done","ok",100,"$9.4k of $9k"]];
+  return (
+    <MockShell title="Projects" note="(example)" style={{maxWidth:440}}>
+      {rows.map(([n,s,t,p,m])=>(
+        <div key={n} style={{padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:6}}><span style={{fontSize:".84rem",fontWeight:600}}>{n}</span><MockPill tone={t}>{s}</MockPill></div>
+          <div style={{height:6,background:"#EFE7D7",borderRadius:4,marginBottom:4}}><div style={{width:p+"%",height:"100%",background:p>=100?"#B8861E":"#234A3D",borderRadius:4}}/></div>
+          <div style={{fontSize:".68rem",color:"#A8A09A"}}>{m}</div>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function RoiBarsMock() {
+  const rows=[["Window replacement",85],["Deck addition",80],["Kitchen remodel",76]];
+  return (
+    <MockShell title="Cost vs. Value, national averages" note="" style={{maxWidth:440}}>
+      {rows.map(([n,v])=>(
+        <div key={n} style={{marginBottom:11}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",marginBottom:4}}><span style={{color:"#5E574F"}}>{n}</span><b>{v}%</b></div>
+          <div style={{height:9,background:"#EFE7D7",borderRadius:5}}><div style={{width:v+"%",height:"100%",background:"#C16140",borderRadius:5}}/></div>
+        </div>
+      ))}
+      <div style={{fontSize:".68rem",color:"#8A8178",marginTop:2}}>Share of project cost recovered at resale. Actual returns vary by region and quality.</div>
+    </MockShell>
+  );
+}
+function PhotoGuideMock() {
+  const tiles=[["Data label","linear-gradient(135deg,#CFC6B6,#B5AB99)"],["Whole unit","linear-gradient(135deg,#9DB8A9,#5F8B74)"],["Base of tank","linear-gradient(135deg,#D8C7A8,#B8A07A)"]];
+  return (
+    <MockShell title="Photos to take" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
+        {tiles.map(([l,g],i)=>(
+          <div key={l}>
+            <div style={{height:78,borderRadius:10,background:g,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:6}}><span style={{width:20,height:20,borderRadius:"50%",background:"#234A3D",color:"#fff",fontSize:".68rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{i+1}</span></div>
+            <div style={{fontSize:".7rem",fontWeight:600,textAlign:"center",marginTop:5,color:"#5E574F"}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.5}}>Add up to 6 photos. Each item type has its own short guide.</div>
+    </MockShell>
+  );
+}
+
 const FILL = {flex:1,maxWidth:"none",display:"flex",flexDirection:"column"};
 function UtilityBillTrackerPage() {
   const path = "/utility-bill-tracker";
@@ -33341,21 +33675,30 @@ function ConditionAssessmentPage() {
     { icon:"🏊", name:"Pool & yard", examples:"Pool or spa structure, pool equipment, irrigation system" },
   ];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Condition Assessment" eyebrow="Condition Assessment" cta="Get started free" h1="Know what shape" h1em="your home is in." sub="Take a few photos of any appliance or system. Steadwell grades it 1 to 5, estimates how many years it has left, reads the label, and suggests what to do next. You confirm everything before it is saved." badge="AI-assisted · Plus & Pro" stats={[{num:"1–5",lbl:"Condition score"},{num:"25+",lbl:"Item types"},{num:"Up to 6",lbl:"Photos per assessment"}]}/>
+      <LPHero kw="Home Condition Assessment" eyebrow="Condition Assessment" cta="Get started free" h1="Know what shape" h1em="your home is in." sub="Take a few photos of any appliance or system. Steadwell grades it 1 to 5, estimates how many years it has left, reads the label, and suggests what to do next. You confirm everything before it is saved." badge="AI-assisted · Plus & Pro" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<AssessScoreMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="What you get from one assessment" sub="More than a number: a checklist, a timeline and a to-do list."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            <LPFieldCard icon="📊" title="A condition score" badge="1 to 5" fields={["Excellent, Good, Fair, Poor or Failing","A checklist built for that item type, each check marked OK, Watch, Concern or Can’t see","Findings by area, with severity","A plain-language summary"]}/>
-            <LPFieldCard icon="⏳" title="A years-left estimate" badge="Feeds your forecast" fields={["About how many years the item has left","Used by your home health score","Used by your 5-year cost forecast","Reassess to keep it current"]} link={{href:"/home-expense-tracker",label:"See the cost forecast"}}/>
-            <LPFieldCard icon="✅" title="Clear next steps" badge="You approve" fields={["Suggested maintenance tasks you choose from","A flag when a licensed professional should look","Label corrections for model, serial and install date","Tips on which extra photo would sharpen the next one"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tasks"}}/>
-          </LPGrid>
-        </LPSection>
-
+        <LPShort>A home condition assessment grades an appliance or system from photos. Steadwell checks your photos against a checklist for that item type, gives it a score from 1 to 5, estimates how many years it has left, and suggests tasks. You review and can change everything before it is saved. Assessments are included with Plus and Pro, and they are not a professional inspection.</LPShort>
         <LPSection alt>
+          <LPSectionHead h2="More than a number" sub="A checklist, a timeline and a to-do list from one assessment."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<PhotoGuideMock/>} title={<>Start with a few photos. <LPBadge plan="Plus & Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Open any asset and choose Assess condition. A short guide shows which shots help for that item type, such as the data label, an overall view and any problem area.</p><p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Each item type has its own checklist. Every check is marked OK, Watch, Concern or Can&#39;t see, with findings by area and a plain-language summary.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<YearsLeftMock/>} title={<>How long it has left. <LPBadge plan="Plus & Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Steadwell estimates about how many years an item has left. That estimate feeds your home health score and your 5-year cost forecast, and you can reassess to keep it current.</p>
+              <a href="/home-expense-tracker" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>See the cost forecast →</a>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<NextStepsMock/>} title={<>Clear next steps, and you approve them. <LPBadge plan="Plus & Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Choose from suggested maintenance tasks, correct the model, serial and install date from the label, and see a flag when a licensed professional should look. Nothing is saved until you confirm.</p>
+              <a href="/home-maintenance-tracker" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>About maintenance tasks →</a>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
+        <LPSection id="how-it-works">
           <LPSectionHead h2="How it works" sub="You review every result before it is saved."/>
           <LPGrid gap={16}>
             {[
@@ -33367,7 +33710,7 @@ function ConditionAssessmentPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection>
+        <LPSection alt>
           <LPSectionHead h2="Built for the things that wear out" sub="Over 25 item types, each with its own checklist and photo guide."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
             {GROUPS.map((g,i)=>(
@@ -33380,7 +33723,7 @@ function ConditionAssessmentPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Honest about what photos can show" sub="A grade is only useful if you can trust where it came from."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
             {[
@@ -33397,7 +33740,7 @@ function ConditionAssessmentPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection>
+        <LPSection alt>
           <LPSectionHead h2="Plans and pricing" sub="Condition assessments are included with Plus and Pro."/>
           <LPPlanTiles plans={[
             {plan:"Free",price:"$0",period:"",annual:"",desc:"Track your home, no assessments.",features:["Assets, tasks and warranties","Overall home health score","Condition assessments need Plus or Pro"],cta:"Start free",popular:false},
@@ -33406,7 +33749,7 @@ function ConditionAssessmentPage() {
           ]}/>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={ASSESS_FAQ}/>
         </LPSection>
@@ -33447,52 +33790,29 @@ function AskSteadwellPage() {
     }),
   });
   const TRY = ["When should I replace my roof?","How old is my HVAC, and what should I plan for?","Is my water heater near the end of its life?","I have 3 overdue tasks. What should I do first?","Am I ready for hurricane season?","What’s expiring soon?","What did I spend on repairs this year?","What should I budget for over the next 5 years?"];
-  const bubble = {borderRadius:14,padding:"10px 14px",fontSize:".85rem",lineHeight:1.5,maxWidth:"92%"};
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Ask Steadwell: AI Home Assistant" eyebrow="Ask Steadwell · AI Assistant" h1="Your home has a lot of records." h1em="Now you can just ask." sub="Ask Steadwell is an AI assistant for your home. Ask a question in plain English and get an answer based on your own assets, warranties, tasks, repairs, spending and documents, with the sources shown and tasks you can add in one tap." cta="Try Ask Steadwell free" badge="3 free questions · 30 a month on Plus · 150 on Pro"/>
+      <LPHero kw="Ask Steadwell: AI Home Assistant" eyebrow="Ask Steadwell" cta="Try Ask Steadwell free" h1="Your home has a lot of records." h1em="Now you can just ask." sub="Ask Steadwell is an AI assistant for your home. Ask a question in plain English and get an answer based on your own assets, warranties, tasks, repairs, spending and documents, with the sources shown and tasks you can add in one tap." badge="3 free questions · 30 a month on Plus · 150 on Pro" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<AskChatMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
-            <div style={{textAlign:"left"}}>
-              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",lineHeight:1.15,color:"#234A3D",letterSpacing:"-.02em",margin:"0 0 14px",textWrap:"balance"}}>Answers from your home, not a guess</h2>
-              <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.2rem"}}>Steadwell already knows what you own, when it was installed, what it cost and what you have done to it. Ask Steadwell puts that to work, so the answer starts from your home instead of generic advice.</p>
-              {[
-                ["It reads your records","Assets, warranties, tasks, service history, expenses and documents."],
-                ["It shows its sources","Each answer lists the records it used. Tap one to open it."],
-                ["It suggests, you decide","Suggested tasks appear as cards and are added only when you tap Add."],
-              ].map(([t,d],i)=>(
-                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16,textAlign:"left"}}>
-                  <span style={{color:"#2E7050",fontWeight:700,fontSize:".9rem",lineHeight:"1.3rem",flexShrink:0,width:16}} aria-hidden="true">✓</span>
-                  <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,color:"#234A3D",fontSize:".95rem",lineHeight:"1.3rem"}}>{t}</div><div style={{fontSize:".88rem",color:"#7A7370",lineHeight:1.55,marginTop:2}}>{d}</div></div>
-                </div>
-              ))}
-            </div>
-            <div aria-hidden="true" style={{textAlign:"left",background:"#fff",border:"1px solid #E6DECF",borderRadius:20,padding:18,boxShadow:"0 24px 60px -34px rgba(23,48,38,.35)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,fontWeight:700,fontSize:".9rem",color:"#234A3D"}}>
-                <span>✨ Ask Steadwell</span>
-                <span style={{fontSize:".62rem",letterSpacing:".06em",textTransform:"uppercase",color:"#7A7370",background:"rgba(35,74,61,.08)",padding:"2px 8px",borderRadius:20}}>Example</span>
-              </div>
-              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
-                <div style={{...bubble,background:"#234A3D",color:"#F4EDDF"}}>Is my water heater near the end of its life?</div>
-              </div>
-              <div style={{...bubble,background:"#F4EFE6",color:"#2A2723",marginBottom:10}}>
-                Your water heater is about 11 years old. Tank models often last 8 to 12 years, so it is worth planning for a replacement soon. Your last service was 14 months ago.
-              </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-                {["🔧 Water heater","⚙️ Service log"].map(s=><span key={s} style={{fontSize:".72rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.08)",padding:"4px 10px",borderRadius:20}}>{s}</span>)}
-              </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",borderRadius:12,padding:"10px 12px"}}>
-                <div style={{fontSize:".82rem",color:"#2A2723"}}><div style={{fontWeight:700}}>Flush the water heater tank</div><div style={{color:"#7A7370",fontSize:".74rem"}}>Suggested task · due Nov 15</div></div>
-                <span style={{background:"#C16140",color:"#fff",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:10}}>Add</span>
-              </div>
-            </div>
+        <LPShort>Ask Steadwell is an AI assistant built into Steadwell. You ask a question in plain English and it answers from the records you have saved for your home, such as your assets, warranties, tasks, service history, expenses and documents. It shows which records it used, and it only adds a task when you tap Add. Free accounts get 3 questions to try, Plus gets 30 a month and Pro gets 150.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Answers from your home, not a guess" sub="Steadwell already knows what you own, when it was installed and what you have done to it."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<AskSourcesMock/>} title={<>It reads your records and shows its sources. <LPBadge plan="All plans"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Assets, warranties, tasks, service history, expenses and documents are all fair game. Each answer lists the records it used, and you can tap one to open it.</p><p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Each home has its own conversation, so answers use the home you are viewing.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<AskTaskMock/>} title={<>It suggests. You decide. <LPBadge plan="All plans"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Suggested tasks appear as cards and are added to your list only when you tap Add. If you do nothing, nothing changes.</p>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<AskPrivacyMock/>} title={<>Your questions, your call. <LPBadge plan="All plans"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads, and you can turn it off at any time, which also deletes questions already saved. Details are in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
+            </LPFeatureRow>
           </div>
         </LPSection>
-
-        <LPSection alt>
+        <LPSection>
           <LPSectionHead h2="Try asking" sub="Ask Steadwell suggests questions based on what is in your home. Here are a few."/>
           <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
             {TRY.map((q,i)=>(
@@ -33501,7 +33821,7 @@ function AskSteadwellPage() {
           </div>
         </LPSection>
 
-        <LPSection>
+        <LPSection alt id="how-it-works">
           <LPSectionHead h2="How it works" sub="Three steps, a few seconds."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={16}>
             {[
@@ -33512,13 +33832,12 @@ function AskSteadwellPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="You stay in control" sub="Ask Steadwell is a planning aid. It works best alongside your own judgment."/>
           <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>It answers from the information in your account, so the more you add to Steadwell, the better it gets. Like any AI assistant it can make mistakes, so double-check anything important and call a licensed professional for safety, electrical, gas or structural questions.</p>
-          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>By default we save the text of your questions, with emails, phone numbers and addresses removed, to help improve the assistant. It is never sold or used for ads, and you can turn it off at any time, which also deletes questions already saved. Details are in our <a href="/privacy" style={{color:"#C16140",fontWeight:600}}>Privacy Policy</a>.</p>
         </LPSection>
 
-        <LPSection>
+        <LPSection alt>
           <LPSectionHead h2="Plans and pricing" sub="Try Ask Steadwell free, then upgrade for everyday use."/>
           <LPPlanTiles plans={[
             {plan:"Free",price:"$0",period:"",annual:"",desc:"Try Ask Steadwell on your own home.",features:["3 Ask Steadwell questions to try","Overall home health score","Calendar sync","Unlimited warranty tracking, one property"],cta:"Start free",popular:false},
@@ -33527,7 +33846,7 @@ function AskSteadwellPage() {
           ]}/>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={ASK_FAQ}/>
         </LPSection>
@@ -33567,21 +33886,26 @@ function CalendarSyncPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Maintenance Calendar Sync" eyebrow="Calendar Sync" cta="Get started free" h1="Your home, on the" h1em="calendar you already use." sub="Subscribe once and your Steadwell maintenance tasks and warranty expiry dates appear in Google Calendar, Apple Calendar or Outlook, and stay current as things change." badge="Free on every plan" stats={[{num:"3",lbl:"Calendar apps"},{num:"1 link",lbl:"To subscribe"},{num:"Free",lbl:"On all plans"}]}/>
+      <LPHero kw="Home Maintenance Calendar Sync" eyebrow="Calendar Sync" cta="Get started free" h1="Your home, on the" h1em="calendar you already use." sub="Subscribe once and your Steadwell maintenance tasks and warranty expiry dates appear in Google Calendar, Apple Calendar or Outlook, and stay current as things change." badge="Free on every plan" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<CalMonthMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="What lands on your calendar" sub="The dates that are easy to forget, in the place you already look."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            <LPFieldCard icon="🔧" title="Maintenance tasks" badge="All plans" fields={["Task names and due dates","Your whole maintenance list in one view","Stays in step as you add or change tasks"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tracking"}}/>
-            <LPFieldCard icon="🛡️" title="Warranty expiries" badge="All plans" fields={["The date each warranty ends","Time to claim or renew before coverage lapses","Updates when you add or edit a warranty"]} link={{href:"/warranty-tracker",label:"About warranty tracking"}}/>
-            <LPFieldCard icon="🔄" title="Always current" badge="Automatic" fields={["Subscribe once, no re-exporting","Your calendar app refreshes it on its own","Shows up on every device using that calendar"]}/>
-          </LPGrid>
-        </LPSection>
-
+        <LPShort>Calendar sync adds your Steadwell maintenance tasks and warranty expiry dates to Google Calendar, Apple Calendar, Outlook or any app that can subscribe to an iCal link. You subscribe once, and your calendar app keeps it current. It is a one-way subscription, it is free on every plan, and it comes in addition to your email reminders.</LPShort>
         <LPSection alt>
+          <LPSectionHead h2="Your home, in your calendar" sub="Two kinds of dates, one subscription, free on every plan."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<CalAgendaMock/>} title={<>Tasks and warranty dates, together. <LPBadge plan="All plans"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Your maintenance tasks and the date each warranty ends show up as calendar events, on every device that uses that calendar. Add or change a task and your calendar follows.</p>
+              <a href="/warranty-tracker" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>About warranty tracking →</a>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<CalSubscribeMock/>} title={<>Subscribe once and forget it. <LPBadge plan="All plans"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Find Calendar sync in your account settings. Open Google Calendar with one click, or copy your link for Apple Calendar, Outlook or any other app. Your calendar app asks you to confirm, and that is it.</p><p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>It updates when your calendar app refreshes, usually within a few hours and sometimes up to a day.</p>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
+        <LPSection id="how-it-works">
           <LPSectionHead h2="Set it up in a minute" sub="Find it in your account settings under Calendar sync."/>
           <LPGrid gap={16}>
             {[
@@ -33593,7 +33917,7 @@ function CalendarSyncPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection narrow>
+        <LPSection alt narrow>
           <LPSectionHead h2="A few things worth knowing"/>
           <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Calendar sync is a one-way subscription. Changes in Steadwell show up in your calendar; editing an event in your calendar does not change Steadwell, so mark tasks done inside Steadwell.</p>
           <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Your link includes a private key. Keep it to yourself, and share the home with a partner or team member through <a href="/shared-household-access" style={{color:"#C16140",fontWeight:600}}>shared household access</a> instead.</p>
@@ -33638,18 +33962,26 @@ function HomeHealthScorePage() {
       offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"}],
     }),
   });
-  const BANDS = [
-    {g:"Excellent",r:"90 and up",c:"#2A9D6A"},
-    {g:"Good",r:"75 to 89",c:"#234A3D"},
-    {g:"Fair",r:"60 to 74",c:"#B8861E"},
-    {g:"At risk",r:"Below 60",c:"#C16140"},
-  ];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Health Score" eyebrow="Home Health Score" cta="See my home’s score" h1="One number for how" h1em="well your home is kept." sub="Steadwell turns your assets, tasks, warranties and home profile into a single score, then shows you the factors behind it so you know what to fix first." badge="Overall score on every plan · Breakdown on Plus & Pro" stats={[{num:"0–100",lbl:"Score"},{num:"4",lbl:"Factors"},{num:"Live",lbl:"Updates as you go"}]}/>
+      <LPHero kw="Home Health Score" eyebrow="Home Health Score" cta="See my home&#8217;s score" h1="One number for how" h1em="well your home is kept." sub="Steadwell turns your assets, tasks, warranties and home profile into a single score, then shows you the factors behind it so you know what to fix first." badge="Overall score on every plan · Breakdown on Plus & Pro" secondary={{href:"#how-to-raise",label:"See how to raise it"}} visual={<HealthScoreMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>The home health score is a number from 0 to 100 that shows how well your home is being kept up, based on the records in your Steadwell account. It combines the condition of your assets, overdue tasks, warranty coverage and how complete your home profile is, then grades it Excellent, Good, Fair or At risk. Every account sees the overall score, and Plus and Pro add the breakdown.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="A score you can act on" sub="Not just a number, but the reason behind it."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<HealthDropMock/>} title={<>See what is pulling it down. <LPBadge plan="Plus & Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>The breakdown shows which factor moved and why. The usual causes are a task going overdue, a warranty ending, a new recall on something you own, or an asset reaching the end of its expected life.</p><p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Upcoming tasks never count against you. Only tasks that are past due do.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<ScoreBandsMock/>} title={<>What the number means. <LPBadge plan="Free"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Every account sees its overall score and grade. It is a way to see where to focus, based on the records you keep, and not an appraisal or a professional inspection.</p>
+              <a href="/home-condition-assessment" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>A condition assessment sharpens it →</a>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
           <LPSectionHead h2="Four things go into your score" sub="Asset condition counts the most, followed by tasks, warranties and your profile."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,250px),1fr))" gap={16}>
@@ -33660,19 +33992,7 @@ function HomeHealthScorePage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt>
-          <LPSectionHead h2="What your score means"/>
-          <LPGrid cols="repeat(auto-fit,minmax(200px,1fr))" gap={14}>
-            {BANDS.map(b=>(
-              <LPCard key={b.g}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:600,color:b.c,marginBottom:4}}>{b.g}</div>
-                <div style={{fontSize:".85rem",color:"#7A7370"}}>{b.r}</div>
-              </LPCard>
-            ))}
-          </LPGrid>
-        </LPSection>
-
-        <LPSection>
+        <LPSection alt id="how-to-raise">
           <LPSectionHead h2="How to raise it" sub="Most of the points are a few minutes away."/>
           <LPGrid gap={16}>
             {[
@@ -33684,7 +34004,7 @@ function HomeHealthScorePage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={HEALTH_FAQ}/>
         </LPSection>
@@ -33727,11 +34047,28 @@ function SharedHouseholdAccessPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Shared Home Access &amp; Task Assignment" eyebrow="Shared Access & Task Assignment" cta="Get started" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner, property manager or team member by email. Choose what each person can see, and assign tasks so everyone knows who is doing what." badge="Included with Pro" stats={[{num:"Email",lbl:"Invite"},{num:"Assign",lbl:"Tasks to people"},{num:"3",lbl:"Properties on Pro"}]}/>
+      <LPHero kw="Shared Home Access &amp; Task Assignment" eyebrow="Shared Access & Task Assignment" cta="Get started" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner, property manager or team member by email. Choose what each person can see, and assign tasks so everyone knows who is doing what." badge="Included with Pro" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<PeopleMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>Shared access lets you invite a spouse, partner, co-owner, property manager or team member to your home&#39;s records in Steadwell. You choose what each person can see, home by home, and you can assign tasks to anyone who has accepted. It is included with Pro, with no limit on how many people you invite and no extra charge per person.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Run the home together" sub="Invite, choose access, then hand out the work."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<InviteMock/>} title={<>Invite by email, home by home. <LPBadge plan="Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Enter one or more email addresses, pick Admin, Full access or Tasks &amp; assets, and tick the homes each person should have. Each person gets one email listing their homes and signs in with a free Steadwell account.</p><p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>You can see whether each invite is pending or active, and remove anyone at any time.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<AssignMock/>} title={<>Assign the work and see who has it. <LPBadge plan="Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Once someone accepts, they appear in the Assigned to menu on any task. Filter your list by Assigned to me, Unassigned or by person. The person you assigned can mark the task done, and recurring tasks stay with them.</p>
+              <a href="/home-maintenance-tracker" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>About maintenance tasks →</a>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<AccessLevelsMock/>} title={<>You choose what each person sees. <LPBadge plan="Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Full access suits a spouse, co-owner or property manager. Tasks &amp; assets suits a handyman or caretaker, and keeps your expenses, projects and documents private. Admins can run everything with you.</p>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
           <LPSectionHead h2="Made for more than one person" sub="Whether it is a family home or a rental you look after, the work rarely falls on one person."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
@@ -33741,17 +34078,8 @@ function SharedHouseholdAccessPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt>
-          <LPSectionHead h2="Assign the work, see who owns it" sub="Tasks stop being a list for one person and become a plan for the whole team."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            <LPFieldCard icon="👤" title="Assign tasks" badge="Pro" fields={["Pick anyone who has accepted your invite","Set it when you add a task or edit one later","Recurring tasks stay with the same person"]} link={{href:"/home-maintenance-tracker",label:"About maintenance tasks"}}/>
-            <LPFieldCard icon="🔎" title="See who has what" badge="Filters" fields={["Filter by Assigned to me","Filter by Unassigned or by person","The name shows on each task"]}/>
-            <LPFieldCard icon="✅" title="They can finish it" badge="Shared" fields={["The person you assigned can mark the task done","Recurring tasks create the next one automatically","Everyone sees the same current list"]}/>
-          </LPGrid>
-        </LPSection>
-
-        <LPSection>
-          <LPSectionHead h2="How it works"/>
+        <LPSection alt id="how-it-works">
+          <LPSectionHead h2="How it works" sub="Four steps from invite to a shared task list."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Open Manage people",text:"Find the People card on My Home in Steadwell and choose Manage people."},
@@ -33762,7 +34090,7 @@ function SharedHouseholdAccessPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt>
+        <LPSection>
           <LPSectionHead h2="Know what you are sharing" sub="Shared access is simple on purpose."/>
           <LPGrid cols="repeat(auto-fit,minmax(240px,1fr))" gap={14}>
             {[
@@ -33778,7 +34106,7 @@ function SharedHouseholdAccessPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection>
+        <LPSection alt>
           <LPSectionHead h2="Plans and pricing" sub="Shared access comes with Pro, the plan built for more than one home and more than one person."/>
           <LPPlanTiles plans={[
             {plan:"Free",price:"$0",period:"",annual:"",desc:"Track your own home.",features:["One property","Unlimited warranty tracking","Shared access needs Pro"],cta:"Start free",popular:false},
@@ -33787,7 +34115,7 @@ function SharedHouseholdAccessPage() {
           ]}/>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={SHARED_FAQ}/>
         </LPSection>
@@ -33936,7 +34264,7 @@ function WarrantyTrackerPage() {
           </div>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="What's included, free" sub="No add-ons, no per-feature upsells on the things that matter most."/>
           <LPCard>
             {[
@@ -34530,16 +34858,25 @@ function HomeProjectsPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Renovation Tracker &amp; ROI" eyebrow="Home Projects & ROI" cta="Get started free" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator estimates what each project adds to your home's resale value, then AI reviews your before and after photos to adjust it for the work you actually did." badge="Projects free · ROI calculator and AI review on Plus"/>
-      <div style={{background:"#F4EDDF",padding:"0 1.5rem 3rem",display:"flex",justifyContent:"center"}}>
-        <div style={{maxWidth:720,width:"100%"}}>
-          <img src="/screenshots/steadwell-roi.png" alt="Steadwell project ROI calculator showing a kitchen remodel with 113% return and $29,400 value added" style={{width:"100%",borderRadius:16,boxShadow:"0 20px 60px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
-        </div>
-      </div>
+      <LPHero kw="Home Renovation Tracker &amp; ROI" eyebrow="Home Projects & ROI" cta="Get started free" h1="Know the return before" h1em="you renovate." sub="Track every home improvement project with budgets, timelines, and contractor details. The ROI calculator estimates what each project adds to your home&#39;s resale value, then AI reviews your before and after photos to adjust it for the work you actually did." badge="Projects free · ROI calculator and AI review on Plus" secondary={{href:"#how-it-works",label:"See how the ROI works"}} visual={<ProjectMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>A home renovation tracker records each project&#39;s budget, timeline, contractor and photos in one place. Steadwell tracks projects for free, and on Plus and Pro it estimates what each project adds to your resale value using Cost vs. Value report data, then reviews your before and after photos to adjust that estimate. The result is a planning estimate, not an appraisal.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Plan it, track it, measure it" sub="From the first quote to the finished result."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<ProjectListMock/>} title={<>Every project in one list. <LPBadge plan="Free"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Log the name, status, dates, budget against actual cost, contractor, invoices, permit numbers and photos. Mark a project done and it joins your home&#39;s history.</p>
+              <a href="/contractor-tracker" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>About contractor tracking →</a>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<RoiBarsMock/>} title={<>Know the return before you start. <LPBadge plan="Plus & Pro"/></>}>
+<p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Pick a project type and see the typical share of cost recovered at resale, plus typical cost ranges whether you hire out or do it yourself. Actual returns vary by region and quality of work.</p>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
           <LPSectionHead h2="What you track for each project" sub="From a $200 faucet replacement to a $50,000 kitchen remodel."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
@@ -34562,7 +34899,7 @@ function HomeProjectsPage() {
             ))}
           </LPGrid>
         </LPSection>
-        <LPSection alt>
+        <LPSection alt id="how-it-works">
           <LPSectionHead h2="How the ROI calculator works" sub="Based on the annual Cost vs. Value Report — the industry standard for renovation ROI."/>
           <LPGrid gap={16}>
             {[
