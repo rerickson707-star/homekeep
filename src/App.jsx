@@ -1,4 +1,4 @@
-// Steadwell v434 — 2026-10-26
+// Steadwell v435 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -32940,6 +32940,229 @@ function RecallAlertMock() {
   );
 }
 
+// ── Batch 2 mocks: expenses, document vault, insurance, contractors ──
+function LPChipCard({ icon, title, fields }) {
+  return (
+    <LPCard>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+        <span aria-hidden="true" style={{fontSize:"1.3rem"}}>{icon}</span>
+        <h3 style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",margin:0}}>{title}</h3>
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        {fields.map(f=><span key={f} style={{fontSize:".74rem",color:"#5E574F",background:"#F4EDDF",border:"1px solid #E6DECF",borderRadius:7,padding:"3px 9px"}}>{f}</span>)}
+      </div>
+    </LPCard>
+  );
+}
+
+function ExpenseListMock() {
+  const rows=[["🚿","Water heater flush","Example Plumbing · Oct 3","$385"],["🌡️","HVAC tune-up","Example HVAC Co. · Sep 14","$129"],["⚡","Electric bill","Example Power & Light · Oct 14","$214"],["🏚️","Gutter cleaning","Example Exteriors · Aug 22","$180"]];
+  return (
+    <MockShell title="Home spending" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:10}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.7rem",color:"#234A3D"}}>$6,840</span>
+        <span style={{fontSize:".72rem",color:"#8A8178"}}>so far this year</span>
+      </div>
+      {rows.map(([ic,t,m,a],i)=>(
+        <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{width:32,height:32,borderRadius:10,background:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{ic}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m}</div></div>
+          <span style={{fontSize:".66rem",color:"#8A8178"}}>📎</span>
+          <b style={{fontSize:".84rem"}}>{a}</b>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function SpendBreakdownMock() {
+  const rows=[["Repairs",38,"$2,600","#C16140"],["Maintenance",24,"$1,640","#234A3D"],["Utilities",22,"$1,505","#B8861E"],["Projects",16,"$1,095","#8A8178"]];
+  return (
+    <MockShell title="Where the money goes" style={{maxWidth:440}}>
+      {rows.map(([n,p,a,c])=>(
+        <div key={n} style={{marginBottom:11}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",marginBottom:4}}><span style={{color:"#5E574F"}}>{n}</span><b>{a}</b></div>
+          <div style={{height:9,background:"#EFE7D7",borderRadius:5}}><div style={{width:p*2+"%",height:"100%",background:c,borderRadius:5}}/></div>
+        </div>
+      ))}
+      <div style={{marginTop:4,paddingTop:10,borderTop:"1px solid #E6DECF",display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#8A8178"}}><span>Compared with last year</span><b style={{color:"#B0432B"}}>+12%</b></div>
+    </MockShell>
+  );
+}
+function ForecastMock() {
+  const cols=[["2027",1600,"Water heater"],["2028",0,""],["2029",7800,"HVAC"],["2030",1200,"Dishwasher"],["2031",14500,"Roof"]];
+  const max=14500;
+  return (
+    <MockShell title="5-year forecast" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"flex-end",gap:8,height:120,marginBottom:6}}>
+        {cols.map(([y,v])=>(
+          <div key={y} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",height:"100%"}}>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"#5E574F",marginBottom:3}}>{v?("$"+v.toLocaleString("en-US")):"$0"}</div>
+            <div style={{width:"100%",height:v?Math.max(8,Math.round(v/max*84)):3,background:v>=7000?"#C16140":"#2F5E4E",opacity:v?.9:.35,borderRadius:"5px 5px 2px 2px"}}/>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        {cols.map(([y,v,n])=><div key={y} style={{flex:1,textAlign:"center"}}><div style={{fontSize:".7rem",fontWeight:700}}>{y}</div><div style={{fontSize:".6rem",color:"#A8A09A",minHeight:"1.6em"}}>{n}</div></div>)}
+      </div>
+      <div style={{marginTop:8,fontSize:".68rem",color:"#8A8178",lineHeight:1.5}}>Estimates use average lifespans and costs. Use it as a planning guide.</div>
+    </MockShell>
+  );
+}
+
+function VaultMock() {
+  const rows=[["📜","Warranty deed","Deeds & titles",null],["🔨","Roof permit","Permits & inspections",null],["🛡️","Homeowners policy","Insurance","Renews Mar 1"],["🔧","Water heater manual","Manuals","Linked to Water heater"]];
+  return (
+    <MockShell title="Document vault" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,background:"#F4EDDF",borderRadius:10,padding:"8px 11px",marginBottom:10,fontSize:".74rem",color:"#8A8178"}}>🔎 <span>Search your documents</span></div>
+      {rows.map(([ic,t,c,x],i)=>(
+        <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+          <span style={{width:32,height:32,borderRadius:10,background:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{ic}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{c}</div></div>
+          {x && <MockPill tone={x.startsWith("Renews")?"warn":"mute"}>{x}</MockPill>}
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function VaultUploadMock() {
+  return (
+    <MockShell title="Add a document" style={{maxWidth:440}}>
+      <div style={{border:"1.5px dashed #C9BFAE",borderRadius:12,padding:"20px 14px",textAlign:"center",background:"#fff",marginBottom:10}}>
+        <div style={{fontSize:"1.4rem",marginBottom:4}}>📄</div>
+        <div style={{fontSize:".82rem",fontWeight:600}}>Upload a file or scan with your camera</div>
+        <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:3}}>PDF, JPG, PNG, HEIC or Word, up to 50 MB</div>
+      </div>
+      {[["Category","Permits & inspections"],["Linked to","Water heater"],["Expires","Mar 1, 2027"]].map(([k,v],i)=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF",fontSize:".8rem"}}><span style={{color:"#8A8178"}}>{k}</span><b style={{fontWeight:600}}>{v}</b></div>
+      ))}
+    </MockShell>
+  );
+}
+function StorageMock() {
+  const t=[["Free","250 MB",3],["Plus","10 GB",30],["Pro","50 GB",100]];
+  return (
+    <MockShell title="Storage by plan" note="" style={{maxWidth:440}}>
+      {t.map(([n,a,w])=>(
+        <div key={n} style={{marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".8rem",marginBottom:4}}><span style={{color:"#5E574F"}}>{n}</span><b>{a}</b></div>
+          <div style={{height:9,background:"#EFE7D7",borderRadius:5}}><div style={{width:Math.max(w,3)+"%",height:"100%",background:n==="Free"?"#2F5E4E":"#C16140",borderRadius:5}}/></div>
+        </div>
+      ))}
+      <div style={{fontSize:".7rem",color:"#8A8178"}}>Documents are private to your account.</div>
+    </MockShell>
+  );
+}
+
+function PolicyMock() {
+  const cov=[["Dwelling","$350,000"],["Personal property","$175,000"],["Liability","$300,000"],["Loss of use","$70,000"]];
+  return (
+    <MockShell title="Homeowners policy" style={{maxWidth:440}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+        <div><div style={{fontSize:".88rem",fontWeight:700}}>Example Mutual Insurance</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>Policy ••••6021 · Agent on file</div></div>
+        <MockPill tone="warn">Renews in 30 days</MockPill>
+      </div>
+      {cov.map(([k,v])=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF",fontSize:".82rem"}}><span style={{color:"#8A8178"}}>{k}</span><b style={{fontWeight:600}}>{v}</b></div>
+      ))}
+      <div style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF",fontSize:".82rem"}}><span style={{color:"#8A8178"}}>Deductible</span><b style={{fontWeight:600}}>$2,500</b></div>
+    </MockShell>
+  );
+}
+function DeclScanMock() {
+  return (
+    <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:460}}>
+      <div style={{width:118,background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"11px 11px 13px",boxShadow:"0 10px 30px rgba(42,39,35,.08)",transform:"rotate(-2deg)"}}>
+        <div style={{fontSize:".56rem",fontWeight:700,letterSpacing:".06em",color:"#8A8178",textAlign:"center",marginBottom:7}}>DECLARATIONS</div>
+        {[90,100,70,95,60,85,50].map((w,i)=><div key={i} style={{height:3.5,width:w+"%",background:"#E6DECF",borderRadius:2,margin:"6px 0"}}/>)}
+      </div>
+      <span className="lp-arrow" style={{color:"#C16140",fontWeight:700,fontSize:"1.2rem"}}>→</span>
+      <MockShell title="Review before saving" note="" style={{flex:"1 1 170px",maxWidth:230,padding:"14px 15px"}}>
+        {[["Insurer","Example Mutual"],["Premium","$1,850/yr"],["Deductible","$2,500"],["Renews","Mar 1"]].map(([k,v],i)=>(
+          <div key={k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".72rem"}}><span style={{color:"#A8A09A"}}>{k}</span><b>{v}</b></div>
+        ))}
+      </MockShell>
+    </div>
+  );
+}
+function RenewalEmailMock() {
+  return (
+    <MockShell title="✉️ Reminder email" style={{maxWidth:430}}>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 30 days before renewal</div>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.02rem",fontWeight:600,color:"#234A3D",marginBottom:8}}>Your homeowners policy renews on Mar 1</div>
+      <div style={{fontSize:".8rem",color:"#5E574F",lineHeight:1.55,marginBottom:12}}>Now is a good time to review your coverage and compare options before it renews.</div>
+      <span style={{display:"inline-block",background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 14px"}}>Review my policy</span>
+    </MockShell>
+  );
+}
+function ClaimsLogMock() {
+  const rows=[["Water damage","Mar 2025","$4,200","$3,700","Paid","ok"],["Wind damage","Sep 2023","$1,850","$0","Closed","mute"]];
+  return (
+    <MockShell title="Claims log" style={{maxWidth:430}}>
+      {rows.map(([t,d,c,p,s,tone],i)=>(
+        <div key={t} style={{padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><b style={{fontSize:".84rem",fontWeight:600}}>{t}</b><MockPill tone={tone}>{s}</MockPill></div>
+          <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2}}>{d} · Claimed {c} · Paid {p}</div>
+        </div>
+      ))}
+      <div style={{marginTop:6,paddingTop:10,borderTop:"1px solid #E6DECF",fontSize:".72rem",color:"#8A8178"}}>+ Log a new claim</div>
+    </MockShell>
+  );
+}
+
+function ContractorMock() {
+  const visits=[["Oct 3","Water heater flush","$385"],["Mar 12","Replaced faucet","$240"],["Aug 5","Leak repair","$615"]];
+  return (
+    <MockShell title="Contractor" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+        <span style={{width:40,height:40,borderRadius:"50%",background:"rgba(35,74,61,.1)",color:"#234A3D",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>EP</span>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:".9rem",fontWeight:700}}>Example Plumbing Co.</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>Plumber · <span style={{color:"#B8861E"}}>★★★★★</span></div></div>
+        <div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#234A3D"}}>$1,240</div><div style={{fontSize:".62rem",color:"#A8A09A"}}>spent, 3 visits</div></div>
+      </div>
+      {visits.map(([d,t,a])=>(
+        <div key={t} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF",fontSize:".8rem"}}><span><span style={{color:"#A8A09A",marginRight:8}}>{d}</span>{t}</span><b>{a}</b></div>
+      ))}
+    </MockShell>
+  );
+}
+function ContractorProfileMock() {
+  const rows=[["Company","Example Plumbing Co."],["Trade","Plumbing"],["Phone","(555) 010-0142"],["License","On file"],["Insured","Yes"],["Your note","Showed up on time, did not upsell"]];
+  return (
+    <MockShell title="Contractor profile" style={{maxWidth:430}}>
+      {rows.map(([k,v],i)=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"8px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".8rem"}}><span style={{color:"#8A8178",flexShrink:0}}>{k}</span><b style={{fontWeight:600,textAlign:"right",minWidth:0}}>{v}</b></div>
+      ))}
+    </MockShell>
+  );
+}
+function VisitLogMock() {
+  const rows=[["Oct 3","Water heater flush","$385","90-day warranty on labor"],["Aug 5","Leak repair under sink","$615","Parts: P-trap, supply line"]];
+  return (
+    <MockShell title="Service visits" style={{maxWidth:430}}>
+      {rows.map(([d,t,a,n],i)=>(
+        <div key={t} style={{padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:".84rem"}}><b style={{fontWeight:600}}>{t}</b><b>{a}</b></div>
+          <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2}}>{d} · {n}</div>
+        </div>
+      ))}
+      <div style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ Invoice attached</div>
+    </MockShell>
+  );
+}
+function SpendByTradeMock() {
+  const rows=[["Plumbing",1240,"#234A3D"],["HVAC",980,"#C16140"],["Roofing",640,"#B8861E"],["Electrical",310,"#8A8178"]];
+  const max=1240;
+  return (
+    <MockShell title="Spending by trade" style={{maxWidth:430}}>
+      {rows.map(([n,a,c])=>(
+        <div key={n} style={{marginBottom:11}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",marginBottom:4}}><span style={{color:"#5E574F"}}>{n}</span><b>${a.toLocaleString("en-US")}</b></div>
+          <div style={{height:9,background:"#EFE7D7",borderRadius:5}}><div style={{width:Math.round(a/max*100)+"%",height:"100%",background:c,borderRadius:5}}/></div>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+
 const FILL = {flex:1,maxWidth:"none",display:"flex",flexDirection:"column"};
 function UtilityBillTrackerPage() {
   const path = "/utility-bill-tracker";
@@ -34057,40 +34280,44 @@ function ContractorTrackerPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Contractor Tracker" eyebrow="Contractor Tracker" cta="Get started free" h1="Your trusted pros," h1em="always at hand." sub="Save the plumber who didn't upsell you, the HVAC tech who showed up on time, and every contractor who earned your trust. Log every visit, track every dollar spent." badge="Free for all plans"/>
+      <LPHero kw="Home Contractor Tracker" eyebrow="Contractor Tracker" cta="Get started free" h1="Your trusted pros," h1em="always at hand." sub="Save the plumber who didn't upsell you, the HVAC tech who showed up on time, and every contractor who earned your trust. Log every visit, track every dollar spent." badge="Contractor tracking is free on every plan" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<ContractorMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>A contractor tracker keeps the pros you trust, what they did and what it cost in one place. Steadwell stores each contractor's contact details, trade, license and your rating, logs every visit with its cost and any warranty on the work, and totals what you have spent per contractor. It is free on every plan.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Everyone who has worked on your home" sub="A complete record, one contractor at a time."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<ContractorProfileMock/>} title={<>A profile for every pro. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Save the plumber, HVAC tech, roofer, electrician or handyman with their phone, email, trade, license number and insurance status, plus your own rating and notes.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Link a saved contractor to any maintenance task, so the right number is there when a reminder arrives.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<VisitLogMock/>} title={<>Every visit, on the record. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>After each job, log the date, the work done, the cost, parts used and any warranty on the work. Attach an invoice, forward it to your capture address, or scan it with AI on Plus and Pro.</p>
+              <a href="/email-capture" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>How email capture works →</a>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<SpendByTradeMock/>} title={<>See what each pro has cost you. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Steadwell totals spending per contractor and by trade, year over year, so you can compare. Every visit also becomes part of your home's service history, useful when you sell, file a claim or hire the same pro again.</p>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
           <LPSectionHead h2="Everything you track for each contractor" sub="A complete record of every pro who has worked on your home."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            {[
-              {icon:"👤",title:"Contractor profile",fields:["Name and company","Phone and email","Trade or specialty","License number","Insurance status","Rating and notes"]},
-              {icon:"📋",title:"Service history",fields:["Date of each visit","Work performed","Cost of each visit","Parts used or replaced","Warranty on work done","Follow-up notes"]},
-              {icon:"💰",title:"Cost tracking",fields:["Total spent per contractor","Cost per visit breakdown","Year-over-year spending","Cost by trade category","Comparison across contractors"]},
-            ].map((s,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                  <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
-                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
-                </div>
-                {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
-                  </div>
-                ))}
-              </LPCard>
-            ))}
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
+            <LPChipCard icon="👤" title="Contractor profile" fields={["Name and company","Phone and email","Trade or specialty","License number","Insurance status","Rating and notes"]}/>
+            <LPChipCard icon="📋" title="Service history" fields={["Date of each visit","Work performed","Cost of each visit","Parts used or replaced","Warranty on work done","Follow-up notes"]}/>
+            <LPChipCard icon="💰" title="Cost tracking" fields={["Total spent per contractor","Cost per visit","Year-over-year spending","Cost by trade","Comparison across contractors"]}/>
           </LPGrid>
         </LPSection>
-        <LPSection alt>
-          <LPSectionHead h2="How contractor tracking works"/>
+        <LPSection alt id="how-it-works">
+          <LPSectionHead h2="How contractor tracking works" sub="From the first call to a service history you can rely on."/>
           <LPGrid gap={16}>
             {[
-              {num:"01",title:"Save a contractor",text:"Add any pro — plumber, HVAC tech, roofer, electrician, handyman. Store their contact info, specialty, and any license details."},
+              {num:"01",title:"Save a contractor",text:"Add any pro: plumber, HVAC tech, roofer, electrician, handyman. Store their contact info, specialty, and any license details."},
               {num:"02",title:"Log each service visit",text:"After every job, log the date, work done, and cost. Attach an invoice or scan it with AI to fill in the details automatically."},
-              {num:"03",title:"Build a service history",text:"Every logged visit becomes part of your home's permanent service record — useful when selling, for insurance claims, or when hiring the same pro again."},
+              {num:"03",title:"Build a service history",text:"Every logged visit becomes part of your home's permanent service record, useful when selling, for insurance claims, or when hiring the same pro again."},
               {num:"04",title:"Share with your household",text:"Pro users can share the home with a spouse, partner or team member, so everyone always knows who to call."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
@@ -34135,41 +34362,46 @@ function InsuranceTrackerPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Insurance Tracker" eyebrow="Home Insurance Organizer" cta="Get started free" h1="Everything ready" h1em="before you need it." sub="Store your policies, log claims, track coverage amounts, and get reminded when it is time to renew. When something goes wrong, the last thing you want to be doing is searching for your policy number." badge="Free for all plans"/>
+      <LPHero kw="Home Insurance Tracker" eyebrow="Home Insurance Organizer" cta="Get started free" h1="Everything ready" h1em="before you need it." sub="Store your policies, log claims, track coverage amounts, and get reminded when it is time to renew. When something goes wrong, the last thing you want to be doing is searching for your policy number." badge="Insurance tracking is free on every plan" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<PolicyMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>A home insurance organizer keeps your policy details, coverage amounts, renewal date and claims history in one place, so you can find them when you need to file a claim or shop around. Steadwell reads your declarations page when you scan it (Plus and Pro) or lets you type it in, emails you 30 days before renewal, and keeps a log of every claim.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Your policy, ready when you need it" sub="From the declarations page to the claims log."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<DeclScanMock/>} title={<>Scan the declarations page. <LPBadge plan="Plus & Pro"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Upload the first 1 to 5 pages of your policy packet and AI reads the insurer, policy number, agent, coverage amounts, deductible and renewal date. You review it before anything is saved.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Prefer to type it in? Entering your policy by hand is free on every plan.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<RenewalEmailMock/>} title={<>A reminder 30 days before renewal. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Steadwell emails you 30 days before your policy renews, so there is time to shop around, review your coverage and make changes before it renews on its own.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Once a year it also prompts a coverage check-in, since your home's value changes.</p>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<ClaimsLogMock/>} title={<>A claims log, kept with the policy. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Log a claim the day it happens with the date, type, amount claimed, amount paid and status. Follow it through to the outcome with notes, so the history is there for the next claim or the next carrier.</p>
+              <a href="/home-document-vault" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>Keep the policy PDF in your vault →</a>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
-          <LPSectionHead h2="What Steadwell tracks for your insurance" sub="Scan your declarations page and we fill in everything automatically."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            {[
-              {icon:"🛡️",title:"Policy details",fields:["Insurance company","Policy number","Agent name & phone","Annual premium","Deductible amount","Renewal date"]},
-              {icon:"🏠",title:"Coverage amounts",fields:["Dwelling coverage","Personal property coverage","Liability coverage","Loss of use coverage","Medical payments","Additional structures"]},
-              {icon:"📋",title:"Claims history",fields:["Date of claim","Type of claim","Amount claimed","Amount paid","Claim status","Outcome notes"]},
-            ].map((s,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                  <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
-                  <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
-                </div>
-                {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
-                  </div>
-                ))}
-              </LPCard>
-            ))}
+          <LPSectionHead h2="What Steadwell tracks for your insurance" sub="Everything on a typical declarations page, and the claims that follow."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
+            <LPChipCard icon="🛡️" title="Policy details" fields={["Insurance company","Policy number","Agent name and phone","Annual premium","Deductible","Renewal date"]}/>
+            <LPChipCard icon="🏠" title="Coverage amounts" fields={["Dwelling","Personal property","Liability","Loss of use","Medical payments","Additional structures"]}/>
+            <LPChipCard icon="📋" title="Claims history" fields={["Date of claim","Type of claim","Amount claimed","Amount paid","Status","Outcome notes"]}/>
           </LPGrid>
         </LPSection>
-        <LPSection alt>
-          <LPSectionHead h2="How insurance tracking works"/>
+        <LPSection alt id="how-it-works">
+          <LPSectionHead h2="How insurance tracking works" sub="Set it up once, then let reminders do the remembering."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Scan your declarations page",text:"Upload the first 1-5 pages of your policy packet. AI extracts your company, policy number, agent, coverage amounts, deductible, and renewal date automatically."},
-              {num:"02",title:"Get renewal reminders",text:"Steadwell alerts you 30 days before your policy renews — giving you time to shop around, review your coverage, and make changes before auto-renewing."},
+              {num:"02",title:"Get renewal reminders",text:"Steadwell alerts you 30 days before your policy renews, giving you time to shop around, review your coverage, and make changes before auto-renewing."},
               {num:"03",title:"Log claims as they happen",text:"When something goes wrong, log the claim immediately with date, type, and amount. Track it through to resolution with outcome notes."},
-              {num:"04",title:"Annual coverage check-in",text:"Each year, Steadwell reminds you to review your coverage as your home's value changes — so you're never underinsured."},
+              {num:"04",title:"Annual coverage check-in",text:"Each year, Steadwell reminds you to review your coverage as your home's value changes, so you are never underinsured."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
@@ -34213,38 +34445,40 @@ function HomeExpenseTrackerPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Expense Tracker" eyebrow="Home Expense Tracker" cta="Get started free" h1="See every dollar." h1em="Plan for what&#39;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." stats={[{num:"Free",lbl:"Expense tracking"},{num:"5 years",lbl:"Cost forecast"},{num:"100%",lbl:"Your data"}]}/>
+      <LPHero kw="Home Expense Tracker" eyebrow="Home Expense Tracker" cta="Get started free" h1="See every dollar." h1em="Plan for what&#39;s next." sub="Track every home expense and get a 5-year cost forecast based on your appliance ages and industry replacement data. No more surprise replacements." badge="Expense tracking is free on every plan" secondary={{href:"#how-it-works",label:"See how the forecast works"}} visual={<ExpenseListMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>A home expense tracker records what your house costs you, from repairs and maintenance to projects and utility bills, and shows where the money goes. Steadwell logs each expense with its receipt, totals your spending by year, category and contractor, and on Plus and Pro forecasts the next five years of replacements from the ages of your appliances and systems.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Track the past. Plan the future." sub="Historical spending plus a forward-looking view of what is coming."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<SpendBreakdownMock/>} title={<>See where the money goes. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Every expense is logged with its amount, category, date, vendor and an attached receipt or invoice. Steadwell totals your spending all-time, by year, by category and by contractor, and compares one year with the last.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Utility bills count too. Electric, gas, water, internet and trash roll into your yearly and all-time spend. <a href="/utility-bill-tracker" style={{color:"#C16140",fontWeight:700,textDecoration:"none"}}>About bill tracking →</a></p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<ForecastMock/>} title={<>Know what is coming. <LPBadge plan="Plus & Pro"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Add your HVAC system, water heater, appliances and roof with their install dates. Steadwell uses industry average lifespans and replacement costs to project what each will need and when, year by year.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Actual costs vary by region, brand and contractor, so treat it as a planning guide, not a quote.</p>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<InboxMock/>} title={<>Log it without typing. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Forward a receipt or invoice to your Steadwell capture address and it is added as an expense for you to review. You can also attach a receipt to any expense, or scan a paper one with AI on Plus and Pro.</p>
+              <a href="/email-capture" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>How email capture works →</a>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
-          <LPSectionHead h2="What you track and what we forecast" sub="Historical spending plus a forward-looking view of what&#39;s coming."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            {[
-              {icon:"💳",title:"Expense tracking (Free)",badge:"All plans",fields:["Expense description","Amount","Category","Date","Vendor or contractor","Receipt or invoice attachment","Notes"]},
-              {icon:"📊",title:"5-year cost forecast (Plus)",badge:"Plus & Pro",fields:["Projected HVAC replacement cost & year","Water heater replacement timeline","Appliance end-of-life estimates","Roof replacement projection","Total 5-year cost estimate","Month-by-month forecast chart"]},
-              {icon:"📈",title:"Spending analytics (Free)",badge:"All plans",fields:["Total spend all-time","Spend by year","Spend by category","Spend by contractor","Cost vs. home value ratio","Year-over-year comparison"]},
-              {icon:"⚡",title:"Utility bills (Free)",badge:"All plans",fields:["Electric, gas, water, internet and trash","Usage in kWh, therms, gallons or CCF","Six-month average and spike alerts","Rolled into your yearly and all-time spend"]},
-            ].map((s,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:"1.3rem"}}>{s.icon}</span>
-                    <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
-                  </div>
-                  <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".62rem",fontWeight:700,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{s.badge}</span>
-                </div>
-                {s.fields.map((f,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
-                    <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
-                  </div>
-                ))}
-              </LPCard>
-            ))}
+          <LPSectionHead h2="What you track and what we forecast" sub="Everything that goes into the numbers."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,240px),1fr))" gap={16}>
+            <LPChipCard icon="💳" title="Expense tracking (Free)" fields={["Description","Amount","Category","Date","Vendor or contractor","Receipt or invoice","Notes"]}/>
+            <LPChipCard icon="📈" title="Spending analytics (Free)" fields={["All-time total","By year","By category","By contractor","Cost vs. home value","Year over year"]}/>
+            <LPChipCard icon="📊" title="5-year forecast (Plus)" fields={["HVAC replacement","Water heater timeline","Appliance end of life","Roof projection","Total 5-year estimate","Year-by-year chart"]}/>
+            <LPChipCard icon="⚡" title="Utility bills (Free)" fields={["Electric, gas, water","Internet and trash","Usage in kWh, therms or gallons","Six-month average","Spike alerts"]}/>
           </LPGrid>
         </LPSection>
-        <LPSection alt>
+        <LPSection alt id="how-it-works">
           <LPSectionHead h2="How the 5-year forecast works" sub="Based on your actual appliances, not generic estimates."/>
           <LPGrid gap={16}>
             {[
@@ -34498,17 +34732,32 @@ function DocumentVaultPage() {
     {icon:"🏛️",name:"Tax documents",examples:"Property tax bills, homestead exemption, assessments"},
   ];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Document Vault" eyebrow="Home Document Vault" cta="Get started free" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="250 MB free · 10 GB on Plus · 50 GB on Pro"/>
+      <LPHero kw="Home Document Vault" eyebrow="Home Document Vault" cta="Get started free" h1="Every document." h1em="Always findable." sub="Store every important home document in one secure place. When you need your deed, your permit, or your HVAC manual at 10pm on a Sunday, you will know exactly where it is." badge="250 MB free · 10 GB on Plus · 50 GB on Pro" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<VaultMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>A home document vault is a private, searchable place to keep the paperwork for your house, like deeds, permits, inspection reports, insurance policies and manuals. Steadwell stores PDFs, images and Word files up to 50 MB each, lets you sort them by category and expiry date, and keeps them private to your account on any device.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Paperwork that stays put" sub="Add it once, find it from any device."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<VaultUploadMock/>} title={<>Add it in seconds. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Upload a PDF, image or Word document, or scan a paper document with your phone camera. Give it a category, link it to an asset or room, and add a description and an expiry date.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Search finds anything across every document, so nothing depends on remembering what you named it.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<StorageMock/>} title={<>Private, with room for the whole house.</>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Your documents are stored privately in your own account, and other Steadwell users can never see them. The free plan includes 250 MB, Plus 10 GB and Pro 50 GB.</p>
+              <a href="/email-capture" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>Forward documents straight to your vault →</a>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
           <LPSectionHead h2="Every type of home document" sub="If it matters to your home, it belongs in your vault."/>
           <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={12}>
             {docTypes.map((d,i)=>(
               <LPCard key={i} style={{display:"flex",alignItems:"flex-start",gap:12}}>
-                <span style={{fontSize:"1.3rem",flexShrink:0,marginTop:2}}>{d.icon}</span>
+                <span aria-hidden="true" style={{fontSize:"1.3rem",flexShrink:0,marginTop:2}}>{d.icon}</span>
                 <div>
                   <div style={{fontWeight:700,fontSize:".88rem",color:"#234A3D",marginBottom:4}}>{d.name}</div>
                   <div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.5}}>{d.examples}</div>
@@ -34517,13 +34766,13 @@ function DocumentVaultPage() {
             ))}
           </LPGrid>
         </LPSection>
-        <LPSection alt>
-          <LPSectionHead h2="How the document vault works"/>
+        <LPSection alt id="how-it-works">
+          <LPSectionHead h2="How the document vault works" sub="Four steps from paper pile to searchable record."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Upload any document",text:"Upload PDFs, images, or scan physical documents with your camera. Supported formats include PDF, JPG, PNG, HEIC, and Word documents."},
               {num:"02",title:"Categorize and tag",text:"Assign a category, link to an asset or room, add a description and expiry date. Find anything instantly with search."},
-              {num:"03",title:"Access from anywhere",text:"Your documents are available from any device — phone, tablet, or computer. No more digging through filing cabinets."},
+              {num:"03",title:"Access from anywhere",text:"Your documents are available from any device: phone, tablet, or computer. No more digging through filing cabinets."},
               {num:"04",title:"Keep it private",text:"Your documents are stored privately in your own account, and other Steadwell users can never see them."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
