@@ -1,4 +1,4 @@
-// Steadwell v433 — 2026-10-26
+// Steadwell v434 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30917,7 +30917,7 @@ function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta, visual, seco
 // Without them the page inherits the starter template's #root rules (centered text, side padding, a width cap)
 // and system fonts. Pages that rely on left-aligned layouts and the brand fonts render this once.
 function LPBaseStyle() {
-  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}.lp-eq{min-height:284px}.lp-desc{min-height:6.4em}@media(max-width:560px){.lp-arrow{display:none}}@media(max-width:899px){.lp-eq{min-height:0}.lp-desc{min-height:0}}"}</style>;
+  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}.lp-g5{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}@media(min-width:620px){.lp-g5{grid-template-columns:repeat(2,minmax(0,1fr))}.lp-g5>*:last-child{grid-column:1/-1}}@media(min-width:900px){.lp-g5{grid-template-columns:repeat(6,minmax(0,1fr))}.lp-g5>*{grid-column:span 2}.lp-g5>*:nth-child(n+4),.lp-g5>*:last-child{grid-column:span 3}}.lp-eq{min-height:284px}.lp-desc{min-height:6.4em}@media(max-width:560px){.lp-arrow{display:none}}@media(max-width:899px){.lp-eq{min-height:0}.lp-desc{min-height:0}}"}</style>;
 }
 
 function LPSection({ children, alt=false, narrow=false, id }) {
@@ -33872,13 +33872,13 @@ function EmailCapturePage() {
         <LPShort>Email capture lets you forward a receipt, invoice or bill to a private address and have the details filed for you. Steadwell reads the email and its attachments, works out whether it is a warranty, an expense, a document or a utility bill, and puts it in your Email Inbox to review. You approve every capture before it is saved. It is free on every plan.</LPShort>
         <LPSection alt>
           <LPSectionHead h2="What you can forward" sub="Anything home-related. Our AI works out what it is and files it correctly."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={16}>
+          <div className="lp-g5">
             <LPKindCard tint="rgba(193,97,64,.08)" doc="RECEIPT" chips={["Dishwasher","$849","Nov 25"]} icon="🧾" title="Purchase receipts" tag="Creates: warranty and expense" desc="Forward a receipt from a store or online order. We create the warranty record and log the expense." fields={["Item","Brand and model","Price","Purchase date","Store","Warranty period"]}/>
             <LPKindCard tint="rgba(35,74,61,.07)" doc="INVOICE" chips={["Example Plumbing","$385","Oct 3"]} icon="📋" title="Contractor invoices" tag="Creates: expense record" desc="Forward an invoice from a plumber, HVAC tech, roofer or handyman. It is logged as an expense on your home." fields={["Contractor","Service","Amount","Service date","Notes"]}/>
             <LPKindCard tint="rgba(184,134,30,.09)" doc="REPORT" chips={["Inspection","Sep 2026","Vault"]} icon="📄" title="Home documents" tag="Creates: vault entry" desc="Forward inspection reports, HOA notices, permits or manuals. They go straight to your document vault." fields={["Document type","Name","Date","Expiry date"]}/>
-            <LPKindCard tint="rgba(46,112,80,.09)" doc="WARRANTY" chips={["Samsung","Nov 25, 2026","Covered"]} icon="🔖" title="Warranty cards" tag="Creates: warranty record" desc="Forward warranty registration emails or scanned cards. We track the coverage and remind you before it expires." fields={["Item and brand","Model","Purchase date","Warranty expiry","Serial number"]}/>
+            <LPKindCard tint="rgba(46,112,80,.09)" doc="CARD" chips={["Samsung","Nov 25, 2026","Covered"]} icon="🔖" title="Warranty cards" tag="Creates: warranty record" desc="Forward warranty registration emails or scanned cards. We track the coverage and remind you before it expires." fields={["Item and brand","Model","Purchase date","Warranty expiry","Serial number"]}/>
             <LPKindCard tint="rgba(58,122,175,.09)" doc="BILL" chips={["$214.37","Oct 14","1,482 kWh"]} icon="⚡" title="Utility bills" tag="Creates: bill entry" desc="Forward an electric, gas, water or internet bill. Steadwell matches it to the right utility, or creates it, and logs the bill." fields={["Provider","Utility type","Bill date","Amount","Usage and unit"]}/>
-          </LPGrid>
+          </div>
         </LPSection>
         <LPSection id="how-it-works">
           <LPSectionHead h2="How it works" sub="Set up once. Works from then on."/>
