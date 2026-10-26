@@ -1,4 +1,4 @@
-// Steadwell v430 — 2026-10-26
+// Steadwell v431 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30912,6 +30912,13 @@ function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta }) {
   );
 }
 
+// Landing pages render outside the app shell, so the app's base styles are not guaranteed to be there.
+// Without them the page inherits the starter template's #root rules (centered text, side padding, a width cap)
+// and system fonts. Pages that rely on left-aligned layouts and the brand fonts render this once.
+function LPBaseStyle() {
+  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}"}</style>;
+}
+
 function LPSection({ children, alt=false, narrow=false, id }) {
   return (
     <section id={id} style={{padding:"clamp(40px,6vw,64px) 24px",background:alt?"#EFE7D7":"#F4EDDF",scrollMarginTop:"80px"}}>
@@ -32740,7 +32747,8 @@ function UtilityBillTrackerPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
 
@@ -33390,7 +33398,8 @@ function WarrantyTrackerPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
 
