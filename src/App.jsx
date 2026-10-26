@@ -1,4 +1,4 @@
-// Steadwell v428 — 2026-10-25
+// Steadwell v429 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4488,8 +4488,8 @@ function buildHomeEvents(tasks, warranties, profile, serviceLogs) {
     if (!w.expiry_date) return;
     const d = daysTo(w.expiry_date);
     if (d===null || d<-30) return;
-    add(w.expiry_date, { id:"wex-"+w.id, type:"warranty", title:w.item+" warranty expires", category:w.category, canCreate:true });
-    if (d>30) add(offsetDate(w.expiry_date,-30), { id:"ww-"+w.id, type:"warranty_warn", title:w.item+" warranty expires in 30 days", category:w.category, canCreate:true });
+    add(w.expiry_date, { id:"wex-"+w.id, type:"warranty", title:w.item+" warranty expires", category:w.category, canCreate:true, sourceId:w.id });
+    if (d>30) add(offsetDate(w.expiry_date,-30), { id:"ww-"+w.id, type:"warranty_warn", title:w.item+" warranty expires in 30 days", category:w.category, canCreate:true, sourceId:w.id });
   });
 
   // 3. Insurance renewal + 30-day reminder
@@ -14979,7 +14979,7 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
-function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[], people=[], pendingSelectedTask=null, onClearPendingSelectedTask }) {
+function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[], people=[], pendingSelectedTask=null, onClearPendingSelectedTask, onOpenAsset }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone, profile);
   const month = new Date().getMonth();
@@ -15324,7 +15324,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
           (wider, primary) with the calendar as a narrower column beside it. */}
       <div className="tasks-layout">
       <div className="tasks-cal">
-      <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} propertyId={propertyId} onEditTask={openEdit}/>
+      <CalendarTab tasks={tasks} setTasks={setTasks} warranties={assets} profile={profile} serviceLogs={serviceLogs} toast={toast} userId={userId} propertyId={propertyId} onEditTask={openEdit} onOpenAsset={onOpenAsset}/>
       </div>
       <div className="tasks-main">
 
@@ -25853,7 +25853,7 @@ function findSimilarTask(title, date, existing) {
 }
 
 // ─── CALENDAR TAB ────────────────────────────────────────────────────────────
-function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId, propertyId, onEditTask }) {
+function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toast, userId, propertyId, onEditTask, onOpenAsset }) {
   const today = new Date();
   const [curYear, setCurYear]       = useState(today.getFullYear());
   const [curMonth, setCurMonth]     = useState(today.getMonth());
@@ -25903,6 +25903,17 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   }, [eventMap]);
 
   // ── next 5 upcoming for alert strip ─────────────────────────────────────
+  // Opens whatever an event points at: a task opens its editor, a warranty opens that item. Returns false when it points at nothing openable.
+  const openEvent = (ev) => {
+    if (!ev) return false;
+    if (String(ev.type||"").startsWith("task")) {
+      const t = tasks.find(x => x.id === ev.sourceId);
+      if (t && onEditTask) { onEditTask(t); return true; }
+    }
+    if (String(ev.type||"").startsWith("warranty") && ev.sourceId && onOpenAsset) { onOpenAsset(ev.sourceId); return true; }
+    return false;
+  };
+  const canOpenEvent = (ev) => !!ev && ((String(ev.type||"").startsWith("task") && !!onEditTask && tasks.some(x => x.id === ev.sourceId)) || (String(ev.type||"").startsWith("warranty") && !!ev.sourceId && !!onOpenAsset));
   const alertItems = useMemo(() => {
     const flat = [];
     upcomingList.forEach(({ date, evs }) => evs.forEach(e => flat.push({ ...e, date })));
@@ -26035,7 +26046,9 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
       {alertItems.length > 0 && (
         <div className="ct-alerts">
           {alertItems.map(ev => (
-            <div key={ev.id} className="ct-alert" title={ev.title} onClick={()=>{setSelDate(ev.date);setView("month");const d=new Date(ev.date+"T00:00:00");setCurMonth(d.getMonth());setCurYear(d.getFullYear());}}>
+            <div key={ev.id} className="ct-alert" title={ev.title} role="button" tabIndex={0}
+              onKeyDown={e=>{ if (e.key==="Enter"||e.key===" ") { e.preventDefault(); e.currentTarget.click(); } }}
+              onClick={()=>{ if (openEvent(ev)) return; setSelDate(ev.date);setView("month");const d=new Date(ev.date+"T00:00:00");setCurMonth(d.getMonth());setCurYear(d.getFullYear()); }}>
               <div className="ct-alert-dot" style={{background:evColor(ev.type)}}/>
               <div className="ct-alert-body">
                 <div className="ct-alert-title">{ev.title}</div>
@@ -26116,10 +26129,10 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                   {[...selTasks, ...selOther.filter(e=>!e.canCreate || e.type.startsWith("warranty") || e.type.startsWith("insurance") || e.type==="service")].map(ev => {
                     const isTask = ev.type.startsWith("task");
                     const fullTask = isTask ? tasks.find(t => t.id === ev.sourceId) : null;
-                    const canEdit = isTask && fullTask && onEditTask;
+                    const canEdit = canOpenEvent(ev);
                     return (
                     <div key={ev.id} className="ct-pe"
-                      onClick={canEdit ? () => onEditTask(fullTask) : undefined}
+                      onClick={canEdit ? () => openEvent(ev) : undefined}
                       style={canEdit ? {cursor:"pointer"} : undefined}
                     >
                       <div className="ct-pe-bar" style={{background:evColor(ev.type)}}/>
@@ -26133,7 +26146,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
                         </div>
                       </div>
                       {canEdit && (
-                        <span style={{fontSize:".7rem",color:"#A8A09A",flexShrink:0}}>Edit ›</span>
+                        <span style={{fontSize:".7rem",color:"#A8A09A",flexShrink:0}}>{isTask?"Edit ›":"Open ›"}</span>
                       )}
                       {ev.canCreate && !isTask && (
                         <button className={`ct-pe-create ${created.has(ev.id)?"done":""}`} onClick={e=>{e.stopPropagation();createFromSuggestion(ev,selDate);}} disabled={created.has(ev.id)||saving}>
@@ -26179,7 +26192,10 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
             <div key={g.label}>
               <div className="ct-up-group-lbl">{g.label}</div>
               {g.rows.map(({date,ev},i) => (
-                <div key={ev.id+i} className="ct-up-row">
+                <div key={ev.id+i} className="ct-up-row" role={canOpenEvent(ev)?"button":undefined} tabIndex={canOpenEvent(ev)?0:undefined}
+                  onClick={canOpenEvent(ev) ? () => openEvent(ev) : undefined}
+                  onKeyDown={canOpenEvent(ev) ? (e=>{ if (e.key==="Enter"||e.key===" ") { e.preventDefault(); openEvent(ev); } }) : undefined}
+                  style={canOpenEvent(ev) ? {cursor:"pointer"} : undefined}>
                   <div className="ct-up-bar" style={{background:evColor(ev.type)}}/>
                   <div className="ct-up-info">
                     <div className="ct-up-title">{ev.title}</div>
@@ -28036,7 +28052,7 @@ export default function App() {
             <>
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} setTasks={setTasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} people={people} onOpenTask={(id)=>{setPendingSelectedTask(id);setTab("tasks");}} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
-              <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people} pendingSelectedTask={pendingSelectedTask} onClearPendingSelectedTask={()=>setPendingSelectedTask(null)}/></div>
+              <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people} pendingSelectedTask={pendingSelectedTask} onClearPendingSelectedTask={()=>setPendingSelectedTask(null)} onOpenAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}}/></div>
               <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} emailUnverified={session?.user?.app_metadata?.email_verified === false} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}} onOpenExpense={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedExpense(id);setTab("expenses");}} onViewAsset={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedAsset(id);setTab("warranties");}} onExpenseAdded={(row)=>setExpenses(prev=>[row,...prev.filter(e=>e.id!==row.id)])} onAssetAdded={(row)=>setWarranties(prev=>[row,...prev.filter(w=>w.id!==row.id)])}/></div>
