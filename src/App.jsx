@@ -1,4 +1,4 @@
-// Steadwell v425 — 2026-10-25
+// Steadwell v426 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2950,6 +2950,13 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-alert-body{min-width:0}
 .ct-alert-title{font-size:.77rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
 .ct-alert-when{font-size:.67rem;color:#9E9690}
+/* No swiping with a mouse, so on larger screens the alerts wrap into two columns instead of running off the edge. */
+@media(min-width:600px){
+  .ct-alerts{flex-wrap:wrap;overflow-x:visible}
+  .ct-alert{flex:1 1 calc(50% - .3rem);min-width:0;max-width:none}
+  .ct-alert-body{flex:1}
+  .ct-alert-title{max-width:none;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+}
 
 /* body grid: calendar + panel */
 .ct-body{display:grid;grid-template-columns:1fr;gap:1rem}
@@ -2963,6 +2970,16 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-nav-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--stone);background:none;cursor:pointer;color:var(--dark);font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:background .12s}
 .ct-nav-btn:hover{background:var(--cream2)}
 .ct-today-btn{font-size:.72rem;font-weight:700;letter-spacing:.3px;width:auto;padding:0 10px}
+.ct-sync-btn{background:var(--pine);border:none;border-radius:20px;padding:5px 12px;font-size:.72rem;font-weight:700;color:#F4EDDF;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px}
+.ct-sync-btn:hover{filter:brightness(1.12)}
+/* Wider than a phone: the month and the arrows share the first line, the sync pill sits under them. */
+@media(min-width:600px){
+  .ct-cal-hdr{display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:.5rem;column-gap:.75rem}
+  .ct-cal-hdr>div:first-child{display:contents!important}
+  .ct-cal-hdr .ct-month-lbl{white-space:nowrap;grid-column:1;grid-row:1}
+  .ct-cal-hdr .ct-navs{grid-column:2;grid-row:1}
+  .ct-cal-hdr .ct-sync-btn{grid-column:1 / -1;grid-row:2;justify-self:start}
+}
 .ct-cg{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--stone)}
 .ct-dow{background:var(--cream2);padding:.42rem 0;text-align:center;font-size:.63rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#9E9690}
 .ct-day{background:var(--white);padding:.32rem .38rem .4rem;min-height:58px;cursor:pointer;transition:background .1s;position:relative;user-select:none}
@@ -26033,16 +26050,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
             <div className="ct-cal-hdr">
               <div style={{display:"flex",alignItems:"baseline",gap:12}}>
                 <span className="ct-month-lbl">{MONTHS[curMonth]} {curYear}</span>
-                <button
-                  onClick={()=>setShowCalSync(true)}
-                  style={{
-                    background:"var(--pine)",border:"none",
-                    borderRadius:20,padding:"5px 12px",
-                    fontSize:".72rem",fontWeight:700,color:"#F4EDDF",
-                    cursor:"pointer",fontFamily:"inherit",
-                    whiteSpace:"nowrap",flexShrink:0,
-                    display:"flex",alignItems:"center",gap:5,
-                  }}>
+                <button className="ct-sync-btn" onClick={()=>setShowCalSync(true)}>
                   <svg viewBox="0 0 16 16" width="11" height="11" fill="none">
                     <rect x="1" y="2" width="14" height="13" rx="2" stroke="#F4EDDF" strokeWidth="1.4"/>
                     <path d="M1 7h14" stroke="#F4EDDF" strokeWidth="1.4"/>
