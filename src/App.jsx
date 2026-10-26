@@ -1,4 +1,4 @@
-// Steadwell v431 — 2026-10-26
+// Steadwell v432 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30916,7 +30916,7 @@ function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta }) {
 // Without them the page inherits the starter template's #root rules (centered text, side padding, a width cap)
 // and system fonts. Pages that rely on left-aligned layouts and the brand fonts render this once.
 function LPBaseStyle() {
-  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}"}</style>;
+  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}.lp-eq{min-height:284px}@media(max-width:899px){.lp-eq{min-height:0}}"}</style>;
 }
 
 function LPSection({ children, alt=false, narrow=false, id }) {
@@ -32475,7 +32475,7 @@ const UTILITY_FAQ = [
 const MOCK_SHADOW = "0 24px 60px rgba(0,0,0,.28)";
 function MockShell({ title, note="(example)", children, dark=false, style={} }) {
   return (
-    <div aria-hidden="true" style={{boxSizing:"border-box",width:"100%",maxWidth:440,textAlign:"left",borderRadius:18,padding:"18px 20px 18px",background:dark?"#234A3D":"#FBF7EE",color:dark?"#F4EDDF":"#2A2723",border:dark?"none":"1px solid #E6DECF",...style}}>
+    <div aria-hidden="true" style={{boxSizing:"border-box",display:"flex",flexDirection:"column",width:"100%",maxWidth:440,textAlign:"left",borderRadius:18,padding:"18px 20px 18px",background:dark?"#234A3D":"#FBF7EE",color:dark?"#F4EDDF":"#2A2723",border:dark?"none":"1px solid #E6DECF",...style}}>
       {title && (
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:12}}>
           <div style={{fontSize:".74rem",fontWeight:700,color:dark?"#F4EDDF":"#234A3D"}}>{title}</div>
@@ -32531,10 +32531,10 @@ function UtilSpikeMock() {
 }
 
 // Section 2 panels
-function UtilAccountsMock() {
+function UtilAccountsMock({style}) {
   const rows = [["⚡","Electric","Example Power & Light","$214","rgba(184,134,30,.14)"],["💧","Water & sewer","City utilities","$68","rgba(58,122,175,.14)"],["🔥","Gas","Example Gas Co.","$41","rgba(193,97,64,.14)"],["🌐","Internet","Example Fiber","$75","rgba(88,86,214,.12)"]];
   return (
-    <MockShell title="Your utilities">
+    <MockShell title="Your utilities" style={style}>
       {rows.map(([ic,n,p,a,bg],i)=>(
         <div key={n} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
           <span style={{width:34,height:34,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
@@ -32545,23 +32545,23 @@ function UtilAccountsMock() {
     </MockShell>
   );
 }
-function UtilBillMock() {
+function UtilBillMock({style}) {
   const rows = [["Bill date","Oct 14, 2026"],["Amount","$214.37"],["Usage","1,482 kWh"],["Billing period","Sep 12 – Oct 12"]];
   return (
-    <MockShell title="Electric bill">
+    <MockShell title="Electric bill" style={style}>
       {rows.map(([k,v],i)=>(
         <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".84rem"}}>
           <span style={{color:"#8A8178"}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
         </div>
       ))}
-      <div style={{marginTop:8,display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ Scanned bill saved to your document vault</div>
+      <div style={{marginTop:"auto",paddingTop:8,display:"flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ Scanned bill saved to your document vault</div>
     </MockShell>
   );
 }
-function UtilStatsMock() {
+function UtilStatsMock({style}) {
   const vals=[128,151,166,139,131,214];
   return (
-    <MockShell title="Electric trend">
+    <MockShell title="Electric trend" style={style}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
         {[["Last bill","$214"],["6-mo average","$155"],["Year to date","$1,486"]].map(([l,v])=>(
           <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:11,padding:"9px 8px",textAlign:"center"}}>
@@ -32570,7 +32570,7 @@ function UtilStatsMock() {
           </div>
         ))}
       </div>
-      <div style={{display:"flex",alignItems:"flex-end",gap:6,height:64}}>
+      <div style={{display:"flex",alignItems:"flex-end",gap:6,height:64,marginTop:"auto"}}>
         {vals.map((v,i)=><div key={i} style={{flex:1,height:Math.round(v/214*64),borderRadius:"5px 5px 2px 2px",background:i===vals.length-1?"#C16140":"#2F5E4E",opacity:i===vals.length-1?1:.8}}/>)}
       </div>
     </MockShell>
@@ -32731,6 +32731,7 @@ function LPBadge({ plan }) {
   return <span style={{display:"inline-block",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:free?"#2E7050":"#C16140",background:free?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{plan}</span>;
 }
 
+const FILL = {flex:1,maxWidth:"none"};
 function UtilityBillTrackerPage() {
   const path = "/utility-bill-tracker";
   const description = "Track electric, gas, water and internet bills in one place. Scan bills with AI, catch usage spikes and see what your home costs to run. Free to start.";
@@ -32783,12 +32784,12 @@ function UtilityBillTrackerPage() {
           <LPSectionHead h2="Every utility, every bill, one timeline" sub="Utilities are the one home cost that arrives every month and almost never gets reviewed. Steadwell makes the pattern visible."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={28}>
             {[
-              {visual:<UtilAccountsMock/>,title:"Utility accounts",badge:"All plans",items:["Electric, gas, water, sewer, internet, trash and other","One account for a combined city bill (water, sewer and trash)","Provider, account number and notes, kept for your reference","Separate accounts for each property"]},
-              {visual:<UtilBillMock/>,title:"Bills & usage",badge:"All plans",items:["Bill date, amount and billing-period notes","Usage in kWh, therms, gallons or CCF","Split a combined bill by service (optional)","Scanned bills saved to your document vault"]},
-              {visual:<UtilStatsMock/>,title:"Trends & spike alerts",badge:"All plans",items:["Last bill, 6-month average and year-to-date total","Bar chart of your last six bills","A warning when a bill jumps well above average","Full bill history for each utility"]},
+              {visual:<UtilAccountsMock style={FILL}/>,title:"Utility accounts",badge:"All plans",items:["Electric, gas, water, sewer, internet, trash and other","One account for a combined city bill (water, sewer and trash)","Provider, account number and notes, kept for your reference","Separate accounts for each property"]},
+              {visual:<UtilBillMock style={FILL}/>,title:"Bills & usage",badge:"All plans",items:["Bill date, amount and billing-period notes","Usage in kWh, therms, gallons or CCF","Split a combined bill by service (optional)","Scanned bills saved to your document vault"]},
+              {visual:<UtilStatsMock style={FILL}/>,title:"Trends & spike alerts",badge:"All plans",items:["Last bill, 6-month average and year-to-date total","Bar chart of your last six bills","A warning when a bill jumps well above average","Full bill history for each utility"]},
             ].map((c,i)=>(
               <div key={i} style={{display:"flex",flexDirection:"column",gap:16}}>
-                {c.visual}
+                <div className="lp-eq" style={{flex:"0 0 auto",display:"flex",flexDirection:"column"}}>{c.visual}</div>
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:0}}>{c.title}</h3><LPBadge plan={c.badge}/></div>
                   {c.items.map((t,j)=>(<div key={j} style={{display:"flex",gap:8,fontSize:".84rem",color:"#5E574F",lineHeight:1.5,marginBottom:5}}><span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",marginTop:3}}>✓</span><span>{t}</span></div>))}
