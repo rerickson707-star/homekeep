@@ -1,4 +1,4 @@
-// Steadwell v429 — 2026-10-25
+// Steadwell v430 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -32449,6 +32449,8 @@ function NotFoundPage({ what = "page" }) {
 
 // ─── UTILITY & BILL TRACKER PAGE ──────────────────────────────────────────────
 const UTILITY_FAQ = [
+  ["How do I track my utility bills?","Add each utility (electric, gas, water, sewer, internet, trash), then log every bill with its date and amount, ideally with usage in kWh, therms or gallons. You can scan a bill with AI (Plus and Pro), forward the bill email to your Steadwell address, or type it in. Steadwell keeps the history, shows the trend and flags unusual jumps."],
+  ["How do I know if my electric bill is too high?","Compare it with your own recent bills, not with a neighbor's. Steadwell averages up to your last six bills for that utility and warns you when the latest one is more than 40% above that average. If the usage in kWh is flat but the cost went up, the price changed; if usage jumped too, something in the home is using more."],
   ["Is utility bill tracking free?","Yes. Adding utilities, logging bills, usage, trends and spike alerts are free on every plan. Scanning a bill with AI needs Plus or Pro. Forwarding a bill by email and typing one in are both free."],
   ["Which utilities can I track?","Electric, gas, water, sewer, internet and trash, plus a combined water, sewer and trash type for cities that send one bill, and an Other type for anything else, such as propane or a security service. Each one has its own provider name, optional account number and bill history."],
   ["My city sends one bill for water, sewer and trash. Can I track that?","Yes. Add it as a Water, sewer & trash utility and log the total of each bill. To see where the money goes, you can also split a bill into water, sewer, trash, stormwater and other charges. The parts must add up to the total. Steadwell then shows each service's share for the year and works out your water cost per gallon from the water part."],
@@ -32460,11 +32462,273 @@ const UTILITY_FAQ = [
   ["Can I track utilities for more than one home?","Each property keeps its own utilities and bills. The Pro plan supports up to three properties."],
 ];
 
+// ─── LANDING-PAGE PRODUCT MOCKS ──────────────────────────────────────────────
+// Example data drawn in code (no images), styled like the real app. They are decorative
+// (aria-hidden); everything they show is also said in the text next to them.
+const MOCK_SHADOW = "0 24px 60px rgba(0,0,0,.28)";
+function MockShell({ title, note="(example)", children, dark=false, style={} }) {
+  return (
+    <div aria-hidden="true" style={{boxSizing:"border-box",width:"100%",maxWidth:440,textAlign:"left",borderRadius:18,padding:"18px 20px 18px",background:dark?"#234A3D":"#FBF7EE",color:dark?"#F4EDDF":"#2A2723",border:dark?"none":"1px solid #E6DECF",...style}}>
+      {title && (
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:12}}>
+          <div style={{fontSize:".74rem",fontWeight:700,color:dark?"#F4EDDF":"#234A3D"}}>{title}</div>
+          {note && <div style={{fontSize:".66rem",color:dark?"rgba(244,237,223,.5)":"#A8A09A"}}>{note}</div>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+function MockPill({ children, tone="ok" }) {
+  const t = { ok:["#2E7050","rgba(46,112,80,.12)"], warn:["#B8861E","#FBF3DE"], bad:["#B0432B","#F7E0DA"], mute:["#6E665D","#EFE7D7"], rust:["#C16140","rgba(193,97,64,.12)"] }[tone];
+  return <span style={{display:"inline-block",fontSize:".68rem",fontWeight:700,color:t[0],background:t[1],padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{children}</span>;
+}
+
+// Utility hero: six months of electric bills with the latest one flagged as a spike.
+function UtilSpikeMock() {
+  const bars = [["May",128],["Jun",151],["Jul",166],["Aug",139],["Sep",131],["Oct",214]];
+  const prior = bars.slice(0,5).reduce((s,b)=>s+b[1],0)/5;
+  const avg6 = Math.round(bars.reduce((s,b)=>s+b[1],0)/bars.length);
+  const pct = Math.round((bars[5][1]/prior-1)*100);
+  const max = 240, H = 150;
+  return (
+    <div style={{position:"relative",width:"100%",maxWidth:440,boxShadow:MOCK_SHADOW,borderRadius:18}}>
+      <MockShell title="⚡ Electric" style={{padding:"18px 20px 16px"}}>
+        <div style={{display:"flex",gap:22,marginBottom:14}}>
+          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,lineHeight:1,color:"#B0432B"}}>${bars[5][1]}</div><div style={{fontSize:".68rem",color:"#8A8178",marginTop:4}}>Last bill</div></div>
+          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,lineHeight:1,color:"#234A3D"}}>${avg6}</div><div style={{fontSize:".68rem",color:"#8A8178",marginTop:4}}>6-month average</div></div>
+        </div>
+        <div style={{position:"relative",height:H+18,paddingTop:18}}>
+          <div style={{position:"absolute",left:0,right:0,bottom:22+Math.round(avg6/max*H),borderTop:"1.5px dashed #B8AFA3"}}/>
+          <div style={{position:"relative",display:"flex",alignItems:"flex-end",gap:10,height:H}}>
+            {bars.map(([m,v],i)=>{
+              const spike = i===bars.length-1;
+              return (
+                <div key={m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%",position:"relative"}}>
+                  {spike && <div style={{position:"absolute",top:H-Math.round(v/max*H)-26,fontSize:".66rem",fontWeight:700,color:"#fff",background:"#C16140",padding:"2px 7px",borderRadius:7,whiteSpace:"nowrap"}}>+{pct}%</div>}
+                  <div style={{width:"100%",height:Math.round(v/max*H),borderRadius:"7px 7px 3px 3px",background:spike?"#C16140":"#2F5E4E",opacity:spike?1:.85}}/>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:6}}>
+            {bars.map(([m])=><div key={m} style={{flex:1,textAlign:"center",fontSize:".66rem",color:"#A8A09A"}}>{m}</div>)}
+          </div>
+        </div>
+        <div style={{marginTop:14,display:"flex",gap:10,alignItems:"flex-start",background:"#FBF3DE",border:"1px solid #F0DDA8",borderRadius:11,padding:"10px 12px",fontSize:".78rem",color:"#7A5A12",lineHeight:1.45}}>
+          <span aria-hidden="true">⚠️</span><span><b>{pct}% above your recent average.</b> A summer cooling issue or a new appliance is worth a look.</span>
+        </div>
+      </MockShell>
+    </div>
+  );
+}
+
+// Section 2 panels
+function UtilAccountsMock() {
+  const rows = [["⚡","Electric","Example Power & Light","$214","rgba(184,134,30,.14)"],["💧","Water & sewer","City utilities","$68","rgba(58,122,175,.14)"],["🔥","Gas","Example Gas Co.","$41","rgba(193,97,64,.14)"],["🌐","Internet","Example Fiber","$75","rgba(88,86,214,.12)"]];
+  return (
+    <MockShell title="Your utilities">
+      {rows.map(([ic,n,p,a,bg],i)=>(
+        <div key={n} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
+          <span style={{width:34,height:34,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{n}</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>{p}</div></div>
+          <div style={{fontSize:".84rem",fontWeight:700,color:"#234A3D"}}>{a}</div>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function UtilBillMock() {
+  const rows = [["Bill date","Oct 14, 2026"],["Amount","$214.37"],["Usage","1,482 kWh"],["Billing period","Sep 12 – Oct 12"]];
+  return (
+    <MockShell title="Electric bill">
+      {rows.map(([k,v],i)=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".84rem"}}>
+          <span style={{color:"#8A8178"}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
+        </div>
+      ))}
+      <div style={{marginTop:8,display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ Scanned bill saved to your document vault</div>
+    </MockShell>
+  );
+}
+function UtilStatsMock() {
+  const vals=[128,151,166,139,131,214];
+  return (
+    <MockShell title="Electric trend">
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+        {[["Last bill","$214"],["6-mo average","$155"],["Year to date","$1,486"]].map(([l,v])=>(
+          <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:11,padding:"9px 8px",textAlign:"center"}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.05rem",color:"#234A3D"}}>{v}</div>
+            <div style={{fontSize:".62rem",color:"#A8A09A",marginTop:2}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",alignItems:"flex-end",gap:6,height:64}}>
+        {vals.map((v,i)=><div key={i} style={{flex:1,height:Math.round(v/214*64),borderRadius:"5px 5px 2px 2px",background:i===vals.length-1?"#C16140":"#2F5E4E",opacity:i===vals.length-1?1:.8}}/>)}
+      </div>
+    </MockShell>
+  );
+}
+
+// "Three ways to log a bill" little visuals
+function WayScanMock() {
+  return (
+    <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,justifyContent:"center",padding:"6px 0 2px"}}>
+      <div style={{width:58,height:74,background:"#fff",border:"1.5px dashed #C9BFAE",borderRadius:8,padding:"9px 8px",boxSizing:"border-box"}}>
+        {[80,100,60,90,70].map((w,i)=><div key={i} style={{height:4,width:w+"%",background:"#E6DECF",borderRadius:2,marginBottom:6}}/>)}
+      </div>
+      <span style={{color:"#C16140",fontWeight:700}}>→</span>
+      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {["Oct 14","$214.37","1,482 kWh"].map(t=><span key={t} style={{fontSize:".7rem",fontWeight:700,color:"#234A3D",background:"rgba(35,74,61,.09)",borderRadius:7,padding:"3px 9px"}}>{t}</span>)}
+      </div>
+    </div>
+  );
+}
+function WayForwardMock() {
+  return (
+    <div aria-hidden="true" style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"9px 11px",fontSize:".7rem",color:"#8A8178",lineHeight:1.6}}>
+      <div><b style={{color:"#5E574F"}}>To:</b> your Steadwell capture address</div>
+      <div><b style={{color:"#5E574F"}}>Subject:</b> Your October electric bill</div>
+      <div style={{marginTop:6,height:4,width:"70%",background:"#E6DECF",borderRadius:2}}/>
+    </div>
+  );
+}
+function WayTypeMock() {
+  return (
+    <div aria-hidden="true" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+      {[["Date","Oct 14"],["Amount","$214.37"]].map(([k,v])=>(
+        <div key={k} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:9,padding:"6px 9px"}}>
+          <div style={{fontSize:".6rem",color:"#A8A09A"}}>{k}</div><div style={{fontSize:".78rem",fontWeight:600}}>{v}</div>
+        </div>
+      ))}
+      <div style={{gridColumn:"1 / -1",display:"flex",gap:6}}>
+        {["Electric","Gas","Water","Internet"].map(t=><span key={t} style={{fontSize:".62rem",fontWeight:700,color:"#234A3D",border:"1px solid #C9D8CF",borderRadius:12,padding:"2px 8px"}}>+ {t}</span>)}
+      </div>
+    </div>
+  );
+}
+
+function Sparkline({ points, color="#2F5E4E" }) {
+  const w=120,h=36,max=Math.max(...points),min=Math.min(...points);
+  const xy=points.map((p,i)=>[Math.round(i/(points.length-1)*(w-8))+4, Math.round(h-6-((p-min)/(max-min||1))*(h-14))]);
+  const last=xy[xy.length-1];
+  return (
+    <svg aria-hidden="true" viewBox={`0 0 ${w} ${h}`} width="100%" height={h} style={{display:"block",marginBottom:10}}>
+      <polyline points={xy.map(p=>p.join(",")).join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity=".55"/>
+      <circle cx={last[0]} cy={last[1]} r="4" fill="#C16140"/>
+    </svg>
+  );
+}
+
+// "Your true cost to run the house": one example year split by where the money went.
+function CostSplitMock() {
+  const parts=[["Utilities",34,"#234A3D"],["Repairs & service",28,"#C16140"],["Projects",26,"#B8861E"],["Everything else",12,"#B8AFA3"]];
+  return (
+    <MockShell title="Home spend this year" style={{maxWidth:560}}>
+      <div style={{display:"flex",height:16,borderRadius:8,overflow:"hidden",marginBottom:14}}>
+        {parts.map(([n,p,c])=><div key={n} style={{width:p+"%",background:c}}/>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:"10px 28px"}}>
+        {parts.map(([n,p,c])=>(
+          <div key={n} style={{display:"flex",gap:8,alignItems:"center",fontSize:".78rem"}}>
+            <span style={{width:10,height:10,borderRadius:3,background:c,flexShrink:0}}/><span style={{color:"#5E574F"}}>{n}</span><b style={{marginLeft:"auto"}}>{p}%</b>
+          </div>
+        ))}
+      </div>
+    </MockShell>
+  );
+}
+
+// Warranty hero: the Warranties screen with a reminder email floating over it.
+function WarrantyListMock() {
+  const tiles=[["4","Covered","#2E7050"],["1","Expiring","#B8861E"],["1","Expired","#B0432B"]];
+  const rows=[["🌡️","Carrier HVAC System","Installed Apr 2023","6y left","ok"],["🍳","Samsung Dishwasher","Purchased Nov 2025","23d left","warn"],["💻","MacBook Pro M3","Apple","14mo left","ok"],["🧊","LG French Door Fridge","Purchased Jan 2022","42d ago","bad"]];
+  return (
+    <div style={{position:"relative",width:"100%",maxWidth:440,boxShadow:MOCK_SHADOW,borderRadius:18,paddingBottom:0}}>
+      <MockShell title="Warranties" note="(example)">
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
+          {tiles.map(([n,l,c])=>(
+            <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:11,padding:"8px 4px",textAlign:"center"}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.3rem",color:c,lineHeight:1.1}}>{n}</div>
+              <div style={{fontSize:".62rem",color:"#8A8178"}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {rows.map(([ic,n,s,p,t])=>(
+          <div key={n} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+            <span style={{width:32,height:32,borderRadius:9,background:"#EFE7D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
+            <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{s}</div></div>
+            <MockPill tone={t}>{p}</MockPill>
+          </div>
+        ))}
+        <div style={{marginTop:8,fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ No safety recalls found for these items</div>
+      </MockShell>
+    </div>
+  );
+}
+function ReminderEmailMock() {
+  return (
+    <MockShell title="✉️ Reminder email" style={{maxWidth:460}}>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 30 days before expiry</div>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.02rem",fontWeight:600,color:"#234A3D",marginBottom:8}}>Your dishwasher warranty ends in 30 days</div>
+      <div style={{fontSize:".8rem",color:"#5E574F",lineHeight:1.55,marginBottom:12}}>Samsung Dishwasher · ends Nov 25. If anything has been acting up, now is the time to file a claim. Your receipt and serial number are saved with the item.</div>
+      <span style={{display:"inline-block",background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 14px"}}>Review this warranty</span>
+    </MockShell>
+  );
+}
+function ReceiptToRecordMock() {
+  return (
+    <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:460}}>
+      <div style={{width:130,background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"12px 12px 14px",boxShadow:"0 10px 30px rgba(42,39,35,.08)",transform:"rotate(-2deg)"}}>
+        <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:".06em",color:"#8A8178",textAlign:"center",marginBottom:8}}>RECEIPT</div>
+        {[["Dishwasher","$849"],["Install","$120"]].map(([a,b])=><div key={a} style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#5E574F",marginBottom:5}}><span>{a}</span><span>{b}</span></div>)}
+        {[70,90,55].map((w,i)=><div key={i} style={{height:3,width:w+"%",background:"#E6DECF",borderRadius:2,margin:"6px 0"}}/>)}
+        <div style={{fontSize:".66rem",color:"#8A8178"}}>Nov 25, 2025</div>
+      </div>
+      <span style={{color:"#C16140",fontWeight:700,fontSize:"1.2rem"}}>→</span>
+      <MockShell title="Saved to Warranties" note="" style={{flex:"1 1 170px",maxWidth:220,padding:"14px 15px"}}>
+        {[["Item","Dishwasher"],["Brand","Samsung"],["Bought","Nov 25, 2025"],["Warranty ends","Nov 25, 2026"]].map(([k,v],i)=>(
+          <div key={k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".72rem"}}><span style={{color:"#A8A09A"}}>{k}</span><b>{v}</b></div>
+        ))}
+      </MockShell>
+    </div>
+  );
+}
+function RecallMock() {
+  const rows=[["Carrier 3HACX0A0400",true],["Whirlpool WRF535SHZ",false],["MacBook Pro M3",true],["Rheem PROG40",true]];
+  return (
+    <MockShell title="🛡 Safety recall check" dark style={{maxWidth:460}}>
+      {rows.map(([n,ok],i)=>(
+        <div key={n} style={{padding:"9px 0",borderTop:i?"1px solid rgba(255,255,255,.1)":"none"}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem"}}><span>{n}</span><span style={{color:ok?"#9FD3B4":"#E8A57F"}}>{ok?"✓":"⚠"}</span></div>
+          {!ok && <div style={{fontSize:".72rem",color:"#E8A57F",marginTop:2}}>Potential recall: review recommended</div>}
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+// Alternating row: visual on one side, text on the other. flip puts the visual on the right on wide screens.
+function LPFeatureRow({ visual, title, children, flip=false }) {
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:"clamp(24px,5vw,56px)",alignItems:"center"}}>
+      <div style={{display:"flex",justifyContent:"center",order:flip?2:0}}>{visual}</div>
+      <div style={{order:flip?1:0}}>
+        <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.35rem,2.6vw,1.8rem)",color:"#234A3D",letterSpacing:"-.02em",lineHeight:1.2,margin:"0 0 12px"}}>{title}</h3>
+        {children}
+      </div>
+    </div>
+  );
+}
+function LPBadge({ plan }) {
+  const free = plan === "Free" || plan === "All plans";
+  return <span style={{display:"inline-block",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:free?"#2E7050":"#C16140",background:free?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{plan}</span>;
+}
+
 function UtilityBillTrackerPage() {
   const path = "/utility-bill-tracker";
   const description = "Track electric, gas, water and internet bills in one place. Scan bills with AI, catch usage spikes and see what your home costs to run. Free to start.";
   useSEO({
-    title:"Home Utility Bill Tracker — Electric, Gas, Water",
+    title:"Utility Bill Tracking App — Electric, Gas & Water",
     description,
     canonical:`https://www.trysteadwell.app${path}`,
     jsonLd: lpJsonLd({
@@ -32479,38 +32743,85 @@ function UtilityBillTrackerPage() {
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Utility Bill Tracker" eyebrow="Utility & Bill Tracking" cta="Start tracking free" h1="Know what your home" h1em="costs to run." sub="Keep your electric, gas, water, internet and trash bills in one place. Scan a bill or forward it by email, and Steadwell shows the trend and flags the month something spikes." badge="Tracking is free · AI bill scan on Plus & Pro" stats={[{num:"8",lbl:"Utility types"},{num:"Free",lbl:"Bill tracking"},{num:"6-mo",lbl:"Average & spike alerts"}]}/>
+
+      {/* Hero: copy on the left, the product on the right */}
+      <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(48px,7vw,64px)"}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
+          <div>
+            <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2rem,3.9vw,2.9rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 20px",textWrap:"balance"}}>
+              <span style={{display:"block",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#D2876A",marginBottom:16,lineHeight:1.3}}>Utility Bill Tracker</span><span style={{position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)",whiteSpace:"nowrap"}}> — </span>
+              Know what your home <em style={{fontStyle:"italic",color:"#D2876A"}}>costs to run.</em>
+            </h1>
+            <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.72)",maxWidth:"34rem",margin:"0 0 28px",lineHeight:1.6}}>Keep your electric, gas, water, internet and trash bills in one place. Scan a bill or forward it by email, and Steadwell shows the trend and flags the month something spikes.</p>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center",marginBottom:20}}>
+              <a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>Start tracking free →</a>
+              <a href="#how-it-works" style={{color:"rgba(244,237,223,.78)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>See how it works</a>
+            </div>
+            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.6)"}}>Tracking is free · AI bill scan on Plus &amp; Pro</div>
+          </div>
+          <div style={{display:"flex",justifyContent:"center"}}><UtilSpikeMock/></div>
+        </div>
+      </section>
+
       <main id="main" tabIndex={-1}>
-        <LPSection>
+        <LPSection narrow>
+          <div style={{borderLeft:"3px solid #C16140",paddingLeft:20}}>
+            <div style={{fontSize:".75rem",fontWeight:700,color:"#C16140",marginBottom:6}}>The short answer</div>
+            <p style={{fontSize:"1.05rem",color:"#3D3732",lineHeight:1.7,margin:0}}>A utility bill tracker keeps your electric, gas, water, sewer, internet and trash bills in one place and compares each new bill with your recent average. Steadwell does that for free, flags any bill more than 40% above that average, and lets you add bills by photo (Plus and Pro), by email or by hand.</p>
+          </div>
+        </LPSection>
+
+        <LPSection alt>
           <LPSectionHead h2="Every utility, every bill, one timeline" sub="Utilities are the one home cost that arrives every month and almost never gets reviewed. Steadwell makes the pattern visible."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            <LPFieldCard icon="⚡" title="Utility accounts" badge="All plans" fields={["Electric, gas, water, sewer, internet, trash and other","One account for a combined city bill (water, sewer and trash)","Provider or company name","Account number, kept for your reference","Notes on each account","Separate accounts for each property"]}/>
-            <LPFieldCard icon="🧾" title="Bills & usage" badge="All plans" fields={["Bill date and amount","Usage in kWh, therms, gallons or CCF","Split a combined bill by service (optional)","Billing-period notes","Scanned bills saved to your document vault","Edit or delete any bill later"]}/>
-            <LPFieldCard icon="📈" title="Trends & spike alerts" badge="All plans" fields={["Last bill, 6-month average and year-to-date total","Bar chart of your last six bills","Spike warning when a bill jumps well above average","Full bill history for each utility","Utilities total for the year at a glance"]}/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={28}>
+            {[
+              {visual:<UtilAccountsMock/>,title:"Utility accounts",badge:"All plans",items:["Electric, gas, water, sewer, internet, trash and other","One account for a combined city bill (water, sewer and trash)","Provider, account number and notes, kept for your reference","Separate accounts for each property"]},
+              {visual:<UtilBillMock/>,title:"Bills & usage",badge:"All plans",items:["Bill date, amount and billing-period notes","Usage in kWh, therms, gallons or CCF","Split a combined bill by service (optional)","Scanned bills saved to your document vault"]},
+              {visual:<UtilStatsMock/>,title:"Trends & spike alerts",badge:"All plans",items:["Last bill, 6-month average and year-to-date total","Bar chart of your last six bills","A warning when a bill jumps well above average","Full bill history for each utility"]},
+            ].map((c,i)=>(
+              <div key={i} style={{display:"flex",flexDirection:"column",gap:16}}>
+                {c.visual}
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:0}}>{c.title}</h3><LPBadge plan={c.badge}/></div>
+                  {c.items.map((t,j)=>(<div key={j} style={{display:"flex",gap:8,fontSize:".84rem",color:"#5E574F",lineHeight:1.5,marginBottom:5}}><span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",marginTop:3}}>✓</span><span>{t}</span></div>))}
+                </div>
+              </div>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="Three ways to log a bill" sub="Pick whichever is fastest for you. You always review the details before they are saved."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
+            {[
+              {icon:"📷",title:"Scan it",badge:"Plus & Pro",tint:"rgba(35,74,61,.07)",visual:<WayScanMock/>,desc:"Take a photo or upload a PDF of the bill. Steadwell AI reads the amount, bill date and usage and fills in the form for you.",link:{href:"/ai-scan",label:"How AI scanning works"}},
+              {icon:"✉️",title:"Forward it",badge:"All plans",tint:"rgba(193,97,64,.08)",visual:<WayForwardMock/>,desc:"Email the bill to your Steadwell capture address. It lands in your Email Inbox; confirm it and Steadwell finds or creates the matching utility and logs the bill.",link:{href:"/email-capture",label:"About email capture"}},
+              {icon:"⌨️",title:"Type it",badge:"All plans",tint:"rgba(184,134,30,.09)",visual:<WayTypeMock/>,desc:"Prefer to do it by hand? Enter the date, amount and usage in about ten seconds. Quick-add buttons pre-fill electric, gas, water and internet accounts."},
+            ].map((w,i)=>(
+              <LPCard key={i} style={{padding:0,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <div style={{background:w.tint,padding:"22px 20px",minHeight:112,display:"flex",flexDirection:"column",justifyContent:"center"}}>{w.visual}</div>
+                <div style={{padding:"18px 22px 20px",display:"flex",flexDirection:"column",flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:8}}><h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:0}}>{w.icon} {w.title}</h3><LPBadge plan={w.badge}/></div>
+                  <div style={{fontSize:".85rem",color:"#6B645C",lineHeight:1.6,flex:1}}>{w.desc}</div>
+                  {w.link && <a href={w.link.href} style={{marginTop:12,fontSize:".82rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>{w.link.label} →</a>}
+                </div>
+              </LPCard>
+            ))}
           </LPGrid>
         </LPSection>
 
         <LPSection alt>
-          <LPSectionHead h2="Three ways to log a bill" sub="Pick whichever is fastest for you. You always review the details before they are saved."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
-            <LPFieldCard icon="📷" title="Scan it" badge="Plus & Pro" desc="Take a photo or upload a PDF of the bill. Steadwell AI reads the amount, bill date and usage and fills in the form for you." link={{href:"/ai-scan",label:"How AI scanning works"}}/>
-            <LPFieldCard icon="✉️" title="Forward it" badge="All plans" desc="Email the bill to your Steadwell capture address. It lands in your Email Inbox; confirm it and Steadwell finds or creates the matching utility and logs the bill." link={{href:"/email-capture",label:"About email capture"}}/>
-            <LPFieldCard icon="⌨️" title="Type it" badge="All plans" desc="Prefer to do it by hand? Enter the date, amount and usage in about ten seconds. Quick-add buttons pre-fill electric, gas, water and internet accounts."/>
-          </LPGrid>
-        </LPSection>
-
-        <LPSection>
           <LPSectionHead h2="What a spike is trying to tell you" sub="A jump in a bill is often the first visible sign of a problem. Steadwell flags it; here is where to look."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             {[
-              {icon:"💧",title:"Water or sewer",text:"A bill that climbs without a change in habits can point to a running toilet, a slow leak, or an irrigation zone stuck on."},
-              {icon:"⚡",title:"Electric",text:"A summer spike can mean the air conditioner is working harder than it should, from a dirty coil or low refrigerant to a unit nearing the end of its life."},
-              {icon:"🔥",title:"Gas",text:"A winter jump can mean a furnace losing efficiency, or drafts and thin insulation letting heat escape."},
+              {icon:"💧",title:"Water or sewer",pts:[22,24,21,23,22,48],text:"A bill that climbs without a change in habits can point to a running toilet, a slow leak, or an irrigation zone stuck on."},
+              {icon:"⚡",title:"Electric",pts:[120,135,150,170,168,214],text:"A summer spike can mean the air conditioner is working harder than it should, from a dirty coil or low refrigerant to a unit nearing the end of its life."},
+              {icon:"🔥",title:"Gas",pts:[18,20,34,62,80,120],text:"A winter jump can mean a furnace losing efficiency, or drafts and thin insulation letting heat escape."},
             ].map((s,i)=>(
               <LPCard key={i}>
-                <div style={{fontSize:"1.4rem",marginBottom:8}} aria-hidden="true">{s.icon}</div>
-                <h3 style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",margin:"0 0 6px"}}>{s.title}</h3>
-                <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.6}}>{s.text}</div>
+                <Sparkline points={s.pts}/>
+                <h3 style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",margin:"0 0 6px"}}><span aria-hidden="true">{s.icon}</span> {s.title}</h3>
+                <div style={{fontSize:".85rem",color:"#6B645C",lineHeight:1.6}}>{s.text}</div>
               </LPCard>
             ))}
           </LPGrid>
@@ -32519,7 +32830,7 @@ function UtilityBillTrackerPage() {
           </p>
         </LPSection>
 
-        <LPSection alt>
+        <LPSection id="how-it-works">
           <LPSectionHead h2="How it works" sub="From first bill to a clear picture in a few minutes."/>
           <LPGrid gap={16}>
             {[
@@ -32531,13 +32842,14 @@ function UtilityBillTrackerPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection narrow>
-          <LPSectionHead h2="Your true cost to run the house" sub="Utility bills are part of the full picture, not a separate spreadsheet."/>
-          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.1rem"}}>Every bill you log appears under Utilities next to your repairs, projects and service visits, and counts toward your yearly and all-time home spend. That is how you see what your home actually costs month to month, not only when something breaks.</p>
-          <p style={{textAlign:"left",fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Pair it with the <a href="/home-expense-tracker" style={{color:"#C16140",fontWeight:600}}>expense tracker and 5-year cost forecast</a> to plan for the big replacements as well as the monthly bills.</p>
+        <LPSection alt>
+          <LPFeatureRow visual={<CostSplitMock/>} title="Your true cost to run the house">
+            <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 14px"}}>Utility bills are part of the full picture, not a separate spreadsheet. Every bill you log appears under Utilities next to your repairs, projects and service visits, and counts toward your yearly and all-time home spend.</p>
+            <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,margin:0}}>Pair it with the <a href="/home-expense-tracker" style={{color:"#C16140",fontWeight:600}}>expense tracker and 5-year cost forecast</a> to plan for the big replacements as well as the monthly bills.</p>
+          </LPFeatureRow>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={UTILITY_FAQ}/>
         </LPSection>
@@ -33048,6 +33360,9 @@ function SharedHouseholdAccessPage() {
 }
 
 const WARRANTY_FAQ = [
+  ["How do I keep track of my warranties?","Add each item with its purchase date and warranty length, and attach the receipt. Steadwell works out the expiry date, shows the item as covered, expiring or expired, and emails you 30 and 7 days before it ends. Everything stays with the item, so the receipt and service history are there when you need them."],
+  ["How can I tell if my warranty is still valid?","Check the purchase date and the length of coverage, then count forward. In Steadwell, each item shows covered, expiring soon or expired, with the days left. The dates are only as good as the information you enter, so confirm coverage with the manufacturer or retailer before you file a claim."],
+  ["What documents do I need to make a warranty claim?","It varies by manufacturer, but you will usually be asked for proof of purchase, the model and serial number, and sometimes records showing the item was maintained. Steadwell keeps the receipt, serial number and service history together with each item."],
             ["Is warranty tracking free?","Yes — unlimited warranties on the Free plan, no credit card required to start."],
             ["How do I add a warranty?","Scan a receipt or appliance nameplate with AI (Plus and Pro), or enter the details yourself on any plan."],
             ["What alerts do I get?","An email 30 days before expiry and another at 7 days, plus a separate alert if the item is subject to a safety recall."],
@@ -33074,140 +33389,111 @@ function WarrantyTrackerPage() {
       offers:[{name:"Free",price:"0"},{name:"Plus",price:"7.99"},{name:"Pro",price:"14.99"}],
     }),
   });
-  const S = {
-    statNum:{fontFamily:"'Fraunces',serif",fontSize:"2.2rem",fontWeight:700,color:"#234A3D"},
-  };
   return (
     <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
 
       {/* Hero */}
-      <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(40px,6vw,56px)"}}>
-        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:36,alignItems:"center"}}>
+      <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(48px,7vw,64px)"}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
           <div style={{maxWidth:620}}>
             <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#D2876A",marginBottom:20}}>Free forever · No credit card</div>
             <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2.1rem,4.6vw,3.1rem)",color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.02em",margin:"0 0 18px"}}>The warranty tracker that actually <em style={{fontStyle:"italic",color:"#D2876A"}}>does</em> something useful.</h1>
-            <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.7)",lineHeight:1.6,margin:"0 0 28px"}}>Track warranties for every appliance, device, and asset you own. Get reminded before they expire. Check for safety recalls. Log service history. Free — and more complete than the apps that charge for it.</p>
-            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+            <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.72)",lineHeight:1.6,margin:"0 0 28px"}}>Track warranties for every appliance, device, and asset you own. Get reminded before they expire. Check for safety recalls. Log service history. Free, and more complete than the apps that charge for it.</p>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
               <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>Start tracking free →</a>
-              <a href="#how-it-works" style={{display:"inline-flex",alignItems:"center",color:"rgba(244,237,223,.75)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>See how it works</a>
+              <a href="#how-it-works" style={{display:"inline-flex",alignItems:"center",color:"rgba(244,237,223,.78)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>See how it works</a>
             </div>
           </div>
-          <div style={{background:"#FBF7EE",borderRadius:16,padding:"18px 20px",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
-            <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#A8A09A",marginBottom:12}}>My Warranties <span style={{fontWeight:500,textTransform:"none",letterSpacing:0}}>(example)</span></div>
-            {[
-              {name:"Carrier HVAC System",sub:"Installed Apr 2023 · Expires Jun 2033",status:"ok"},
-              {name:"MacBook Pro M3",sub:"Apple · Active",status:"ok"},
-              {name:"LG French Door Fridge",sub:"Purchased Jan 2022",status:"expired"},
-              {name:"2022 Honda CR-V",sub:"Honda · Active",status:"ok"},
-            ].map((r,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #E6DECF"}}>
-                <div><div style={{fontSize:".85rem",fontWeight:600,color:"#2A2723"}}>{r.name}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{r.sub}</div></div>
-                {r.status==="expired"
-                  ? <span style={{fontSize:".65rem",fontWeight:700,color:"#B9422C",background:"rgba(185,66,44,.1)",padding:"3px 9px",borderRadius:8}}>EXPIRED</span>
-                  : <span style={{color:"#2E7050",fontSize:"1rem"}}>✓</span>}
-              </div>
-            ))}
-            <div style={{marginTop:10,fontSize:".76rem",color:"#2E7050",fontWeight:600}}>✓ No safety recalls found for these assets</div>
-          </div>
+          <div style={{display:"flex",justifyContent:"center"}}><WarrantyListMock/></div>
         </div>
       </section>
 
       <main id="main" tabIndex={-1}>
-        {/* Why it matters — rewritten from unsourced stats to a sourced-free framing of the same point */}
         <LPSection narrow>
           <div style={{textAlign:"center"}}>
-            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3.4vw,2.1rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:14}}>You spent $1,200 on that refrigerator.<br/>The warranty is worth every penny — until you forget it exists.</h2>
-            <p style={{fontSize:"1rem",color:"#7A7370",lineHeight:1.7,maxWidth:640,margin:"0 auto"}}>Warranty claims don't usually get denied because the product failed — they get denied because nobody can produce the receipt, the install date, or a maintenance record when the manufacturer asks for one. Most warranty apps charge you $2–5 a month to send you one reminder email. Steadwell tracks everything about the item — where you bought it, when, and what's been serviced — so you actually have what you need when it's time to file a claim.</p>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3.4vw,2.1rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:14}}>You spent $1,200 on that refrigerator.<br/>The warranty is worth every penny, until you forget it exists.</h2>
+            <p style={{fontSize:"1rem",color:"#7A7370",lineHeight:1.7,maxWidth:640,margin:"0 auto 22px"}}>Warranty claims don't usually get denied because the product failed. They get denied because nobody can produce the receipt, the install date, or a maintenance record when the manufacturer asks for one. Steadwell keeps everything about each item in one place, from where you bought it and when to what has been serviced, so you have what you need when it's time to file a claim.</p>
+          </div>
+          <div style={{borderLeft:"3px solid #C16140",paddingLeft:20,textAlign:"left"}}>
+            <div style={{fontSize:".75rem",fontWeight:700,color:"#C16140",marginBottom:6}}>The short answer</div>
+            <p style={{fontSize:"1.02rem",color:"#3D3732",lineHeight:1.7,margin:0}}>A warranty tracker stores each item's purchase date, warranty length and documents, then tells you what is covered, what is about to expire and what has already lapsed. Steadwell does that for free, emails you 30 and 7 days before a warranty ends, and checks each item against federal safety recalls.</p>
           </div>
         </LPSection>
 
         <LPSection alt>
-          <LPSectionHead h2="Not just a reminder. A complete warranty system."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
-            {[
-              {icon:"📷",title:"Scan receipts & nameplates with AI",badge:"Plus & Pro",desc:"Point your camera at a receipt or the label on an appliance. Steadwell reads brand, model, purchase date, and price — no typing."},
-              {icon:"🔔",title:"Expiry reminders — 30 and 7 days",badge:"Free",desc:"Two email alerts before every warranty expires, timed so you still have a real window to file a claim."},
-              {icon:"⚠️",title:"Safety recall alerts",badge:"Free",desc:"Every asset you track is checked against the federal recall database automatically — not just told it's expiring, told if there's an actual issue."},
-              {icon:"🔗",title:"Link warranties to assets",badge:"Free",desc:"A warranty isn't a standalone record — it's tied to the full asset: purchase info, service history, and documents in one place."},
-              {icon:"🛠️",title:"AI maintenance schedules",badge:"Plus & Pro",desc:"Steadwell builds a maintenance schedule for the things that need one — which also keeps some manufacturer warranties valid in the first place."},
-              {icon:"📄",title:"Home history report PDF",badge:"Plus & Pro",desc:"Generate a full report of everything you own — receipts, serials, service history — for a buyer, an adjuster, or your own records."},
-              {icon:"📦",title:"Track everything, not just appliances",badge:"Free",desc:"HVAC, electronics, vehicles, tools, jewelry, outdoor equipment. Most warranty apps stop at kitchen appliances."},
-              {icon:"🗄️",title:"Asset retirement & history",badge:"Free",desc:"When something's replaced or sold, its record moves to history instead of just disappearing."},
-              {icon:"🔎",title:"Smart Fill — instant model lookup",badge:"Plus & Pro",desc:"Type a model number and Steadwell fills in the typical warranty length and spec details from public data."},
-            ].map((f,i)=>(
-              <LPCard key={i} style={{display:"flex",flexDirection:"column"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <span style={{fontSize:"1.4rem",flexShrink:0}}>{f.icon}</span>
-                  <div style={{fontWeight:700,fontSize:".92rem",color:"#234A3D",lineHeight:1.3}}>{f.title}</div>
-                </div>
-                <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.55,flex:1,marginBottom:12}}>{f.desc}</div>
-                <span style={{alignSelf:"flex-start",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:f.badge==="Free"?"#2E7050":"#C16140",background:f.badge==="Free"?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{f.badge}</span>
-              </LPCard>
-            ))}
-          </LPGrid>
+          <LPSectionHead h2="Not just a reminder. A complete warranty system." sub="Here is what happens from the day you add an item."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<ReceiptToRecordMock/>} title={<>Scan a receipt or nameplate. Skip the typing. <LPBadge plan="Plus & Pro"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Point your camera at a receipt or the label on an appliance. Steadwell reads the brand, model, purchase date and price and fills in the record. You check it, then save. Prefer to type? Manual entry is free on every plan.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Smart Fill can also look up a model number and suggest the typical warranty length from public data. <LPBadge plan="Plus & Pro"/></p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<ReminderEmailMock/>} title={<>Two reminders before it's too late. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Steadwell emails you 30 days and again 7 days before every warranty expires, timed so you still have a real window to file a claim.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Every item also shows covered, expiring or expired, with the days left, right in your Warranties list.</p>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<RecallMock/>} title={<>Know about recalls before they become emergencies. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Hundreds of product recalls are issued every year by federal safety authorities, and most homeowners never find out their appliances are affected. Steadwell checks every item you track against the federal recall database, so you are told when there is an actual issue, not only when a warranty is ending.</p>
+              <a href="/" style={{display:"inline-block",marginTop:6,background:"#C16140",color:"#fff",textDecoration:"none",padding:".75rem 1.5rem",borderRadius:11,fontWeight:700,fontSize:".9rem"}}>Check your appliances free →</a>
+            </LPFeatureRow>
+          </div>
         </LPSection>
 
-        <LPSection id="how-it-works">
+        <LPSection>
+          <LPSectionHead h2="And everything around it" sub="A warranty is only useful with the records behind it."/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:"22px 40px"}}>
+            {[
+              {icon:"🔗",title:"Linked to the whole asset",badge:"Free",desc:"A warranty is tied to the full item: purchase info, service history and documents in one place."},
+              {icon:"📦",title:"Track everything, not just appliances",badge:"Free",desc:"HVAC, electronics, vehicles, tools, jewelry, outdoor equipment. Most warranty apps stop at kitchen appliances."},
+              {icon:"🗄️",title:"Retirement and history",badge:"Free",desc:"When something's replaced or sold, its record moves to history instead of just disappearing."},
+              {icon:"🛠️",title:"AI maintenance schedules",badge:"Plus & Pro",desc:"A maintenance schedule for the things that need one, which also keeps some manufacturer warranties valid in the first place."},
+              {icon:"📄",title:"Home history report PDF",badge:"Plus & Pro",desc:"A full report of everything you own, with receipts, serials and service history, for a buyer, an adjuster, or your own records."},
+              {icon:"🔎",title:"Smart Fill model lookup",badge:"Plus & Pro",desc:"Type a model number and Steadwell fills in the typical warranty length and spec details from public data."},
+            ].map((f,i)=>(
+              <div key={i} style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+                <span aria-hidden="true" style={{width:42,height:42,borderRadius:12,background:"#fff",border:"1px solid #E6DECF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",flexShrink:0}}>{f.icon}</span>
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}><span style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{f.title}</span><LPBadge plan={f.badge}/></div>
+                  <div style={{fontSize:".85rem",color:"#6B645C",lineHeight:1.6}}>{f.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </LPSection>
+
+        <LPSection alt id="how-it-works">
           <LPSectionHead h2="From receipt to protected in 60 seconds"/>
           <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={16}>
             {[
               {num:"01",title:"Scan or enter it",text:"Point your camera at the receipt or nameplate, or type in the details yourself. Either way, under a minute."},
               {num:"02",title:"Steadwell takes over",text:"We calculate the expiry date, check the item against the federal recall database, and add it to your maintenance schedule if it needs one."},
-              {num:"03",title:"File claims with confidence",text:"When something breaks, the receipt, serial number, and service history are already there — attach and go."},
+              {num:"03",title:"File claims with confidence",text:"When something breaks, the receipt, serial number, and service history are already there. Attach and go."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
 
-        <LPSection alt>
-          <LPSectionHead h2="Every warranty you own. One place." sub="Most warranty apps only track appliances. Steadwell tracks everything."/>
-          <LPGrid cols="repeat(auto-fit,minmax(220px,1fr))" gap={12}>
-            {[
-              {icon:"🏠",title:"Home Systems",desc:"HVAC, water heater, well pump"},
-              {icon:"🧊",title:"Appliances",desc:"Fridge, dishwasher, washer, dryer"},
-              {icon:"💻",title:"Electronics",desc:"Laptops, TVs, cameras, consoles"},
-              {icon:"🚗",title:"Vehicles",desc:"Cars, motorcycles, boats, RVs"},
-              {icon:"🔧",title:"Tools & Equipment",desc:"Power tools, generators, mowers"},
-              {icon:"💍",title:"Jewelry & Valuables",desc:"Rings, watches, fine jewelry"},
-              {icon:"🌳",title:"Outdoor",desc:"Pool equipment, grills, patio"},
-              {icon:"🧱",title:"Structural",desc:"Roof, siding, windows, foundation"},
-            ].map((c,i)=>(
-              <LPCard key={i} style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <div style={{fontSize:"1.5rem",marginBottom:6}}>{c.icon}</div>
-                <div style={{fontWeight:700,fontSize:".82rem",color:"#234A3D",marginBottom:3}}>{c.title}</div>
-                <div style={{fontSize:".72rem",color:"#A8A09A",lineHeight:1.4}}>{c.desc}</div>
-              </LPCard>
-            ))}
-          </LPGrid>
-        </LPSection>
-
-        {/* Recall check — claim softened from an absolute, unsubstantiated "no one else does this" */}
         <LPSection>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:40,alignItems:"center"}}>
-            <div style={{background:"#234A3D",borderRadius:16,padding:"18px 20px",maxWidth:420}}>
-              <div style={{fontSize:".72rem",fontWeight:700,color:"#F4EDDF",marginBottom:12}}>🛡 Safety Recall Check <span style={{fontWeight:500,color:"rgba(244,237,223,.5)"}}>(example)</span></div>
-              {[
-                {name:"Carrier 3HACX0A0400",ok:true},
-                {name:"Whirlpool WRF535SHZ",ok:false,note:"Potential recall — review recommended"},
-                {name:"MacBook Pro M3",ok:true},
-                {name:"Rheem PROG40",ok:true},
-              ].map((r,i)=>(
-                <div key={i} style={{padding:"9px 0",borderTop:i>0?"1px solid rgba(255,255,255,.08)":"none"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#F4EDDF"}}><span>{r.name}</span><span>{r.ok?"✓":"⚠"}</span></div>
-                  {!r.ok && <div style={{fontSize:".72rem",color:"#E8A57F",marginTop:2}}>{r.note}</div>}
-                </div>
-              ))}
-            </div>
-            <div>
-              <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.5rem,3vw,2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>Know about recalls before they become emergencies.</h2>
-              <p style={{fontSize:"1rem",color:"#7A7370",lineHeight:1.7,marginBottom:20}}>Hundreds of product recalls are issued every year by federal safety authorities. Most homeowners never find out their appliances are affected. Most warranty trackers stop at reminding you when a warranty expires — Steadwell also checks every asset you track against the CPSC recall database and flags anything that needs attention.</p>
-              <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.6rem",borderRadius:11,fontWeight:700,fontSize:".9rem"}}>Start tracking free — check your appliances →</a>
-            </div>
+          <LPSectionHead h2="Every warranty you own. One place." sub="Most warranty apps only track appliances. Steadwell tracks everything."/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {[
+              ["🏠","Home systems","HVAC, water heater, well pump"],
+              ["🧊","Appliances","Fridge, dishwasher, washer, dryer"],
+              ["💻","Electronics","Laptops, TVs, cameras, consoles"],
+              ["🚗","Vehicles","Cars, motorcycles, boats, RVs"],
+              ["🔧","Tools & equipment","Power tools, generators, mowers"],
+              ["💍","Jewelry & valuables","Rings, watches, fine jewelry"],
+              ["🌳","Outdoor","Pool equipment, grills, patio"],
+              ["🧱","Structural","Roof, siding, windows, foundation"],
+            ].map(([ic,t,d])=>(
+              <div key={t} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"10px 16px 10px 12px",flex:"1 1 230px"}}>
+                <span aria-hidden="true" style={{fontSize:"1.35rem"}}>{ic}</span>
+                <div><div style={{fontWeight:700,fontSize:".85rem",color:"#234A3D"}}>{t}</div><div style={{fontSize:".74rem",color:"#8A8178",lineHeight:1.4}}>{d}</div></div>
+              </div>
+            ))}
           </div>
         </LPSection>
 
-        {/* What's included — reframed from a priced comparison against unnamed competitors */}
         <LPSection alt narrow>
           <LPSectionHead h2="What's included, free" sub="No add-ons, no per-feature upsells on the things that matter most."/>
           <LPCard>
@@ -33216,14 +33502,14 @@ function WarrantyTrackerPage() {
               "Manual warranty entry for any item",
               "Safety recall alerts",
               "Service history & maintenance logs",
-              "Electronics, vehicle & jewelry warranties — not just appliances",
+              "Electronics, vehicle & jewelry warranties, not just appliances",
             ].map((f,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<4?"1px solid #E6DECF":"none",fontSize:".9rem",color:"#2A2723"}}>
                 <span style={{color:"#2E7050",fontWeight:700}}>✓</span>{f}
               </div>
             ))}
           </LPCard>
-          <p style={{fontSize:".8rem",color:"#A8A09A",marginTop:14}}>AI scanning, maintenance schedules, the PDF history report, and multi-property support are on Plus and Pro — see pricing below.</p>
+          <p style={{fontSize:".8rem",color:"#A8A09A",marginTop:14}}>AI scanning, maintenance schedules, the PDF history report, and multi-property support are on Plus and Pro. See pricing below.</p>
         </LPSection>
 
         <LPSection narrow>
