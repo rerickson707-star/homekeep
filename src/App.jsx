@@ -1,4 +1,4 @@
-// Steadwell v426 — 2026-10-25
+// Steadwell v427 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2950,12 +2950,16 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-alert-body{min-width:0}
 .ct-alert-title{font-size:.77rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
 .ct-alert-when{font-size:.67rem;color:#9E9690}
-/* No swiping with a mouse, so on larger screens the alerts wrap into two columns instead of running off the edge. */
+/* Larger screens: one short row (two chips plus "+N more") so the calendar stays high on the page. "+N more" opens the Upcoming list. */
+.ct-alert-more{display:none}
 @media(min-width:600px){
-  .ct-alerts{flex-wrap:wrap;overflow-x:visible}
-  .ct-alert{flex:1 1 calc(50% - .3rem);min-width:0;max-width:none}
+  .ct-alerts{flex-wrap:nowrap;overflow:hidden;align-items:stretch}
+  .ct-alert{flex:1 1 0;min-width:0;max-width:none}
+  .ct-alert:nth-child(n+3){display:none}
   .ct-alert-body{flex:1}
-  .ct-alert-title{max-width:none;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .ct-alert-title{max-width:none}
+  .ct-alert-more{display:flex;align-items:center;flex:0 0 auto;border:1px solid var(--stone);background:var(--cream2);border-radius:10px;padding:0 .75rem;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--pine);cursor:pointer;white-space:nowrap}
+  .ct-alert-more:hover{background:var(--white)}
 }
 
 /* body grid: calendar + panel */
@@ -26031,7 +26035,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
       {alertItems.length > 0 && (
         <div className="ct-alerts">
           {alertItems.map(ev => (
-            <div key={ev.id} className="ct-alert" onClick={()=>{setSelDate(ev.date);setView("month");const d=new Date(ev.date+"T00:00:00");setCurMonth(d.getMonth());setCurYear(d.getFullYear());}}>
+            <div key={ev.id} className="ct-alert" title={ev.title} onClick={()=>{setSelDate(ev.date);setView("month");const d=new Date(ev.date+"T00:00:00");setCurMonth(d.getMonth());setCurYear(d.getFullYear());}}>
               <div className="ct-alert-dot" style={{background:evColor(ev.type)}}/>
               <div className="ct-alert-body">
                 <div className="ct-alert-title">{ev.title}</div>
@@ -26039,6 +26043,7 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
               </div>
             </div>
           ))}
+          {alertItems.length > 2 && <button type="button" className="ct-alert-more" onClick={()=>setView("upcoming")}>+{alertItems.length - 2} more</button>}
         </div>
       )}
 
