@@ -1,4 +1,4 @@
-// Steadwell v427 — 2026-10-25
+// Steadwell v428 — 2026-10-25
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -2950,16 +2950,15 @@ img,.lp-root img{max-width:100%;height:auto}
 .ct-alert-body{min-width:0}
 .ct-alert-title{font-size:.77rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
 .ct-alert-when{font-size:.67rem;color:#9E9690}
-/* Larger screens: one short row (two chips plus "+N more") so the calendar stays high on the page. "+N more" opens the Upcoming list. */
-.ct-alert-more{display:none}
+/* Larger screens: the next two items as full-width lines, so the whole title and date always read and the calendar stays high.
+   (The Upcoming tab above lists the rest.) Phones keep the swipeable chips. */
 @media(min-width:600px){
-  .ct-alerts{flex-wrap:nowrap;overflow:hidden;align-items:stretch}
-  .ct-alert{flex:1 1 0;min-width:0;max-width:none}
+  .ct-alerts{flex-direction:column;flex-wrap:nowrap;overflow:visible;gap:.35rem;padding:.1rem 0 .3rem}
+  .ct-alert{flex:none;width:100%;box-sizing:border-box;max-width:none;padding:.5rem .85rem}
   .ct-alert:nth-child(n+3){display:none}
-  .ct-alert-body{flex:1}
-  .ct-alert-title{max-width:none}
-  .ct-alert-more{display:flex;align-items:center;flex:0 0 auto;border:1px solid var(--stone);background:var(--cream2);border-radius:10px;padding:0 .75rem;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--pine);cursor:pointer;white-space:nowrap}
-  .ct-alert-more:hover{background:var(--white)}
+  .ct-alert-body{flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;min-width:0}
+  .ct-alert-title{max-width:none;flex:1;min-width:0;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .ct-alert-when{white-space:nowrap;flex-shrink:0;font-size:.72rem}
 }
 
 /* body grid: calendar + panel */
@@ -25907,7 +25906,8 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
   const alertItems = useMemo(() => {
     const flat = [];
     upcomingList.forEach(({ date, evs }) => evs.forEach(e => flat.push({ ...e, date })));
-    return flat.filter(e => !["task_done","seasonal"].includes(e.type)).slice(0,6);
+    // "warranty_warn" is the 30-day reminder marker for an expiry already listed, so it would just repeat the same item.
+    return flat.filter(e => !["task_done","seasonal","warranty_warn"].includes(e.type)).slice(0,6);
   }, [upcomingList]);
 
   // ── calendar grid cells ──────────────────────────────────────────────────
@@ -26043,7 +26043,6 @@ function CalendarTab({ tasks, setTasks, warranties, profile, serviceLogs=[], toa
               </div>
             </div>
           ))}
-          {alertItems.length > 2 && <button type="button" className="ct-alert-more" onClick={()=>setView("upcoming")}>+{alertItems.length - 2} more</button>}
         </div>
       )}
 
