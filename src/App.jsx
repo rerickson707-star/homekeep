@@ -1,4 +1,4 @@
-// Steadwell v432 — 2026-10-26
+// Steadwell v433 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30885,7 +30885,8 @@ function LPFooter() {
 
 // kw: the phrase people search for. It becomes the first line of the H1 (so the heading says what the page is about),
 // with the slogan as the second line. Without kw the eyebrow stays a plain label above the heading.
-function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta }) {
+function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta, visual, secondary }) {
+  if (visual) return <LPSplitHero eyebrow={eyebrow} kw={kw} h1={h1} h1em={h1em} sub={sub} cta={cta} badge={badge} visual={visual} secondary={secondary}/>;
   return (
     <section style={{background:"#234A3D",padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)",textAlign:"center"}}>
       <div style={{maxWidth:700,margin:"0 auto"}}>
@@ -30916,7 +30917,7 @@ function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta }) {
 // Without them the page inherits the starter template's #root rules (centered text, side padding, a width cap)
 // and system fonts. Pages that rely on left-aligned layouts and the brand fonts render this once.
 function LPBaseStyle() {
-  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}.lp-eq{min-height:284px}@media(max-width:899px){.lp-eq{min-height:0}}"}</style>;
+  return <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');#root{max-width:none !important;margin:0 !important;padding:0 !important;text-align:left !important;width:100%}.lp-eq{min-height:284px}.lp-desc{min-height:6.4em}@media(max-width:560px){.lp-arrow{display:none}}@media(max-width:899px){.lp-eq{min-height:0}.lp-desc{min-height:0}}"}</style>;
 }
 
 function LPSection({ children, alt=false, narrow=false, id }) {
@@ -32475,7 +32476,7 @@ const UTILITY_FAQ = [
 const MOCK_SHADOW = "0 24px 60px rgba(0,0,0,.28)";
 function MockShell({ title, note="(example)", children, dark=false, style={} }) {
   return (
-    <div aria-hidden="true" style={{boxSizing:"border-box",display:"flex",flexDirection:"column",width:"100%",maxWidth:440,textAlign:"left",borderRadius:18,padding:"18px 20px 18px",background:dark?"#234A3D":"#FBF7EE",color:dark?"#F4EDDF":"#2A2723",border:dark?"none":"1px solid #E6DECF",...style}}>
+    <div aria-hidden="true" style={{boxSizing:"border-box",width:"100%",maxWidth:440,textAlign:"left",borderRadius:18,padding:"18px 20px 18px",background:dark?"#234A3D":"#FBF7EE",color:dark?"#F4EDDF":"#2A2723",border:dark?"none":"1px solid #E6DECF",...style}}>
       {title && (
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:12}}>
           <div style={{fontSize:".74rem",fontWeight:700,color:dark?"#F4EDDF":"#234A3D"}}>{title}</div>
@@ -32692,7 +32693,7 @@ function ReceiptToRecordMock() {
         {[70,90,55].map((w,i)=><div key={i} style={{height:3,width:w+"%",background:"#E6DECF",borderRadius:2,margin:"6px 0"}}/>)}
         <div style={{fontSize:".66rem",color:"#8A8178"}}>Nov 25, 2025</div>
       </div>
-      <span style={{color:"#C16140",fontWeight:700,fontSize:"1.2rem"}}>→</span>
+      <span className="lp-arrow" style={{color:"#C16140",fontWeight:700,fontSize:"1.2rem"}}>→</span>
       <MockShell title="Saved to Warranties" note="" style={{flex:"1 1 170px",maxWidth:220,padding:"14px 15px"}}>
         {[["Item","Dishwasher"],["Brand","Samsung"],["Bought","Nov 25, 2025"],["Warranty ends","Nov 25, 2026"]].map(([k,v],i)=>(
           <div key={k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".72rem"}}><span style={{color:"#A8A09A"}}>{k}</span><b>{v}</b></div>
@@ -32702,7 +32703,7 @@ function ReceiptToRecordMock() {
   );
 }
 function RecallMock() {
-  const rows=[["Carrier 3HACX0A0400",true],["Whirlpool WRF535SHZ",false],["MacBook Pro M3",true],["Rheem PROG40",true]];
+  const rows=[["Carrier 3HACX0A0400",true],["Example Brand refrigerator",false],["MacBook Pro M3",true],["Rheem PROG40",true]];
   return (
     <MockShell title="🛡 Safety recall check" dark style={{maxWidth:460}}>
       {rows.map(([n,ok],i)=>(
@@ -32731,7 +32732,215 @@ function LPBadge({ plan }) {
   return <span style={{display:"inline-block",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:free?"#2E7050":"#C16140",background:free?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{plan}</span>;
 }
 
-const FILL = {flex:1,maxWidth:"none"};
+// ─── SHARED PIECES FOR THE REDESIGNED FEATURE PAGES ───────────────────────────
+// Split hero: copy on the left, a drawn product mock on the right. Used by LPHero when it is given a `visual`.
+function LPSplitHero({ eyebrow, kw, h1, h1em, sub, cta, badge, visual, secondary }) {
+  return (
+    <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(48px,7vw,64px)"}}>
+      <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
+        <div style={{textAlign:"left"}}>
+          {eyebrow && !kw && <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".72rem",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#D2876A",marginBottom:20}}>{eyebrow}</div>}
+          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2rem,3.9vw,2.9rem)",color:"#F4EDDF",lineHeight:1.08,letterSpacing:"-.025em",margin:"0 0 20px",textWrap:"balance"}}>
+            {kw && <><span style={{display:"block",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".8rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#D2876A",marginBottom:16,lineHeight:1.3}}>{kw}</span><span style={{position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)",whiteSpace:"nowrap"}}> — </span></>}
+            {h1}{h1em && <>{" "}<em style={{fontStyle:"italic",color:"#D2876A"}}>{h1em}</em></>}
+          </h1>
+          {sub && <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.74)",lineHeight:1.6,margin:"0 0 28px",maxWidth:"34rem"}}>{sub}</p>}
+          <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
+            {cta && <a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{cta} →</a>}
+            {secondary && <a href={secondary.href} style={{display:"inline-flex",alignItems:"center",color:"rgba(244,237,223,.78)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>{secondary.label}</a>}
+          </div>
+          {badge && <div style={{marginTop:18,fontSize:".78rem",color:"rgba(244,237,223,.6)"}}>{badge}</div>}
+        </div>
+        <div style={{display:"flex",justifyContent:"center"}}>{visual}</div>
+      </div>
+    </section>
+  );
+}
+
+// "The short answer": one plain paragraph that says what the thing is and what Steadwell does.
+function LPShort({ children, heading="The short answer" }) {
+  return (
+    <LPSection narrow>
+      <div style={{borderLeft:"3px solid #C16140",paddingLeft:20,textAlign:"left"}}>
+        <div style={{fontSize:".75rem",fontWeight:700,color:"#C16140",marginBottom:6}}>{heading}</div>
+        <p style={{fontSize:"1.02rem",color:"#3D3732",lineHeight:1.7,margin:0}}>{children}</p>
+      </div>
+    </LPSection>
+  );
+}
+
+// A little drawn document with the values pulled from it, for "what we read" cards.
+function KindVisual({ doc, chips }) {
+  return (
+    <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,justifyContent:"center"}}>
+      <div style={{width:58,height:76,background:"#fff",border:"1.5px dashed #C9BFAE",borderRadius:8,padding:"8px 7px",boxSizing:"border-box",flexShrink:0}}>
+        <div style={{fontSize:".5rem",fontWeight:700,letterSpacing:".05em",color:"#8A8178",textAlign:"center",marginBottom:6,whiteSpace:"nowrap"}}>{doc}</div>
+        {[85,100,60,90,70].map((w,i)=><div key={i} style={{height:3.5,width:w+"%",background:"#E6DECF",borderRadius:2,marginBottom:5}}/>)}
+      </div>
+      <span style={{color:"#C16140",fontWeight:700}}>→</span>
+      <div style={{display:"flex",flexDirection:"column",gap:5,minWidth:0}}>
+        {chips.map(t=><span key={t} style={{fontSize:".7rem",fontWeight:700,color:"#234A3D",background:"rgba(35,74,61,.09)",borderRadius:7,padding:"3px 9px",whiteSpace:"nowrap"}}>{t}</span>)}
+      </div>
+    </div>
+  );
+}
+
+// Card with a tinted drawn header, a title, a one-line description and the fields that get filled in.
+function LPKindCard({ tint, doc, chips, icon, title, tag, desc, fields }) {
+  return (
+    <LPCard style={{padding:0,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      <div style={{background:tint,padding:"22px 18px",minHeight:112,display:"flex",flexDirection:"column",justifyContent:"center"}}><KindVisual doc={doc} chips={chips}/></div>
+      <div style={{padding:"18px 22px 22px",display:"flex",flexDirection:"column",flex:1}}>
+        <h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:"0 0 6px"}}>{icon} {title}</h3>
+        {tag && <div style={{marginBottom:10}}><span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>{tag}</span></div>}
+        <div className="lp-desc" style={{fontSize:".85rem",color:"#6B645C",lineHeight:1.6,marginBottom:14}}>{desc}</div>
+        <div>
+          <div style={{fontSize:".7rem",fontWeight:700,color:"#A8A09A",marginBottom:7}}>Fields filled in</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {fields.map(f=><span key={f} style={{fontSize:".72rem",color:"#5E574F",background:"#F4EDDF",border:"1px solid #E6DECF",borderRadius:7,padding:"2px 8px"}}>{f}</span>)}
+          </div>
+        </div>
+      </div>
+    </LPCard>
+  );
+}
+
+// ── Maintenance tracker mocks ──
+function MaintListMock() {
+  const rows=[["🌡️","Replace HVAC filter","HVAC · repeats quarterly","Due in 3 days","warn"],["🔒","Test smoke detectors","Safety · monthly","2 days overdue","bad"],["🏚️","Clean gutters","Exterior · twice a year","In 3 weeks","ok"],["🚿","Flush water heater","Plumbing · yearly","Mar 12","mute"]];
+  return (
+    <MockShell title="Upcoming tasks" style={{maxWidth:430}}>
+      {rows.map(([ic,t,m,p,tone],i)=>(
+        <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
+          <span style={{width:34,height:34,borderRadius:10,background:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".85rem",fontWeight:600}}>{t}</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>{m}</div></div>
+          <MockPill tone={tone}>{p}</MockPill>
+        </div>
+      ))}
+      <div style={{marginTop:6,paddingTop:10,borderTop:"1px solid #E6DECF",fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ Check sump pump, done Oct 9</div>
+    </MockShell>
+  );
+}
+function MaintRecurMock() {
+  const rows=[["Task","Replace HVAC filter"],["Category","HVAC"],["Due","Nov 14"],["Repeats","Quarterly"],["Notes","Size 20x25x1"]];
+  return (
+    <MockShell title="Edit task" style={{maxWidth:430}}>
+      {rows.map(([k,v],i)=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"9px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".82rem"}}><span style={{color:"#8A8178"}}>{k}</span><b style={{fontWeight:600}}>{v}</b></div>
+      ))}
+      <div style={{marginTop:8,background:"rgba(46,112,80,.09)",borderRadius:10,padding:"9px 12px",fontSize:".74rem",color:"#2E7050",fontWeight:600}}>✓ Mark it done and the next one is created for Feb 14.</div>
+    </MockShell>
+  );
+}
+function MaintReminderMock() {
+  return (
+    <MockShell title="✉️ Reminder email" style={{maxWidth:430}}>
+      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 3 days before it is due</div>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.02rem",fontWeight:600,color:"#234A3D",marginBottom:8}}>Replace HVAC filter is due Nov 14</div>
+      <div style={{fontSize:".8rem",color:"#5E574F",lineHeight:1.55,marginBottom:12}}>HVAC · repeats quarterly. Mark it done in Steadwell and the next one is scheduled for you.</div>
+      <span style={{display:"inline-block",background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 14px"}}>Open task</span>
+    </MockShell>
+  );
+}
+function MaintHistoryMock() {
+  const rows=[["Oct 9","Check sump pump","Done"],["Sep 14","Replace HVAC filter","Done"],["Jun 2","Annual HVAC tune-up","Example HVAC Co."],["Mar 12","Flush water heater","Done"]];
+  return (
+    <MockShell title="Service history" style={{maxWidth:430}}>
+      <div style={{position:"relative",paddingLeft:18}}>
+        <div style={{position:"absolute",left:4,top:6,bottom:6,width:2,background:"#E6DECF"}}/>
+        {rows.map(([d,t,w],i)=>(
+          <div key={t} style={{position:"relative",padding:"8px 0"}}>
+            <span style={{position:"absolute",left:-18,top:13,width:10,height:10,borderRadius:"50%",background:"#2F5E4E",border:"2px solid #FBF7EE"}}/>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:".82rem"}}><span style={{fontWeight:600}}>{t}</span><span style={{color:"#A8A09A",fontSize:".72rem"}}>{d}</span></div>
+            <div style={{fontSize:".7rem",color:"#8A8178"}}>{w}</div>
+          </div>
+        ))}
+      </div>
+    </MockShell>
+  );
+}
+
+// ── AI scan mocks ──
+function ScanNameplateMock() {
+  const fields=[["Brand","Example Water Heaters"],["Model","EWH-40T"],["Serial","••••4821"],["Made","03/2021"]];
+  return (
+    <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:470}}>
+      <div style={{width:150,background:"linear-gradient(145deg,#E9E4DA,#CFC8BA)",border:"1px solid #B9B0A0",borderRadius:8,padding:"11px 11px 13px",boxShadow:"0 14px 34px rgba(0,0,0,.28)",transform:"rotate(-2deg)",color:"#4A443C"}}>
+        <div style={{fontSize:".54rem",fontWeight:800,letterSpacing:".08em",marginBottom:7}}>EXAMPLE WATER HEATERS</div>
+        {[["MODEL","EWH-40T"],["SERIAL","XX4821"],["MFG DATE","03/2021"],["CAPACITY","40 GAL"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:".56rem",marginBottom:4}}><span style={{opacity:.7}}>{k}</span><b>{v}</b></div>)}
+        <div style={{height:3,background:"rgba(0,0,0,.12)",borderRadius:2,marginTop:7}}/>
+      </div>
+      <span className="lp-arrow" style={{color:"#D2876A",fontWeight:700,fontSize:"1.2rem"}}>→</span>
+      <MockShell title="Review before saving" note="" style={{flex:"1 1 170px",maxWidth:230,padding:"14px 15px"}}>
+        {fields.map(([k,v],i)=>(
+          <div key={k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".72rem"}}><span style={{color:"#A8A09A"}}>{k}</span><b style={{textAlign:"right"}}>{v}</b></div>
+        ))}
+      </MockShell>
+    </div>
+  );
+}
+function ScanReviewMock() {
+  const rows=[["Item","Dishwasher",false],["Brand","Samsung",false],["Price","$849.00",false],["Warranty","12 months",true]];
+  return (
+    <MockShell title="Review and confirm" style={{maxWidth:430}}>
+      {rows.map(([k,v,edit],i)=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"9px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".82rem"}}>
+          <span style={{color:"#8A8178"}}>{k}</span>
+          <span style={{display:"flex",alignItems:"center",gap:8}}>{edit && <MockPill tone="warn">Check this</MockPill>}<b style={{fontWeight:600}}>{v}</b></span>
+        </div>
+      ))}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginTop:12}}>
+        <span style={{fontSize:".7rem",color:"#8A8178"}}>Original photo saved to your vault</span>
+        <span style={{background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 16px",flexShrink:0}}>Save record</span>
+      </div>
+    </MockShell>
+  );
+}
+
+// ── Email capture mocks ──
+function InboxMock() {
+  const rows=[["Order confirmation","Example Home Store","Warranty + expense"],["Invoice #1042","Example Plumbing","Expense"],["Your October bill","Example Power & Light","Utility bill"]];
+  return (
+    <MockShell title="Email Inbox" style={{maxWidth:440}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,background:"#F4EDDF",borderRadius:10,padding:"8px 11px",marginBottom:10,fontSize:".7rem",color:"#5E574F"}}>
+        <span style={{color:"#8A8178",flexShrink:0}}>Your address</span><b style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>yourname-••••@in.trysteadwell.app</b>
+      </div>
+      {rows.map(([s,f,c],i)=>(
+        <div key={s} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:"1px solid #E6DECF"}}>
+          <span aria-hidden="true" style={{fontSize:"1.05rem"}}>✉️</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{s}</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>{f} · {c}</div></div>
+          <MockPill tone={i===0?"rust":"mute"}>{i===0?"Review":"Pending"}</MockPill>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+function FilterRuleMock() {
+  const rows=[["From","billing@example-power.com"],["Forward to","Your capture address"],["Then","You review it in the app"]];
+  return (
+    <MockShell title="Forwarding rule" note="(Gmail or Outlook)" style={{maxWidth:430}}>
+      {rows.map(([k,v],i)=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"9px 0",borderTop:i?"1px solid #E6DECF":"none",fontSize:".8rem"}}><span style={{color:"#8A8178",flexShrink:0}}>{k}</span><b style={{fontWeight:600,textAlign:"right",minWidth:0,overflowWrap:"anywhere"}}>{v}</b></div>
+      ))}
+    </MockShell>
+  );
+}
+
+// ── Recall mocks ──
+function RecallAlertMock() {
+  return (
+    <MockShell title="Dashboard alert" style={{maxWidth:440}}>
+      <div style={{background:"#F7E0DA",border:"1px solid rgba(176,67,43,.25)",borderRadius:12,padding:"12px 14px"}}>
+        <div style={{fontSize:".82rem",fontWeight:700,color:"#B0432B",marginBottom:4}}>⚠ Possible recall: Example Brand refrigerator</div>
+        <div style={{fontSize:".74rem",color:"#5E574F",lineHeight:1.5,marginBottom:10}}>Matches a notice in the CPSC database for this brand and product type. Check your model number against the notice.</div>
+        <span style={{display:"inline-block",background:"#234A3D",color:"#F4EDDF",fontSize:".72rem",fontWeight:700,borderRadius:8,padding:"6px 12px"}}>See the CPSC notice</span>
+      </div>
+      <div style={{marginTop:10,fontSize:".7rem",color:"#8A8178"}}>The notice explains the hazard, the affected models and how to get a repair, replacement or refund.</div>
+    </MockShell>
+  );
+}
+
+const FILL = {flex:1,maxWidth:"none",display:"flex",flexDirection:"column"};
 function UtilityBillTrackerPage() {
   const path = "/utility-bill-tracker";
   const description = "Track electric, gas, water and internet bills in one place. Scan bills with AI, catch usage spikes and see what your home costs to run. Free to start.";
@@ -33583,47 +33792,34 @@ function AIScanPage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="AI Nameplate &amp; Receipt Scanner" eyebrow="AI-Powered Scanning" cta="Get started free" h1="Point. Scan." h1em="Done." sub="Take a photo of any receipt, appliance nameplate, utility bill, or insurance declaration page and Steadwell fills in all the details automatically. No typing, no searching, no manual entry." badge="Plus & Pro feature"/>
+      <LPHero kw="AI Nameplate &amp; Receipt Scanner" eyebrow="AI-Powered Scanning" cta="Get started free" h1="Point. Scan." h1em="Done." sub="Take a photo of a receipt, appliance nameplate, utility bill or insurance declarations page and Steadwell fills in the details. No typing, no searching, no manual entry." badge="AI scanning is a Plus & Pro feature. Manual entry is free." secondary={{href:"#how-it-works",label:"See how it works"}} visual={<ScanNameplateMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="Four scans. Every home record covered." sub="Each scan type is trained to extract exactly what you need from that document."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={16}>
-            {[
-              { icon:"🧾", title:"Receipt scan", badge:"Warranty", fields:["Item name & description","Brand and manufacturer","Model number","Purchase price","Purchase date","Store or vendor","Warranty period"], desc:"Scan any paper or digital receipt. We create the warranty record and log the expense automatically." },
-              { icon:"🏷️", title:"Nameplate scan", badge:"Asset", fields:["Brand and manufacturer","Model number","Serial number","Product category","Manufacture date","Capacity or voltage specs","Warranty expiry if shown"], desc:"Point your camera at the label on any appliance, HVAC unit, water heater, or tool. No barcode needed." },
-              { icon:"📄", title:"Insurance scan", badge:"Insurance", fields:["Insurance company","Policy number","Agent name & phone","Annual premium","Deductible amount","Dwelling coverage","Personal property coverage","Liability coverage","Loss of use coverage","Renewal date"], desc:"Upload your declarations page (the first 1-5 pages of your policy) and we populate your entire insurance profile." },
-              { icon:"⚡", title:"Utility bill scan", badge:"Utility bill", fields:["Amount due","Bill date","Usage and unit (kWh, therms, gallons)","Billing-period notes"], desc:"Photograph or upload an electric, gas, water or internet bill and we fill in the amount, date and usage so it lands in your bill history." },
-            ].map((s,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                  <span style={{fontSize:"1.5rem"}}>{s.icon}</span>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:"1rem",color:"#234A3D"}}>{s.title}</div>
-                    <span style={{background:"rgba(193,97,64,.1)",color:"#C16140",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>Creates a {s.badge} record</span>
-                  </div>
-                </div>
-                <div style={{fontSize:".8rem",color:"#7A7370",marginBottom:12,lineHeight:1.5}}>{s.desc}</div>
-                <div style={{borderTop:"1px solid #E6DECF",paddingTop:12}}>
-                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#A8A09A",marginBottom:8}}>Fields extracted</div>
-                  {s.fields.map((f,j)=>(
-                    <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,fontSize:".82rem",color:"#5E574F"}}>
-                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-              </LPCard>
-            ))}
+        <LPShort>An AI document scanner reads a photo of a receipt, appliance label, utility bill or insurance declarations page and fills in the record for you. With Steadwell you review every field before anything is saved, and the original photo is kept in your document vault. Scanning is included with Plus and Pro, and manual entry is free.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Four scans. Every home record covered." sub="Each scan type reads exactly what that document holds."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,240px),1fr))" gap={16}>
+            <LPKindCard tint="rgba(193,97,64,.08)" doc="RECEIPT" chips={["Dishwasher","$849","Nov 25"]} icon="🧾" title="Receipt scan" tag="Creates a warranty record" desc="Scan any paper or digital receipt. We create the warranty record and log the expense." fields={["Item","Brand","Model","Price","Purchase date","Store","Warranty period"]}/>
+            <LPKindCard tint="rgba(35,74,61,.07)" doc="LABEL" chips={["Brand","EWH-40T","S/N ••4821"]} icon="🏷️" title="Nameplate scan" tag="Creates an asset record" desc="Point your camera at the label on any appliance, HVAC unit, water heater or tool. No barcode needed." fields={["Brand","Model","Serial number","Category","Manufacture date","Capacity or voltage","Warranty expiry, if shown"]}/>
+            <LPKindCard tint="rgba(184,134,30,.09)" doc="POLICY" chips={["Premium","Deductible","Renewal"]} icon="📄" title="Insurance scan" tag="Creates an insurance record" desc="Upload your declarations page, the first 1 to 5 pages of your policy, and we fill in your insurance profile." fields={["Company","Policy number","Agent","Premium","Deductible","Dwelling coverage","Personal property","Liability","Loss of use","Renewal date"]}/>
+            <LPKindCard tint="rgba(58,122,175,.09)" doc="BILL" chips={["$214.37","Oct 14","1,482 kWh"]} icon="⚡" title="Utility bill scan" tag="Creates a bill entry" desc="Photograph or upload an electric, gas, water or internet bill and it lands in your bill history." fields={["Amount due","Bill date","Usage and unit","Billing-period notes"]}/>
           </LPGrid>
         </LPSection>
-        <LPSection alt>
+        <LPSection>
+          <LPFeatureRow visual={<ScanReviewMock/>} title={<>You check it before it is saved.</>}>
+            <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>The extracted fields are filled into the form for you to review. Anything the scan was unsure about is easy to correct, and nothing is saved until you confirm.</p>
+            <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Scanning works best on clear, well-lit photos. Faded receipts or worn labels may come back incomplete, so you can fill in the rest by hand.</p>
+          </LPFeatureRow>
+        </LPSection>
+        <LPSection alt id="how-it-works">
           <LPSectionHead h2="How it works" sub="From photo to finished record in four steps."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Take a photo or upload a file",text:"Use your phone camera directly in the app, or upload an image or PDF. Receipts, nameplates, labels, and insurance declaration pages all work."},
-              {num:"02",title:"AI reads the document",text:"Our AI model analyzes the image and extracts every relevant field — brand, model, serial number, price, dates, coverage amounts, and more."},
+              {num:"02",title:"AI reads the document",text:"Our AI model analyzes the image and extracts every relevant field: brand, model, serial number, price, dates, coverage amounts, and more."},
               {num:"03",title:"Review and confirm",text:"The extracted fields are pre-filled in the form for you to review. Edit anything that needs correcting, then save with one tap."},
               {num:"04",title:"Record created automatically",text:"A warranty record, asset entry, utility bill, or insurance profile is created with all the details. The original document is saved to your vault."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
@@ -33667,85 +33863,56 @@ function EmailCapturePage() {
     }),
   });
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Email Receipt Capture" eyebrow="Email Capture" cta="Get started free" h1="Forward an email." h1em="We do the rest." sub="Every user gets a unique Steadwell email address. Forward any receipt, invoice, warranty card, or home document and we automatically extract the details and add them to your records." badge="Free for all plans"/>
+      <LPHero kw="Email Receipt Capture" eyebrow="Email Capture" cta="Get started free" h1="Forward an email." h1em="We do the rest." sub="Every user gets a unique Steadwell email address. Forward a receipt, invoice, warranty card or home document and we extract the details and add them to your records." badge="Free on every plan" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<InboxMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="What you can forward" sub="Anything home-related. Our AI figures out what it is and files it correctly."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
-            {[
-              { icon:"🧾", title:"Purchase receipts", creates:"Warranty + Expense", fields:["Item name","Brand & model","Purchase price","Purchase date","Store or vendor","Warranty period"], desc:"Forward a receipt from Home Depot, Best Buy, Amazon, or any retailer. We create the warranty record and log the expense." },
-              { icon:"📋", title:"Contractor invoices", creates:"Expense record", fields:["Vendor/contractor name","Service description","Amount","Date of service","Notes"], desc:"Forward any invoice from a plumber, HVAC tech, roofer, or handyman. It gets logged as an expense and linked to your home." },
-              { icon:"📄", title:"Home documents", creates:"Document vault entry", fields:["Document type","Document name","Date","Any expiry date"], desc:"Forward inspection reports, HOA notices, permits, manuals, or any home document. It goes straight to your document vault." },
-              { icon:"🔖", title:"Warranty cards & registrations", creates:"Warranty record", fields:["Item & brand","Model number","Purchase date","Warranty expiry","Serial number"], desc:"Forward warranty registration emails or scanned warranty cards. We track the coverage and alert you before it expires." },
-              { icon:"⚡", title:"Utility bills", creates:"Utility bill entry", fields:["Utility provider","Utility type","Bill date","Amount","Usage and unit"], desc:"Forward an electric, gas, water or internet bill email. Steadwell matches it to the right utility, or creates it, and logs the bill in your bill history." },
-            ].map((s,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                  <span style={{fontSize:"1.4rem"}}>{s.icon}</span>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div>
-                    <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>Creates: {s.creates}</span>
-                  </div>
-                </div>
-                <div style={{fontSize:".8rem",color:"#7A7370",marginBottom:12,lineHeight:1.5}}>{s.desc}</div>
-                <div style={{borderTop:"1px solid #E6DECF",paddingTop:10}}>
-                  <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#A8A09A",marginBottom:8}}>Fields extracted</div>
-                  {s.fields.map((f,j)=>(
-                    <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,fontSize:".82rem",color:"#5E574F"}}>
-                      <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0}}>✓</span><span style={{flex:1}}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-              </LPCard>
-            ))}
+        <LPShort>Email capture lets you forward a receipt, invoice or bill to a private address and have the details filed for you. Steadwell reads the email and its attachments, works out whether it is a warranty, an expense, a document or a utility bill, and puts it in your Email Inbox to review. You approve every capture before it is saved. It is free on every plan.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="What you can forward" sub="Anything home-related. Our AI works out what it is and files it correctly."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,300px),1fr))" gap={16}>
+            <LPKindCard tint="rgba(193,97,64,.08)" doc="RECEIPT" chips={["Dishwasher","$849","Nov 25"]} icon="🧾" title="Purchase receipts" tag="Creates: warranty and expense" desc="Forward a receipt from a store or online order. We create the warranty record and log the expense." fields={["Item","Brand and model","Price","Purchase date","Store","Warranty period"]}/>
+            <LPKindCard tint="rgba(35,74,61,.07)" doc="INVOICE" chips={["Example Plumbing","$385","Oct 3"]} icon="📋" title="Contractor invoices" tag="Creates: expense record" desc="Forward an invoice from a plumber, HVAC tech, roofer or handyman. It is logged as an expense on your home." fields={["Contractor","Service","Amount","Service date","Notes"]}/>
+            <LPKindCard tint="rgba(184,134,30,.09)" doc="REPORT" chips={["Inspection","Sep 2026","Vault"]} icon="📄" title="Home documents" tag="Creates: vault entry" desc="Forward inspection reports, HOA notices, permits or manuals. They go straight to your document vault." fields={["Document type","Name","Date","Expiry date"]}/>
+            <LPKindCard tint="rgba(46,112,80,.09)" doc="WARRANTY" chips={["Samsung","Nov 25, 2026","Covered"]} icon="🔖" title="Warranty cards" tag="Creates: warranty record" desc="Forward warranty registration emails or scanned cards. We track the coverage and remind you before it expires." fields={["Item and brand","Model","Purchase date","Warranty expiry","Serial number"]}/>
+            <LPKindCard tint="rgba(58,122,175,.09)" doc="BILL" chips={["$214.37","Oct 14","1,482 kWh"]} icon="⚡" title="Utility bills" tag="Creates: bill entry" desc="Forward an electric, gas, water or internet bill. Steadwell matches it to the right utility, or creates it, and logs the bill." fields={["Provider","Utility type","Bill date","Amount","Usage and unit"]}/>
           </LPGrid>
         </LPSection>
-        <LPSection alt>
-          <LPSectionHead h2="How it works" sub="Set up once. Works forever."/>
+        <LPSection id="how-it-works">
+          <LPSectionHead h2="How it works" sub="Set up once. Works from then on."/>
           <LPGrid gap={16}>
             {[
-              {num:"01",title:"Get your capture address",text:"Every Steadwell account gets a unique email address like robert-7f3a91c2b8d04e65a1c9@in.trysteadwell.app. Find it in your home toolbox under Email Inbox."},
-              {num:"02",title:"Forward anything home-related",text:"Get a receipt from Home Depot? Forward it. Contractor sends an invoice? Forward it. Warranty registration? Forward it. Takes 3 seconds."},
-              {num:"03",title:"AI extracts the details",text:"AI reads the email and any attachments, extracts the relevant fields, and determines whether it's a warranty, expense, or document."},
+              {num:"01",title:"Get your capture address",text:"Every Steadwell account gets a unique email address that looks like robert-7f3a…@in.trysteadwell.app. Find it in your home toolbox under Email Inbox."},
+              {num:"02",title:"Forward anything home-related",text:"Get a receipt from the hardware store? Forward it. A contractor sends an invoice? Forward it. A warranty registration? Forward it."},
+              {num:"03",title:"AI extracts the details",text:"AI reads the email and any attachments, extracts the relevant fields, and determines whether it is a warranty, expense, document or utility bill."},
               {num:"04",title:"Review in your Email Inbox",text:"Every capture lands in your Email Inbox as pending. Review the pre-filled details, edit if needed, and save to your records with one tap."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
-        <LPSection>
-          <LPSectionHead h2="Or set it once and forget it" sub="Skip the manual forwarding. Add a rule in Gmail or Outlook and your bills and receipts arrive on their own."/>
-          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
-            {[
-              {icon:"⚡",title:"Utility bills",text:"Pick the sender, like your electric or water company. Each new statement is sent to your inbox for review."},
-              {icon:"🧾",title:"Receipts and invoices",text:"Store receipts and contractor invoices from the senders you choose are filed as expenses and warranties."},
-              {icon:"✅",title:"Still your call",text:"Every capture waits in your Email Inbox. You check the details and save it, or dismiss it."},
-            ].map((s,i)=>(
-              <LPCard key={i}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:"1.3rem"}}>{s.icon}</span><div style={{fontWeight:700,fontSize:".95rem",color:"#234A3D"}}>{s.title}</div></div>
-                <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.6}}>{s.text}</div>
-              </LPCard>
-            ))}
-          </LPGrid>
-          <p style={{fontSize:".8rem",color:"#8A8178",lineHeight:1.6,marginTop:20,textAlign:"left"}}>Steadwell shows step-by-step setup for Gmail and Outlook inside your Email Inbox.</p>
-        </LPSection>
         <LPSection alt>
-          <LPSectionHead h2="Why this matters" sub="The friction of logging is why most people don&#39;t track their home."/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:"2rem",alignItems:"start"}}>
+          <LPFeatureRow visual={<FilterRuleMock/>} title={<>Or set it once and forget it.</>}>
+            <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Skip the manual forwarding. Add a rule in Gmail or Outlook that sends only the senders you choose, like your electric or water company, to your capture address. Each new statement arrives on its own.</p>
+            <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Everything still waits in your Email Inbox until you check the details and save it, or dismiss it. Steadwell shows step-by-step setup for Gmail and Outlook inside your Email Inbox.</p>
+          </LPFeatureRow>
+        </LPSection>
+        <LPSection>
+          <LPSectionHead h2="Why this matters" sub="Logging is the part most people skip. Forwarding takes a few seconds."/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:"2rem",alignItems:"start"}}>
             <div>
-              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Most home management apps require you to open the app, navigate to the right section, and manually type in every detail. It takes 5 minutes per receipt. Nobody does it.</p>
-              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>The email forward takes 3 seconds. You do it from wherever you are, on whatever device you have. The record appears in Steadwell automatically.</p>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Most home management apps need you to open the app, find the right section and type in every detail. That is why the records never get made.</p>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>With email capture you forward from wherever you are, on whatever device you have, and the record shows up in Steadwell for review.</p>
               <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Over time, your home builds a complete financial and maintenance history without you ever sitting down to enter data.</p>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               {[
-                {stat:"3 sec",desc:"to forward a receipt vs 5 minutes of manual entry"},
-                {stat:"Free",desc:"for all Steadwell plans — no upgrade required"},
-                {stat:"100%",desc:"of forwarded emails reviewed by you before saving"},
+                {stat:"Free",desc:"on every Steadwell plan, no upgrade required"},
+                {stat:"100%",desc:"of captures wait for your review before they are saved"},
+                {stat:"Any device",desc:"forward from your phone, tablet or computer"},
               ].map((s,i)=>(
                 <LPCard key={i} style={{display:"flex",alignItems:"center",gap:20}}>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1}}>{s.stat}</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1,minWidth:92}}>{s.stat}</div>
                   <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.5}}>{s.desc}</div>
                 </LPCard>
               ))}
@@ -33797,13 +33964,32 @@ function MaintenanceTrackerPage() {
     {cat:"Safety",icon:"🔒",items:["Test smoke detectors monthly","Replace CO detector batteries","Check fire extinguisher annually","Inspect garage door sensors"]},
   ];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={LP_NAV_DEFAULT}/>
-      <LPHero kw="Home Maintenance Tracker" eyebrow="Home Maintenance Tracker" cta="Get started free" h1="Nothing falls through" h1em="the cracks." sub="Set recurring maintenance tasks tuned to your home's age and systems. Get email reminders 3 days before anything is due. Build a complete service history automatically." stats={[{num:"Free",lbl:"Always"},{num:"3 days",lbl:"Advance notice"},{num:"∞",lbl:"Task history"}]}/>
+      <LPHero kw="Home Maintenance Tracker" eyebrow="Home Maintenance Tracker" cta="Get started free" h1="Nothing falls through" h1em="the cracks." sub="Set recurring maintenance tasks tuned to your home's age and systems. Get an email reminder 3 days before anything is due. Build a complete service history automatically." badge="Free on every plan · No credit card" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<MaintListMock/>}/>
       <main id="main" tabIndex={-1}>
+        <LPShort>A home maintenance tracker keeps a recurring schedule for the jobs your house needs, like HVAC filters, gutters and smoke detector tests, and reminds you before each one is due. Steadwell suggests tasks for your home's age and systems, emails you 3 days ahead, and records every finished job in your service history. It is free on every plan.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="Set it once. Steadwell keeps track." sub="Here is what happens from the day you add a task."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<MaintRecurMock/>} title={<>Tasks that repeat on their own. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Add a task with a due date, category and priority, then choose how often it repeats: daily, weekly, monthly, quarterly or annually. When you mark one done, the next is created for you.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>The setup wizard also asks about your home's systems and age and suggests the common tasks that fit.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<MaintReminderMock/>} title={<>A reminder before it is due. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Steadwell emails you 3 days before a task is due, so there is time to buy the filter or book the visit. Plus unlocks the full range of reminder intervals.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Add notes or a saved contractor to any task, so the details are there when the reminder arrives.</p>
+            </LPFeatureRow>
+            <LPFeatureRow visual={<MaintHistoryMock/>} title={<>A service history that builds itself. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Every task you mark done becomes part of a permanent record of what has been done to your home and when. It is useful for warranty claims, for a contractor visit, and for the next owner.</p>
+              <a href="/warranty-tracker" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>See how it connects to warranties →</a>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
         <LPSection>
-          <LPSectionHead h2="Every maintenance category covered" sub="From HVAC filters to roof inspections — every recurring task your home needs."/>
+          <LPSectionHead h2="Every maintenance category covered" sub="From HVAC filters to roof inspections, every recurring task your home needs."/>
           <LPGrid cols="repeat(auto-fill,minmax(240px,1fr))" gap={12}>
             {tasks.map((t,i)=>(
               <LPCard key={i}>
@@ -33821,14 +34007,14 @@ function MaintenanceTrackerPage() {
             ))}
           </LPGrid>
         </LPSection>
-        <LPSection alt>
+        <LPSection alt id="how-it-works">
           <LPSectionHead h2="How maintenance tracking works" sub="Set it once. Steadwell handles the rest."/>
           <LPGrid gap={16}>
             {[
               {num:"01",title:"Add a task",text:"Create any maintenance task with a due date, category, and priority. Add notes for contractors or yourself."},
-              {num:"02",title:"Set a recurrence",text:"Make it repeat — daily, weekly, monthly, quarterly, or annually. The next task is created automatically when you mark one complete."},
+              {num:"02",title:"Set a recurrence",text:"Make it repeat daily, weekly, monthly, quarterly, or annually. The next task is created automatically when you mark one complete."},
               {num:"03",title:"Get reminded",text:"Receive an email reminder 3 days before anything is due. Plus users get the full range of reminder intervals."},
-              {num:"04",title:"Log it as done",text:"Mark tasks complete with one tap. Your service history builds automatically — a permanent record of everything done to your home."},
+              {num:"04",title:"Log it as done",text:"Mark tasks complete with one tap. Your service history builds automatically as a permanent record of everything done to your home."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
         </LPSection>
@@ -34383,15 +34569,6 @@ function RecallAlertsPage() {
     }),
   });
 
-  const HM = () => (
-    <svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true">
-      <path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/>
-      <circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/>
-    </svg>
-  );
-
   const CATEGORIES = [
     { icon:"🍳", name:"Appliances", examples:"Refrigerators, dishwashers, ovens, washers, dryers" },
     { icon:"🌡️", name:"HVAC systems", examples:"Furnaces, AC units, heat pumps, water heaters" },
@@ -34403,229 +34580,71 @@ function RecallAlertsPage() {
     { icon:"🚿", name:"Plumbing fixtures", examples:"Water heaters, faucets, toilets, pipes" },
   ];
 
-  const RECALLS = [
-    { brand:"Whirlpool", product:"Dishwasher (WDF520PADM)", issue:"Fire hazard — heating element can overheat", date:"2024", serious:true },
-    { brand:"Ryobi", product:"18V Cordless Drill Kit", issue:"Battery pack may overheat and catch fire", date:"2024", serious:true },
-    { brand:"Kidde", product:"Smoke & CO Detector", issue:"May fail to alert in emergency conditions", date:"2023", serious:true },
-    { brand:"Weber", product:"Genesis Gas Grill", issue:"Gas leak risk — burner valve may malfunction", date:"2024", serious:false },
-  ];
-
-  const S = {
-    page:    { minHeight:"100vh", background:"#F4EDDF", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723" },
-    nav:     { background:"#234A3D", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", minHeight:64, flexWrap:"wrap", gap:"4px 12px", position:"sticky", top:0, zIndex:100 },
-    navBrand:{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" },
-    tile:    { width:32, height:32, borderRadius:9, background:"#234A3D", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, border:"1.5px solid rgba(244,237,223,.2)" },
-    wm:      { fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:"1.1rem", color:"#F4EDDF" },
-    navLink: { color:"rgba(244,237,223,.7)", textDecoration:"none", fontSize:".88rem", fontWeight:500 },
-    navCta:  { background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.15)", padding:"6px 16px", borderRadius:20, color:"#F4EDDF", fontWeight:600, fontSize:".88rem", textDecoration:"none" },
-    hero:    { background:"#234A3D", padding:"72px 24px 80px", textAlign:"center", position:"relative", overflow:"hidden" },
-    eyebrow: { fontSize:".72rem", fontWeight:700, letterSpacing:".18em", textTransform:"uppercase", color:"#D2876A", marginBottom:16 },
-    h1:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(2.2rem,5vw,3.4rem)", color:"#F4EDDF", lineHeight:1.06, letterSpacing:"-.025em", margin:"0 0 20px" },
-    heroSub: { fontSize:"1.05rem", color:"rgba(244,237,223,.65)", maxWidth:"38rem", margin:"0 auto 32px", lineHeight:1.6 },
-    statRow: { display:"flex", gap:24, justifyContent:"center", flexWrap:"wrap", marginBottom:8, padding:"0 16px" },
-    stat:    { textAlign:"center" },
-    statNum: { fontFamily:"'Fraunces',serif", fontSize:"2rem", fontWeight:600, color:"#F4EDDF", lineHeight:1 },
-    statLbl: { fontSize:".72rem", color:"rgba(244,237,223,.5)", marginTop:4, textTransform:"uppercase", letterSpacing:".08em" },
-    wrap:    { maxWidth:1080, margin:"0 auto", padding:"0 24px" },
-    section: { padding:"64px 24px" },
-    sectionAlt: { padding:"64px 24px", background:"#EFE7D7" },
-    h2:      { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.6rem,3vw,2.2rem)", color:"#234A3D", letterSpacing:"-.02em", marginBottom:8 },
-    h2sub:   { fontSize:"1rem", color:"#7A7370", marginBottom:40, lineHeight:1.6 },
-    alertBox:{ background:"#fff", border:"1px solid #E6DECF", borderRadius:16, overflow:"hidden", marginBottom:12 },
-    alertHeader:{ display:"flex", alignItems:"flex-start", gap:12, padding:"14px 18px", flexWrap:"wrap" },
-    alertBrand:{ fontWeight:700, fontSize:".95rem", color:"#2A2723" },
-    alertProduct:{ fontSize:".82rem", color:"#7A7370" },
-    alertIssue:{ fontSize:".82rem", color:"#5E574F", padding:"0 18px 14px", lineHeight:1.5 },
-    alertDate:{ fontSize:".72rem", color:"#A8A09A", marginLeft:"auto" },
-    catGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,220px),1fr))", gap:12 },
-    catCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"18px 20px", display:"flex", alignItems:"flex-start", gap:12 },
-    catIcon: { fontSize:"1.4rem", flexShrink:0, marginTop:2 },
-    catName: { fontWeight:700, fontSize:".9rem", color:"#234A3D", marginBottom:4 },
-    catEx:   { fontSize:".78rem", color:"#8A8178", lineHeight:1.5 },
-    howGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,220px),1fr))", gap:16 },
-    howCard: { background:"#fff", border:"1px solid #E6DECF", borderRadius:14, padding:"22px" },
-    howNum:  { fontFamily:"'Fraunces',serif", fontSize:"1.8rem", fontWeight:600, color:"#C16140", marginBottom:8, lineHeight:1 },
-    howTitle:{ fontWeight:700, fontSize:".95rem", color:"#234A3D", marginBottom:6 },
-    howText: { fontSize:".85rem", color:"#7A7370", lineHeight:1.6 },
-    faqItem: { borderBottom:"1px solid #E6DECF", padding:"20px 0" },
-    faqQ:    { fontWeight:600, fontSize:".95rem", color:"#2A2723", marginBottom:8 },
-    faqA:    { fontSize:".88rem", color:"#7A7370", lineHeight:1.6 },
-    cta:     { background:"#234A3D", padding:"72px 24px", textAlign:"center" },
-    ctaH:    { fontFamily:"'Fraunces',serif", fontWeight:500, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#F4EDDF", marginBottom:16, letterSpacing:"-.02em" },
-    ctaSub:  { fontSize:"1rem", color:"rgba(244,237,223,.65)", maxWidth:"32rem", margin:"0 auto 32px", lineHeight:1.6 },
-    ctaBtn:  { display:"inline-block", background:"#C16140", color:"#fff", textDecoration:"none", padding:".9rem 2rem", borderRadius:12, fontWeight:700, fontSize:".95rem", fontFamily:"'Hanken Grotesk',sans-serif", border:"none", cursor:"pointer" },
-    foot:    { background:"#2A2723", color:"rgba(244,237,223,.5)", padding:"32px 24px", display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:14, fontSize:".82rem", textAlign:"left" },
-    footA:   { color:"rgba(244,237,223,.55)", textDecoration:"none" },
-  };
-
   return (
-    <div style={S.page}>
-      <a href="#recall-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
-
-      <nav style={S.nav} role="banner">
-        <a href="/" style={S.navBrand} aria-label="Steadwell homepage">
-          <span style={S.tile}><HM /></span>
-          <span style={S.wm}>Steadwell</span>
-        </a>
-        <div style={{display:"flex",gap:"6px 16px",alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-          <a href="/warranty-tracker" style={S.navLink}>Warranty Tracker</a>
-          <a href="/guides" style={S.navLink}>Buyer Guides</a>
-          <a href="/" style={S.navCta}>Sign in →</a>
-        </div>
-      </nav>
-
-      <section style={{...S.hero, padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)"}}>
-        <div style={{maxWidth:700,margin:"0 auto"}}>
-          <div style={S.eyebrow}>CPSC Safety Recall Database</div>
-          <h1 style={S.h1}>Is anything in your home<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>recalled right now?</em></h1>
-          <p style={S.heroSub}>Most homeowners never find out when their appliances, tools, or safety devices are recalled. Steadwell checks everything you own — automatically, every time you log in.</p>
-          <div style={S.statRow}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav links={LP_NAV_DEFAULT}/>
+      <LPHero kw="Product Recall Alerts" eyebrow="CPSC Safety Recall Database" cta="Check my home free" h1="Is anything in your home" h1em="recalled right now?" sub="Most homeowners never find out when their appliances, tools or safety devices are recalled. Steadwell checks everything you track against the federal recall database every time you open the app." badge="Free on every plan · No limit on items" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<RecallMock/>}/>
+      <main id="main" tabIndex={-1}>
+        <LPShort>A product recall checker compares the things you own with the government's list of recalled products and tells you when one matches. Steadwell sends the brand, product type and model of each item you track to the U.S. Consumer Product Safety Commission (CPSC) recall database whenever you open the app, and links to the official notice with the remedy. It is free on every plan.</LPShort>
+        <LPSection alt>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<RecallAlertMock/>} title={<>An alert at the top of your dashboard. <LPBadge plan="Free"/></>}>
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>When a match is found you see it the next time you open Steadwell, with the hazard, the affected models and a direct link to the CPSC notice that explains how to get a repair, replacement or refund.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Steadwell matches by brand and product category, so you may see alerts for related models. The notice is where you confirm whether your exact model is affected.</p>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
+        <LPSection>
+          <LPSectionHead h2="We check everything in your home" sub="Not just appliances. Any product you track in Steadwell gets checked."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,230px),1fr))" gap={12}>
+            {CATEGORIES.map((c,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"16px 18px"}}>
+                <span aria-hidden="true" style={{fontSize:"1.4rem",flexShrink:0,marginTop:1}}>{c.icon}</span>
+                <div><div style={{fontWeight:700,fontSize:".9rem",color:"#234A3D",marginBottom:3}}>{c.name}</div><div style={{fontSize:".78rem",color:"#8A8178",lineHeight:1.5}}>{c.examples}</div></div>
+              </div>
+            ))}
+          </LPGrid>
+        </LPSection>
+        <LPSection alt id="how-it-works">
+          <LPSectionHead h2="How recall checking works" sub="Automatic and free. No manual searching required."/>
+          <LPGrid gap={16}>
             {[
-              { num:"300+", lbl:"Recalls issued in 2023" },
-              { num:"15,000+", lbl:"Product types monitored by CPSC" },
-              { num:"Free", lbl:"Always" },
-            ].map((s,i) => (
-              <div key={i} style={S.stat}>
-                <div style={S.statNum}>{s.num}</div>
-                <div style={S.statLbl}>{s.lbl}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <main id="recall-main" tabIndex={-1}>
-
-        {/* ── RECENT RECALLS ── */}
-        <section style={S.section}>
-          <div style={S.wrap}>
-            <h2 style={S.h2}>Recent recalls that affect homeowners</h2>
-            <p style={S.h2sub}>These are real CPSC recalls from the past 24 months. Do you know if you own any of these?</p>
-            {RECALLS.map((r,i) => (
-              <div key={i} style={S.alertBox}>
-                <div style={S.alertHeader}>
-                  <div style={{width:36,height:36,borderRadius:9,background:r.serious?"#F7E0DA":"#FBF3DE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>
-                    {r.serious ? "🚨" : "⚠️"}
-                  </div>
-                  <div style={{flex:1}}>
-                    <div style={S.alertBrand}>{r.brand}</div>
-                    <div style={S.alertProduct}>{r.product}</div>
-                  </div>
-                  <div style={S.alertDate}>{r.date}</div>
-                </div>
-                <div style={S.alertIssue}><strong>Issue:</strong> {r.issue}</div>
-              </div>
-            ))}
-            <div style={{marginTop:16,fontSize:".82rem",color:"#8A8178"}}>
-              Source: <a href="https://www.saferproducts.gov" target="_blank" rel="noopener noreferrer" style={{color:"#234A3D"}}>CPSC SaferProducts.gov</a> · Updated continuously
+              {num:"01",title:"Track your home items",text:"Add your appliances, tools, electronics and safety devices to Steadwell. You can scan a nameplate with your camera or enter the details yourself."},
+              {num:"02",title:"We check automatically",text:"Every time you open Steadwell, your tracked items are cross-referenced against the CPSC recall database by brand, model and product type."},
+              {num:"03",title:"Get alerted",text:"If a match is found, you see a recall alert at the top of your dashboard with the recall details and what to do next."},
+              {num:"04",title:"Take action",text:"Each alert links to the CPSC recall notice with instructions for getting a repair, replacement or refund from the manufacturer."},
+            ].map((s,i)=><LPHowStep key={i} {...s}/>)}
+          </LPGrid>
+        </LPSection>
+        <LPSection>
+          <LPSectionHead h2="Why recalls get missed" sub="Recalls are announced in places most people never look."/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:"2rem",alignItems:"start"}}>
+            <div>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Recalls are announced through press releases and government websites. Unless you happen to see a news story or get a notice from the manufacturer, there is often no way of knowing that something you own is affected.</p>
+              <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Once you track an item in Steadwell it is checked from then on, so you do not have to remember to look.</p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <LPCard style={{display:"flex",alignItems:"center",gap:20}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1,minWidth:70}}>33%</div>
+                <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.5}}>The average share of products returned or repaired across 21 recalls of durable infant and toddler products, 2010 to 2015, in a CPSC report to Congress. <a href="https://www.cpsc.gov/s3fs-public/February_2016_Report_to_Congress_Pursuant_to_Section_104d_Recall_Notification_Effectiveness-FINAL.pdf" target="_blank" rel="noopener noreferrer" style={{color:"#C16140"}}>Source: CPSC</a></div>
+              </LPCard>
+              <LPCard style={{display:"flex",alignItems:"center",gap:20}}>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1,minWidth:70}}>$0</div>
+                <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.5}}>The cost of checking every item in your home with Steadwell.</div>
+              </LPCard>
             </div>
           </div>
-        </section>
-
-        {/* ── WHAT WE CHECK ── */}
-        <section style={S.sectionAlt}>
-          <div style={S.wrap}>
-            <h2 style={S.h2}>We check everything in your home</h2>
-            <p style={S.h2sub}>Not just appliances — any product you track in Steadwell gets checked against the CPSC database.</p>
-            <div style={S.catGrid}>
-              {CATEGORIES.map((c,i) => (
-                <div key={i} style={S.catCard}>
-                  <div style={S.catIcon}>{c.icon}</div>
-                  <div>
-                    <div style={S.catName}>{c.name}</div>
-                    <div style={S.catEx}>{c.examples}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── HOW IT WORKS ── */}
-        <section style={S.section}>
-          <div style={S.wrap}>
-            <h2 style={S.h2}>How recall checking works</h2>
-            <p style={S.h2sub}>Automatic, passive, and free — no manual searching required.</p>
-            <div style={S.howGrid}>
-              {[
-                { num:"01", title:"Track your home items", text:"Add your appliances, tools, electronics, and safety devices to Steadwell. You can scan a nameplate with your camera or enter details manually." },
-                { num:"02", title:"We check automatically", text:"Every time you open Steadwell, your tracked items are cross-referenced against the CPSC recall database by brand, model, and product type." },
-                { num:"03", title:"Get alerted immediately", text:"If a match is found, you see a recall alert at the top of your dashboard with the full recall details, affected models, and what to do next." },
-                { num:"04", title:"Take action", text:"Each alert links directly to the CPSC recall notice with instructions for getting a repair, replacement, or refund from the manufacturer." },
-              ].map((h,i) => (
-                <div key={i} style={S.howCard}>
-                  <div style={S.howNum}>{h.num}</div>
-                  <div style={S.howTitle}>{h.title}</div>
-                  <div style={S.howText}>{h.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── WHY IT MATTERS ── */}
-        <section style={S.sectionAlt}>
-          <div style={S.wrap}>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:"2rem",alignItems:"start"}}>
-              <div>
-                <h2 style={S.h2}>Most recalled products are never returned</h2>
-                <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>The CPSC estimates that fewer than 30% of recalled products are ever repaired or returned. That means millions of potentially dangerous items remain in homes across the country — because their owners simply never found out.</p>
-                <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7,marginBottom:"1.25rem"}}>Recalls are announced through press releases and government websites that most people never visit. Unless you happen to see a news story or get a direct mailer from the manufacturer, you have no way of knowing.</p>
-                <p style={{fontSize:"1rem",color:"#5E574F",lineHeight:1.7}}>Steadwell changes that. The moment you track an item, it is permanently monitored. You will know.</p>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                {[
-                  { pct:"70%", desc:"of recalled products are never returned or repaired" },
-                  { pct:"300+", desc:"consumer product recalls issued by the CPSC in fiscal year 2023 alone" },
-                  { pct:"$0", desc:"cost to check every item in your home with Steadwell" },
-                ].map((s,i) => (
-                  <div key={i} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"20px 24px",display:"flex",alignItems:"center",gap:20}}>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#C16140",flexShrink:0,lineHeight:1}}>{s.pct}</div>
-                    <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.5}}>{s.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── FAQ ── */}
-        <section style={S.section}>
-          <div style={{...S.wrap,maxWidth:720}}>
-            <h2 style={S.h2}>Common questions</h2>
-            <p style={S.h2sub}>Everything you need to know about recall checking.</p>
-            {RECALL_FAQ.map(([q,a],i) => (
-              <div key={i} style={S.faqItem}>
-                <div style={S.faqQ}>{q}</div>
-                <div style={S.faqA}>{a}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── CTA ── */}
-        <section style={S.cta}>
-          <div style={{maxWidth:580,margin:"0 auto"}}>
-            <div style={{fontSize:"2rem",marginBottom:16}}>🔔</div>
-            <h2 style={S.ctaH}>Start tracking.<br/>Stop wondering.</h2>
-            <p style={S.ctaSub}>Add your appliances, tools, and safety devices to Steadwell and we will check them against the CPSC recall database automatically — for free, forever.</p>
-            <a href="/" style={S.ctaBtn}>Track your home for free →</a>
-            <div style={{fontSize:".78rem",color:"rgba(244,237,223,.35)",marginTop:14}}>Free to start · No credit card required</div>
-          </div>
-        </section>
+        </LPSection>
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={RECALL_FAQ}/>
+        </LPSection>
+        <LPRelated hrefs={["/warranty-tracker","/ai-scan","/home-document-vault","/home-condition-assessment"]}/>
+        <LPCTA h2="Start tracking. Stop wondering." sub="Add your appliances, tools and safety devices and we will check them against the federal recall database for free." btnLabel="Track your home for free →"/>
       </main>
-
-      <footer role="contentinfo" style={S.foot}>
-        <span>© 2026 Steadwell, LLC. All rights reserved.</span>
-        <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
-          <a href="/warranty-tracker" style={S.footA}>Warranty Tracker</a>
-          <a href="/guides" style={S.footA}>Buyer Guides</a>
-          <a href="/blog" style={S.footA}>Blog</a>
-          <a href="/terms" style={S.footA}>Terms</a>
-          <a href="/privacy" style={S.footA}>Privacy</a>
-          <a href="mailto:hello@trysteadwell.app" style={S.footA}>Contact</a>
-        </div>
-      </footer>
+      <LPFooter/>
     </div>
   );
 }
