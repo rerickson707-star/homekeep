@@ -1,8 +1,9 @@
-// Steadwell v447 — 2026-10-28
+// Steadwell v448 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 import { BLOG_OVERRIDES } from "./blog-overrides.js";
+import { BLOG_LOCAL_POSTS } from "./blog-local-posts.js";
 
 // Brand fonts for every page. Landing pages used to get them only through an @import inside one component, so the
 // blog, guides, legal and affiliate pages fell back to Times and Arial. index.html carries the same link tags; this
@@ -36720,6 +36721,16 @@ function applyBlogOverrides(posts) {
   });
 }
 
+// Posts that live in src/blog-local-posts.js are added to whatever list the blog has (Sanity or the offline fallback).
+// A Sanity post with the same slug wins. The local posts go first, newest first.
+function withLocalPosts(posts) {
+  const have = new Set(posts.map(p => p.slug));
+  const extra = (BLOG_LOCAL_POSTS || []).filter(p => p.slug && !have.has(p.slug) && !BLOG_HIDDEN_SLUGS.has(p.slug));
+  if (!extra.length) return posts;
+  extra.sort((a, b) => String(b.iso || "").localeCompare(String(a.iso || "")));
+  return [...applyBlogOverrides(extra), ...posts];
+}
+
 const BLOG_ADD_MARK = "data-sw-add";
 function blogH2Index(html, re) {
   const m = new RegExp("<h2[^>]*>(?:(?!</h2>)[\\s\\S])*?(?:" + re + ")(?:(?!</h2>)[\\s\\S])*?</h2>", "i").exec(html);
@@ -36807,7 +36818,7 @@ async function fetchSanityPosts() {
     const data = await res.json();
     const results = data.result || [];
     if (!results.length) return null;
-    return applyBlogOverrides(results.filter(p => !BLOG_HIDDEN_SLUGS.has(p.slug)).map(p => ({
+    return withLocalPosts(applyBlogOverrides(results.filter(p => !BLOG_HIDDEN_SLUGS.has(p.slug)).map(p => ({
       slug: p.slug,
       title: p.title,
       description: p.description,
@@ -36818,7 +36829,7 @@ async function fetchSanityPosts() {
       modified: blogIsoDate(p._updatedAt),
       image: p.image || "",
       content: portableTextToHtml(p.body),
-    })));
+    }))));
   } catch(e) {
     return null;
   }
@@ -37238,7 +37249,7 @@ const BLOG_POSTS_BASE = [
     `
   },
 ];
-const BLOG_POSTS_FALLBACK = applyBlogOverrides(BLOG_POSTS_BASE);
+const BLOG_POSTS_FALLBACK = withLocalPosts(applyBlogOverrides(BLOG_POSTS_BASE));
 
 function BlogIndex() {
   const { posts } = useBlogPosts();
