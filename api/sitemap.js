@@ -6,7 +6,7 @@ const SITE = "https://www.trysteadwell.app";
 const SANITY = "https://1r1eichb.api.sanity.io/v2024-01-01/data/query/production";
 
 // Public, indexable pages and when each last changed in a meaningful way. Bump lastmod when a page's
-// content changes. /for-agents is intentionally absent (it is noindex).
+// content changes. /for-agents is the old address of /for-real-estate-agents and redirects there.
 const PAGES = [
   ["/", "2026-10-28"],
   ["/pricing", "2026-10-28"],
@@ -29,6 +29,7 @@ const PAGES = [
   ["/calendar-sync", "2026-10-28"],
   ["/shared-household-access", "2026-10-28"],
   ["/property-managers", "2026-10-28"],
+  ["/for-real-estate-agents", "2026-10-28"],
   ["/guides", "2026-10-28"],
   ["/affiliates", "2026-10-28"],
   ["/affiliate-agreement", "2026-09-16"],
@@ -75,6 +76,13 @@ export default async function handler(req, res) {
       return m && m > (p.lastmod || "") ? { ...p, lastmod: m } : p;
     });
   } catch (e) { console.error("[sitemap] overrides not applied:", e && e.message); }
+
+  // Posts that live in the code (src/blog-local-posts.js) are listed too; a Sanity post with the same slug wins.
+  try {
+    const local = (await import("../src/blog-local-posts.js")).BLOG_LOCAL_POSTS || [];
+    const have = new Set(posts.map((p) => p.slug));
+    posts = [...local.filter((p) => p.slug && !have.has(p.slug)).map((p) => ({ slug: p.slug, lastmod: day(p.modified) || day(p.iso) })), ...posts];
+  } catch (e) { console.error("[sitemap] local posts not added:", e && e.message); }
 
   // Buyer guide pages come from src/guides-registry.js, so a new guide is listed without editing this file.
   let guidePages = [];
