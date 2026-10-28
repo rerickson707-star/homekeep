@@ -1,4 +1,4 @@
-// Steadwell v437 — 2026-10-26
+// Steadwell v438 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30417,18 +30417,20 @@ function ForAgentsPage() {
   const inputStyle = { width:"100%", padding:"12px 14px", borderRadius:10, border:"1.5px solid #E6DECF", background:"#fff", fontSize:"1rem", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723", marginBottom:12, boxSizing:"border-box" };
   const labelStyle = { display:"block", fontSize:".78rem", fontWeight:700, color:"#234A3D", marginBottom:6, letterSpacing:".02em" };
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/recall-alerts",label:"Recall Alerts"},{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/guides",label:"Buyer Guides"}]}/>
-      <LPHero eyebrow="Steadwell for Real Estate Agents" h1="The closing gift your" h1em="clients won't forget." sub="Give every client three months of Steadwell Plus — a housewarming gift that keeps your name in their home all year. Free to you. Genuinely useful to them." badge="Partner program · Now accepting local agents"/>
+      <LPHero eyebrow="Steadwell for real estate agents" cta="Apply for agent access" ctaHref="#apply" h1="The closing gift your" h1em="clients won't forget." sub="Give every client three months of Steadwell Plus, a housewarming gift that keeps your name in their home all year. Free to you. Genuinely useful to them." secondary={{href:"#what-clients-get",label:"See what clients get"}} badge="Partner program · Now accepting local agents" visual={<GiftRedeemMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPSection>
-          <LPSectionHead h2="The relationship shouldn't end at the closing table" sub="Most agents lose touch the moment the deal closes. This keeps you in the home — and top of mind for referrals."/>
+        <LPShort>The Steadwell agent partner program lets a real estate agent give each client three months of Steadwell Plus as a closing gift. It costs the agent nothing. The client enters their address, Steadwell sets up their home, and the gift carries the agent's name.</LPShort>
+        <LPSection alt>
+          <LPSectionHead h2="The relationship shouldn't end at the closing table" sub="Most agents lose touch the moment the deal closes. This keeps you in the home, and top of mind for referrals."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             {[
-              {icon:"🎁",title:"You look generous",text:"A thoughtful $24 housewarming gift, co-branded with your name — not another branded notepad they'll throw away."},
-              {icon:"🏡",title:"Your clients get real value",text:"Steadwell organizes their new home — warranties, maintenance, documents, and costs — at the exact moment they're overwhelmed."},
-              {icon:"🔁",title:"You stay top of mind",text:"Your name is on their home dashboard and welcome email all year. When they or a friend need an agent, you're right there."},
+              {icon:"🎁",title:"You look generous",text:"A thoughtful housewarming gift with your name on it, not another branded notepad they'll throw away."},
+              {icon:"🏡",title:"Your clients get real value",text:"Steadwell organizes their new home (warranties, maintenance, documents and costs) at the moment they're overwhelmed."},
+              {icon:"🔁",title:"You stay top of mind",text:"Your name is on their welcome all year. When they or a friend need an agent, you're right there."},
             ].map((s,i)=>(
               <LPCard key={i}>
                 <div style={{fontSize:"1.6rem",marginBottom:10}}>{s.icon}</div>
@@ -30439,15 +30441,26 @@ function ForAgentsPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection alt>
-          <LPSectionHead h2="What your clients actually get" sub="A real product they'll use — not a gimmick."/>
-          <div style={{maxWidth:480,margin:"0 auto 28px",display:"flex",justifyContent:"center"}}>
-            <img src="/screenshots/steadwell-assets.png" alt="Steadwell home dashboard showing appliance tracking, warranties, and home health" style={{width:"100%",borderRadius:14,boxShadow:"0 16px 44px rgba(35,74,61,.14)",border:"1px solid #E6DECF",display:"block"}}/>
+        <LPSection id="what-clients-get">
+          <LPSectionHead h2="What your clients actually get" sub="A real product they'll use, not a gimmick."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<WelcomeBannerMock/>} title="Your name is on their home.">
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>When your client redeems the gift, Steadwell sets up their home and shows who it came from. They get warranty tracking, a maintenance schedule, recall alerts and a place for their documents.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>After the three months they can keep the free plan or stay on Plus.</p>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<PrintedCardMock/>} title="A card you can hand over at closing.">
+              <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>We give you a simple gift link and a printable card to include with your closing gift. There's nothing to install and nothing to manage.</p>
+              <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:0}}>Your gift link and card arrive once your application is approved.</p>
+            </LPFeatureRow>
           </div>
-          <LPGrid gap={16}>
+        </LPSection>
+
+        <LPSection alt>
+          <LPSectionHead h2="How it works" sub="Three steps, and the first one is yours."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,240px),1fr))" gap={16}>
             {[
-              {num:"01",title:"You hand it over at closing",text:"We give you a simple gift link and a card to include with your closing gift. Nothing to install, nothing to manage."},
-              {num:"02",title:"Your client redeems 3 months of Plus",text:"They enter their address and Steadwell fills in their home — appliances, warranties, maintenance schedule — gifted by you."},
+              {num:"01",title:"You hand it over at closing",text:"Give your client the gift link and the card with their closing gift."},
+              {num:"02",title:"Your client redeems 3 months of Plus",text:"They enter their address and Steadwell fills in their home: appliances, warranties and a maintenance schedule, gifted by you."},
               {num:"03",title:"You stay in the picture",text:"Your name is on their welcome. They think of you every time they open the app to check a warranty or plan a project."},
             ].map((s,i)=><LPHowStep key={i} {...s}/>)}
           </LPGrid>
@@ -30578,34 +30591,28 @@ function AffiliatesPage() {
   };
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/warranty-tracker",label:"Warranty Tracker"},{href:"/recall-alerts",label:"Recall Alerts"},{href:"/guides",label:"Buyer Guides"}]}/>
 
-      {/* Hero */}
-      <section style={{background:"#234A3D",padding:"clamp(48px,8vw,80px) 24px",textAlign:"center"}}>
-        <div style={{maxWidth:640,margin:"0 auto"}}>
-          <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".18em",textTransform:"uppercase",color:"#D2876A",marginBottom:14}}>Affiliate Program</div>
-          <h1 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(2rem,6vw,3.2rem)",color:"#F4EDDF",lineHeight:1.1,letterSpacing:"-.025em",margin:"0 0 18px"}}>
-            Earn recurring commissions<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>for referring homeowners.</em>
-          </h1>
-          <p style={{fontSize:"clamp(.9rem,2.5vw,1.05rem)",color:"rgba(244,237,223,.65)",margin:"0 auto 32px",lineHeight:1.65,maxWidth:"36rem"}}>Every homeowner is a potential Steadwell user. Share your unique link and earn 30% of every paid subscription for 12 months — automatically.</p>
-          <a href="#apply" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 2rem",borderRadius:12,fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Apply now — it's free →</a>
-          <div style={{display:"flex",gap:"clamp(16px,4vw,40px)",justifyContent:"center",flexWrap:"wrap",marginTop:36}}>
-            {[{num:"30%",lbl:"Commission rate"},{num:"12 mo",lbl:"Recurring period"},{num:"30 days",lbl:"Cookie window"},{num:"$50",lbl:"Min. payout"}].map((s,i)=>(
-              <div key={i} style={{textAlign:"center"}}>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.4rem,3vw,1.8rem)",fontWeight:600,color:"#F4EDDF",lineHeight:1}}>{s.num}</div>
-                <div style={{fontSize:".68rem",color:"rgba(244,237,223,.4)",marginTop:4,textTransform:"uppercase",letterSpacing:".08em"}}>{s.lbl}</div>
-              </div>
-            ))}
-          </div>
+      <LPHero eyebrow="Affiliate program" cta="Apply now, it's free" ctaHref="#apply" h1="Earn recurring commissions" h1em="for referring homeowners." sub="Every homeowner is a potential Steadwell user. Share your unique link and earn 30% of every paid subscription for 12 months, automatically." secondary={{href:"#earnings",label:"See what you earn"}} visual={<EarningsMock/>}/>
+      <section aria-label="Program at a glance" style={{background:"#EFE7D7",padding:"28px 24px",borderBottom:"1px solid #E6DECF"}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:"20px 24px"}}>
+          {[{num:"30%",lbl:"Commission rate"},{num:"12 mo",lbl:"Recurring period"},{num:"30 days",lbl:"Cookie window"},{num:"$50",lbl:"Minimum payout"}].map((x,i)=>(
+            <div key={i}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(1.6rem,3vw,2rem)",fontWeight:600,color:"#234A3D",lineHeight:1}}>{x.num}</div>
+              <div style={{fontSize:".82rem",color:"#6E665D",marginTop:6}}>{x.lbl}</div>
+            </div>
+          ))}
         </div>
       </section>
 
       <main id="main" tabIndex={-1}>
+        <LPShort>The Steadwell affiliate program pays you 30% of each referred subscriber's monthly payment for 12 months, and 40% of an annual plan as a single payment. It's free to join and open to anyone with an audience of homeowners: creators, writers, agents and brokers.</LPShort>
 
         {/* Commission table — mobile: cards, desktop: table */}
-        <LPSection>
+        <LPSection alt id="earnings">
           <LPSectionHead h2="What you earn" sub="Commissions calculated on net revenue after Stripe fees."/>
           {/* Mobile cards */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,300px),1fr))",gap:10}}>
@@ -30627,7 +30634,7 @@ function AffiliatesPage() {
         </LPSection>
 
         {/* Who it's for */}
-        <LPSection alt>
+        <LPSection>
           <LPSectionHead h2="Who this program is for" sub="If your audience includes homeowners, Steadwell converts."/>
           <LPGrid cols="repeat(auto-fill,minmax(min(100%,220px),1fr))" gap={12}>
             {[
@@ -30647,7 +30654,7 @@ function AffiliatesPage() {
         </LPSection>
 
         {/* How it works */}
-        <LPSection>
+        <LPSection alt>
           <LPSectionHead h2="How it works" sub="Apply once, then share your link."/>
           <LPGrid gap={14}>
             {[
@@ -30660,7 +30667,7 @@ function AffiliatesPage() {
         </LPSection>
 
         {/* APPLICATION FORM */}
-        <LPSection alt id="apply">
+        <LPSection id="apply">
           <div style={{maxWidth:560,margin:"0 auto"}}>
             <LPSectionHead h2="Apply to join" sub="Free to join. No minimum traffic requirements. We review every application personally."/>
             {formState === "success" ? (
@@ -30748,7 +30755,7 @@ function AffiliatesPage() {
         </LPSection>
 
         {/* FAQ */}
-        <LPSection narrow>
+        <LPSection alt narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={AFFILIATE_FAQ}/>
         </LPSection>
@@ -30806,7 +30813,8 @@ function AffiliateAgreementPage() {
   ];
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",textAlign:"left"}}>
+      <LPBaseStyle/>
       <LPNav links={[{href:"/affiliates",label:"Affiliate Program"},{href:"/terms",label:"Terms"},{href:"/privacy",label:"Privacy"}]}/>
       <div style={S.wrap}>
         <h1 style={S.h1}>Affiliate Agreement</h1>
@@ -30943,8 +30951,8 @@ function LPFooter() {
 
 // kw: the phrase people search for. It becomes the first line of the H1 (so the heading says what the page is about),
 // with the slogan as the second line. Without kw the eyebrow stays a plain label above the heading.
-function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta, visual, secondary }) {
-  if (visual) return <LPSplitHero eyebrow={eyebrow} kw={kw} h1={h1} h1em={h1em} sub={sub} cta={cta} badge={badge} visual={visual} secondary={secondary}/>;
+function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta, ctaHref="/?action=signup", visual, secondary }) {
+  if (visual) return <LPSplitHero eyebrow={eyebrow} kw={kw} h1={h1} h1em={h1em} sub={sub} cta={cta} ctaHref={ctaHref} badge={badge} visual={visual} secondary={secondary}/>;
   return (
     <section style={{background:"#234A3D",padding:"clamp(48px,8vw,72px) 24px clamp(56px,8vw,80px)",textAlign:"center"}}>
       <div style={{maxWidth:700,margin:"0 auto"}}>
@@ -30954,7 +30962,7 @@ function LPHero({ eyebrow, kw, h1, h1em, sub, stats=[], badge, cta, visual, seco
           {h1}{h1em && <>{" "}<br/><em style={{fontStyle:"italic",color:"#D2876A"}}>{h1em}</em></>}
         </h1>
         {sub && <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.65)",maxWidth:"38rem",margin:"0 auto 32px",lineHeight:1.6}}>{sub}</p>}
-        {cta && <div style={{margin:"0 0 22px"}}><a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{cta} →</a></div>}
+        {cta && <div style={{margin:"0 0 22px"}}><a href={ctaHref} style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{cta} →</a></div>}
         {badge && <div style={{display:"inline-block",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.14)",borderRadius:20,padding:"5px 16px",fontSize:".78rem",color:"rgba(244,237,223,.8)",fontWeight:500,marginBottom:stats.length?24:0}}>{badge}</div>}
         {stats.length>0 && (
           <div style={{display:"flex",gap:32,justifyContent:"center",flexWrap:"wrap"}}>
@@ -32804,7 +32812,7 @@ function LPBadge({ plan }) {
 
 // ─── SHARED PIECES FOR THE REDESIGNED FEATURE PAGES ───────────────────────────
 // Split hero: copy on the left, a drawn product mock on the right. Used by LPHero when it is given a `visual`.
-function LPSplitHero({ eyebrow, kw, h1, h1em, sub, cta, badge, visual, secondary }) {
+function LPSplitHero({ eyebrow, kw, h1, h1em, sub, cta, ctaHref="/?action=signup", badge, visual, secondary }) {
   return (
     <section style={{background:"linear-gradient(160deg,#1C3D31,#234A3D)",padding:"clamp(48px,8vw,72px) 24px clamp(48px,7vw,64px)"}}>
       <div style={{maxWidth:1080,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
@@ -32816,7 +32824,7 @@ function LPSplitHero({ eyebrow, kw, h1, h1em, sub, cta, badge, visual, secondary
           </h1>
           {sub && <p style={{fontSize:"1.05rem",color:"rgba(244,237,223,.74)",lineHeight:1.6,margin:"0 0 28px",maxWidth:"34rem"}}>{sub}</p>}
           <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
-            {cta && <a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{cta} →</a>}
+            {cta && <a href={ctaHref} style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".9rem 1.8rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{cta} →</a>}
             {secondary && <a href={secondary.href} style={{display:"inline-flex",alignItems:"center",color:"rgba(244,237,223,.78)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>{secondary.label}</a>}
           </div>
           {badge && <div style={{marginTop:18,fontSize:".78rem",color:"rgba(244,237,223,.6)"}}>{badge}</div>}
@@ -33552,6 +33560,149 @@ function PhotoGuideMock() {
       </div>
       <div style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.5}}>Add up to 6 photos. Each item type has its own short guide.</div>
     </MockShell>
+  );
+}
+
+// ─── MOCKS FOR THE RESOURCES PAGES (v438) ───────────────────────────────────
+function GuideInsideMock() {
+  const items = [
+    "Every inspection you may need, what it finds and what it costs",
+    "Flood zones vs. evacuation zones, explained in plain English",
+    "Red flags in homes, condos and listings",
+    "Down payment help, closing costs, insurance and property taxes, worked out",
+    "Condo safety laws, HOAs, scams, checklists and a first-year plan",
+  ];
+  return (
+    <MockShell title="Inside the Florida state guide" note="" style={{maxWidth:460}}>
+      <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:14,paddingBottom:14,borderBottom:"1px solid #E6DECF"}}>
+        <div style={{width:54,height:72,borderRadius:5,background:"linear-gradient(160deg,#1C3D31,#234A3D)",boxShadow:"0 6px 14px rgba(35,74,61,.25)",flexShrink:0,padding:"8px 6px",boxSizing:"border-box"}}>
+          <div style={{height:3,width:"60%",background:"#D2876A",borderRadius:2,marginBottom:6}}/>
+          <div style={{height:3,width:"90%",background:"rgba(244,237,223,.75)",borderRadius:2,marginBottom:4}}/>
+          <div style={{height:3,width:"70%",background:"rgba(244,237,223,.75)",borderRadius:2}}/>
+        </div>
+        <div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.08rem",fontWeight:500,color:"#234A3D",lineHeight:1.2}}>The Florida First-Time Buyer Guide</div>
+          <div style={{fontSize:".74rem",color:"#8A8178",marginTop:4}}>State guide · 16 chapters · printable checklists</div>
+        </div>
+      </div>
+      {items.map((t,i)=>(
+        <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"6px 0"}}>
+          <span style={{width:16,height:16,borderRadius:5,background:"#234A3D",color:"#fff",fontSize:".72rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>✓</span>
+          <span style={{fontSize:".8rem",color:"#3D3732",lineHeight:1.45}}>{t}</span>
+        </div>
+      ))}
+    </MockShell>
+  );
+}
+
+// Agent hero: the gift a client opens.
+function GiftRedeemMock() {
+  return (
+    <div style={{width:"100%",maxWidth:420,borderRadius:18,boxShadow:MOCK_SHADOW}}>
+      <MockShell title="A housewarming gift" note="(example)" style={{maxWidth:420}}>
+        <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 14px",background:"#EFE7D7",borderRadius:12,marginBottom:14}}>
+          <span style={{width:38,height:38,borderRadius:"50%",background:"#234A3D",color:"#F4EDDF",fontWeight:700,fontSize:".9rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>JS</span>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:".74rem",color:"#8A8178"}}>Gifted by</div>
+            <div style={{fontSize:".92rem",fontWeight:700,color:"#234A3D"}}>Jane Smith</div>
+            <div style={{fontSize:".72rem",color:"#8A8178"}}>Example Realty</div>
+          </div>
+        </div>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.25rem",fontWeight:500,color:"#234A3D",lineHeight:1.2,marginBottom:4}}>3 months of Steadwell Plus</div>
+        <div style={{fontSize:".78rem",color:"#6E665D",lineHeight:1.5,marginBottom:12}}>Enter your new address and we'll fill in your home's details to start.</div>
+        <div style={{border:"1px solid #E6DECF",background:"#fff",borderRadius:9,padding:"9px 12px",fontSize:".8rem",color:"#5E574F",marginBottom:10}}>123 Example Street</div>
+        <div style={{textAlign:"center",background:"#C16140",color:"#fff",borderRadius:9,padding:"9px",fontSize:".8rem",fontWeight:700}}>Redeem my gift</div>
+      </MockShell>
+    </div>
+  );
+}
+
+// What the client sees on their dashboard.
+function WelcomeBannerMock() {
+  const tiles = [["Appliances","7"],["Warranties","4"],["Tasks due","3"]];
+  return (
+    <MockShell title="Welcome home" note="(example)" style={{maxWidth:440}}>
+      <div style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:"rgba(46,112,80,.1)",borderRadius:10,marginBottom:12}}>
+        <span style={{fontSize:"1.1rem"}} aria-hidden="true">🎁</span>
+        <div style={{fontSize:".78rem",color:"#234A3D",lineHeight:1.4}}><strong>Gifted by Jane Smith</strong>, Example Realty<br/><span style={{color:"#5E574F"}}>Steadwell Plus is on for the first 3 months.</span></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+        {tiles.map(([l,n])=>(
+          <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"10px 6px",textAlign:"center"}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",fontWeight:600,color:"#234A3D",lineHeight:1}}>{n}</div>
+            <div style={{fontSize:".72rem",color:"#8A8178",marginTop:4}}>{l}</div>
+          </div>
+        ))}
+      </div>
+    </MockShell>
+  );
+}
+
+// The printed card an agent slips into the closing gift.
+function PrintedCardMock() {
+  return (
+    <div aria-hidden="true" style={{width:"100%",maxWidth:380,transform:"rotate(-1.5deg)",background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"22px 24px",boxShadow:MOCK_SHADOW,textAlign:"left",boxSizing:"border-box"}}>
+      <div style={{fontSize:".72rem",color:"#A8A09A",marginBottom:10}}>(example)</div>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.35rem",fontWeight:500,color:"#234A3D",lineHeight:1.2,marginBottom:8}}>Congratulations on your new home!</div>
+      <div style={{fontSize:".82rem",color:"#5E574F",lineHeight:1.55,marginBottom:14}}>Here are three months of Steadwell Plus to keep track of your warranties, maintenance and records.</div>
+      <div style={{display:"flex",gap:12,alignItems:"center",paddingTop:12,borderTop:"1px solid #E6DECF"}}>
+        <div style={{width:46,height:46,flexShrink:0,background:"repeating-conic-gradient(#234A3D 0% 25%,#fff 0% 50%) 50%/12px 12px",borderRadius:4,border:"3px solid #fff",boxShadow:"0 0 0 1px #E6DECF"}}/>
+        <div style={{fontSize:".74rem",color:"#6E665D",lineHeight:1.45}}>Scan or visit your gift link<br/><strong style={{color:"#234A3D"}}>From Jane Smith · Example Realty</strong></div>
+      </div>
+    </div>
+  );
+}
+
+// Affiliate hero: a month of example commissions and progress to the payout minimum.
+function EarningsMock() {
+  const rows = [["Plus monthly","30%","$2.40"],["Pro monthly","30%","$4.50"],["Plus annual","40%","$25.60"]];
+  return (
+    <div style={{width:"100%",maxWidth:420,borderRadius:18,boxShadow:MOCK_SHADOW}}>
+      <MockShell title="Your commissions" note="(example)" style={{maxWidth:420}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#234A3D",lineHeight:1}}>$32.50</div>
+          <div style={{fontSize:".74rem",color:"#8A8178"}}>earned this month</div>
+        </div>
+        {rows.map(([p,c,a])=>(
+          <div key={p} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+            <div style={{flex:1,fontSize:".8rem",fontWeight:600,color:"#2A2723"}}>{p}</div>
+            <MockPill tone="rust">{c}</MockPill>
+            <div style={{width:54,textAlign:"right",fontSize:".82rem",fontWeight:700,color:"#234A3D"}}>{a}</div>
+          </div>
+        ))}
+        <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #E6DECF"}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:".74rem",color:"#8A8178",marginBottom:6}}><span>Balance</span><span>$50 payout minimum</span></div>
+          <div style={{height:8,borderRadius:6,background:"#EFE7D7",overflow:"hidden"}}><div style={{width:"65%",height:"100%",background:"#C16140",borderRadius:6}}/></div>
+        </div>
+      </MockShell>
+    </div>
+  );
+}
+
+// Blog post card used on the index.
+const BL_CSS = `
+.bl-card{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:#fff;border:1px solid #E6DECF;border-radius:16px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.bl-card:hover{border-color:#234A3D;box-shadow:0 10px 28px rgba(35,74,61,.1)}
+.bl-card:focus-visible{outline:3px solid #C16140;outline-offset:2px}
+.bl-chip{font:inherit;font-size:.86rem;font-weight:600;padding:8px 16px;min-height:40px;border-radius:999px;border:1.5px solid #E6DECF;background:#fff;color:#5E574F;cursor:pointer}
+.bl-chip[aria-pressed="true"]{background:#234A3D;border-color:#234A3D;color:#F4EDDF}
+.bl-chip:focus-visible{outline:3px solid #C16140;outline-offset:2px}
+.bl-feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+`;
+function BlogCard({ post, big=false }) {
+  return (
+    <a className={big?"bl-card bl-feat":"bl-card"} href={`/blog/${post.slug}`} style={{height:"100%"}}>
+      {post.image && <img src={post.image} alt="" loading={big?"eager":"lazy"} decoding="async" width="640" height="360" style={{display:"block",width:"100%",height:big?"100%":"auto",aspectRatio:big?"auto":"16 / 9",minHeight:big?220:0,objectFit:"cover",background:"#E9E0CC"}}/>}
+      <div style={{padding:big?"22px 24px 24px":"18px 20px 20px",display:"flex",flexDirection:"column",gap:10,flex:1}}>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          {post.tag && <span style={{fontSize:".74rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"#234A3D",padding:"3px 10px",borderRadius:8}}>{post.tag}</span>}
+          <span style={{fontSize:".78rem",color:"#7A7370"}}>{post.time} · {post.date}</span>
+        </div>
+        <h3 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:big?"clamp(1.4rem,2.6vw,1.9rem)":"1.2rem",color:"#1F1B17",lineHeight:1.2,letterSpacing:"-.01em",margin:0}}>{post.title}</h3>
+        <p style={{fontSize:big?".98rem":".88rem",color:"#5E574F",lineHeight:1.6,margin:0,flex:1}}>{post.description}</p>
+        <span style={{fontSize:".86rem",fontWeight:700,color:"#B5532F"}}>Read article →</span>
+      </div>
+    </a>
   );
 }
 
@@ -35745,7 +35896,8 @@ function GuideDetailPage({ guide: g }) {
   }, []);
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK,fontSize:"1.05rem"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK,fontSize:"1.05rem",textAlign:"left"}}>
+      <LPBaseStyle/>
       <style>{GUIDE_CSS}</style>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/guides",label:"Buyer guides"},{href:"/blog",label:"Blog"},{href:"/pricing",label:"Pricing"}]}/>
@@ -35961,7 +36113,8 @@ function GuidesPage() {
   const lead = states[0];
   const front = lead && lead.state ? lead.state : liveGuides()[0];
   return (
-    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK,fontSize:"1.05rem"}}>
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:GD_INK,fontSize:"1.05rem",textAlign:"left"}}>
+      <LPBaseStyle/>
       <style>{GUIDE_CSS}</style>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav links={[{href:"/blog",label:"Blog"},{href:"/pricing",label:"Pricing"}]}/>
@@ -36018,6 +36171,15 @@ function GuidesPage() {
             ))}
           </div>
         </section>
+
+        <LPShort>A Steadwell buyer guide is a plain-English walk through buying your first home, with the local detail your state or county adds: flood zones, inspections, insurance, closing costs, property taxes and down payment help. Every guide says when it was checked and sources its figures.</LPShort>
+        <LPSection alt>
+          <LPFeatureRow visual={<GuideInsideMock/>} title="Everything in the order you'll need it.">
+            <p style={{fontSize:".98rem",color:"#5E574F",lineHeight:1.7,margin:"0 0 10px"}}>Each guide follows the buying process from start to finish and puts the local rules in the step where they matter. You get printable checklists, a glossary and a first-year plan to take to showings, inspections and closing.</p>
+            <p style={{fontSize:".9rem",color:"#7A7370",lineHeight:1.65,margin:"0 0 14px"}}>Open any guide above to read the first pages free before you buy.</p>
+            <a href="#guides" style={{fontSize:".9rem",fontWeight:700,color:"#B5532F",textDecoration:"none"}}>Browse the guides →</a>
+          </LPFeatureRow>
+        </LPSection>
 
         <GuidesDepth/>
 
@@ -36109,7 +36271,8 @@ function TermsPage() {
     {t:"20. Contact",b:"Steadwell, LLC · 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 · hello@trysteadwell.app · 727-658-4491"},
   ];
   return (
-    <div style={S.page}>
+    <div style={{...S.page,textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#terms-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav/>
       <main id="terms-main" tabIndex={-1} style={S.main}>
@@ -36167,7 +36330,8 @@ function PrivacyPage() {
     {t:"17. Contact",b:"Steadwell, LLC · 7901 4th Street N. Suite 36148, St. Petersburg, FL 33702 · privacy@trysteadwell.app · 727-658-4491"},
   ];
   return (
-    <div style={S.page}>
+    <div style={{...S.page,textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#privacy-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav/>
       <main id="privacy-main" tabIndex={-1} style={S.main}>
@@ -36876,31 +37040,37 @@ function BlogIndex() {
       ],
     }
   });
+  const [cat, setCat] = useState("All");
+  const tags = ["All", ...Array.from(new Set(posts.map(x => x.tag).filter(Boolean)))];
+  const shown = cat === "All" ? posts : posts.filter(x => x.tag === cat);
+  const feat = shown[0];
+  const rest = shown.slice(1);
   return (
-    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
+    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
+      <style>{BL_CSS}</style>
       <LPNav/>
-      {/* Header */}
-      <div style={{maxWidth:800,margin:"0 auto",padding:"3rem 1.5rem 2rem"}}>
-        <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C16140",marginBottom:".5rem"}}>Steadwell Blog</div>
-        <h1 style={{fontFamily:"'Fraunces',serif",fontSize:"2.5rem",fontWeight:500,color:"#2A2723",marginBottom:".75rem",lineHeight:1.2}}>Homeowner guides &amp; tips</h1>
-        <p style={{color:"#7A7370",fontSize:"1.05rem",lineHeight:1.6}}>Practical advice for keeping your home well — maintenance schedules, cost breakdowns, and expert tips from the Steadwell team.</p>
-      </div>
-      {/* Posts */}
-      <div style={{maxWidth:800,margin:"0 auto",padding:"0 1.5rem 4rem",display:"flex",flexDirection:"column",gap:"1.25rem"}}>
-        {posts.map(post => (
-          <a key={post.slug} href={`/blog/${post.slug}`} style={{textDecoration:"none",background:"#fff",borderRadius:14,border:"1px solid #E6DECF",padding:"1.5rem",display:"flex",flexDirection:"column",gap:".6rem",transition:"box-shadow .2s,transform .2s"}}
-            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 24px rgba(35,74,61,.1)";e.currentTarget.style.transform="translateY(-2px)"}}
-            onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform=""}}>
-            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
-              <span style={{fontSize:".7rem",fontWeight:700,background:"rgba(35,74,61,.1)",color:"#234A3D",padding:"2px 9px",borderRadius:8}}>{post.tag}</span>
-              <span style={{fontSize:".72rem",color:"#A8A09A"}}>{post.time} · {post.date}</span>
+      <LPHero eyebrow="Steadwell blog" h1="Homeowner guides" h1em="and tips." sub="Practical advice for keeping your home well: maintenance schedules, repair costs, appliance care and how to stay organized."/>
+      <main id="main" tabIndex={-1}>
+        <LPSection>
+          <div role="group" aria-label="Filter articles by topic" style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:28}}>
+            {tags.map(t => <button key={t} type="button" className="bl-chip" aria-pressed={cat === t} onClick={() => setCat(t)}>{t}</button>)}
+          </div>
+          {feat && (
+            <div style={{marginBottom:22}}>
+              <BlogCard post={feat} big/>
             </div>
-            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:500,color:"#2A2723",lineHeight:1.3}}>{post.title}</div>
-            <div style={{fontSize:".85rem",color:"#7A7370",lineHeight:1.55}}>{post.description}</div>
-            <div style={{fontSize:".82rem",color:"#C16140",fontWeight:600,marginTop:".25rem"}}>Read more →</div>
-          </a>
-        ))}
-      </div>
+          )}
+          {rest.length > 0 && (
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,300px),1fr))",gap:20}}>
+              {rest.map(x => <BlogCard key={x.slug} post={x}/>)}
+            </div>
+          )}
+          {shown.length === 0 && <p style={{color:"#5E574F"}}>No articles in this topic yet.</p>}
+        </LPSection>
+        <LPCTA h2="Put the advice to work." sub="Steadwell keeps your warranties, maintenance schedule and home records in one place. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
+      </main>
+      <LPFooter/>
     </div>
   );
 }
@@ -37161,7 +37331,8 @@ function BlogPostView({ post, posts, url, slug }) {
   const linked = post.noAutoLink ? (post.content || "") : autoLinkHtml(post.content || "", posts, post.slug);
   const { html: body, toc } = blogEnhanceHtml(linked);
   return (
-    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
+    <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
       <LPNav/>
       {/* Article */}
       <article className="bp-wrap">
@@ -37193,7 +37364,7 @@ function BlogPostView({ post, posts, url, slug }) {
             <div style={{marginTop:"3rem",padding:"1.6rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
               <div style={{fontSize:".92rem",color:"rgba(244,237,223,.75)",marginBottom:"1rem",lineHeight:1.55}}>Set reminders, scan appliance tags, and keep your home records in one place — free to start.</div>
-              <a href="/" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".75rem 1.6rem",borderRadius:10,fontWeight:700,fontSize:".95rem"}}>Get started free →</a>
+              <a href="/?action=signup" style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".75rem 1.6rem",borderRadius:10,fontWeight:700,fontSize:".95rem"}}>Get started free →</a>
             </div>
             {features.length > 0 && (
           <section aria-labelledby="blog-features" style={{marginTop:"2.5rem"}}>
@@ -37228,12 +37399,13 @@ function BlogPostView({ post, posts, url, slug }) {
               <div className="bp-rail-cta">
                 <b>Track your home in Steadwell</b>
                 <span>Reminders, warranties, appliance ages and records in one place. Free to start.</span>
-                <a href="/">Get started free →</a>
+                <a href="/?action=signup">Get started free →</a>
               </div>
             </div>
           </aside>
         </div>
       </article>
+      <LPFooter/>
     </div>
   );
 }
@@ -37251,7 +37423,8 @@ function ADAPage() {
   const S = {page:{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723"},hdr:{background:"#234A3D",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},tile:{width:32,height:32,borderRadius:9,background:"#234A3D",display:"flex",alignItems:"center",justifyContent:"center"},wm:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.2rem",color:"#F4EDDF"},main:{maxWidth:780,margin:"0 auto",padding:"56px 24px 80px"},eyebrow:{fontSize:".72rem",letterSpacing:".18em",textTransform:"uppercase",color:"#C16140",fontWeight:700,marginBottom:14},title:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"clamp(2rem,5vw,3rem)",color:"#234A3D",marginBottom:12,lineHeight:1.06,letterSpacing:"-.02em"},meta:{fontSize:".88rem",color:"#5E574F",marginBottom:48,paddingBottom:28,borderBottom:"1px solid rgba(42,39,35,.12)"},notice:{background:"#FBF7EE",border:"1px solid rgba(42,39,35,.12)",borderLeft:"4px solid #234A3D",borderRadius:"0 12px 12px 0",padding:"16px 20px",marginBottom:40,fontSize:".9rem"},h2:{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D",margin:"36px 0 12px"},p:{marginBottom:12,fontSize:"1rem",lineHeight:1.7,overflowWrap:"anywhere"},li:{marginBottom:8,fontSize:"1rem",lineHeight:1.6,overflowWrap:"anywhere"},ul:{margin:"0 0 14px 22px"},cta:{background:"#234A3D",color:"#F4EDDF",borderRadius:16,padding:"28px 32px",marginTop:48},ft:{background:"#2A2723",color:"rgba(244,237,223,.5)",padding:"32px 24px",fontSize:".82rem",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:14}};
   const HM = ()=><svg viewBox="0 0 48 48" fill="none" width="62%" height="62%" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="3" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>;
   return (
-    <div style={S.page}>
+    <div style={{...S.page,textAlign:"left"}}>
+      <LPBaseStyle/>
       <a href="#ada-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav/>
       <main id="ada-main" tabIndex={-1} style={S.main}>
