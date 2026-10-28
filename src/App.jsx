@@ -1,8 +1,21 @@
-// Steadwell v436 — 2026-10-26
+// Steadwell v437 — 2026-10-26
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
 import { BLOG_OVERRIDES } from "./blog-overrides.js";
+
+// Brand fonts for every page. Landing pages used to get them only through an @import inside one component, so the
+// blog, guides, legal and affiliate pages fell back to Times and Arial. index.html carries the same link tags; this
+// is the safety net, and does nothing when they are already there.
+if (typeof document !== "undefined" && !document.querySelector('link[href*="fonts.googleapis.com/css2"]')) {
+  [["preconnect","https://fonts.googleapis.com",false],["preconnect","https://fonts.gstatic.com",true]].forEach(([rel,href,co]) => {
+    if (document.querySelector(`link[rel="${rel}"][href="${href}"]`)) return;
+    const l = document.createElement("link"); l.rel = rel; l.href = href; if (co) l.crossOrigin = ""; document.head.appendChild(l);
+  });
+  const f = document.createElement("link"); f.rel = "stylesheet";
+  f.href = "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap";
+  document.head.appendChild(f);
+}
 import { GUIDE_PRICES, GUIDE_EDITION, GUIDE_CURRENT_AS_OF, BUNDLE_TRIAL, GUIDE_CONSENT_VERSION, GUIDE_CONSENT_TEXT, GUIDE_LEAD_OPTIONS, guideByPath, guideStates, guidePagePaths, bundleFor, stateGuide, countyGuides, liveGuides } from "./guides-registry.js";
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
@@ -2481,6 +2494,11 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .lp-signin{font-size:.92rem;font-weight:600;color:rgba(244,237,223,.85);cursor:pointer;transition:color .25s;background:none;border:none;font-family:var(--body)}
 .lp-root .lp-nav.solid .lp-signin{color:var(--pine)}
 .lp-root .lp-signin:hover{color:var(--terracotta)}
+.lp-root .lp-nav.solid .lp-hamburger{background:rgba(35,74,61,.08);border-color:rgba(35,74,61,.28)}
+.lp-root .lp-nav.solid .lp-hamburger span{background:var(--pine)}
+@media(max-width:860px){.lp-root .lp-nav.solid{background:rgba(244,237,223,.97)}}
+.lp-root .lp-nav.solid .lp-mobile-menu-btns .lp-signin{color:rgba(244,237,223,.92)}
+.lp-root .lp-nav.solid .lp-mobile-menu-btns .lp-signin:hover{color:#fff}
 
 /* buttons */
 .lp-root .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--body);font-weight:600;font-size:.95rem;border:none;border-radius:40px;cursor:pointer;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .25s,background .25s,color .25s;white-space:nowrap;line-height:1}
@@ -2628,7 +2646,7 @@ img,.lp-root img{max-width:100%;height:auto}
 .lp-root .feat-drawer{display:none;padding:.9rem 0 .2rem;border-top:1px solid var(--line);margin-top:.9rem;font-size:.86rem;color:var(--ink-soft);line-height:1.65}
 .lp-root .feat-drawer.open{display:block}
 .lp-root .feat-drawer-cta{display:block;margin-top:.55rem;font-size:.78rem;font-weight:700;color:var(--terracotta)}
-.lp-root .feat-more{background:none;border:none;cursor:pointer;font-family:var(--body);font-size:.78rem;font-weight:700;color:var(--pine);padding:0;margin-top:.7rem;display:flex;align-items:center;gap:4px;transition:opacity .15s}
+.lp-root .feat-more{background:none;border:none;cursor:pointer;font-family:var(--body);font-size:.78rem;font-weight:700;color:var(--pine);padding:0;margin-top:.7rem;min-height:28px;display:flex;align-items:center;gap:4px;transition:opacity .15s}
 .lp-root .feat-more:hover{opacity:.7}
 .lp-root .feat-more-chevron{display:inline-block;transition:transform .2s;font-size:.95rem;line-height:1;margin-top:-2px}
 .lp-root .feat-more.open .feat-more-chevron{transform:rotate(-90deg)}
@@ -2909,6 +2927,8 @@ img,.lp-root img{max-width:100%;height:auto}
 .auth-bg::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(192,90,40,.15) 0%,transparent 70%);top:-100px;right:-100px}
 .auth-bg::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(58,122,175,.1) 0%,transparent 70%);bottom:-50px;left:-50px}
 .auth-card{background:var(--white);border-radius:22px;width:100%;max-width:420px;padding:2.5rem 2.5rem 2rem;box-shadow:0 32px 80px rgba(0,0,0,.4);position:relative;z-index:1}
+.auth-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--text-muted,#7A7370);font-family:inherit;font-size:.86rem;font-weight:600;cursor:pointer;padding:6px 8px 6px 0;margin:-8px 0 12px;min-height:32px}
+.auth-back:hover{color:var(--pine,#234A3D)}
 .auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:2rem}
 .auth-logo-icon{width:44px;height:44px;background:var(--pine);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
 .auth-logo-text{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:500;color:var(--dark)}
@@ -5208,12 +5228,12 @@ function LandingPage({ onSignIn, onSignUp }) {
           <div className="lp-nav-cta">
             <button className="lp-signin lp-nav-desktop" onClick={onSignIn}>Sign in</button>
             <button className="btn btn-pine lp-nav-desktop" onClick={onSignUp}>Get started free</button>
-            <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Toggle menu" aria-expanded={mobileMenuOpen}>
+            <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="lp-mobile-menu">
               <span/><span/><span/>
             </button>
           </div>
           {mobileMenuOpen && (
-            <div className="lp-mobile-menu" role="navigation" aria-label="Mobile menu">
+            <div className="lp-mobile-menu" id="lp-mobile-menu" role="navigation" aria-label="Mobile menu">
               <a href="#features" onClick={e => { e.preventDefault(); scrollTo("features"); setMobileMenuOpen(false); }}>Features</a>
               <a href="#how" onClick={e => { e.preventDefault(); scrollTo("how"); setMobileMenuOpen(false); }}>How it works</a>
               <a href="/pricing">Pricing</a>
@@ -5221,7 +5241,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a href="/blog">Blog</a>
               <div className="lp-mobile-menu-btns">
                 <button className="lp-signin" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>Sign in</button>
-                <button className="btn btn-pine" onClick={() => { onSignUp(); setMobileMenuOpen(false); }}>Get started free</button>
+                <button className="btn btn-terra" onClick={() => { onSignUp(); setMobileMenuOpen(false); }}>Get started free</button>
               </div>
             </div>
           )}
@@ -6433,7 +6453,7 @@ function readInviteEmail() {
   } catch { return ""; }
 }
 
-function AuthScreen({ onAuth, initialMode = "login" }) {
+function AuthScreen({ onAuth, onBack, initialMode = "login" }) {
   const inviteEmail = useMemo(readInviteEmail, []);
   // Someone arriving from an invitation email usually has no account yet, so open on sign-up (the login tab is one tap away)
   const [mode, setMode] = useState(inviteEmail && initialMode === "login" ? "signup" : initialMode); // login | signup | reset | update
@@ -6465,7 +6485,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     clear();
     if (!email || !password) { setError("Please fill in all fields."); return; }
     if (password !== confirm) { setError("Passwords don't match."); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     if (!agreedToTerms) { setError("Please agree to the Terms of Service and Privacy Policy to continue."); return; }
     setLoading(true);
     const { data: signUpData, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
@@ -6502,7 +6522,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
   const handleUpdatePassword = async () => {
     clear();
     if (!password) { setError("Enter a new password."); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     if (password !== confirm) { setError("Passwords don't match."); return; }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
@@ -6518,6 +6538,7 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
     <div className="auth-wrap" role="main">
       <div className="auth-bg" />
       <div className="auth-card">
+        {onBack && <button type="button" className="auth-back" onClick={onBack}><span aria-hidden="true">←</span> Back</button>}
         <div className="auth-logo">
           <div className="auth-logo-icon"><svg viewBox="0 0 48 48" fill="none" width="60%" height="60%" style={{display:'block'}}><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg></div>
           <div>
@@ -6583,11 +6604,11 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
             </div>
             <div className="auth-field">
               <label>Password</label>
-              <input type="password" name="new-password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" />
+              <input type="password" name="new-password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" />
             </div>
             <div className="auth-field">
               <label>Confirm Password</label>
-              <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="••••••••" />
+              <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Type it again" />
             </div>
             <div style={{display:"flex",alignItems:"flex-start",gap:10,margin:"4px 0 16px",cursor:"pointer"}} onClick={()=>setAgreedToTerms(a=>!a)}>
               <div style={{
@@ -6639,11 +6660,11 @@ function AuthScreen({ onAuth, initialMode = "login" }) {
           <form onSubmit={e=>{e.preventDefault();handleUpdatePassword();}}>
             <div className="auth-field">
               <label>New password</label>
-              <input type="password" name="new-password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" />
+              <input type="password" name="new-password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" />
             </div>
             <div className="auth-field">
               <label>Confirm new password</label>
-              <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="••••••••" />
+              <input type="password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Type it again" />
             </div>
             <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
               {loading ? "Saving…" : "Set New Password"}
@@ -27167,6 +27188,38 @@ export default function App() {
   }); // landing | login | signup
   // /login and /signup are entry points, not content: keep them out of search results.
   useNoIndex(_path === "/login" || _path === "/login/" || _path === "/signup" || _path === "/signup/");
+  // Opening sign-up or sign-in adds a history entry (and shows /signup or /login in the address bar), so the browser's Back button returns to the page.
+  const openAuth = (mode) => {
+    try { window.history.pushState({ swAuth: 1 }, "", mode === "signup" ? "/signup" : "/login"); } catch { /* history unavailable */ }
+    setScreen(mode);
+  };
+  const leaveAuth = () => {
+    if (window.history.state && window.history.state.swAuth) window.history.back();
+    else window.location.assign("/");
+  };
+  useEffect(() => {
+    const onPop = () => {
+      const p = window.location.pathname.replace(/\/+$/, "") || "/";
+      if (p === "/") setScreen("landing");
+      else if (p === "/signup") setScreen("signup");
+      else if (p === "/login") setScreen("login");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  // Once signed in, drop /login or /signup from the address bar.
+  useEffect(() => {
+    if (!session) return;
+    const p = window.location.pathname.replace(/\/+$/, "");
+    if (p === "/login" || p === "/signup") { try { window.history.replaceState(null, "", "/" + window.location.search); } catch { /* history unavailable */ } }
+  }, [session]);
+  // Links like /#features from other pages: the section does not exist until React renders, so scroll once it does.
+  useEffect(() => {
+    if (!window.location.hash || session) return;
+    const id = window.location.hash.slice(1);
+    const t = setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView(); }, 250);
+    return () => clearTimeout(t);
+  }, [session, screen]);
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
   const [tab, setTabRaw] = useState(() => {
     try { return localStorage.getItem("sw_tab") || "dashboard"; } catch { return "dashboard"; }
@@ -27776,8 +27829,8 @@ export default function App() {
         <>
           <style>{CSS}</style>
           <LandingPage
-            onSignIn={() => setScreen("login")}
-            onSignUp={() => setScreen("signup")}
+            onSignIn={() => openAuth("login")}
+            onSignUp={() => openAuth("signup")}
           />
           <Toasts toasts={toasts} dismiss={dismissToast} />
         </>
@@ -27786,7 +27839,7 @@ export default function App() {
     return (
       <>
         <style>{CSS}</style>
-        <AuthScreen onAuth={setSession} initialMode={screen === "signup" ? "signup" : "login"} />
+        <AuthScreen onAuth={setSession} onBack={leaveAuth} initialMode={screen === "signup" ? "signup" : "login"} />
         <Toasts toasts={toasts} dismiss={dismissToast} />
       </>
     );
@@ -30780,7 +30833,9 @@ function AffiliateAgreementPage() {
 // ─── FIRST-TIME HOMEBUYER GUIDES PAGE ────────────────────────────────────────
 
 // ─── SHARED LP NAV/FOOTER HELPERS ────────────────────────────────────────────
-function LPNav({ links=[] }) {
+// Every page shows the same menu as the homepage. The links prop is accepted for older callers and ignored.
+function LPNav() {
+  const links = LP_NAV_DEFAULT;
   const [menuOpen, setMenuOpen] = useState(false);
 
   const Logo = () => (
@@ -30809,13 +30864,14 @@ function LPNav({ links=[] }) {
               <a key={i} href={l.href} style={{color:"rgba(244,237,223,.7)",textDecoration:"none",fontSize:".88rem",fontWeight:500,whiteSpace:"nowrap"}}>{l.label}</a>
             ))}
           </div>
-          <a href="/" className="lp-nav-cta" style={{background:"#C16140",padding:"7px 16px",borderRadius:20,color:"#fff",fontWeight:700,fontSize:".85rem",textDecoration:"none",whiteSpace:"nowrap",flexShrink:0}}>Get started free</a>
+          <a href="/login" className="lp-nav-signin" style={{color:"rgba(244,237,223,.85)",textDecoration:"none",fontSize:".88rem",fontWeight:600,whiteSpace:"nowrap",flexShrink:0,padding:"6px 2px"}}>Sign in</a>
+          <a href="/signup" className="lp-nav-cta" style={{background:"#C16140",padding:"7px 16px",borderRadius:20,color:"#fff",fontWeight:700,fontSize:".85rem",textDecoration:"none",whiteSpace:"nowrap",flexShrink:0}}>Get started free</a>
           {/* Hamburger — only visible on mobile */}
           {links.length > 0 && (
             <button
               className="lp-nav-burger"
               onClick={()=>setMenuOpen(o=>!o)}
-              aria-label={menuOpen?"Close menu":"Open menu"}
+              aria-label={menuOpen?"Close menu":"Open menu"} aria-expanded={menuOpen} aria-controls="lp-feature-menu"
               style={{display:"none",background:"none",border:"none",cursor:"pointer",padding:4,flexShrink:0}}>
               <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F4EDDF" strokeWidth="2" strokeLinecap="round">
                 {menuOpen
@@ -30830,15 +30886,16 @@ function LPNav({ links=[] }) {
 
       {/* Mobile dropdown menu */}
       {menuOpen && (
-        <div style={{background:"#1D3D32",borderTop:"1px solid rgba(244,237,223,.1)",padding:"8px 0 16px"}}>
+        <div id="lp-feature-menu" style={{background:"#1D3D32",borderTop:"1px solid rgba(244,237,223,.1)",padding:"8px 0 16px"}}>
           {links.map((l,i)=>(
             <a key={i} href={l.href} onClick={()=>setMenuOpen(false)}
               style={{display:"block",padding:"12px 24px",color:"rgba(244,237,223,.8)",textDecoration:"none",fontSize:".95rem",fontWeight:500,borderBottom:"1px solid rgba(244,237,223,.06)"}}>
               {l.label}
             </a>
           ))}
-          <div style={{padding:"14px 24px 0"}}>
-            <a href="/" style={{display:"block",textAlign:"center",background:"#C16140",padding:"11px",borderRadius:12,color:"#fff",fontWeight:700,fontSize:".9rem",textDecoration:"none"}}>Get started free</a>
+          <div style={{padding:"14px 24px 0",display:"flex",gap:10}}>
+            <a href="/login" style={{flex:"0 0 auto",textAlign:"center",padding:"11px 18px",borderRadius:12,color:"#F4EDDF",border:"1.5px solid rgba(244,237,223,.35)",fontWeight:700,fontSize:".9rem",textDecoration:"none"}}>Sign in</a>
+            <a href="/signup" style={{flex:1,textAlign:"center",background:"#C16140",padding:"11px",borderRadius:12,color:"#fff",fontWeight:700,fontSize:".9rem",textDecoration:"none"}}>Get started free</a>
           </div>
         </div>
       )}
@@ -30849,15 +30906,16 @@ function LPNav({ links=[] }) {
           .lp-nav-burger { display: flex !important; }
         }
         @media (max-width: 640px) {
-          .lp-nav-cta { display: none !important; }
+          .lp-nav-cta, .lp-nav-signin { display: none !important; }
         }
+        @media (max-width: 1100px) { .lp-nav-links a { font-size: .84rem !important; } }
       `}</style>
     </nav>
   );
 }
 
 function LPFooter() {
-  const colHead = {fontSize:".7rem",fontWeight:700,letterSpacing:".14em",textTransform:"uppercase",color:"rgba(244,237,223,.38)",marginBottom:12};
+  const colHead = {fontSize:".72rem",fontWeight:700,letterSpacing:".14em",textTransform:"uppercase",color:"rgba(244,237,223,.38)",marginBottom:12};
   const link = {display:"block",color:"rgba(244,237,223,.62)",textDecoration:"none",fontSize:".84rem",padding:"4px 0"};
   const half = Math.ceil(LP_FEATURE_PAGES.length / 2);
   const cols = [
@@ -31176,11 +31234,11 @@ const LP_FEATURE_PAGES = [
 
 // Default top-nav for feature pages (the hamburger shows the same list on phones).
 const LP_NAV_DEFAULT = [
-  { href:"/home-condition-assessment", label:"Condition Assessment" },
-  { href:"/utility-bill-tracker",      label:"Utility Bills" },
-  { href:"/warranty-tracker",          label:"Warranty Tracker" },
-  { href:"/guides",                    label:"Buyer Guides" },
-  { href:"/pricing",                   label:"Pricing" },
+  { href:"/#features", label:"Features" },
+  { href:"/#how",      label:"How it works" },
+  { href:"/pricing",   label:"Pricing" },
+  { href:"/guides",    label:"Buyer Guides" },
+  { href:"/blog",      label:"Blog" },
 ];
 
 // schema.org graph for a feature page. FAQ entries are the same strings the page
@@ -31260,12 +31318,12 @@ function LPFieldCard({ icon, title, badge, desc, fields = [], link }) {
           <span style={{fontSize:"1.3rem"}} aria-hidden="true">{icon}</span>
           <h3 style={{fontWeight:700,fontSize:".95rem",color:"#234A3D",margin:0}}>{title}</h3>
         </div>
-        {badge && <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".62rem",fontWeight:700,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{badge}</span>}
+        {badge && <span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".72rem",fontWeight:700,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{badge}</span>}
       </div>
       {desc && <div style={{fontSize:".82rem",color:"#7A7370",marginBottom:12,lineHeight:1.55}}>{desc}</div>}
       {fields.map((f,j)=>(
         <div key={j} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,fontSize:".82rem",color:"#5E574F",textAlign:"left"}}>
-          <span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",flexShrink:0,marginTop:3}}>✓</span><span style={{flex:1}}>{f}</span>
+          <span style={{color:"#234A3D",fontWeight:700,fontSize:".72rem",flexShrink:0,marginTop:3}}>✓</span><span style={{flex:1}}>{f}</span>
         </div>
       ))}
       {link && <a href={link.href} style={{display:"inline-block",marginTop:6,fontSize:".82rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>{link.label} →</a>}
@@ -31281,7 +31339,7 @@ function LPPlanTiles({ plans = [], maxWidth }) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,230px),1fr))",gap:16,maxWidth:maxWidth||"none",margin:"0 auto"}}>
         {plans.map((p,i)=>(
           <LPCard key={i} style={{display:"flex",flexDirection:"column",padding:"22px 22px 20px",border:p.popular?"2px solid #C16140":"1px solid #E6DECF"}}>
-            <div style={{fontSize:".62rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8,minHeight:12,visibility:p.popular?"visible":"hidden"}}>Most popular</div>
+            <div style={{fontSize:".72rem",fontWeight:700,color:"#C16140",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8,minHeight:12,visibility:p.popular?"visible":"hidden"}}>Most popular</div>
             <h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:"0 0 4px"}}>{p.plan}</h3>
             <div style={{fontSize:"1.6rem",fontWeight:700,marginBottom:2,color:"#2A2723"}}>{p.price}<span style={{fontSize:".78rem",fontWeight:500,color:"#7A7370"}}>{p.period}</span></div>
             <div aria-hidden={p.annual ? undefined : "true"} style={{fontSize:".78rem",color:"#7A7370",marginBottom:10,minHeight:16,visibility:p.annual?"visible":"hidden"}}>{p.annual || "\u00A0"}</div>
@@ -31315,7 +31373,7 @@ function LPGuides({ path }) {
         {guides.map(g => (
           <a key={g.slug} href={`/blog/${g.slug}`} style={{textDecoration:"none",color:"inherit"}}>
             <LPCard style={{height:"100%"}}>
-              {g.tag && <div style={{fontSize:".66rem",fontWeight:700,color:"#C16140",marginBottom:6}}>{g.tag}</div>}
+              {g.tag && <div style={{fontSize:".72rem",fontWeight:700,color:"#C16140",marginBottom:6}}>{g.tag}</div>}
               <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1rem",color:"#234A3D",marginBottom:6,lineHeight:1.3}}>{g.title}</div>
               <div style={{fontSize:".82rem",color:"#7A7370",lineHeight:1.5}}>{g.description}</div>
             </LPCard>
@@ -31524,7 +31582,7 @@ function HomeForecastPage() {
     return { years, total, count: years.reduce((s, y) => s + y.items.length, 0), pastLife, big, rows };
   }, [ages, off]);
 
-  const shown = useCountUp(Math.round(result.total));
+  const shown = useCountUp(Math.round(result.total / 100) * 100);
   const maxTotal = Math.max(...result.years.map(y => y.total), 1);
   const lastYear = result.years[4].year;
 
@@ -31634,7 +31692,7 @@ function HomeForecastPage() {
                 <h2 style={{...h2s,fontSize:"1.1rem"}}>Your 5-year forecast</h2>
                 {!custom && <div style={{display:"inline-block",margin:"8px 0 0",background:"rgba(193,97,64,.12)",color:"#A24E31",fontSize:".74rem",fontWeight:700,padding:"3px 10px",borderRadius:20}}>Example home. Move a slider to make it yours.</div>}
                 <div style={{fontSize:".8rem",color:"#8A8178",margin:"12px 0 2px"}}>Estimated replacements through {lastYear}</div>
-                <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(2.4rem,11vw,3.1rem)",fontWeight:600,color:result.total > 0 ? "#C16140" : "#234A3D",lineHeight:1.02,letterSpacing:"-.025em"}}>{hfMoney(shown)}</div>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:"clamp(2.4rem,11vw,3.1rem)",fontWeight:600,color:result.total > 0 ? "#C16140" : "#234A3D",lineHeight:1.02,letterSpacing:"-.025em"}}>{hfMoney(Math.round(shown / 100) * 100)}</div>
                 <span style={{position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)"}}>Estimated total {hfMoney(result.total)}</span>
                 <p aria-live="polite" style={{fontSize:".92rem",color:"#4A443D",lineHeight:1.55,margin:"10px 0 0"}}>
                   {verdict}{pastCount > 0 && <span style={{color:HF_COL.past,fontWeight:700}}> {pastCount} {pastCount === 1 ? "item is" : "items are"} already past its typical life.</span>}
@@ -31644,7 +31702,7 @@ function HomeForecastPage() {
                 <div role="img" aria-label={"Replacement costs by year: " + result.years.map(y => y.year + " " + hfMoney(y.total)).join(", ")} style={{display:"flex",alignItems:"flex-end",gap:6,height:140,borderBottom:"1px solid #E6DECF",marginTop:18}}>
                   {result.years.map(y => (
                     <div key={y.year} style={{flex:"1 1 0",minWidth:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%"}}>
-                      <div style={{fontSize:".7rem",fontWeight:700,color:y.total > 0 ? "#5A534B" : "#B8B0A6",marginBottom:4,whiteSpace:"nowrap"}}>{y.total > 0 ? hfCompact(y.total) : "$0"}</div>
+                      <div style={{fontSize:".72rem",fontWeight:700,color:y.total > 0 ? "#5A534B" : "#B8B0A6",marginBottom:4,whiteSpace:"nowrap"}}>{y.total > 0 ? hfCompact(y.total) : "$0"}</div>
                       <div className="hf-fill" style={{width:"72%",maxWidth:44,height:Math.max(Math.round((y.total / maxTotal) * 96), 3),background:y.total > 0 ? "#C16140" : "#A7BFA8",borderRadius:"4px 4px 0 0"}}/>
                     </div>
                   ))}
@@ -31672,7 +31730,7 @@ function HomeForecastPage() {
               <div key={y.year} style={{...card,padding:"16px 18px",borderColor:y.items.length ? "#E4C9BC" : "#E6DECF"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
                   <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.15rem",color:"#234A3D"}}>{y.year}</span>
-                  <span style={{fontSize:".7rem",fontWeight:700,color:"#8A8178"}}>{i === 0 ? "This year" : ""}</span>
+                  <span style={{fontSize:".72rem",fontWeight:700,color:"#8A8178"}}>{i === 0 ? "This year" : ""}</span>
                 </div>
                 <div style={{fontWeight:700,fontSize:"1.05rem",color:y.items.length ? "#C16140" : "#8A8178",margin:"2px 0 8px"}}>{hfMoney(y.total)}</div>
                 {y.items.length === 0
@@ -31763,8 +31821,8 @@ function HomeForecastPage() {
       {showBar && (
         <div className="hf-bar hf-noprint" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:150,background:"#234A3D",color:"#F4EDDF",padding:"10px 16px calc(10px + env(safe-area-inset-bottom))",alignItems:"center",justifyContent:"space-between",gap:12,boxShadow:"0 -4px 16px rgba(0,0,0,.2)"}}>
           <div style={{minWidth:0}}>
-            <div style={{fontSize:".68rem",opacity:.72}}>Estimated replacements</div>
-            <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.3rem",lineHeight:1.1}}>{hfMoney(shown)}</div>
+            <div style={{fontSize:".72rem",opacity:.72}}>Estimated replacements</div>
+            <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.3rem",lineHeight:1.1}}>{hfMoney(Math.round(shown / 100) * 100)}</div>
           </div>
           <a href="#hf-results" style={{flexShrink:0,background:"#C16140",color:"#fff",textDecoration:"none",padding:"10px 16px",borderRadius:10,fontWeight:700,fontSize:".86rem"}}>See forecast ↑</a>
         </div>
@@ -32492,7 +32550,7 @@ function MockShell({ title, note="(example)", children, dark=false, style={} }) 
       {title && (
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:12}}>
           <div style={{fontSize:".74rem",fontWeight:700,color:dark?"#F4EDDF":"#234A3D"}}>{title}</div>
-          {note && <div style={{fontSize:".66rem",color:dark?"rgba(244,237,223,.5)":"#A8A09A"}}>{note}</div>}
+          {note && <div style={{fontSize:".72rem",color:dark?"rgba(244,237,223,.5)":"#A8A09A"}}>{note}</div>}
         </div>
       )}
       {children}
@@ -32501,7 +32559,7 @@ function MockShell({ title, note="(example)", children, dark=false, style={} }) 
 }
 function MockPill({ children, tone="ok" }) {
   const t = { ok:["#2E7050","rgba(46,112,80,.12)"], warn:["#B8861E","#FBF3DE"], bad:["#B0432B","#F7E0DA"], mute:["#6E665D","#EFE7D7"], rust:["#C16140","rgba(193,97,64,.12)"] }[tone];
-  return <span style={{display:"inline-block",fontSize:".68rem",fontWeight:700,color:t[0],background:t[1],padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{children}</span>;
+  return <span style={{display:"inline-block",fontSize:".72rem",fontWeight:700,color:t[0],background:t[1],padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{children}</span>;
 }
 
 // Utility hero: six months of electric bills with the latest one flagged as a spike.
@@ -32515,8 +32573,8 @@ function UtilSpikeMock() {
     <div style={{position:"relative",width:"100%",maxWidth:440,boxShadow:MOCK_SHADOW,borderRadius:18}}>
       <MockShell title="⚡ Electric" style={{padding:"18px 20px 16px"}}>
         <div style={{display:"flex",gap:22,marginBottom:14}}>
-          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,lineHeight:1,color:"#B0432B"}}>${bars[5][1]}</div><div style={{fontSize:".68rem",color:"#8A8178",marginTop:4}}>Last bill</div></div>
-          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,lineHeight:1,color:"#234A3D"}}>${avg6}</div><div style={{fontSize:".68rem",color:"#8A8178",marginTop:4}}>6-month average</div></div>
+          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,lineHeight:1,color:"#B0432B"}}>${bars[5][1]}</div><div style={{fontSize:".72rem",color:"#8A8178",marginTop:4}}>Last bill</div></div>
+          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.7rem",fontWeight:600,lineHeight:1,color:"#234A3D"}}>${avg6}</div><div style={{fontSize:".72rem",color:"#8A8178",marginTop:4}}>6-month average</div></div>
         </div>
         <div style={{position:"relative",height:H+18,paddingTop:18}}>
           <div style={{position:"absolute",left:0,right:0,bottom:22+Math.round(avg6/max*H),borderTop:"1.5px dashed #B8AFA3"}}/>
@@ -32525,14 +32583,14 @@ function UtilSpikeMock() {
               const spike = i===bars.length-1;
               return (
                 <div key={m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%",position:"relative"}}>
-                  {spike && <div style={{position:"absolute",top:H-Math.round(v/max*H)-26,fontSize:".66rem",fontWeight:700,color:"#fff",background:"#C16140",padding:"2px 7px",borderRadius:7,whiteSpace:"nowrap"}}>+{pct}%</div>}
+                  {spike && <div style={{position:"absolute",top:H-Math.round(v/max*H)-26,fontSize:".72rem",fontWeight:700,color:"#fff",background:"#C16140",padding:"2px 7px",borderRadius:7,whiteSpace:"nowrap"}}>+{pct}%</div>}
                   <div style={{width:"100%",height:Math.round(v/max*H),borderRadius:"7px 7px 3px 3px",background:spike?"#C16140":"#2F5E4E",opacity:spike?1:.85}}/>
                 </div>
               );
             })}
           </div>
           <div style={{display:"flex",gap:10,marginTop:6}}>
-            {bars.map(([m])=><div key={m} style={{flex:1,textAlign:"center",fontSize:".66rem",color:"#A8A09A"}}>{m}</div>)}
+            {bars.map(([m])=><div key={m} style={{flex:1,textAlign:"center",fontSize:".72rem",color:"#A8A09A"}}>{m}</div>)}
           </div>
         </div>
         <div style={{marginTop:14,display:"flex",gap:10,alignItems:"flex-start",background:"#FBF3DE",border:"1px solid #F0DDA8",borderRadius:11,padding:"10px 12px",fontSize:".78rem",color:"#7A5A12",lineHeight:1.45}}>
@@ -32551,7 +32609,7 @@ function UtilAccountsMock({style}) {
       {rows.map(([ic,n,p,a,bg],i)=>(
         <div key={n} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
           <span style={{width:34,height:34,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{n}</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>{p}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{n}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{p}</div></div>
           <div style={{fontSize:".84rem",fontWeight:700,color:"#234A3D"}}>{a}</div>
         </div>
       ))}
@@ -32579,7 +32637,7 @@ function UtilStatsMock({style}) {
         {[["Last bill","$214"],["6-mo average","$155"],["Year to date","$1,486"]].map(([l,v])=>(
           <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:11,padding:"9px 8px",textAlign:"center"}}>
             <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.05rem",color:"#234A3D"}}>{v}</div>
-            <div style={{fontSize:".62rem",color:"#A8A09A",marginTop:2}}>{l}</div>
+            <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2}}>{l}</div>
           </div>
         ))}
       </div>
@@ -32599,14 +32657,14 @@ function WayScanMock() {
       </div>
       <span style={{color:"#C16140",fontWeight:700}}>→</span>
       <div style={{display:"flex",flexDirection:"column",gap:5}}>
-        {["Oct 14","$214.37","1,482 kWh"].map(t=><span key={t} style={{fontSize:".7rem",fontWeight:700,color:"#234A3D",background:"rgba(35,74,61,.09)",borderRadius:7,padding:"3px 9px"}}>{t}</span>)}
+        {["Oct 14","$214.37","1,482 kWh"].map(t=><span key={t} style={{fontSize:".72rem",fontWeight:700,color:"#234A3D",background:"rgba(35,74,61,.09)",borderRadius:7,padding:"3px 9px"}}>{t}</span>)}
       </div>
     </div>
   );
 }
 function WayForwardMock() {
   return (
-    <div aria-hidden="true" style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"9px 11px",fontSize:".7rem",color:"#8A8178",lineHeight:1.6}}>
+    <div aria-hidden="true" style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"9px 11px",fontSize:".72rem",color:"#8A8178",lineHeight:1.6}}>
       <div><b style={{color:"#5E574F"}}>To:</b> your Steadwell capture address</div>
       <div><b style={{color:"#5E574F"}}>Subject:</b> Your October electric bill</div>
       <div style={{marginTop:6,height:4,width:"70%",background:"#E6DECF",borderRadius:2}}/>
@@ -32618,11 +32676,11 @@ function WayTypeMock() {
     <div aria-hidden="true" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
       {[["Date","Oct 14"],["Amount","$214.37"]].map(([k,v])=>(
         <div key={k} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:9,padding:"6px 9px"}}>
-          <div style={{fontSize:".6rem",color:"#A8A09A"}}>{k}</div><div style={{fontSize:".78rem",fontWeight:600}}>{v}</div>
+          <div style={{fontSize:".72rem",color:"#A8A09A"}}>{k}</div><div style={{fontSize:".78rem",fontWeight:600}}>{v}</div>
         </div>
       ))}
       <div style={{gridColumn:"1 / -1",display:"flex",gap:6}}>
-        {["Electric","Gas","Water","Internet"].map(t=><span key={t} style={{fontSize:".62rem",fontWeight:700,color:"#234A3D",border:"1px solid #C9D8CF",borderRadius:12,padding:"2px 8px"}}>+ {t}</span>)}
+        {["Electric","Gas","Water","Internet"].map(t=><span key={t} style={{fontSize:".72rem",fontWeight:700,color:"#234A3D",border:"1px solid #C9D8CF",borderRadius:12,padding:"2px 8px"}}>+ {t}</span>)}
       </div>
     </div>
   );
@@ -32670,14 +32728,14 @@ function WarrantyListMock() {
           {tiles.map(([n,l,c])=>(
             <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:11,padding:"8px 4px",textAlign:"center"}}>
               <div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.3rem",color:c,lineHeight:1.1}}>{n}</div>
-              <div style={{fontSize:".62rem",color:"#8A8178"}}>{l}</div>
+              <div style={{fontSize:".72rem",color:"#8A8178"}}>{l}</div>
             </div>
           ))}
         </div>
         {rows.map(([ic,n,s,p,t])=>(
           <div key={n} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
             <span style={{width:32,height:32,borderRadius:9,background:"#EFE7D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{s}</div></div>
+            <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{s}</div></div>
             <MockPill tone={t}>{p}</MockPill>
           </div>
         ))}
@@ -32689,7 +32747,7 @@ function WarrantyListMock() {
 function ReminderEmailMock() {
   return (
     <MockShell title="✉️ Reminder email" style={{maxWidth:460}}>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 30 days before expiry</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 30 days before expiry</div>
       <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.02rem",fontWeight:600,color:"#234A3D",marginBottom:8}}>Your dishwasher warranty ends in 30 days</div>
       <div style={{fontSize:".8rem",color:"#5E574F",lineHeight:1.55,marginBottom:12}}>Samsung Dishwasher · ends Nov 25. If anything has been acting up, now is the time to file a claim. Your receipt and serial number are saved with the item.</div>
       <span style={{display:"inline-block",background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 14px"}}>Review this warranty</span>
@@ -32700,10 +32758,10 @@ function ReceiptToRecordMock() {
   return (
     <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:460}}>
       <div style={{width:130,background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"12px 12px 14px",boxShadow:"0 10px 30px rgba(42,39,35,.08)",transform:"rotate(-2deg)"}}>
-        <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:".06em",color:"#8A8178",textAlign:"center",marginBottom:8}}>RECEIPT</div>
-        {[["Dishwasher","$849"],["Install","$120"]].map(([a,b])=><div key={a} style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#5E574F",marginBottom:5}}><span>{a}</span><span>{b}</span></div>)}
+        <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".06em",color:"#8A8178",textAlign:"center",marginBottom:8}}>RECEIPT</div>
+        {[["Dishwasher","$849"],["Install","$120"]].map(([a,b])=><div key={a} style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#5E574F",marginBottom:5}}><span>{a}</span><span>{b}</span></div>)}
         {[70,90,55].map((w,i)=><div key={i} style={{height:3,width:w+"%",background:"#E6DECF",borderRadius:2,margin:"6px 0"}}/>)}
-        <div style={{fontSize:".66rem",color:"#8A8178"}}>Nov 25, 2025</div>
+        <div style={{fontSize:".72rem",color:"#8A8178"}}>Nov 25, 2025</div>
       </div>
       <span className="lp-arrow" style={{color:"#C16140",fontWeight:700,fontSize:"1.2rem"}}>→</span>
       <MockShell title="Saved to Warranties" note="" style={{flex:"1 1 170px",maxWidth:220,padding:"14px 15px"}}>
@@ -32741,7 +32799,7 @@ function LPFeatureRow({ visual, title, children, flip=false }) {
 }
 function LPBadge({ plan }) {
   const free = plan === "Free" || plan === "All plans";
-  return <span style={{display:"inline-block",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:free?"#2E7050":"#C16140",background:free?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{plan}</span>;
+  return <span style={{display:"inline-block",fontSize:".72rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:free?"#2E7050":"#C16140",background:free?"rgba(46,112,80,.1)":"rgba(193,97,64,.1)",padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{plan}</span>;
 }
 
 // ─── SHARED PIECES FOR THE REDESIGNED FEATURE PAGES ───────────────────────────
@@ -32786,12 +32844,12 @@ function KindVisual({ doc, chips }) {
   return (
     <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,justifyContent:"center"}}>
       <div style={{width:58,height:76,background:"#fff",border:"1.5px dashed #C9BFAE",borderRadius:8,padding:"8px 7px",boxSizing:"border-box",flexShrink:0}}>
-        <div style={{fontSize:".5rem",fontWeight:700,letterSpacing:".05em",color:"#8A8178",textAlign:"center",marginBottom:6,whiteSpace:"nowrap"}}>{doc}</div>
+        <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".05em",color:"#8A8178",textAlign:"center",marginBottom:6,whiteSpace:"nowrap"}}>{doc}</div>
         {[85,100,60,90,70].map((w,i)=><div key={i} style={{height:3.5,width:w+"%",background:"#E6DECF",borderRadius:2,marginBottom:5}}/>)}
       </div>
       <span style={{color:"#C16140",fontWeight:700}}>→</span>
       <div style={{display:"flex",flexDirection:"column",gap:5,minWidth:0}}>
-        {chips.map(t=><span key={t} style={{fontSize:".7rem",fontWeight:700,color:"#234A3D",background:"rgba(35,74,61,.09)",borderRadius:7,padding:"3px 9px",whiteSpace:"nowrap"}}>{t}</span>)}
+        {chips.map(t=><span key={t} style={{fontSize:".72rem",fontWeight:700,color:"#234A3D",background:"rgba(35,74,61,.09)",borderRadius:7,padding:"3px 9px",whiteSpace:"nowrap"}}>{t}</span>)}
       </div>
     </div>
   );
@@ -32804,10 +32862,10 @@ function LPKindCard({ tint, doc, chips, icon, title, tag, desc, fields }) {
       <div style={{background:tint,padding:"22px 18px",minHeight:112,display:"flex",flexDirection:"column",justifyContent:"center"}}><KindVisual doc={doc} chips={chips}/></div>
       <div style={{padding:"18px 22px 22px",display:"flex",flexDirection:"column",flex:1}}>
         <h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:"0 0 6px"}}>{icon} {title}</h3>
-        {tag && <div style={{marginBottom:10}}><span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".65rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>{tag}</span></div>}
+        {tag && <div style={{marginBottom:10}}><span style={{background:"rgba(35,74,61,.08)",color:"#234A3D",fontSize:".72rem",fontWeight:700,padding:"2px 8px",borderRadius:6}}>{tag}</span></div>}
         <div className="lp-desc" style={{fontSize:".85rem",color:"#6B645C",lineHeight:1.6,marginBottom:14}}>{desc}</div>
         <div>
-          <div style={{fontSize:".7rem",fontWeight:700,color:"#A8A09A",marginBottom:7}}>Fields filled in</div>
+          <div style={{fontSize:".72rem",fontWeight:700,color:"#A8A09A",marginBottom:7}}>Fields filled in</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
             {fields.map(f=><span key={f} style={{fontSize:".72rem",color:"#5E574F",background:"#F4EDDF",border:"1px solid #E6DECF",borderRadius:7,padding:"2px 8px"}}>{f}</span>)}
           </div>
@@ -32825,7 +32883,7 @@ function MaintListMock() {
       {rows.map(([ic,t,m,p,tone],i)=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
           <span style={{width:34,height:34,borderRadius:10,background:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ic}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".85rem",fontWeight:600}}>{t}</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>{m}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".85rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{m}</div></div>
           <MockPill tone={tone}>{p}</MockPill>
         </div>
       ))}
@@ -32847,7 +32905,7 @@ function MaintRecurMock() {
 function MaintReminderMock() {
   return (
     <MockShell title="✉️ Reminder email" style={{maxWidth:430}}>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 3 days before it is due</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 3 days before it is due</div>
       <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.02rem",fontWeight:600,color:"#234A3D",marginBottom:8}}>Replace HVAC filter is due Nov 14</div>
       <div style={{fontSize:".8rem",color:"#5E574F",lineHeight:1.55,marginBottom:12}}>HVAC · repeats quarterly. Mark it done in Steadwell and the next one is scheduled for you.</div>
       <span style={{display:"inline-block",background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 14px"}}>Open task</span>
@@ -32864,7 +32922,7 @@ function MaintHistoryMock() {
           <div key={t} style={{position:"relative",padding:"8px 0"}}>
             <span style={{position:"absolute",left:-18,top:13,width:10,height:10,borderRadius:"50%",background:"#2F5E4E",border:"2px solid #FBF7EE"}}/>
             <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:".82rem"}}><span style={{fontWeight:600}}>{t}</span><span style={{color:"#A8A09A",fontSize:".72rem"}}>{d}</span></div>
-            <div style={{fontSize:".7rem",color:"#8A8178"}}>{w}</div>
+            <div style={{fontSize:".72rem",color:"#8A8178"}}>{w}</div>
           </div>
         ))}
       </div>
@@ -32878,8 +32936,8 @@ function ScanNameplateMock() {
   return (
     <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:470}}>
       <div style={{width:150,background:"linear-gradient(145deg,#E9E4DA,#CFC8BA)",border:"1px solid #B9B0A0",borderRadius:8,padding:"11px 11px 13px",boxShadow:"0 14px 34px rgba(0,0,0,.28)",transform:"rotate(-2deg)",color:"#4A443C"}}>
-        <div style={{fontSize:".54rem",fontWeight:800,letterSpacing:".08em",marginBottom:7}}>EXAMPLE WATER HEATERS</div>
-        {[["MODEL","EWH-40T"],["SERIAL","XX4821"],["MFG DATE","03/2021"],["CAPACITY","40 GAL"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:".56rem",marginBottom:4}}><span style={{opacity:.7}}>{k}</span><b>{v}</b></div>)}
+        <div style={{fontSize:".68rem",fontWeight:800,letterSpacing:".08em",marginBottom:7}}>EXAMPLE WATER HEATERS</div>
+        {[["MODEL","EWH-40T"],["SERIAL","XX4821"],["MFG DATE","03/2021"],["CAPACITY","40 GAL"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",marginBottom:4}}><span style={{opacity:.7}}>{k}</span><b>{v}</b></div>)}
         <div style={{height:3,background:"rgba(0,0,0,.12)",borderRadius:2,marginTop:7}}/>
       </div>
       <span className="lp-arrow" style={{color:"#D2876A",fontWeight:700,fontSize:"1.2rem"}}>→</span>
@@ -32902,7 +32960,7 @@ function ScanReviewMock() {
         </div>
       ))}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginTop:12}}>
-        <span style={{fontSize:".7rem",color:"#8A8178"}}>Original photo saved to your vault</span>
+        <span style={{fontSize:".72rem",color:"#8A8178"}}>Original photo saved to your vault</span>
         <span style={{background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 16px",flexShrink:0}}>Save record</span>
       </div>
     </MockShell>
@@ -32914,13 +32972,13 @@ function InboxMock() {
   const rows=[["Order confirmation","Example Home Store","Warranty + expense"],["Invoice #1042","Example Plumbing","Expense"],["Your October bill","Example Power & Light","Utility bill"]];
   return (
     <MockShell title="Email Inbox" style={{maxWidth:440}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,background:"#F4EDDF",borderRadius:10,padding:"8px 11px",marginBottom:10,fontSize:".7rem",color:"#5E574F"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,background:"#F4EDDF",borderRadius:10,padding:"8px 11px",marginBottom:10,fontSize:".72rem",color:"#5E574F"}}>
         <span style={{color:"#8A8178",flexShrink:0}}>Your address</span><b style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>yourname-••••@in.trysteadwell.app</b>
       </div>
       {rows.map(([s,f,c],i)=>(
         <div key={s} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:"1px solid #E6DECF"}}>
           <span aria-hidden="true" style={{fontSize:"1.05rem"}}>✉️</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{s}</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>{f} · {c}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{s}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{f} · {c}</div></div>
           <MockPill tone={i===0?"rust":"mute"}>{i===0?"Review":"Pending"}</MockPill>
         </div>
       ))}
@@ -32947,7 +33005,7 @@ function RecallAlertMock() {
         <div style={{fontSize:".74rem",color:"#5E574F",lineHeight:1.5,marginBottom:10}}>Matches a notice in the CPSC database for this brand and product type. Check your model number against the notice.</div>
         <span style={{display:"inline-block",background:"#234A3D",color:"#F4EDDF",fontSize:".72rem",fontWeight:700,borderRadius:8,padding:"6px 12px"}}>See the CPSC notice</span>
       </div>
-      <div style={{marginTop:10,fontSize:".7rem",color:"#8A8178"}}>The notice explains the hazard, the affected models and how to get a repair, replacement or refund.</div>
+      <div style={{marginTop:10,fontSize:".72rem",color:"#8A8178"}}>The notice explains the hazard, the affected models and how to get a repair, replacement or refund.</div>
     </MockShell>
   );
 }
@@ -32978,8 +33036,8 @@ function ExpenseListMock() {
       {rows.map(([ic,t,m,a],i)=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:32,height:32,borderRadius:10,background:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{ic}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m}</div></div>
-          <span style={{fontSize:".66rem",color:"#8A8178"}}>📎</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m}</div></div>
+          <span style={{fontSize:".72rem",color:"#8A8178"}}>📎</span>
           <b style={{fontSize:".84rem"}}>{a}</b>
         </div>
       ))}
@@ -33008,15 +33066,15 @@ function ForecastMock() {
       <div style={{display:"flex",alignItems:"flex-end",gap:8,height:120,marginBottom:6}}>
         {cols.map(([y,v])=>(
           <div key={y} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",height:"100%"}}>
-            <div style={{fontSize:".62rem",fontWeight:700,color:"#5E574F",marginBottom:3}}>{v?("$"+v.toLocaleString("en-US")):"$0"}</div>
+            <div style={{fontSize:".72rem",fontWeight:700,color:"#5E574F",marginBottom:3}}>{v?("$"+v.toLocaleString("en-US")):"$0"}</div>
             <div style={{width:"100%",height:v?Math.max(8,Math.round(v/max*84)):3,background:v>=7000?"#C16140":"#2F5E4E",opacity:v?.9:.35,borderRadius:"5px 5px 2px 2px"}}/>
           </div>
         ))}
       </div>
       <div style={{display:"flex",gap:8}}>
-        {cols.map(([y,v,n])=><div key={y} style={{flex:1,textAlign:"center"}}><div style={{fontSize:".7rem",fontWeight:700}}>{y}</div><div style={{fontSize:".6rem",color:"#A8A09A",minHeight:"1.6em"}}>{n}</div></div>)}
+        {cols.map(([y,v,n])=><div key={y} style={{flex:1,textAlign:"center"}}><div style={{fontSize:".72rem",fontWeight:700}}>{y}</div><div style={{fontSize:".72rem",color:"#A8A09A",minHeight:"1.6em"}}>{n}</div></div>)}
       </div>
-      <div style={{marginTop:8,fontSize:".68rem",color:"#8A8178",lineHeight:1.5}}>Estimates use average lifespans and costs. Use it as a planning guide.</div>
+      <div style={{marginTop:8,fontSize:".72rem",color:"#8A8178",lineHeight:1.5}}>Estimates use average lifespans and costs. Use it as a planning guide.</div>
     </MockShell>
   );
 }
@@ -33029,7 +33087,7 @@ function VaultMock() {
       {rows.map(([ic,t,c,x],i)=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:32,height:32,borderRadius:10,background:"#F4EDDF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{ic}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{c}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".84rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{c}</div></div>
           {x && <MockPill tone={x.startsWith("Renews")?"warn":"mute"}>{x}</MockPill>}
         </div>
       ))}
@@ -33042,7 +33100,7 @@ function VaultUploadMock() {
       <div style={{border:"1.5px dashed #C9BFAE",borderRadius:12,padding:"20px 14px",textAlign:"center",background:"#fff",marginBottom:10}}>
         <div style={{fontSize:"1.4rem",marginBottom:4}}>📄</div>
         <div style={{fontSize:".82rem",fontWeight:600}}>Upload a file or scan with your camera</div>
-        <div style={{fontSize:".68rem",color:"#A8A09A",marginTop:3}}>PDF, JPG, PNG, HEIC or Word, up to 50 MB</div>
+        <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:3}}>PDF, JPG, PNG, HEIC or Word, up to 50 MB</div>
       </div>
       {[["Category","Permits & inspections"],["Linked to","Water heater"],["Expires","Mar 1, 2027"]].map(([k,v],i)=>(
         <div key={k} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF",fontSize:".8rem"}}><span style={{color:"#8A8178"}}>{k}</span><b style={{fontWeight:600}}>{v}</b></div>
@@ -33060,7 +33118,7 @@ function StorageMock() {
           <div style={{height:9,background:"#EFE7D7",borderRadius:5}}><div style={{width:Math.max(w,3)+"%",height:"100%",background:n==="Free"?"#2F5E4E":"#C16140",borderRadius:5}}/></div>
         </div>
       ))}
-      <div style={{fontSize:".7rem",color:"#8A8178"}}>Documents are private to your account.</div>
+      <div style={{fontSize:".72rem",color:"#8A8178"}}>Documents are private to your account.</div>
     </MockShell>
   );
 }
@@ -33070,7 +33128,7 @@ function PolicyMock() {
   return (
     <MockShell title="Homeowners policy" style={{maxWidth:440}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
-        <div><div style={{fontSize:".88rem",fontWeight:700}}>Example Mutual Insurance</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>Policy ••••6021 · Agent on file</div></div>
+        <div><div style={{fontSize:".88rem",fontWeight:700}}>Example Mutual Insurance</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>Policy ••••6021 · Agent on file</div></div>
         <MockPill tone="warn">Renews in 30 days</MockPill>
       </div>
       {cov.map(([k,v])=>(
@@ -33084,7 +33142,7 @@ function DeclScanMock() {
   return (
     <div aria-hidden="true" style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:460}}>
       <div style={{width:118,background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"11px 11px 13px",boxShadow:"0 10px 30px rgba(42,39,35,.08)",transform:"rotate(-2deg)"}}>
-        <div style={{fontSize:".56rem",fontWeight:700,letterSpacing:".06em",color:"#8A8178",textAlign:"center",marginBottom:7}}>DECLARATIONS</div>
+        <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".06em",color:"#8A8178",textAlign:"center",marginBottom:7}}>DECLARATIONS</div>
         {[90,100,70,95,60,85,50].map((w,i)=><div key={i} style={{height:3.5,width:w+"%",background:"#E6DECF",borderRadius:2,margin:"6px 0"}}/>)}
       </div>
       <span className="lp-arrow" style={{color:"#C16140",fontWeight:700,fontSize:"1.2rem"}}>→</span>
@@ -33099,7 +33157,7 @@ function DeclScanMock() {
 function RenewalEmailMock() {
   return (
     <MockShell title="✉️ Reminder email" style={{maxWidth:430}}>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 30 days before renewal</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:8}}>From Steadwell · 30 days before renewal</div>
       <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.02rem",fontWeight:600,color:"#234A3D",marginBottom:8}}>Your homeowners policy renews on Mar 1</div>
       <div style={{fontSize:".8rem",color:"#5E574F",lineHeight:1.55,marginBottom:12}}>Now is a good time to review your coverage and compare options before it renews.</div>
       <span style={{display:"inline-block",background:"#C16140",color:"#fff",fontSize:".76rem",fontWeight:700,borderRadius:9,padding:"8px 14px"}}>Review my policy</span>
@@ -33113,7 +33171,7 @@ function ClaimsLogMock() {
       {rows.map(([t,d,c,p,s,tone],i)=>(
         <div key={t} style={{padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><b style={{fontSize:".84rem",fontWeight:600}}>{t}</b><MockPill tone={tone}>{s}</MockPill></div>
-          <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2}}>{d} · Claimed {c} · Paid {p}</div>
+          <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2}}>{d} · Claimed {c} · Paid {p}</div>
         </div>
       ))}
       <div style={{marginTop:6,paddingTop:10,borderTop:"1px solid #E6DECF",fontSize:".72rem",color:"#8A8178"}}>+ Log a new claim</div>
@@ -33127,8 +33185,8 @@ function ContractorMock() {
     <MockShell title="Contractor" style={{maxWidth:440}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
         <span style={{width:40,height:40,borderRadius:"50%",background:"rgba(35,74,61,.1)",color:"#234A3D",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>EP</span>
-        <div style={{flex:1,minWidth:0}}><div style={{fontSize:".9rem",fontWeight:700}}>Example Plumbing Co.</div><div style={{fontSize:".7rem",color:"#A8A09A"}}>Plumber · <span style={{color:"#B8861E"}}>★★★★★</span></div></div>
-        <div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#234A3D"}}>$1,240</div><div style={{fontSize:".62rem",color:"#A8A09A"}}>spent, 3 visits</div></div>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:".9rem",fontWeight:700}}>Example Plumbing Co.</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>Plumber · <span style={{color:"#B8861E"}}>★★★★★</span></div></div>
+        <div style={{textAlign:"right"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.1rem",color:"#234A3D"}}>$1,240</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>spent, 3 visits</div></div>
       </div>
       {visits.map(([d,t,a])=>(
         <div key={t} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF",fontSize:".8rem"}}><span><span style={{color:"#A8A09A",marginRight:8}}>{d}</span>{t}</span><b>{a}</b></div>
@@ -33153,7 +33211,7 @@ function VisitLogMock() {
       {rows.map(([d,t,a,n],i)=>(
         <div key={t} style={{padding:"10px 0",borderTop:i?"1px solid #E6DECF":"none"}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:".84rem"}}><b style={{fontWeight:600}}>{t}</b><b>{a}</b></div>
-          <div style={{fontSize:".7rem",color:"#A8A09A",marginTop:2}}>{d} · {n}</div>
+          <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2}}>{d} · {n}</div>
         </div>
       ))}
       <div style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#2E7050",fontWeight:600}}>✓ Invoice attached</div>
@@ -33202,7 +33260,7 @@ function YearsLeftMock() {
       <div style={{position:"relative",height:12,background:"#EFE7D7",borderRadius:7,marginBottom:6}}>
         <div style={{width:"83%",height:"100%",background:"linear-gradient(90deg,#2F5E4E,#B8861E 75%,#C16140)",borderRadius:7}}/>
       </div>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:".66rem",color:"#A8A09A",marginBottom:14}}><span>Installed 2015</span><span>Typical life 12 years</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#A8A09A",marginBottom:14}}><span>Installed 2015</span><span>Typical life 12 years</span></div>
       {[["Home health score","Updated"],["5-year cost forecast","Moved up to 2028"]].map(([t,m])=>(
         <div key={t} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderTop:"1px solid #E6DECF",fontSize:".78rem"}}><span style={{color:"#5E574F"}}>{t}</span><b style={{color:"#234A3D"}}>{m}</b></div>
       ))}
@@ -33214,8 +33272,8 @@ function NextStepsMock() {
     <MockShell title="Review before saving" note="(example)" style={{maxWidth:440}}>
       {[["Flush the tank","Suggested task · every 12 months",true],["Test the pressure relief valve","Suggested task · every 12 months",true],["Replace the anode rod","Suggested task · one time",false]].map(([t,m,on])=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
-          <span style={{width:20,height:20,borderRadius:6,border:on?"none":"1.5px solid #CFC6B6",background:on?"#234A3D":"#fff",color:"#fff",fontSize:".7rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{on?"✓":""}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{m}</div></div>
+          <span style={{width:20,height:20,borderRadius:6,border:on?"none":"1.5px solid #CFC6B6",background:on?"#234A3D":"#fff",color:"#fff",fontSize:".72rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{on?"✓":""}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{m}</div></div>
         </div>
       ))}
       <div style={{display:"flex",gap:8,alignItems:"center",marginTop:10,padding:"9px 11px",background:"#F7E0DA",borderRadius:10,fontSize:".74rem",color:"#8E3622"}}><span aria-hidden="true">⚠️</span>Have a licensed plumber look at the base of the tank.</div>
@@ -33254,7 +33312,7 @@ function HealthDropMock() {
     <MockShell title="What moved your score" note="(example)" style={{maxWidth:440}}>
       {[["Water heater near end of life","Assets","bad"],["Dishwasher warranty ended","Warranties","warn"],["1 task is past due","Tasks","warn"],["Insurance renewal date added","Profile","ok"]].map(([t,f,tone])=>(
         <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
-          <div style={{minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>Factor: {f}</div></div>
+          <div style={{minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>Factor: {f}</div></div>
           <MockPill tone={tone}>{tone==="ok"?"Helping":tone==="bad"?"Pulling down":"Watch"}</MockPill>
         </div>
       ))}
@@ -33282,10 +33340,10 @@ function AskChatMock() {
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><div style={{...bubble,background:"#234A3D",color:"#F4EDDF"}}>Is my water heater near the end of its life?</div></div>
       <div style={{...bubble,background:"#EFE7D7",marginBottom:10}}>Your water heater is about 11 years old. Tank models often last 8 to 12 years, so it is worth planning for a replacement soon. Your last service was 14 months ago.</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-        {["🔧 Water heater","⚙️ Service log"].map(s=><span key={s} style={{fontSize:".7rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.09)",padding:"3px 10px",borderRadius:20}}>{s}</span>)}
+        {["🔧 Water heater","⚙️ Service log"].map(s=><span key={s} style={{fontSize:".72rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.09)",padding:"3px 10px",borderRadius:20}}>{s}</span>)}
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",background:"#fff",borderRadius:12,padding:"9px 12px"}}>
-        <div style={{fontSize:".8rem"}}><div style={{fontWeight:700}}>Flush the water heater tank</div><div style={{color:"#8A8178",fontSize:".7rem"}}>Suggested task · due Nov 15</div></div>
+        <div style={{fontSize:".8rem"}}><div style={{fontWeight:700}}>Flush the water heater tank</div><div style={{color:"#8A8178",fontSize:".72rem"}}>Suggested task · due Nov 15</div></div>
         <span style={{background:"#C16140",color:"#fff",fontWeight:700,fontSize:".74rem",padding:"6px 14px",borderRadius:9}}>Add</span>
       </div>
     </MockShell>
@@ -33296,9 +33354,9 @@ function AskSourcesMock() {
     <MockShell title="✨ Ask Steadwell" note="(example)" style={{maxWidth:440}}>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><div style={{borderRadius:14,padding:"9px 14px",fontSize:".82rem",background:"#234A3D",color:"#F4EDDF"}}>What did I spend on repairs this year?</div></div>
       <div style={{borderRadius:14,padding:"10px 14px",fontSize:".82rem",lineHeight:1.5,background:"#EFE7D7",marginBottom:10}}>You have spent <b>$2,600</b> on repairs so far this year across 5 expenses. The largest was the water heater flush at $385.</div>
-      <div style={{fontSize:".66rem",color:"#A8A09A",marginBottom:6}}>Sources</div>
+      <div style={{fontSize:".72rem",color:"#A8A09A",marginBottom:6}}>Sources</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        {["💳 Water heater flush","💳 Leak repair","💳 +3 expenses"].map(s=><span key={s} style={{fontSize:".7rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.09)",padding:"3px 10px",borderRadius:20}}>{s}</span>)}
+        {["💳 Water heater flush","💳 Leak repair","💳 +3 expenses"].map(s=><span key={s} style={{fontSize:".72rem",fontWeight:600,color:"#234A3D",background:"rgba(35,74,61,.09)",padding:"3px 10px",borderRadius:20}}>{s}</span>)}
       </div>
     </MockShell>
   );
@@ -33308,7 +33366,7 @@ function AskTaskMock() {
     <MockShell title="Suggested tasks" note="(example)" style={{maxWidth:440}}>
       {[["Replace HVAC filter","Due Nov 1 · every 3 months"],["Flush the water heater tank","Due Nov 15 · every 12 months"]].map(([t,m],i)=>(
         <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",background:"#fff",borderRadius:12,padding:"10px 12px",marginBottom:9}}>
-          <div style={{fontSize:".82rem",minWidth:0}}><div style={{fontWeight:700}}>{t}</div><div style={{color:"#8A8178",fontSize:".7rem"}}>{m}</div></div>
+          <div style={{fontSize:".82rem",minWidth:0}}><div style={{fontWeight:700}}>{t}</div><div style={{color:"#8A8178",fontSize:".72rem"}}>{m}</div></div>
           {i===0 ? <MockPill tone="ok">Added</MockPill> : <span style={{background:"#C16140",color:"#fff",fontWeight:700,fontSize:".74rem",padding:"6px 14px",borderRadius:9}}>Add</span>}
         </div>
       ))}
@@ -33335,7 +33393,7 @@ function CalMonthMock() {
   return (
     <MockShell title="November" note="(example)" style={{maxWidth:440}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,textAlign:"center",marginBottom:4}}>
-        {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{fontSize:".62rem",color:"#A8A09A",fontWeight:700}}>{d}</div>)}
+        {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{fontSize:".72rem",color:"#A8A09A",fontWeight:700}}>{d}</div>)}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
         {Array.from({length:lead}).map((_,i)=><div key={"l"+i}/>)}
@@ -33345,7 +33403,7 @@ function CalMonthMock() {
           </div>
         ))}
       </div>
-      <div style={{display:"flex",gap:14,marginTop:10,fontSize:".68rem",color:"#8A8178"}}>
+      <div style={{display:"flex",gap:14,marginTop:10,fontSize:".72rem",color:"#8A8178"}}>
         <span><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#234A3D",marginRight:5}}/>Maintenance</span>
         <span><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#C16140",marginRight:5}}/>Warranty ends</span>
       </div>
@@ -33359,7 +33417,7 @@ function CalAgendaMock() {
       {rows.map(([d,t,m,c])=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:4,alignSelf:"stretch",background:c,borderRadius:3}}/>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{m}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{m}</div></div>
           <b style={{fontSize:".74rem",color:"#5E574F"}}>{d}</b>
         </div>
       ))}
@@ -33373,7 +33431,7 @@ function CalSubscribeMock() {
       <div style={btn}><span>Google Calendar</span><span style={{color:"#C16140",fontSize:".72rem"}}>Open</span></div>
       <div style={btn}><span>Apple Calendar</span><span style={{color:"#C16140",fontSize:".72rem"}}>Copy link</span></div>
       <div style={btn}><span>Outlook and others</span><span style={{color:"#C16140",fontSize:".72rem"}}>Copy link</span></div>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginTop:6,lineHeight:1.5}}>Your link includes a private key. Keep it to yourself.</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginTop:6,lineHeight:1.5}}>Your link includes a private key. Keep it to yourself.</div>
     </MockShell>
   );
 }
@@ -33385,7 +33443,7 @@ function PeopleMock() {
       {rows.map(([n,l,h,p])=>(
         <div key={n} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:30,height:30,borderRadius:"50%",background:"#EFE7D7",color:"#234A3D",fontWeight:700,fontSize:".78rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{n[0].toUpperCase()}</span>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</div><div style={{fontSize:".68rem",color:"#A8A09A"}}>{l} · {h}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>{l} · {h}</div></div>
           {p && <MockPill tone="warn">{p}</MockPill>}
         </div>
       ))}
@@ -33395,15 +33453,15 @@ function PeopleMock() {
 function InviteMock() {
   return (
     <MockShell title="Invite people" note="(example)" style={{maxWidth:440}}>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:4}}>Email addresses</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:4}}>Email addresses</div>
       <div style={{border:"1px solid #E6DECF",background:"#fff",borderRadius:9,padding:"8px 11px",fontSize:".78rem",color:"#5E574F",marginBottom:11}}>partner@example.com</div>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:5}}>Access level</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:5}}>Access level</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:11}}>
         {[["Admin",false],["Full access",true],["Tasks & assets",false]].map(([l,on])=><span key={l} style={{fontSize:".74rem",fontWeight:600,padding:"5px 11px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{l}</span>)}
       </div>
-      <div style={{fontSize:".7rem",color:"#8A8178",marginBottom:5}}>Homes</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:5}}>Homes</div>
       {[["Main house",true],["Rental",true]].map(([h,on])=>(
-        <div key={h} style={{display:"flex",alignItems:"center",gap:8,fontSize:".78rem",marginBottom:5}}><span style={{width:16,height:16,borderRadius:5,background:on?"#234A3D":"#fff",border:on?"none":"1.5px solid #CFC6B6",color:"#fff",fontSize:".6rem",display:"flex",alignItems:"center",justifyContent:"center"}}>{on?"✓":""}</span>{h}</div>
+        <div key={h} style={{display:"flex",alignItems:"center",gap:8,fontSize:".78rem",marginBottom:5}}><span style={{width:16,height:16,borderRadius:5,background:on?"#234A3D":"#fff",border:on?"none":"1.5px solid #CFC6B6",color:"#fff",fontSize:".72rem",display:"flex",alignItems:"center",justifyContent:"center"}}>{on?"✓":""}</span>{h}</div>
       ))}
       <div style={{marginTop:10,textAlign:"center",background:"#C16140",color:"#fff",borderRadius:9,padding:"8px",fontSize:".78rem",fontWeight:700}}>Send invite</div>
     </MockShell>
@@ -33414,13 +33472,13 @@ function AssignMock() {
   return (
     <MockShell title="Tasks" note="(example)" style={{maxWidth:440}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-        {[["All",false],["Assigned to me",true],["Unassigned",false]].map(([l,on])=><span key={l} style={{fontSize:".7rem",fontWeight:600,padding:"4px 10px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{l}</span>)}
+        {[["All",false],["Assigned to me",true],["Unassigned",false]].map(([l,on])=><span key={l} style={{fontSize:".72rem",fontWeight:600,padding:"4px 10px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{l}</span>)}
       </div>
       {rows.map(([t,d,a])=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:16,height:16,borderRadius:5,border:"1.5px solid #CFC6B6",flexShrink:0}}/>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600}}>{t}</div><div style={{fontSize:".66rem",color:"#A8A09A"}}>Due {d}</div></div>
-          {a ? <MockPill tone="mute">{a}</MockPill> : <span style={{fontSize:".68rem",color:"#A8A09A"}}>Unassigned</span>}
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>Due {d}</div></div>
+          {a ? <MockPill tone="mute">{a}</MockPill> : <span style={{fontSize:".72rem",color:"#A8A09A"}}>Unassigned</span>}
         </div>
       ))}
     </MockShell>
@@ -33446,8 +33504,8 @@ function ProjectMock() {
       <div style={{display:"flex",justifyContent:"space-between",fontSize:".76rem",marginBottom:4}}><span style={{color:"#5E574F"}}>Spent</span><b>$31,200 of $38,000</b></div>
       <div style={{height:9,background:"#EFE7D7",borderRadius:5,marginBottom:14}}><div style={{width:"82%",height:"100%",background:"#234A3D",borderRadius:5}}/></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <div style={{background:"#F4EDDF",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D"}}>$28,900</div><div style={{fontSize:".62rem",color:"#8A8178",marginTop:2}}>Estimated value added</div></div>
-        <div style={{background:"rgba(35,74,61,.09)",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D"}}>76%</div><div style={{fontSize:".62rem",color:"#234A3D",marginTop:2}}>Return on cost</div></div>
+        <div style={{background:"#F4EDDF",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D"}}>$28,900</div><div style={{fontSize:".72rem",color:"#8A8178",marginTop:2}}>Estimated value added</div></div>
+        <div style={{background:"rgba(35,74,61,.09)",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.25rem",color:"#234A3D"}}>76%</div><div style={{fontSize:".72rem",color:"#234A3D",marginTop:2}}>Return on cost</div></div>
       </div>
     </MockShell>
   );
@@ -33460,7 +33518,7 @@ function ProjectListMock() {
         <div key={n} style={{padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:6}}><span style={{fontSize:".84rem",fontWeight:600}}>{n}</span><MockPill tone={t}>{s}</MockPill></div>
           <div style={{height:6,background:"#EFE7D7",borderRadius:4,marginBottom:4}}><div style={{width:p+"%",height:"100%",background:p>=100?"#B8861E":"#234A3D",borderRadius:4}}/></div>
-          <div style={{fontSize:".68rem",color:"#A8A09A"}}>{m}</div>
+          <div style={{fontSize:".72rem",color:"#A8A09A"}}>{m}</div>
         </div>
       ))}
     </MockShell>
@@ -33476,7 +33534,7 @@ function RoiBarsMock() {
           <div style={{height:9,background:"#EFE7D7",borderRadius:5}}><div style={{width:v+"%",height:"100%",background:"#C16140",borderRadius:5}}/></div>
         </div>
       ))}
-      <div style={{fontSize:".68rem",color:"#8A8178",marginTop:2}}>Share of project cost recovered at resale. Actual returns vary by region and quality.</div>
+      <div style={{fontSize:".72rem",color:"#8A8178",marginTop:2}}>Share of project cost recovered at resale. Actual returns vary by region and quality.</div>
     </MockShell>
   );
 }
@@ -33487,8 +33545,8 @@ function PhotoGuideMock() {
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
         {tiles.map(([l,g],i)=>(
           <div key={l}>
-            <div style={{height:78,borderRadius:10,background:g,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:6}}><span style={{width:20,height:20,borderRadius:"50%",background:"#234A3D",color:"#fff",fontSize:".68rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{i+1}</span></div>
-            <div style={{fontSize:".7rem",fontWeight:600,textAlign:"center",marginTop:5,color:"#5E574F"}}>{l}</div>
+            <div style={{height:78,borderRadius:10,background:g,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:6}}><span style={{width:20,height:20,borderRadius:"50%",background:"#234A3D",color:"#fff",fontSize:".72rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{i+1}</span></div>
+            <div style={{fontSize:".72rem",fontWeight:600,textAlign:"center",marginTop:5,color:"#5E574F"}}>{l}</div>
           </div>
         ))}
       </div>
@@ -33558,7 +33616,7 @@ function UtilityBillTrackerPage() {
                 <div className="lp-eq" style={{flex:"0 0 auto",display:"flex",flexDirection:"column"}}>{c.visual}</div>
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><h3 style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",margin:0}}>{c.title}</h3><LPBadge plan={c.badge}/></div>
-                  {c.items.map((t,j)=>(<div key={j} style={{display:"flex",gap:8,fontSize:".84rem",color:"#5E574F",lineHeight:1.5,marginBottom:5}}><span style={{color:"#234A3D",fontWeight:700,fontSize:".7rem",marginTop:3}}>✓</span><span>{t}</span></div>))}
+                  {c.items.map((t,j)=>(<div key={j} style={{display:"flex",gap:8,fontSize:".84rem",color:"#5E574F",lineHeight:1.5,marginBottom:5}}><span style={{color:"#234A3D",fontWeight:700,fontSize:".72rem",marginTop:3}}>✓</span><span>{t}</span></div>))}
                 </div>
               </div>
             ))}
@@ -36053,13 +36111,7 @@ function TermsPage() {
   return (
     <div style={S.page}>
       <a href="#terms-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
-      <header style={S.hdr} role="banner">
-        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
-        <div style={{display:"flex",gap:"1.5rem",alignItems:"center"}}>
-          <a href="/privacy" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Privacy Policy</a>
-          <a href="/ada" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Accessibility</a>
-        </div>
-      </header>
+      <LPNav/>
       <main id="terms-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Terms of Service</h1>
@@ -36117,13 +36169,7 @@ function PrivacyPage() {
   return (
     <div style={S.page}>
       <a href="#privacy-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
-      <header style={S.hdr} role="banner">
-        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
-        <div style={{display:"flex",gap:"1.5rem",alignItems:"center"}}>
-          <a href="/terms" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Terms of Service</a>
-          <a href="/ada" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Accessibility</a>
-        </div>
-      </header>
+      <LPNav/>
       <main id="privacy-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Privacy Policy</h1>
@@ -36832,14 +36878,7 @@ function BlogIndex() {
   });
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
-      {/* Nav */}
-      <nav style={{background:"#234A3D",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <a href="/" style={{display:"flex",alignItems:"center",gap:".5rem",textDecoration:"none"}}>
-          <svg viewBox="0 0 48 48" fill="none" width="28" height="28"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
-          <span style={{color:"#F4EDDF",fontWeight:700,fontSize:"1.05rem"}}>Steadwell</span>
-        </a>
-        <a href="/" style={{color:"rgba(244,237,223,.6)",textDecoration:"none",fontSize:".85rem"}}>← Back to home</a>
-      </nav>
+      <LPNav/>
       {/* Header */}
       <div style={{maxWidth:800,margin:"0 auto",padding:"3rem 1.5rem 2rem"}}>
         <div style={{fontSize:".75rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C16140",marginBottom:".5rem"}}>Steadwell Blog</div>
@@ -37123,14 +37162,7 @@ function BlogPostView({ post, posts, url, slug }) {
   const { html: body, toc } = blogEnhanceHtml(linked);
   return (
     <div style={{fontFamily:"'Hanken Grotesk',sans-serif",background:"#F4EDDF",minHeight:"100vh"}}>
-      {/* Nav */}
-      <nav style={{background:"#234A3D",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <a href="/" style={{display:"flex",alignItems:"center",gap:".5rem",textDecoration:"none"}}>
-          <svg viewBox="0 0 48 48" fill="none" width="28" height="28" aria-hidden="true"><path d="M15 33 L15 21 L24 13 L33 21 L33 33" stroke="#F4EDDF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 34 L21 27.5 A3 3 0 0 1 27 27.5 L27 34" stroke="#F4EDDF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 34.5 L37 34.5" stroke="#F4EDDF" strokeWidth="2.8" strokeLinecap="round"/><circle cx="24" cy="18.3" r="1.5" fill="#D2876A"/></svg>
-          <span style={{color:"#F4EDDF",fontWeight:700,fontSize:"1.05rem"}}>Steadwell</span>
-        </a>
-        <a href="/blog" style={{color:"rgba(244,237,223,.6)",textDecoration:"none",fontSize:".85rem"}}>← All articles</a>
-      </nav>
+      <LPNav/>
       {/* Article */}
       <article className="bp-wrap">
         <style>{BLOG_POST_CSS}</style>
@@ -37221,13 +37253,7 @@ function ADAPage() {
   return (
     <div style={S.page}>
       <a href="#ada-main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
-      <header style={S.hdr} role="banner">
-        <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}} aria-label="Steadwell homepage"><span style={S.tile}><HM/></span><span style={S.wm}>Steadwell</span></a>
-        <div style={{display:"flex",gap:"1.5rem",alignItems:"center"}}>
-          <a href="/terms" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Terms of Service</a>
-          <a href="/privacy" style={{color:"rgba(244,237,223,.7)",fontSize:".85rem",textDecoration:"none"}}>Privacy Policy</a>
-        </div>
-      </header>
+      <LPNav/>
       <main id="ada-main" tabIndex={-1} style={S.main}>
         <div style={S.eyebrow}>Legal</div>
         <h1 style={S.title}>Accessibility Statement</h1>
