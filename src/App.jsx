@@ -1,4 +1,4 @@
-// Steadwell v439 — 2026-10-28
+// Steadwell v442 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -5649,6 +5649,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <a href="/guides">Buyer Guides</a>
               <a href="/blog">Blog</a>
               <a href="/for-real-estate-agents">For Real Estate Agents</a>
+              <a href="/property-managers">Property Managers</a>
               <a href="/affiliates">Affiliates</a>
             </nav>
             <nav className="foot-col" aria-label="Company">
@@ -33744,7 +33745,7 @@ const PM_FAQ = [
 
 function PropertyManagersPage() {
   const seoPath = "/property-managers";
-  const seoDesc = "Keep the appliances, warranties, maintenance and paperwork for every rental property in one place. Assign tasks to your maintenance people and choose which properties each can see.";
+  const seoDesc = "Track appliances, warranties, repairs and paperwork for every rental property in one place, and assign tasks to your maintenance people.";
   useSEO({
     title:"Maintenance Tracking for Landlords and Property Managers",
     description:seoDesc,
@@ -33752,6 +33753,8 @@ function PropertyManagersPage() {
     jsonLd: lpPageJsonLd({ name:"Steadwell for landlords and property managers", path:seoPath, description:seoDesc, faq:PM_FAQ }),
   });
   const [form, setForm] = useState({ name:"", email:"", count:"", kind:"", need:"" });
+  const [wants, setWants] = useState([]);
+  const toggleWant = (w) => setWants(a => a.includes(w) ? a.filter(x => x !== w) : [...a, w]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
@@ -33770,7 +33773,7 @@ function PropertyManagersPage() {
           email: form.email.trim(),
           type: "property_manager_interest",
           subject: `Multi-property request: ${form.name.trim()} (${form.count} properties)`,
-          message: `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nProperties: ${form.count}\nKind: ${form.kind.trim()||"-"}\nNeeds: ${form.need.trim()||"-"}`,
+          message: `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nProperties: ${form.count}\nKind: ${form.kind.trim()||"-"}\nWants: ${wants.join("; ")||"-"}\nNote: ${form.need.trim()||"-"}`,
           page: "/property-managers",
         }),
       });
@@ -33796,12 +33799,28 @@ function PropertyManagersPage() {
       <LPBaseStyle/>
       <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
       <LPNav/>
-      <LPHero eyebrow="For landlords and property managers" cta="Request multi-property access" ctaHref="#access" h1="Every property's maintenance" h1em="in one place." sub="Keep the appliances, warranties, repairs and paperwork for each address together, and hand tasks to the people who do the work." secondary={{href:"#what",label:"See what you can track"}} badge="Pro covers up to 3 properties today" visual={<PropertySwitchMock/>}/>
+      <LPHero kw="Rental property maintenance tracking" eyebrow="For landlords and property managers" cta="Get started free" h1="Every property's maintenance" h1em="in one place." sub="Keep the appliances, warranties, repairs and paperwork for each address together, and hand tasks to the people who do the work." secondary={{href:"#access",label:"Managing more than 3? Request access"}} badge="Pro covers up to 3 properties today" visual={<PropertySwitchMock/>}/>
       <main id="main" tabIndex={-1}>
         <LPShort>Steadwell keeps one maintenance record per property: every appliance and system with its age and warranty, a maintenance schedule, documents, contractors and costs. You invite your maintenance people, choose which properties each one can see and assign them tasks. Pro covers up to 3 properties today. If you manage more, request access below.</LPShort>
 
-        <LPSection alt id="what">
-          <LPSectionHead h2="What you can track at each property" sub="The same tools homeowners use, kept separate for every address."/>
+        <LPSection alt>
+          <LPSectionHead h2="Questions you shouldn't have to dig for" sub="Every answer is one tap away when each property's records live in one place."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
+            {[
+              ["Which rental has the oldest water heater?","Every appliance keeps its age, model and condition, so you can plan replacements before one fails."],
+              ["Is the HVAC warranty on the duplex still active?","Warranty expiry alerts and recall checks run for every property you track."],
+              ["Who fixed the roof last spring, and what did it cost?","Service history, contractors and expenses stay attached to the property they belong to."],
+            ].map(([q,a])=>(
+              <LPCard key={q}>
+                <div style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"1.15rem",color:"#234A3D",lineHeight:1.25,marginBottom:10}}>{q}</div>
+                <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.6}}>{a}</div>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection id="what">
+          <LPSectionHead h2="What you can track at each rental property" sub="The same tools homeowners use, kept separate for every address."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
             {track.map(([ic,t,d,h])=>(
               <LPCard key={t}>
@@ -33814,7 +33833,7 @@ function PropertyManagersPage() {
           </LPGrid>
         </LPSection>
 
-        <LPSection>
+        <LPSection alt>
           <LPSectionHead h2="Share the work, not the whole account" sub="Your maintenance people see what they need and nothing else."/>
           <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
             <LPFeatureRow visual={<AssignMock/>} title={<>Assign tasks to the people who do them. <LPBadge plan="Pro"/></>}>
@@ -33828,7 +33847,7 @@ function PropertyManagersPage() {
           </div>
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Is it the right tool?"/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             <LPCard>
@@ -33843,14 +33862,14 @@ function PropertyManagersPage() {
               <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>Not the right tool if you need</div>
               <ul style={{margin:0,paddingLeft:18,fontSize:".9rem",color:"#5E574F",lineHeight:1.7}}>
                 <li>rent collection, leases or tenant screening</li>
-                <li>tenant accounts or a maintenance request portal</li>
+                <li>tenant accounts or a tenant request portal today (tell us below if you would use one)</li>
                 <li>accounting or owner statements</li>
               </ul>
             </LPCard>
           </LPGrid>
         </LPSection>
 
-        <LPSection narrow id="access">
+        <LPSection alt narrow id="access">
           <div style={{textAlign:"center",marginBottom:28}}>
             <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>Managing more than 3 properties?</h2>
             <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto",lineHeight:1.6}}>Tell us what you manage and what you need. We're working on options for larger portfolios and we'll reach out by email.</p>
@@ -33863,7 +33882,7 @@ function PropertyManagersPage() {
           ) : (
             <form onSubmit={(e)=>{e.preventDefault();submit();}} noValidate style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"clamp(16px,4vw,32px)",maxWidth:520,margin:"0 auto"}}>
               <label htmlFor="pm-name" style={labelStyle}>Your name *</label>
-              <input id="pm-name" style={inputStyle} value={form.name} onChange={set("name")} autoComplete="name" placeholder="Shelly Example"/>
+              <input id="pm-name" style={inputStyle} value={form.name} onChange={set("name")} autoComplete="name" placeholder="Full name"/>
               <label htmlFor="pm-email" style={labelStyle}>Email *</label>
               <input id="pm-email" style={inputStyle} type="email" value={form.email} onChange={set("email")} autoComplete="email" placeholder="you@example.com"/>
               <label htmlFor="pm-count" style={labelStyle}>How many properties do you manage? *</label>
@@ -33873,8 +33892,17 @@ function PropertyManagersPage() {
               </select>
               <label htmlFor="pm-kind" style={labelStyle}>What kind of properties?</label>
               <input id="pm-kind" style={inputStyle} value={form.kind} onChange={set("kind")} placeholder="Single-family rentals, duplexes, small apartments…"/>
-              <label htmlFor="pm-need" style={labelStyle}>What do you need most? (optional)</label>
-              <textarea id="pm-need" style={{...inputStyle,minHeight:80,resize:"vertical"}} value={form.need} onChange={set("need")} placeholder="For example: track by unit, one view across all properties, invite my crew."/>
+              <fieldset style={{border:0,margin:"0 0 14px",padding:0}}>
+                <legend style={{...labelStyle,padding:0}}>What would help you most? (pick any)</legend>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {["Tenant maintenance request link","Track by unit","One view across all properties","Invite my maintenance crew","Owner reports"].map(w => {
+                    const on = wants.includes(w);
+                    return <button key={w} type="button" aria-pressed={on} onClick={()=>toggleWant(w)} style={{font:"inherit",fontSize:".82rem",fontWeight:600,padding:"8px 13px",minHeight:40,borderRadius:999,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F",cursor:"pointer"}}>{w}</button>;
+                  })}
+                </div>
+              </fieldset>
+              <label htmlFor="pm-need" style={labelStyle}>Anything else? (optional)</label>
+              <textarea id="pm-need" style={{...inputStyle,minHeight:72,resize:"vertical"}} value={form.need} onChange={set("need")} placeholder="Tell us how you manage maintenance today."/>
               {err && <div role="alert" style={{color:"#A32D2D",fontSize:".85rem",marginBottom:12}}>{err}</div>}
               <button type="submit" disabled={busy} style={{width:"100%",background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:"14px",fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",cursor:busy?"default":"pointer",opacity:busy?.7:1,boxSizing:"border-box"}}>{busy ? "Sending…" : "Request multi-property access"}</button>
               <div style={{fontSize:".78rem",color:"#7A7370",textAlign:"center",marginTop:12,lineHeight:1.5}}>We'll only use your details to reply about this request.</div>
@@ -33882,7 +33910,7 @@ function PropertyManagersPage() {
           )}
         </LPSection>
 
-        <LPSection alt narrow>
+        <LPSection narrow>
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={PM_FAQ}/>
         </LPSection>
@@ -34449,7 +34477,7 @@ function SharedHouseholdAccessPage() {
       <LPNav links={LP_NAV_DEFAULT}/>
       <LPHero kw="Shared Home Access &amp; Task Assignment" eyebrow="Shared Access & Task Assignment" cta="Get started" h1="One home." h1em="Everyone in the loop." sub="Invite a spouse, partner, property manager or team member by email. Choose what each person can see, and assign tasks so everyone knows who is doing what." badge="Included with Pro" secondary={{href:"#how-it-works",label:"See how it works"}} visual={<PeopleMock/>}/>
       <main id="main" tabIndex={-1}>
-        <LPShort>Shared access lets you invite a spouse, partner, co-owner, property manager or team member to your home&#39;s records in Steadwell. You choose what each person can see, home by home, and you can assign tasks to anyone who has accepted. It is included with Pro, with no limit on how many people you invite and no extra charge per person.</LPShort>
+        <LPShort>Shared access lets you invite a spouse, partner, co-owner, property manager or team member to your home&#39;s records in Steadwell. You choose what each person can see, home by home, and you can assign tasks to anyone who has accepted. It is included with Pro, with no limit on how many people you invite and no extra charge per person. Managing rentals? See <a href="/property-managers" style={{color:"#C16140",fontWeight:600}}>Steadwell for landlords and property managers</a>.</LPShort>
         <LPSection alt>
           <LPSectionHead h2="Run the home together" sub="Invite, choose access, then hand out the work."/>
           <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
