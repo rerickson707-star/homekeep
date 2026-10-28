@@ -1,4 +1,4 @@
-// Steadwell v438 — 2026-10-28
+// Steadwell v439 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -27143,6 +27143,7 @@ export default function App() {
   if (_path === "/home-projects" || _path === "/home-projects/") return <HomeProjectsPage />;
   // The agent partner page. "/for-agents" read like a page for AI agents, so its address is now /for-real-estate-agents; the old one keeps working.
   if (_path === "/for-real-estate-agents" || _path === "/for-real-estate-agents/" || _path === "/for-agents" || _path === "/for-agents/") return <ForAgentsPage />;
+  if (_path === "/property-managers" || _path === "/property-managers/") return <PropertyManagersPage />;
   if (_path === "/admin" || _path === "/admin/") return <AdminPage />;
   if (_path === "/agent-setup" || _path === "/agent-setup/") return <AgentSetupPage />;
   if (_path === "/agent" || _path === "/agent/" || _path === "/agent-portal" || _path === "/agent-portal/") return <AgentPortalPage />;
@@ -30929,7 +30930,7 @@ function LPFooter() {
   const cols = [
     { h:"Features", items: LP_FEATURE_PAGES.slice(0, half).map(p => ({h:p.href,l:p.label})) },
     { h:"More features", items: LP_FEATURE_PAGES.slice(half).map(p => ({h:p.href,l:p.label})) },
-    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-real-estate-agents",l:"For Real Estate Agents"},{h:"/affiliates",l:"Affiliates"}] },
+    { h:"Resources", items:[{h:"/pricing",l:"Pricing"},{h:"/guides",l:"Buyer Guides"},{h:"/blog",l:"Blog"},{h:"/for-real-estate-agents",l:"For Real Estate Agents"},{h:"/property-managers",l:"Property Managers"},{h:"/affiliates",l:"Affiliates"}] },
     { h:"Company", items:[{h:"mailto:hello@trysteadwell.app",l:"Contact"},{h:"/terms",l:"Terms"},{h:"/privacy",l:"Privacy"},{h:"/ada",l:"Accessibility"}] },
   ];
   return (
@@ -31246,6 +31247,7 @@ const LP_NAV_DEFAULT = [
   { href:"/#how",      label:"How it works" },
   { href:"/pricing",   label:"Pricing" },
   { href:"/guides",    label:"Buyer Guides" },
+  { href:"/property-managers", label:"Property managers" },
   { href:"/blog",      label:"Blog" },
 ];
 
@@ -33703,6 +33705,191 @@ function BlogCard({ post, big=false }) {
         <span style={{fontSize:".86rem",fontWeight:700,color:"#B5532F"}}>Read article →</span>
       </div>
     </a>
+  );
+}
+
+// ─── PROPERTY MANAGERS PAGE (v439) ───────────────────────────────────────────
+function PropertySwitchMock() {
+  const props = [["12 Example Ave",true],["Example Duplex",false],["Rental 3",false]];
+  const rows = [["Water heater","Warranty to 2029","ok"],["HVAC system","Service due Nov 8","warn"],["Refrigerator","Recall check clear","ok"],["Roof","Condition 3 of 5","mute"]];
+  return (
+    <div style={{width:"100%",maxWidth:440,borderRadius:18,boxShadow:MOCK_SHADOW}}>
+      <MockShell title="Properties" note="(example)" style={{maxWidth:440}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+          {props.map(([n,on])=><span key={n} style={{fontSize:".74rem",fontWeight:600,padding:"5px 11px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{n}</span>)}
+        </div>
+        <div style={{display:"flex",gap:18,marginBottom:6}}>
+          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,color:"#234A3D",lineHeight:1}}>14</div><div style={{fontSize:".72rem",color:"#8A8178",marginTop:3}}>Assets tracked</div></div>
+          <div><div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,color:"#C16140",lineHeight:1}}>2</div><div style={{fontSize:".72rem",color:"#8A8178",marginTop:3}}>Tasks due</div></div>
+        </div>
+        {rows.map(([n,d,t])=>(
+          <div key={n} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
+            <div style={{flex:1,minWidth:0}}><div style={{fontSize:".8rem",fontWeight:600}}>{n}</div></div>
+            <MockPill tone={t}>{d}</MockPill>
+          </div>
+        ))}
+      </MockShell>
+    </div>
+  );
+}
+
+const PM_FAQ = [
+  ["How many properties can I track?","Pro covers up to 3 properties today, each with its own assets, tasks, documents and history. If you manage more, request multi-property access below and tell us how many. We're working on options for larger portfolios and your answers shape them."],
+  ["Does Steadwell track individual units?","Steadwell tracks by property address today. If you need to track by unit, tell us in the request form. It helps us decide what to build."],
+  ["Can my maintenance people use it?","Yes. With shared access you invite people by email, choose which properties each one sees and assign them tasks. A \"Tasks & assets\" level lets them work without seeing expenses, projects or documents."],
+  ["Can my tenants log in?","No. Steadwell is for owners and the people who maintain the property. Tenants don't get accounts."],
+  ["Does it handle rent, leases or accounting?","No. Steadwell doesn't collect rent, manage leases, screen tenants or do bookkeeping. It keeps the maintenance side in order: what's installed, what it's covered by, what's due and what it has cost."],
+  ["What does it cost?","The free plan covers one property with no time limit. Pro is $14.99 a month or $119.99 a year and covers up to 3 properties with shared access and task assignment."],
+];
+
+function PropertyManagersPage() {
+  const seoPath = "/property-managers";
+  const seoDesc = "Keep the appliances, warranties, maintenance and paperwork for every rental property in one place. Assign tasks to your maintenance people and choose which properties each can see.";
+  useSEO({
+    title:"Maintenance Tracking for Landlords and Property Managers",
+    description:seoDesc,
+    canonical:`https://www.trysteadwell.app${seoPath}`,
+    jsonLd: lpPageJsonLd({ name:"Steadwell for landlords and property managers", path:seoPath, description:seoDesc, faq:PM_FAQ }),
+  });
+  const [form, setForm] = useState({ name:"", email:"", count:"", kind:"", need:"" });
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const submit = async () => {
+    if (busy) return;
+    if (!form.name.trim()) { setErr("Please add your name."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) { setErr("That email doesn't look right. Please check it."); return; }
+    if (!form.count) { setErr("Choose how many properties you manage."); return; }
+    setErr(""); setBusy(true);
+    try {
+      const res = await fetch("https://hjkyameroqufaojuerns.supabase.co/functions/v1/feedback-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: form.email.trim(),
+          type: "property_manager_interest",
+          subject: `Multi-property request: ${form.name.trim()} (${form.count} properties)`,
+          message: `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nProperties: ${form.count}\nKind: ${form.kind.trim()||"-"}\nNeeds: ${form.need.trim()||"-"}`,
+          page: "/property-managers",
+        }),
+      });
+      if (!res.ok) throw new Error("bad");
+      setDone(true);
+    } catch { setErr("That didn't go through. Email hello@trysteadwell.app and we'll set you up."); }
+    finally { setBusy(false); }
+  };
+  const inputStyle = { width:"100%", padding:"12px 14px", borderRadius:10, border:"1.5px solid #E6DECF", background:"#fff", fontSize:"1rem", fontFamily:"'Hanken Grotesk',sans-serif", color:"#2A2723", marginBottom:12, boxSizing:"border-box" };
+  const labelStyle = { display:"block", fontSize:".78rem", fontWeight:700, color:"#234A3D", marginBottom:6 };
+  const P = { fontSize:".98rem", color:"#5E574F", lineHeight:1.7, margin:"0 0 10px" };
+  const P2 = { fontSize:".9rem", color:"#7A7370", lineHeight:1.65, margin:0 };
+  const track = [
+    ["🔧","Appliances and systems","Age, model, serial and photos for every item at each address.","/home-maintenance-tracker"],
+    ["🛡️","Warranties and recalls","Expiry alerts and safety recall checks, so nothing lapses unnoticed.","/warranty-tracker"],
+    ["📅","Maintenance schedules","Recurring tasks per property, with reminders and calendar sync.","/home-maintenance-tracker"],
+    ["📁","Documents","Permits, inspection reports, manuals and receipts, filed by property.","/home-document-vault"],
+    ["👷","Contractors","Who worked on what, what they charged and when to call them again.","/contractor-tracker"],
+    ["💵","Repair costs","Expenses by property so you can see where the money goes.","/home-expense-tracker"],
+  ];
+  return (
+    <div style={{minHeight:"100vh",background:"#F4EDDF",fontFamily:"'Hanken Grotesk',sans-serif",color:"#2A2723",textAlign:"left"}}>
+      <LPBaseStyle/>
+      <a href="#main" style={{position:"absolute",top:"-100%",left:8,padding:"8px 16px",background:"#234A3D",color:"#F4EDDF",borderRadius:"0 0 8px 8px",zIndex:9999,fontWeight:600,fontSize:".85rem",textDecoration:"none"}} onFocus={e=>e.target.style.top="0"} onBlur={e=>e.target.style.top="-100%"}>Skip to main content</a>
+      <LPNav/>
+      <LPHero eyebrow="For landlords and property managers" cta="Request multi-property access" ctaHref="#access" h1="Every property's maintenance" h1em="in one place." sub="Keep the appliances, warranties, repairs and paperwork for each address together, and hand tasks to the people who do the work." secondary={{href:"#what",label:"See what you can track"}} badge="Pro covers up to 3 properties today" visual={<PropertySwitchMock/>}/>
+      <main id="main" tabIndex={-1}>
+        <LPShort>Steadwell keeps one maintenance record per property: every appliance and system with its age and warranty, a maintenance schedule, documents, contractors and costs. You invite your maintenance people, choose which properties each one can see and assign them tasks. Pro covers up to 3 properties today. If you manage more, request access below.</LPShort>
+
+        <LPSection alt id="what">
+          <LPSectionHead h2="What you can track at each property" sub="The same tools homeowners use, kept separate for every address."/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,280px),1fr))" gap={16}>
+            {track.map(([ic,t,d,h])=>(
+              <LPCard key={t}>
+                <div style={{fontSize:"1.5rem",marginBottom:10}} aria-hidden="true">{ic}</div>
+                <div style={{fontWeight:700,fontSize:"1rem",color:"#234A3D",marginBottom:6}}>{t}</div>
+                <div style={{fontSize:".88rem",color:"#5E574F",lineHeight:1.6,marginBottom:10}}>{d}</div>
+                <a href={h} style={{fontSize:".86rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>Learn more →</a>
+              </LPCard>
+            ))}
+          </LPGrid>
+        </LPSection>
+
+        <LPSection>
+          <LPSectionHead h2="Share the work, not the whole account" sub="Your maintenance people see what they need and nothing else."/>
+          <div style={{display:"flex",flexDirection:"column",gap:"clamp(40px,6vw,72px)"}}>
+            <LPFeatureRow visual={<AssignMock/>} title={<>Assign tasks to the people who do them. <LPBadge plan="Pro"/></>}>
+              <p style={P}>Give a repair or a seasonal job to your handyman, a co-owner or a partner. Everyone sees what's assigned to them and what's still open.</p>
+              <a href="/shared-household-access" style={{fontSize:".9rem",fontWeight:700,color:"#C16140",textDecoration:"none"}}>How shared access works →</a>
+            </LPFeatureRow>
+            <LPFeatureRow flip visual={<PeopleMock/>} title={<>Choose which properties each person sees. <LPBadge plan="Pro"/></>}>
+              <p style={P}>Invite people by email and set an access level for each one. Your handyman can work the rental you assign him without seeing your other properties, your expenses or your documents.</p>
+              <p style={P2}>Levels: Admin, Full access, and Tasks &amp; assets.</p>
+            </LPFeatureRow>
+          </div>
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Is it the right tool?"/>
+          <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
+            <LPCard>
+              <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>A good fit if you</div>
+              <ul style={{margin:0,paddingLeft:18,fontSize:".9rem",color:"#5E574F",lineHeight:1.7}}>
+                <li>own or manage a handful of rentals or small buildings</li>
+                <li>want every property's appliances and warranties in one place</li>
+                <li>work with a few maintenance people you need to coordinate</li>
+              </ul>
+            </LPCard>
+            <LPCard>
+              <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>Not the right tool if you need</div>
+              <ul style={{margin:0,paddingLeft:18,fontSize:".9rem",color:"#5E574F",lineHeight:1.7}}>
+                <li>rent collection, leases or tenant screening</li>
+                <li>tenant accounts or a maintenance request portal</li>
+                <li>accounting or owner statements</li>
+              </ul>
+            </LPCard>
+          </LPGrid>
+        </LPSection>
+
+        <LPSection narrow id="access">
+          <div style={{textAlign:"center",marginBottom:28}}>
+            <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>Managing more than 3 properties?</h2>
+            <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto",lineHeight:1.6}}>Tell us what you manage and what you need. We're working on options for larger portfolios and we'll reach out by email.</p>
+          </div>
+          {done ? (
+            <div role="status" style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:16,padding:"clamp(20px,5vw,36px)",maxWidth:520,margin:"0 auto",textAlign:"center"}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:500,color:"#234A3D",marginBottom:10}}>Request received</div>
+              <div style={{fontSize:".95rem",color:"#7A7370",lineHeight:1.6}}>Thanks. We'll email you at {form.email.trim()} about multi-property access.</div>
+            </div>
+          ) : (
+            <form onSubmit={(e)=>{e.preventDefault();submit();}} noValidate style={{background:"#fff",border:"1.5px solid #E6DECF",borderRadius:16,padding:"clamp(16px,4vw,32px)",maxWidth:520,margin:"0 auto"}}>
+              <label htmlFor="pm-name" style={labelStyle}>Your name *</label>
+              <input id="pm-name" style={inputStyle} value={form.name} onChange={set("name")} autoComplete="name" placeholder="Shelly Example"/>
+              <label htmlFor="pm-email" style={labelStyle}>Email *</label>
+              <input id="pm-email" style={inputStyle} type="email" value={form.email} onChange={set("email")} autoComplete="email" placeholder="you@example.com"/>
+              <label htmlFor="pm-count" style={labelStyle}>How many properties do you manage? *</label>
+              <select id="pm-count" style={inputStyle} value={form.count} onChange={set("count")}>
+                <option value="">Choose one</option>
+                {["4–10","11–25","26–50","More than 50"].map(o=><option key={o} value={o}>{o}</option>)}
+              </select>
+              <label htmlFor="pm-kind" style={labelStyle}>What kind of properties?</label>
+              <input id="pm-kind" style={inputStyle} value={form.kind} onChange={set("kind")} placeholder="Single-family rentals, duplexes, small apartments…"/>
+              <label htmlFor="pm-need" style={labelStyle}>What do you need most? (optional)</label>
+              <textarea id="pm-need" style={{...inputStyle,minHeight:80,resize:"vertical"}} value={form.need} onChange={set("need")} placeholder="For example: track by unit, one view across all properties, invite my crew."/>
+              {err && <div role="alert" style={{color:"#A32D2D",fontSize:".85rem",marginBottom:12}}>{err}</div>}
+              <button type="submit" disabled={busy} style={{width:"100%",background:"#C16140",color:"#fff",border:"none",borderRadius:10,padding:"14px",fontWeight:700,fontSize:".95rem",fontFamily:"'Hanken Grotesk',sans-serif",cursor:busy?"default":"pointer",opacity:busy?.7:1,boxSizing:"border-box"}}>{busy ? "Sending…" : "Request multi-property access"}</button>
+              <div style={{fontSize:".78rem",color:"#7A7370",textAlign:"center",marginTop:12,lineHeight:1.5}}>We'll only use your details to reply about this request.</div>
+            </form>
+          )}
+        </LPSection>
+
+        <LPSection alt narrow>
+          <LPSectionHead h2="Common questions"/>
+          <LPFAQ items={PM_FAQ}/>
+        </LPSection>
+        <LPCTA h2="Start with the free plan." sub="Set up your first property in a few minutes. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
+      </main>
+      <LPFooter/>
+    </div>
   );
 }
 
@@ -38877,6 +39064,7 @@ export const PRERENDER_PAGES = {
   "/affiliates": AffiliatesPage,
   "/affiliate-agreement": AffiliateAgreementPage,
   "/for-real-estate-agents": ForAgentsPage,
+  "/property-managers": PropertyManagersPage,
   "/for-agents": ForAgentsPage, // old address, kept until it redirects at the host (its canonical points to the new one)
 };
 export {
