@@ -1,4 +1,4 @@
-// Steadwell v442 — 2026-10-28
+// Steadwell v443 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -33738,8 +33738,8 @@ const PM_FAQ = [
   ["How many properties can I track?","Pro covers up to 3 properties today, each with its own assets, tasks, documents and history. If you manage more, request multi-property access below and tell us how many. We're working on options for larger portfolios and your answers shape them."],
   ["Does Steadwell track individual units?","Steadwell tracks by property address today. If you need to track by unit, tell us in the request form. It helps us decide what to build."],
   ["Can my maintenance people use it?","Yes. With shared access you invite people by email, choose which properties each one sees and assign them tasks. A \"Tasks & assets\" level lets them work without seeing expenses, projects or documents."],
-  ["Can my tenants log in?","No. Steadwell is for owners and the people who maintain the property. Tenants don't get accounts."],
-  ["Does it handle rent, leases or accounting?","No. Steadwell doesn't collect rent, manage leases, screen tenants or do bookkeeping. It keeps the maintenance side in order: what's installed, what it's covered by, what's due and what it has cost."],
+  ["Can my tenants use it?","Tenants don't have accounts today. You and the people who maintain the property do. If a tenant request link would help you, tick it in the request form."],
+  ["Does it handle rent, leases or accounting?","Steadwell focuses on maintenance, so keep using your current tool for rent, leases and books. Steadwell holds what's installed, what it's covered by, what's due and what it has cost."],
   ["What does it cost?","The free plan covers one property with no time limit. Pro is $14.99 a month or $119.99 a year and covers up to 3 properties with shared access and task assignment."],
 ];
 
@@ -33848,23 +33848,19 @@ function PropertyManagersPage() {
         </LPSection>
 
         <LPSection narrow>
-          <LPSectionHead h2="Is it the right tool?"/>
+          <LPSectionHead h2="Where Steadwell fits" sub="The maintenance side of every property, handled in one place."/>
           <LPGrid cols="repeat(auto-fit,minmax(min(100%,260px),1fr))" gap={16}>
             <LPCard>
-              <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>A good fit if you</div>
+              <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>Built for owners and small managers</div>
               <ul style={{margin:0,paddingLeft:18,fontSize:".9rem",color:"#5E574F",lineHeight:1.7}}>
-                <li>own or manage a handful of rentals or small buildings</li>
-                <li>want every property's appliances and warranties in one place</li>
-                <li>work with a few maintenance people you need to coordinate</li>
+                <li>Know what's installed, how old it is and what it's covered by</li>
+                <li>Never miss a warranty, recall or seasonal job</li>
+                <li>Hand work to your crew without handing over the keys to everything</li>
               </ul>
             </LPCard>
             <LPCard>
-              <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>Not the right tool if you need</div>
-              <ul style={{margin:0,paddingLeft:18,fontSize:".9rem",color:"#5E574F",lineHeight:1.7}}>
-                <li>rent collection, leases or tenant screening</li>
-                <li>tenant accounts or a tenant request portal today (tell us below if you would use one)</li>
-                <li>accounting or owner statements</li>
-              </ul>
+              <div style={{fontWeight:700,color:"#234A3D",marginBottom:8}}>Works next to your rent and accounting tools</div>
+              <p style={{margin:0,fontSize:".9rem",color:"#5E574F",lineHeight:1.7}}>Keep using what you have for rent, leases and books. Steadwell is the record of everything physical about the property. Want tenant requests or unit-level tracking? Tell us below. It's how we decide what to build next.</p>
             </LPCard>
           </LPGrid>
         </LPSection>
