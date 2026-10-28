@@ -1,4 +1,4 @@
-// Steadwell v444 — 2026-10-28
+// Steadwell v447 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -30372,12 +30372,19 @@ function GiftPage() {
   );
 }
 
+const AGENT_FAQ = [
+  ["Does this cost me anything?","No. The agent partner program is free. You give your clients three months of Steadwell Plus at no cost to you."],
+  ["What do my clients get?","Three months of Steadwell Plus, the paid tier, gifted in your name. They can keep using the free tier after, or continue on Plus."],
+  ["How do I hand it out?","We give you a simple gift link and a printable card to include with your closing gift. There's nothing to install or manage."],
+  ["Will my name really be on it?","Yes. Your clients see \u201cgifted by [your name]\u201d on their welcome, so you stay top of mind in the home all year."],
+];
+
 function ForAgentsPage() {
   useSEO({
-    title:"For Real Estate Agents — A Closing Gift Clients Remember",
+    title:"Real Estate Agent Closing Gift: 3 Months of Steadwell Plus",
     description:"Give every client a closing gift that keeps your name in their home all year. Free to you, valuable to them. Apply to the Steadwell agent partner program.",
     canonical:"https://www.trysteadwell.app/for-real-estate-agents",
-    noindex:true,
+    jsonLd: lpPageJsonLd({ name:"Steadwell for real estate agents", path:"/for-real-estate-agents", description:"Give every client a closing gift that keeps your name in their home all year. Free to you, valuable to them.", faq:AGENT_FAQ }),
   });
   const [form, setForm] = useState({ name:"", email:"", brokerage:"", market:"", volume:"", note:"" });
   const [saving, setSaving] = useState(false);
@@ -30506,12 +30513,7 @@ function ForAgentsPage() {
 
         <LPSection alt narrow>
           <LPSectionHead h2="Common questions"/>
-          <LPFAQ items={[
-            ["Does this cost me anything?","No. The agent partner program is free. You give your clients three months of Steadwell Plus at no cost to you."],
-            ["What do my clients get?","Three months of Steadwell Plus — the paid tier — gifted in your name. They can keep using the free tier after, or continue on Plus."],
-            ["How do I hand it out?","We give you a simple gift link and a printable card to include with your closing gift. That's it — nothing to install or manage."],
-            ["Will my name really be on it?","Yes. Your clients see \u201cgifted by [your name]\u201d on their welcome, so you stay top of mind in the home all year."],
-          ]}/>
+          <LPFAQ items={AGENT_FAQ}/>
         </LPSection>
         <section style={{background:"#234A3D",padding:"72px 24px",textAlign:"center"}}>
           <div style={{maxWidth:580,margin:"0 auto"}}>
@@ -32555,7 +32557,7 @@ const UTILITY_FAQ = [
 // Example data drawn in code (no images), styled like the real app. They are decorative
 // (aria-hidden); everything they show is also said in the text next to them.
 const MOCK_SHADOW = "0 24px 60px rgba(0,0,0,.28)";
-function MockShell({ title, note="(example)", children, dark=false, style={} }) {
+function MockShell({ title, note="Sample", children, dark=false, style={} }) {
   return (
     <div aria-hidden="true" style={{boxSizing:"border-box",width:"100%",maxWidth:440,textAlign:"left",borderRadius:18,padding:"18px 20px 18px",background:dark?"#234A3D":"#FBF7EE",color:dark?"#F4EDDF":"#2A2723",border:dark?"none":"1px solid #E6DECF",...style}}>
       {title && (
@@ -32734,7 +32736,7 @@ function WarrantyListMock() {
   const rows=[["🌡️","Carrier HVAC System","Installed Apr 2023","6y left","ok"],["🍳","Samsung Dishwasher","Purchased Nov 2025","23d left","warn"],["💻","MacBook Pro M3","Apple","14mo left","ok"],["🧊","LG French Door Fridge","Purchased Jan 2022","42d ago","bad"]];
   return (
     <div style={{position:"relative",width:"100%",maxWidth:440,boxShadow:MOCK_SHADOW,borderRadius:18,paddingBottom:0}}>
-      <MockShell title="Warranties" note="(example)">
+      <MockShell title="Warranties" note="Sample">
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
           {tiles.map(([n,l,c])=>(
             <div key={l} style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:11,padding:"8px 4px",textAlign:"center"}}>
@@ -33073,7 +33075,7 @@ function ForecastMock() {
   const cols=[["2027",1600,"Water heater"],["2028",0,""],["2029",7800,"HVAC"],["2030",1200,"Dishwasher"],["2031",14500,"Roof"]];
   const max=14500;
   return (
-    <MockShell title="5-year forecast" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="5-year forecast" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",alignItems:"flex-end",gap:8,height:120,marginBottom:6}}>
         {cols.map(([y,v])=>(
           <div key={y} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",height:"100%"}}>
@@ -33248,7 +33250,7 @@ function SpendByTradeMock() {
 function AssessScoreMock() {
   const checks=[["Tank and fittings","OK","ok"],["Anode and sediment","Watch","warn"],["Temperature and pressure valve","OK","ok"],["Venting","Can’t see","mute"],["Leaks or rust at the base","Concern","bad"]];
   return (
-    <MockShell title="Water heater" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Water heater" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
         <span style={{width:56,height:56,borderRadius:16,background:"#FBF3DE",color:"#B8861E",fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.9rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>3</span>
         <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:".95rem"}}>Fair condition</div><div style={{fontSize:".72rem",color:"#8A8178"}}>3 photos checked against the tank checklist</div></div>
@@ -33263,7 +33265,7 @@ function AssessScoreMock() {
 }
 function YearsLeftMock() {
   return (
-    <MockShell title="Years left" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Years left" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}>
         <span style={{fontFamily:"'Fraunces',serif",fontWeight:600,fontSize:"1.9rem",color:"#234A3D"}}>About 2</span>
         <span style={{fontSize:".78rem",color:"#8A8178"}}>years left on the water heater</span>
@@ -33280,7 +33282,7 @@ function YearsLeftMock() {
 }
 function NextStepsMock() {
   return (
-    <MockShell title="Review before saving" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Review before saving" note="Sample" style={{maxWidth:440}}>
       {[["Flush the tank","Suggested task · every 12 months",true],["Test the pressure relief valve","Suggested task · every 12 months",true],["Replace the anode rod","Suggested task · one time",false]].map(([t,m,on])=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:20,height:20,borderRadius:6,border:on?"none":"1.5px solid #CFC6B6",background:on?"#234A3D":"#fff",color:"#fff",fontSize:".72rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{on?"✓":""}</span>
@@ -33300,7 +33302,7 @@ function HealthScoreMock() {
   const r=52, c=2*Math.PI*r, score=78;
   const rows=[["Assets",72,"#B8861E"],["Tasks",90,"#2E7050"],["Warranties",70,"#B8861E"],["Profile",88,"#2E7050"]];
   return (
-    <MockShell title="Home health score" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Home health score" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",alignItems:"center",gap:18,marginBottom:14}}>
         <svg width="124" height="124" viewBox="0 0 124 124" style={{flexShrink:0}}>
           <circle cx="62" cy="62" r={r} fill="none" stroke="#EFE7D7" strokeWidth="11"/>
@@ -33320,7 +33322,7 @@ function HealthScoreMock() {
 }
 function HealthDropMock() {
   return (
-    <MockShell title="What moved your score" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="What moved your score" note="Sample" style={{maxWidth:440}}>
       {[["Water heater near end of life","Assets","bad"],["Dishwasher warranty ended","Warranties","warn"],["1 task is past due","Tasks","warn"],["Insurance renewal date added","Profile","ok"]].map(([t,f,tone])=>(
         <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <div style={{minWidth:0}}><div style={{fontSize:".82rem",fontWeight:600}}>{t}</div><div style={{fontSize:".72rem",color:"#A8A09A"}}>Factor: {f}</div></div>
@@ -33347,7 +33349,7 @@ function ScoreBandsMock() {
 function AskChatMock() {
   const bubble={borderRadius:14,padding:"10px 14px",fontSize:".82rem",lineHeight:1.5,maxWidth:"92%"};
   return (
-    <MockShell title="✨ Ask Steadwell" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="✨ Ask Steadwell" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><div style={{...bubble,background:"#234A3D",color:"#F4EDDF"}}>Is my water heater near the end of its life?</div></div>
       <div style={{...bubble,background:"#EFE7D7",marginBottom:10}}>Your water heater is about 11 years old. Tank models often last 8 to 12 years, so it is worth planning for a replacement soon. Your last service was 14 months ago.</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
@@ -33362,7 +33364,7 @@ function AskChatMock() {
 }
 function AskSourcesMock() {
   return (
-    <MockShell title="✨ Ask Steadwell" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="✨ Ask Steadwell" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><div style={{borderRadius:14,padding:"9px 14px",fontSize:".82rem",background:"#234A3D",color:"#F4EDDF"}}>What did I spend on repairs this year?</div></div>
       <div style={{borderRadius:14,padding:"10px 14px",fontSize:".82rem",lineHeight:1.5,background:"#EFE7D7",marginBottom:10}}>You have spent <b>$2,600</b> on repairs so far this year across 5 expenses. The largest was the water heater flush at $385.</div>
       <div style={{fontSize:".72rem",color:"#A8A09A",marginBottom:6}}>Sources</div>
@@ -33374,7 +33376,7 @@ function AskSourcesMock() {
 }
 function AskTaskMock() {
   return (
-    <MockShell title="Suggested tasks" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Suggested tasks" note="Sample" style={{maxWidth:440}}>
       {[["Replace HVAC filter","Due Nov 1 · every 3 months"],["Flush the water heater tank","Due Nov 15 · every 12 months"]].map(([t,m],i)=>(
         <div key={t} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,border:"1px solid #E6DECF",background:"#fff",borderRadius:12,padding:"10px 12px",marginBottom:9}}>
           <div style={{fontSize:".82rem",minWidth:0}}><div style={{fontWeight:700}}>{t}</div><div style={{color:"#8A8178",fontSize:".72rem"}}>{m}</div></div>
@@ -33387,7 +33389,7 @@ function AskTaskMock() {
 }
 function AskPrivacyMock() {
   return (
-    <MockShell title="Ask Steadwell settings" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Ask Steadwell settings" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,padding:"4px 0 12px"}}>
         <div><div style={{fontWeight:700,fontSize:".86rem"}}>Save my questions</div><div style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.5,marginTop:3}}>Emails, phone numbers and addresses are removed first. Turning this off also deletes saved questions.</div></div>
         <span style={{width:42,height:24,borderRadius:14,background:"#CFC6B6",position:"relative",flexShrink:0}}><span style={{position:"absolute",left:3,top:3,width:18,height:18,borderRadius:"50%",background:"#fff"}}/></span>
@@ -33402,7 +33404,7 @@ function CalMonthMock() {
   const lead=0; // November 2026 starts on a Sunday
   const ev={1:"t",15:"t",22:"t",28:"w"};
   return (
-    <MockShell title="November" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="November" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,textAlign:"center",marginBottom:4}}>
         {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{fontSize:".72rem",color:"#A8A09A",fontWeight:700}}>{d}</div>)}
       </div>
@@ -33424,7 +33426,7 @@ function CalMonthMock() {
 function CalAgendaMock() {
   const rows=[["Nov 1","Replace HVAC filter","Steadwell · task","#234A3D"],["Nov 15","Flush the water heater","Steadwell · task","#234A3D"],["Nov 28","Dishwasher warranty ends","Steadwell · warranty","#C16140"]];
   return (
-    <MockShell title="Upcoming" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Upcoming" note="Sample" style={{maxWidth:440}}>
       {rows.map(([d,t,m,c])=>(
         <div key={t} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:4,alignSelf:"stretch",background:c,borderRadius:3}}/>
@@ -33438,7 +33440,7 @@ function CalAgendaMock() {
 function CalSubscribeMock() {
   const btn={display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 12px",border:"1px solid #E6DECF",background:"#fff",borderRadius:11,marginBottom:8,fontSize:".82rem",fontWeight:600};
   return (
-    <MockShell title="Calendar sync" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Calendar sync" note="Sample" style={{maxWidth:440}}>
       <div style={btn}><span>Google Calendar</span><span style={{color:"#C16140",fontSize:".72rem"}}>Open</span></div>
       <div style={btn}><span>Apple Calendar</span><span style={{color:"#C16140",fontSize:".72rem"}}>Copy link</span></div>
       <div style={btn}><span>Outlook and others</span><span style={{color:"#C16140",fontSize:".72rem"}}>Copy link</span></div>
@@ -33450,7 +33452,7 @@ function CalSubscribeMock() {
 function PeopleMock() {
   const rows=[["You","Owner","All homes",""],["partner@example.com","Full access","Both homes",""],["manager@example.com","Admin","All homes",""],["handyman@example.com","Tasks & assets","Rental only","Pending"]];
   return (
-    <MockShell title="People" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="People" note="Sample" style={{maxWidth:440}}>
       {rows.map(([n,l,h,p])=>(
         <div key={n} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <span style={{width:30,height:30,borderRadius:"50%",background:"#EFE7D7",color:"#234A3D",fontWeight:700,fontSize:".78rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{n[0].toUpperCase()}</span>
@@ -33463,7 +33465,7 @@ function PeopleMock() {
 }
 function InviteMock() {
   return (
-    <MockShell title="Invite people" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Invite people" note="Sample" style={{maxWidth:440}}>
       <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:4}}>Email addresses</div>
       <div style={{border:"1px solid #E6DECF",background:"#fff",borderRadius:9,padding:"8px 11px",fontSize:".78rem",color:"#5E574F",marginBottom:11}}>partner@example.com</div>
       <div style={{fontSize:".72rem",color:"#8A8178",marginBottom:5}}>Access level</div>
@@ -33481,7 +33483,7 @@ function InviteMock() {
 function AssignMock() {
   const rows=[["Replace HVAC filter","Nov 1","You"],["Test smoke alarms","Nov 5","Partner"],["Clean gutters","Nov 12","Handyman"],["Renew insurance quote","Nov 20",""]];
   return (
-    <MockShell title="Tasks" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Tasks" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
         {[["All",false],["Assigned to me",true],["Unassigned",false]].map(([l,on])=><span key={l} style={{fontSize:".72rem",fontWeight:600,padding:"4px 10px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{l}</span>)}
       </div>
@@ -33510,7 +33512,7 @@ function AccessLevelsMock() {
 
 function ProjectMock() {
   return (
-    <MockShell title="Kitchen remodel" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Kitchen remodel" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}><MockPill tone="warn">In progress</MockPill><span style={{fontSize:".72rem",color:"#8A8178"}}>Example Kitchens · ends Dec 12</span></div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:".76rem",marginBottom:4}}><span style={{color:"#5E574F"}}>Spent</span><b>$31,200 of $38,000</b></div>
       <div style={{height:9,background:"#EFE7D7",borderRadius:5,marginBottom:14}}><div style={{width:"82%",height:"100%",background:"#234A3D",borderRadius:5}}/></div>
@@ -33524,7 +33526,7 @@ function ProjectMock() {
 function ProjectListMock() {
   const rows=[["Kitchen remodel","In progress","warn",82,"$31.2k of $38k"],["Deck replacement","Planning","mute",0,"$0 of $14k"],["Bathroom refresh","Done","ok",100,"$9.4k of $9k"]];
   return (
-    <MockShell title="Projects" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Projects" note="Sample" style={{maxWidth:440}}>
       {rows.map(([n,s,t,p,m])=>(
         <div key={n} style={{padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:6}}><span style={{fontSize:".84rem",fontWeight:600}}>{n}</span><MockPill tone={t}>{s}</MockPill></div>
@@ -33552,7 +33554,7 @@ function RoiBarsMock() {
 function PhotoGuideMock() {
   const tiles=[["Data label","linear-gradient(135deg,#CFC6B6,#B5AB99)"],["Whole unit","linear-gradient(135deg,#9DB8A9,#5F8B74)"],["Base of tank","linear-gradient(135deg,#D8C7A8,#B8A07A)"]];
   return (
-    <MockShell title="Photos to take" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Photos to take" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
         {tiles.map(([l,g],i)=>(
           <div key={l}>
@@ -33602,7 +33604,7 @@ function GuideInsideMock() {
 function GiftRedeemMock() {
   return (
     <div style={{width:"100%",maxWidth:420,borderRadius:18,boxShadow:MOCK_SHADOW}}>
-      <MockShell title="A housewarming gift" note="(example)" style={{maxWidth:420}}>
+      <MockShell title="A housewarming gift" note="Sample" style={{maxWidth:420}}>
         <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 14px",background:"#EFE7D7",borderRadius:12,marginBottom:14}}>
           <span style={{width:38,height:38,borderRadius:"50%",background:"#234A3D",color:"#F4EDDF",fontWeight:700,fontSize:".9rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>JS</span>
           <div style={{minWidth:0}}>
@@ -33624,7 +33626,7 @@ function GiftRedeemMock() {
 function WelcomeBannerMock() {
   const tiles = [["Appliances","7"],["Warranties","4"],["Tasks due","3"]];
   return (
-    <MockShell title="Welcome home" note="(example)" style={{maxWidth:440}}>
+    <MockShell title="Welcome home" note="Sample" style={{maxWidth:440}}>
       <div style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:"rgba(46,112,80,.1)",borderRadius:10,marginBottom:12}}>
         <span style={{fontSize:"1.1rem"}} aria-hidden="true">🎁</span>
         <div style={{fontSize:".78rem",color:"#234A3D",lineHeight:1.4}}><strong>Gifted by Jane Smith</strong>, Example Realty<br/><span style={{color:"#5E574F"}}>Steadwell Plus is on for the first 3 months.</span></div>
@@ -33645,7 +33647,7 @@ function WelcomeBannerMock() {
 function PrintedCardMock() {
   return (
     <div aria-hidden="true" style={{width:"100%",maxWidth:380,transform:"rotate(-1.5deg)",background:"#fff",border:"1px solid #E6DECF",borderRadius:14,padding:"22px 24px",boxShadow:MOCK_SHADOW,textAlign:"left",boxSizing:"border-box"}}>
-      <div style={{fontSize:".72rem",color:"#A8A09A",marginBottom:10}}>(example)</div>
+      <div style={{fontSize:".72rem",color:"#A8A09A",marginBottom:10}}>Sample</div>
       <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.35rem",fontWeight:500,color:"#234A3D",lineHeight:1.2,marginBottom:8}}>Congratulations on your new home!</div>
       <div style={{fontSize:".82rem",color:"#5E574F",lineHeight:1.55,marginBottom:14}}>Here are three months of Steadwell Plus to keep track of your warranties, maintenance and records.</div>
       <div style={{display:"flex",gap:12,alignItems:"center",paddingTop:12,borderTop:"1px solid #E6DECF"}}>
@@ -33656,27 +33658,37 @@ function PrintedCardMock() {
   );
 }
 
-// Affiliate hero: a month of example commissions and progress to the payout minimum.
+// Affiliate hero: what ten Plus referrals add up to over a year (30% of $7.99 is about $2.40 a month each).
 function EarningsMock() {
-  const rows = [["Plus monthly","30%","$2.40"],["Pro monthly","30%","$4.50"],["Plus annual","40%","$25.60"]];
+  const months = Array.from({length:12},(_,i)=>24*(i+1));
+  const max = 288, H = 96;
   return (
     <div style={{width:"100%",maxWidth:420,borderRadius:18,boxShadow:MOCK_SHADOW}}>
-      <MockShell title="Your commissions" note="(example)" style={{maxWidth:420}}>
-        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:"2rem",fontWeight:600,color:"#234A3D",lineHeight:1}}>$32.50</div>
-          <div style={{fontSize:".74rem",color:"#8A8178"}}>earned this month</div>
-        </div>
-        {rows.map(([p,c,a])=>(
-          <div key={p} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:"1px solid #E6DECF"}}>
-            <div style={{flex:1,fontSize:".8rem",fontWeight:600,color:"#2A2723"}}>{p}</div>
-            <MockPill tone="rust">{c}</MockPill>
-            <div style={{width:54,textAlign:"right",fontSize:".82rem",fontWeight:700,color:"#234A3D"}}>{a}</div>
+      <MockShell title="10 Plus subscribers" note="" style={{maxWidth:420,padding:"20px 22px 18px"}}>
+        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,marginBottom:14}}>
+          <div>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"3.1rem",fontWeight:600,color:"#C16140",lineHeight:.95,letterSpacing:"-.02em"}}>$288</div>
+            <div style={{fontSize:".78rem",color:"#6E665D",marginTop:6}}>earned in 12 months, about</div>
           </div>
-        ))}
-        <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #E6DECF"}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:".74rem",color:"#8A8178",marginBottom:6}}><span>Balance</span><span>$50 payout minimum</span></div>
-          <div style={{height:8,borderRadius:6,background:"#EFE7D7",overflow:"hidden"}}><div style={{width:"65%",height:"100%",background:"#C16140",borderRadius:6}}/></div>
+          <MockPill tone="rust">30% recurring</MockPill>
         </div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:5,height:H+4,marginBottom:6}}>
+          {months.map((v,i)=>(
+            <div key={i} style={{flex:1,height:Math.round(v/max*H)+4,borderRadius:"4px 4px 1px 1px",background:i===11?"#C16140":"#234A3D",opacity:i===11?1:.35+i*.055}}/>
+          ))}
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#8A8178",marginBottom:14}}><span>Month 1</span><span>Month 12</span></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"10px 12px"}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:600,color:"#234A3D",lineHeight:1}}>$2.40</div>
+            <div style={{fontSize:".72rem",color:"#8A8178",marginTop:4}}>a month, per Plus subscriber</div>
+          </div>
+          <div style={{background:"#fff",border:"1px solid #E6DECF",borderRadius:10,padding:"10px 12px"}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.2rem",fontWeight:600,color:"#234A3D",lineHeight:1}}>~$25.60</div>
+            <div style={{fontSize:".72rem",color:"#8A8178",marginTop:4}}>per annual plan, paid once</div>
+          </div>
+        </div>
+        <div style={{fontSize:".72rem",color:"#8A8178",lineHeight:1.45,marginTop:12}}>Illustration based on our published rates. Your results will vary.</div>
       </MockShell>
     </div>
   );
@@ -33715,7 +33727,7 @@ function PropertySwitchMock() {
   const rows = [["Water heater","Warranty to 2029","ok"],["HVAC system","Service due Nov 8","warn"],["Refrigerator","Recall check clear","ok"],["Roof","Condition 3 of 5","mute"]];
   return (
     <div style={{width:"100%",maxWidth:440,borderRadius:18,boxShadow:MOCK_SHADOW}}>
-      <MockShell title="Properties" note="(example)" style={{maxWidth:440}}>
+      <MockShell title="Properties" note="Sample" style={{maxWidth:440}}>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
           {props.map(([n,on])=><span key={n} style={{fontSize:".74rem",fontWeight:600,padding:"5px 11px",borderRadius:20,border:"1.5px solid "+(on?"#234A3D":"#E6DECF"),background:on?"#234A3D":"#fff",color:on?"#F4EDDF":"#5E574F"}}>{n}</span>)}
         </div>
