@@ -1,4 +1,4 @@
-// Steadwell v443 — 2026-10-28
+// Steadwell v444 — 2026-10-28
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -33910,6 +33910,7 @@ function PropertyManagersPage() {
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={PM_FAQ}/>
         </LPSection>
+        <LPRelated hrefs={["/shared-household-access","/home-maintenance-tracker","/warranty-tracker","/contractor-tracker"]} heading="More ways Steadwell keeps every property on track"/>
         <LPCTA h2="Start with the free plan." sub="Set up your first property in a few minutes. The free plan has no time limit." btnLabel="Get started free →" note="Free forever plan · No credit card required"/>
       </main>
       <LPFooter/>
@@ -36849,7 +36850,10 @@ const LP_GUIDE_KEYWORDS = {
   "/calendar-sync":             ["checklist","schedule","seasonal","reminder"],
   "/shared-household-access":   ["checklist","maintenance","household","partner"],
   "/pricing":                   [" vs ","alternative","homezada","homebinder","centriq"],
+  "/property-managers":         ["landlord","rental","tenant","property manag"],
 };
+// Not in LP_FEATURE_PAGES, so it stays out of the footer feature columns and the homepage grid.
+const LP_PM_PAGE = { href:"/property-managers", label:"For Landlords & Property Managers", icon:"🏢", desc:"Track every rental's maintenance in one place." };
 
 function guideScore(text, keywords) {
   const t = " " + String(text || "").toLowerCase() + " ";
@@ -36873,7 +36877,7 @@ function featuresForPost(post, n = 2) {
     .map(h => ({ h, sc: guideScore(txt, LP_GUIDE_KEYWORDS[h]) }))
     .filter(x => x.sc > 0)
     .sort((a, b) => b.sc - a.sc)
-    .slice(0, n).map(x => LP_FEATURE_PAGES.find(f => f.href === x.h)).filter(Boolean);
+    .slice(0, n).map(x => [...LP_FEATURE_PAGES, LP_PM_PAGE].find(f => f.href === x.h)).filter(Boolean);
   return ranked.length ? ranked : [LP_FEATURE_PAGES.find(f => f.href === "/home-maintenance-tracker")].filter(Boolean);
 }
 
