@@ -1,4 +1,4 @@
-// Steadwell v448 — 2026-10-28
+// Steadwell v449 — 2026-10-29
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -21664,7 +21664,7 @@ function catToast(msg, type="success") { try { window.dispatchEvent(new CustomEv
 const openCategorySettings = () => { try { window.dispatchEvent(new CustomEvent("sw:open-account",{detail:{tab:"categories"}})); } catch {} };
 
 // A category <select> that ends with "+ Add your own…" (one short line, no extra clutter).
-function CategorySelect({ value, onChange, groups=CATEGORY_GROUPS, placeholder="Select…" }) {
+function CategorySelect({ value, onChange, groups=CATEGORY_GROUPS, placeholder="Select…", suggested=[], suggestedLabel="Matches your assets" }) {
   const cc = useContext(CustomCatsContext);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -21672,7 +21672,11 @@ function CategorySelect({ value, onChange, groups=CATEGORY_GROUPS, placeholder="
   const [busy, setBusy] = useState(false);
   const custom = cc?.list || [];
   const canAdd = !!(cc?.available && cc?.canEdit);
-  const allGroups = custom.length ? [{ label:"Your categories", items:custom }, ...groups] : groups;
+  const allGroups = [
+    ...(custom.length ? [{ label:"Your categories", items:custom }] : []),
+    ...(suggested.length ? [{ label:suggestedLabel, items:suggested }] : []),
+    ...groups,
+  ];
   const close = () => { setAdding(false); setName(""); setMsg(""); };
   const submit = async () => {
     setBusy(true);
@@ -21791,11 +21795,27 @@ function CategoryManager({ homeName }) {
 }
 
 // ─── CONTRACTOR ROLODEX ───────────────────────────────────────────────────────
-// Contractors use the same list as tasks and expenses (minus vehicles, which aren't trades).
-const TRADE_GROUPS = CATEGORY_GROUPS.filter(g => g.label !== "Vehicles");
+// Contractors use the same list as tasks, expenses and assets, so a pool, a car or a furnace has a matching
+// contact category. People who aren't tradespeople (the insurance agent, the accountant) get their own group.
+const PROFESSIONAL_GROUP = { label:"Insurance & professionals", items:["Insurance","Real Estate Agent","Attorney","Accountant & Tax","Mortgage & Lender","Property Manager","Inspector & Appraiser"] };
+const TRADE_GROUPS = [
+  ...CATEGORY_GROUPS.filter(g => g.label !== "Other"),
+  PROFESSIONAL_GROUP,
+  ...CATEGORY_GROUPS.filter(g => g.label === "Other"),
+];
 const TRADES = TRADE_GROUPS.flatMap(g => g.items);
+// The contact categories that match what this home has on its Assets list (a pool asset suggests "Pool & Spa").
+function tradesFromAssets(warranties) {
+  const seen = new Set();
+  for (const w of (warranties||[])) {
+    if (!w || !w.item || w.retired_at || w.warranty_only || w.category === "Insurance") continue;
+    const c = CAT_NORMALIZE_MAP[w.category] || w.category;
+    if (c && c !== "Other" && TRADES.includes(c)) seen.add(c);
+  }
+  return TRADES.filter(t => seen.has(t));
+}
 
-function ContractorForm({ data, onChange }) {
+function ContractorForm({ data, onChange, homeTrades=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
   return (
     <div className="fg">
@@ -21803,7 +21823,7 @@ function ContractorForm({ data, onChange }) {
       <div className="field s2"><label>Company</label><input value={data.company||""} onChange={e=>f("company",e.target.value)} placeholder="e.g. Smith HVAC Services"/></div>
       <div className="field s2">
         <label>Trade / Specialty</label>
-        <CategorySelect value={data.trade||""} onChange={v=>f("trade",v)} groups={TRADE_GROUPS}/>
+        <CategorySelect value={data.trade||""} onChange={v=>f("trade",v)} groups={TRADE_GROUPS} suggested={homeTrades}/>
       </div>
       <div className="field"><label>Phone</label><input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000"/></div>
       <div className="field"><label>Email</label><input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com"/></div>
@@ -21851,7 +21871,8 @@ const contractorJobs = (c, serviceLogs=[], tasks=[]) => {
     .map(t => ({ id:"task-"+t.id, kind:"task", title:t.title, date:t.due_date, cost:Number(t.cost||0), status:t.status }));
   return [...logs, ...tsk].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
 };
-function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], toast, onBack }) {
+function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], toast, onBack }) {
+  const homeTrades = useMemo(() => tradesFromAssets(warranties), [warranties]);
   const [modal, setModal]         = useState(false);
   const [editData, setEditData]   = useState({});
   const [editId, setEditId]       = useState(null);
@@ -21987,7 +22008,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
           </div>{/* /cr-detail */}
         </div>
         {confirm&&<Confirm message={`Remove ${c.name} from your rolodex?`} onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-        {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData}/></Modal>}
+        {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData} homeTrades={homeTrades}/></Modal>}
       </div>
     );
   }
@@ -22069,7 +22090,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         )}
       </div>
 
-      {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData}/></Modal>}
+      {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData} homeTrades={homeTrades}/></Modal>}
       {confirm&&<Confirm message="Remove this contractor from your rolodex?" onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
     </div>
   );
@@ -28096,6 +28117,7 @@ export default function App() {
               setContractors={setContractors}
               serviceLogs={serviceLogs}
               tasks={tasks}
+              warranties={warranties}
               toast={toast}
               onBack={()=>setShowContractors(false)}
             />
