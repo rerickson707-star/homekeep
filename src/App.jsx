@@ -1,4 +1,4 @@
-// Steadwell v449 — 2026-10-29
+// Steadwell v450 — 2026-10-29
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -21864,15 +21864,234 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
 // Everything a contractor has been attached to: logged services plus tasks
 // assigned to them (tasks carry the contractor name in `vendor`).
 const _vendorIs = (c, v) => { const x = (v||"").trim().toLowerCase(); return !!x && (x === (c.name||"").trim().toLowerCase() || (!!c.company && x === c.company.trim().toLowerCase())); };
-const contractorJobs = (c, serviceLogs=[], tasks=[]) => {
-  const logs = serviceLogs.filter(s => _vendorIs(c, s.vendor) || s.notes?.includes(c.name) || (c.company && s.notes?.includes(c.company)))
-    .map(s => ({ id:"log-"+s.id, kind:"log", title:s.description, date:s.service_date, cost:Number(s.cost||0) }));
-  const tsk = tasks.filter(t => _vendorIs(c, t.vendor))
-    .map(t => ({ id:"task-"+t.id, kind:"task", title:t.title, date:t.due_date, cost:Number(t.cost||0), status:t.status }));
-  return [...logs, ...tsk].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-};
-function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], toast, onBack }) {
+// ─── WHAT EACH CONTRACTOR HAS BEEN PAID ──────────────────────────────────────
+// One ledger for every contractor: service visits (asset_service_log), expenses and tasks that name them.
+// Each record is counted once. A completed task that already made a service log is not counted again.
+// "Paid" is money already spent. "Planned" is the cost entered on tasks that are still open.
+function buildContractorLedger(contractors, serviceLogs=[], tasks=[], expenses=[], assets=[]) {
+  const ledger = {}; contractors.forEach(c => { ledger[c.id] = []; });
+  const assetById = {}; assets.forEach(a => { assetById[a.id] = a; });
+  const assetBits = id => { const a = id ? assetById[id] : null; return { assetId: a ? a.id : null, assetName: a ? a.item : null, assetCategory: a ? (CAT_NORMALIZE_MAP[a.category] || a.category) : null }; };
+  const exact = v => contractors.find(c => _vendorIs(c, v)) || null;
+  const mention = notes => {
+    if (!notes) return null;
+    let best = null;
+    contractors.forEach(c => [c.name, c.company].filter(Boolean).forEach(n => { if (notes.includes(n) && (!best || n.length > best.len)) best = { c, len: n.length }; }));
+    return best ? best.c : null;
+  };
+  const push = (c, job) => { if (c) ledger[c.id].push(job); };
+  serviceLogs.forEach(sl => {
+    push(exact(sl.vendor) || mention(sl.notes), { id:"log-"+sl.id, kind:"log", title:sl.description, date:sl.service_date, cost:Number(sl.cost||0), paid:true, planned:false, ...assetBits(sl.asset_id) });
+  });
+  const logged = new Set(serviceLogs.map(sl => (sl.asset_id||"")+"|"+String(sl.description||"").trim().toLowerCase()));
+  tasks.forEach(t => {
+    const c = exact(t.vendor); if (!c) return;
+    const done = t.status === "Completed" || t.status === "Done";
+    if (done && t.asset_id && logged.has(t.asset_id+"|"+String(t.title||"").trim().toLowerCase())) return;
+    push(c, { id:"task-"+t.id, kind:"task", title:t.title, date:t.due_date, cost:Number(t.cost||0), status:t.status, done, paid:done, planned:!done && t.status !== "Cancelled", ...assetBits(t.asset_id) });
+  });
+  expenses.forEach(e => {
+    const c = exact(e.vendor); if (!c) return;
+    push(c, { id:"exp-"+e.id, kind:"expense", title:e.description, date:e.date, cost:Number(e.amount||0), paid:true, planned:false, assetId:null, assetName:null, assetCategory:null });
+  });
+  Object.keys(ledger).forEach(k => ledger[k].sort((a,b) => String(b.date||"").localeCompare(String(a.date||""))));
+  return ledger;
+}
+const jobsPaid = jobs => jobs.reduce((t,j) => t + (j.paid && j.cost > 0 ? j.cost : 0), 0);
+const jobsPlanned = jobs => jobs.reduce((t,j) => t + (j.planned && j.cost > 0 ? j.cost : 0), 0);
+const JOB_KIND_LABEL = { log:"Service visit", expense:"Expense", task:"Task" };
+
+// The last twelve months of what was paid, stacked like the Utilities chart. Switch between "who got paid" and "which asset it was for".
+function ContractorSpendCard({ contractors, ledger }) {
+  const [mode, setMode] = useState("contractor");
+  const [table, setTable] = useState(false);
+  const today = localISO();
+  const nowD = new Date(today + "T00:00:00");
+  const monthKeys = [];
+  for (let i = 11; i >= 0; i--) { const d = new Date(nowD.getFullYear(), nowD.getMonth() - i, 1); monthKeys.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")); }
+  const first = monthKeys[0];
+  const items = [];
+  let planned = 0;
+  contractors.forEach(c => (ledger[c.id] || []).forEach(j => {
+    if (j.planned && j.cost > 0) planned += j.cost;
+    const month = String(j.date || "").slice(0, 7);
+    if (j.paid && j.cost > 0 && month >= first && month <= monthKeys[11]) items.push({ ...j, month, cid:c.id, cname:c.name });
+  }));
+  const NONE = "__none";
+  const keyOf = j => mode === "contractor" ? j.cid : (j.assetId || NONE);
+  const nameOf = j => mode === "contractor" ? j.cname : (j.assetName || "No asset linked");
+  const totals = {}; const names = {};
+  items.forEach(j => { const k = keyOf(j); totals[k] = (totals[k] || 0) + j.cost; names[k] = nameOf(j); });
+  const ranked = Object.keys(totals).filter(k => k !== NONE).sort((a,b) => totals[b] - totals[a]);
+  const topKeys = ranked.slice(0, UTIL_SERIES.length);
+  const seriesDefs = topKeys.map((k,i) => ({ id:k, name:names[k], color:UTIL_SERIES[i] }));
+  if (ranked.length > UTIL_SERIES.length) seriesDefs.push({ id:"__other", name: mode === "contractor" ? "Other contractors" : "Other assets", color:UTIL_OTHER });
+  if (totals[NONE]) seriesDefs.push({ id:NONE, name:"No asset linked", color:"#D4CBBB" });
+  const seriesId = k => (k === NONE ? NONE : topKeys.includes(k) ? k : "__other");
+  const months = monthKeys.map(k => {
+    const d = new Date(k + "-01T00:00:00");
+    const sums = {};
+    items.forEach(j => { if (j.month === k) { const sid = seriesId(keyOf(j)); sums[sid] = (sums[sid] || 0) + j.cost; } });
+    const segments = seriesDefs.map(sd => ({ ...sd, v: sums[sd.id] || 0 })).filter(x => x.v > 0);
+    return { key:k, short:d.toLocaleString("en-US",{month:"short"}), full:d.toLocaleString("en-US",{month:"long",year:"numeric"}), year:String(d.getFullYear()).slice(2), jan:d.getMonth()===0, segments, total:segments.reduce((t,x)=>t+x.v,0) };
+  });
+  const last12 = months.reduce((t,m) => t + m.total, 0);
+  const maxTotal = Math.max(0, ...months.map(m => m.total));
+  const step = maxTotal > 0 ? utilNiceStep(maxTotal) : 1;
+  const axisMax = maxTotal > 0 ? step * Math.ceil(maxTotal / step) : 1;
+  const ticks = []; for (let t = 0; t <= axisMax + 1e-9; t += step) ticks.push(t);
+  let latestIdx = -1; months.forEach((m,i) => { if (m.total > 0) latestIdx = i; });
+  const maxIdx = maxTotal > 0 ? months.findIndex(m => m.total === maxTotal) : -1;
+  const tipAlign = i => (i <= 2 ? "l" : i >= 9 ? "r" : "c");
+  const paidTo = new Set(items.map(j => j.cid)).size;
+  const assetsN = new Set(items.filter(j => j.assetId).map(j => j.assetId)).size;
+  if (items.length === 0 && planned === 0) return null;
+  const seg = { display:"inline-flex", border:"1.5px solid var(--stone)", borderRadius:999, overflow:"hidden" };
+  const segBtn = on => ({ border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".76rem", fontWeight:600, padding:".28rem .7rem", background:on?"var(--pine)":"var(--white)", color:on?"#fff":"#5A534B" });
+  return (
+    <section className="ut-card" aria-labelledby="cr-spend-t" style={{marginBottom:".9rem"}}>
+      <div className="ut-card-h" style={{flexWrap:"wrap",marginBottom:".35rem"}}>
+        <h3 id="cr-spend-t" className="ut-card-t">Paid to contractors, last 12 months</h3>
+        {last12 > 0 && <button type="button" className="asm-link" onClick={() => setTable(t => !t)}>{table ? "Show chart" : "View as table"}</button>}
+      </div>
+      <p className="ut-sub" style={{margin:"0 0 .7rem",fontSize:".84rem"}}>
+        {last12 > 0
+          ? <><b style={{color:"var(--dark)"}}>{fmt$(last12)}</b> paid to {paidTo} contractor{paidTo!==1?"s":""}{assetsN > 0 ? <> across {assetsN} asset{assetsN!==1?"s":""}</> : null}.</>
+          : "Nothing paid in the last 12 months."}
+        {planned > 0 && <> {fmt$(planned)} more is planned on open tasks.</>}
+      </p>
+      {last12 > 0 && (
+        <>
+          <div role="group" aria-label="Group spending by" style={{...seg,marginBottom:".8rem"}}>
+            <button type="button" aria-pressed={mode==="contractor"} style={segBtn(mode==="contractor")} onClick={() => setMode("contractor")}>By contractor</button>
+            <button type="button" aria-pressed={mode==="asset"} style={segBtn(mode==="asset")} onClick={() => setMode("asset")}>By asset</button>
+          </div>
+          {table ? (
+            <div className="ut-tbl-wrap">
+              <table className="ut-tbl">
+                <caption style={{position:"absolute",left:-9999}}>Paid to contractors by month, newest first</caption>
+                <thead><tr><th scope="col">Month</th><th scope="col">Total</th>{seriesDefs.map(sd => <th scope="col" key={sd.id}>{sd.name}</th>)}</tr></thead>
+                <tbody>
+                  {[...months].reverse().map(m => (
+                    <tr key={m.key}>
+                      <th scope="row">{m.full}</th>
+                      <td><b>{m.total > 0 ? fmt$(m.total) : "None"}</b></td>
+                      {seriesDefs.map(sd => { const sg = m.segments.find(x => x.id === sd.id); return sg ? <td key={sd.id}>{fmt$(sg.v)}</td> : <td key={sd.id} className="n">None</td>; })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <>
+              <div className="uc">
+                <div className="uc-y" aria-hidden="true">
+                  {ticks.map(t => <span key={t} className="uc-yl" style={{ bottom:(t/axisMax*100)+"%" }}>{utilAxisLabel(t)}</span>)}
+                </div>
+                <div className="uc-plot" role="group" aria-label={`Paid to contractors by month for the last 12 months, ${fmt$(last12)} in total.`}>
+                  {ticks.map(t => <span key={t} className="uc-grid" style={{ bottom:(t/axisMax*100)+"%" }} />)}
+                  <div className="uc-cols">
+                    {months.map((m,i) => {
+                      const pct = m.total / axisMax * 100;
+                      return (
+                        <div key={m.key} className="uc-col" tabIndex={0} role="img"
+                          aria-label={m.total > 0 ? `${m.full}: ${fmt$(m.total)} paid. ${m.segments.map(x => `${x.name} ${fmt$(x.v)}`).join(", ")}.` : `${m.full}: nothing paid`}>
+                          {m.total > 0 && (
+                            <div className="uc-bar" style={{ height:pct+"%" }}>
+                              {m.segments.map((x,si) => <span key={x.id} className={"uc-seg"+(si===m.segments.length-1?" top":"")} style={{ flex:`${x.v} 1 0%`, background:x.color }} />)}
+                            </div>
+                          )}
+                          {m.total > 0 && (i === latestIdx || i === maxIdx) && <span className="uc-val" style={{ bottom:`calc(${pct}% + 4px)` }}>{fmt$(m.total)}</span>}
+                          <div className={"uc-tip "+tipAlign(i)}>
+                            <div className="uc-tip-m">{m.full}</div>
+                            {m.total > 0 ? (
+                              <>
+                                <div className="uc-tip-t">{fmt$(m.total)} <span>paid</span></div>
+                                {m.segments.map(x => <div key={x.id} className="uc-tip-r"><i style={{ background:x.color }} /><span>{x.name}</span><b>{fmt$(x.v)}</b></div>)}
+                              </>
+                            ) : <div className="uc-tip-n">Nothing paid</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="uc-xrow" aria-hidden="true">
+                  {months.map((m,i) => <span key={m.key} className={"uc-x"+(i===11?" now":"")}>{m.short}{(i===0||m.jan) && <small>{"'"+m.year}</small>}</span>)}
+                </div>
+              </div>
+              <div className="uc-leg">
+                {seriesDefs.map(sd => <span key={sd.id}><i style={{ background:sd.color }} />{sd.name}</span>)}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+// On one contractor's page: what they have been paid and which assets that money went to.
+function ContractorSpendDetail({ jobs }) {
+  const today = localISO();
+  const cut = new Date(today + "T00:00:00"); cut.setFullYear(cut.getFullYear() - 1);
+  const cutIso = localISO(cut);
+  const paidJobs = jobs.filter(j => j.paid && j.cost > 0);
+  const total = jobsPaid(jobs);
+  const planned = jobsPlanned(jobs);
+  if (total === 0 && planned === 0) return null;
+  const last12 = paidJobs.filter(j => j.date && j.date >= cutIso).reduce((t,j) => t + j.cost, 0);
+  const groups = {};
+  paidJobs.forEach(j => {
+    const k = j.assetId || "__none";
+    if (!groups[k]) groups[k] = { id:k, name:j.assetName || "No asset linked", cat:j.assetCategory, n:0, v:0 };
+    groups[k].n += 1; groups[k].v += j.cost;
+  });
+  const rows = Object.values(groups).sort((a,b) => (a.id==="__none") - (b.id==="__none") || b.v - a.v);
+  const max = Math.max(1, ...rows.map(r => r.v));
+  const linked = rows.filter(r => r.id !== "__none").length;
+  const stat = (label, v, hint) => (
+    <div style={{flex:"1 1 0",minWidth:0}}>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:600,color:"var(--dark)"}}>{v}</div>
+      <div style={{fontSize:".7rem",color:"#7A7370",marginTop:1}}>{label}{hint ? <span style={{display:"block",color:"#A8A09A"}}>{hint}</span> : null}</div>
+    </div>
+  );
+  return (
+    <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
+      <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:500,color:"var(--dark)",marginBottom:".7rem"}}>What you've paid</div>
+      <div style={{display:"flex",gap:".75rem",marginBottom:rows.length?"1rem":0}}>
+        {stat("All time", fmt$(total))}
+        {stat("Last 12 months", fmt$(last12))}
+        {planned > 0 && stat("Planned", fmt$(planned), "open tasks")}
+      </div>
+      {rows.length > 0 && (
+        <>
+          <div style={{fontSize:".74rem",fontWeight:600,color:"#5A534B",marginBottom:".5rem"}}>
+            {linked > 1 ? `Worked on ${linked} assets` : "By asset"}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:".6rem"}}>
+            {rows.map(r => (
+              <div key={r.id}>
+                <div style={{display:"flex",alignItems:"baseline",gap:".5rem",fontSize:".8rem"}}>
+                  <span aria-hidden="true">{r.id==="__none" ? "🧾" : (ASSET_ICONS[r.cat] || "🔧")}</span>
+                  <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--dark)",fontWeight:600}}>{r.name}</span>
+                  <span style={{color:"#7A7370",fontSize:".72rem",flexShrink:0}}>{r.n} job{r.n!==1?"s":""}</span>
+                  <span style={{fontWeight:700,color:"var(--dark)",flexShrink:0,minWidth:"3.2rem",textAlign:"right"}}>{fmt$(r.v)}</span>
+                </div>
+                <div style={{height:6,borderRadius:3,background:"var(--cream2)",marginTop:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:Math.max(3, r.v/max*100)+"%",background:r.id==="__none"?"#C9BFAE":"var(--pine)",borderRadius:3}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], expenses=[], toast, onBack }) {
   const homeTrades = useMemo(() => tradesFromAssets(warranties), [warranties]);
+  const ledger = useMemo(() => buildContractorLedger(contractors, serviceLogs, tasks, expenses, warranties), [contractors, serviceLogs, tasks, expenses, warranties]);
   const [modal, setModal]         = useState(false);
   const [editData, setEditData]   = useState({});
   const [editId, setEditId]       = useState(null);
@@ -21941,8 +22160,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   if (selected) {
     const c = contractors.find(x=>x.id===selected);
     if (!c) { setSelected(null); return null; }
-    const jobs = contractorJobs(c, serviceLogs, tasks);
-    const totalSpent = jobs.filter(j=>j.kind==="log").reduce((s,j)=>s+j.cost,0);
+    const jobs = ledger[c.id] || [];
+    const totalSpent = jobsPaid(jobs);
     return (
       <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"var(--linen)"}}>
         <div className="wc-hdr" style={{position:"static"}}>
@@ -21953,6 +22172,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         </div>
         <div className="cr-scroll" style={{flex:1,overflowY:"auto",padding:"1rem",WebkitOverflowScrolling:"touch"}}>
           <div className="cr-detail">
+          <div>{/* left column: contact + what you have paid */}
           {/* Contact card */}
           <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:"1rem",marginBottom:".75rem"}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:".75rem",marginBottom:".85rem"}}>
@@ -21978,6 +22198,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
             </div>
             {c.notes&&<div style={{marginTop:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"8px",fontSize:".8rem",color:"#5A534B",lineHeight:1.55}}>{c.notes}</div>}
           </div>
+          <ContractorSpendDetail jobs={jobs}/>
+          </div>
           {/* Job history */}
           <div style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".85rem 1rem",borderBottom:jobs.length>0?"1px solid var(--stone)":"none"}}>
@@ -21998,10 +22220,12 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
                   <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{j.title}</div>
                   <div style={{fontSize:".72rem",color:"#A8A09A",marginTop:2,display:"flex",alignItems:"center",gap:".4rem",flexWrap:"wrap"}}>
                     {j.date?new Date(j.date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):""}
-                    {j.kind==="task" && <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:j.status==="Done"?"#E8F3EE":j.status==="Overdue"?"#F8DEDA":"var(--cream2)",color:j.status==="Done"?"#2A7A5A":j.status==="Overdue"?"#B9422C":"#7A7370"}}>{j.status==="Done"?"Task done":j.status==="Overdue"?"Task overdue":"Task scheduled"}</span>}
+                    {j.kind==="task" && <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:j.done?"#E8F3EE":j.status==="Overdue"?"#F8DEDA":"var(--cream2)",color:j.done?"#2A7A5A":j.status==="Overdue"?"#B9422C":"#7A7370"}}>{j.done?"Task done":j.status==="Overdue"?"Task overdue":j.status==="Cancelled"?"Task cancelled":"Task scheduled"}</span>}
+                    {j.kind==="expense" && <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:"var(--cream2)",color:"#7A7370"}}>Expense</span>}
+                    {j.assetName && <span style={{fontSize:".62rem",fontWeight:700,padding:"1px 7px",borderRadius:8,background:"#E8F3EE",color:"#2A7A5A"}}>{(ASSET_ICONS[j.assetCategory]||"🔧")+" "+j.assetName}</span>}
                   </div>
                 </div>
-                <div style={{fontSize:".85rem",fontWeight:600,color:j.cost>0?"var(--dark)":"#C8C0B8",flexShrink:0}}>{j.cost>0?`${j.kind==="task"&&j.status!=="Done"?"~":""}$${Number(j.cost).toLocaleString()}`:"—"}</div>
+                <div style={{fontSize:".85rem",fontWeight:600,color:j.cost>0?"var(--dark)":"#C8C0B8",flexShrink:0}}>{j.cost>0?`${j.planned?"~":""}$${Number(j.cost).toLocaleString()}`:"—"}</div>
               </div>
             ))}
           </div>
@@ -22026,6 +22250,9 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       </div>
 
       <div className="cr-scroll" style={{flex:1,overflowY:"auto",padding:".75rem 1rem",WebkitOverflowScrolling:"touch"}}>
+        {/* Paid to contractors, by contractor or by asset */}
+        {contractors.length>0&&<ContractorSpendCard contractors={contractors} ledger={ledger}/>}
+
         {/* Search */}
         {contractors.length>2&&(
           <input className="cr-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contractors…"
@@ -22058,7 +22285,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         {/* Contractor list */}
         <div className="cr-grid">
         {filtered.map(c=>{
-          const jobs = contractorJobs(c, serviceLogs, tasks);
+          const jobs = ledger[c.id] || [];
+          const paid = jobsPaid(jobs);
           return (
             <div key={c.id} onClick={()=>setSelected(c.id)} style={{background:"var(--white)",border:"1px solid var(--stone)",borderRadius:"var(--r)",padding:".9rem 1rem",marginBottom:".5rem",cursor:"pointer",display:"flex",alignItems:"center",gap:".85rem",transition:"background .12s"}}
               onMouseEnter={e=>e.currentTarget.style.background="var(--cream)"}
@@ -22075,6 +22303,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
+                {paid>0&&<div style={{fontSize:".82rem",fontWeight:700,color:"var(--dark)",marginBottom:2}}>{fmt$(paid)} <span style={{fontSize:".62rem",fontWeight:600,color:"#7A7370"}}>paid</span></div>}
                 {c.rating&&<div style={{fontSize:".72rem",color:"var(--pine)",fontWeight:700}}>{"●".repeat(c.rating)+"○".repeat(5-c.rating)}</div>}
                 {c.would_hire_again===true&&<div style={{fontSize:".65rem",color:"#2A9D6A",fontWeight:600,marginTop:2}}>Recommended</div>}
                 {c.would_hire_again===false&&<div style={{fontSize:".65rem",color:"var(--red)",fontWeight:600,marginTop:2}}>Not recommended</div>}
@@ -28118,6 +28347,7 @@ export default function App() {
               serviceLogs={serviceLogs}
               tasks={tasks}
               warranties={warranties}
+              expenses={expenses}
               toast={toast}
               onBack={()=>setShowContractors(false)}
             />
