@@ -1,4 +1,4 @@
-// Steadwell v450 — 2026-10-29
+// Steadwell v451 — 2026-11-04
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -15002,6 +15002,28 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
   );
 }
 // ─── TASKS ────────────────────────────────────────────────────────────────────
+// Writes a task, trying the full payload first, then without the multi-person column, then without
+// assignment, so a database that has not had the newest SQL applied still saves the task.
+// Returns { res, used, payload } where used is the index of the variant that worked.
+async function writeTaskWithFallback(payload, run) {
+  const variants = [payload];
+  if ("assignee_ids" in payload) { const { assignee_ids: _i, ...p1 } = payload; variants.push(p1); }
+  if ("assigned_to" in payload) { const { assignee_ids: _i, assigned_to: _a, ...p2 } = payload; variants.push(p2); }
+  let res = { error: true }, used = 0;
+  for (; used < variants.length; used++) { res = await run(variants[used]); if (!res.error) break; }
+  const lost = used > 0 && !("assigned_to" in variants[used]) && payload.assigned_to ? ", but assignment could not be saved yet"
+    : used > 0 && !("assignee_ids" in variants[used]) && (payload.assignee_ids || []).length > 1 ? ", but only the first person was assigned" : "";
+  return { res, used, sent: variants[used] || payload, lost };
+}
+// Fields the task form carries, shaped for saving. Assignment is only sent when the form has it.
+function taskFormPayload(d) {
+  const payload = { ...d, asset_id: d.asset_id || null, cost: d.cost === "" || d.cost == null ? null : Number(d.cost) };
+  if (Array.isArray(d.assignee_ids)) { payload.assignee_ids = d.assignee_ids; payload.assigned_to = d.assignee_ids[0] || null; }
+  else if ("assigned_to" in d) payload.assigned_to = d.assigned_to || null;
+  delete payload.assigned_by; delete payload.assigned_at;
+  return payload;
+}
+
 function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties: assets=[], serviceLogs, setServiceLogs, planData, onUpgrade, contractors=[], people=[], pendingSelectedTask=null, onClearPendingSelectedTask, onOpenAsset }) {
   const zone = getClimateZone(profile);
   const climate = getClimateProfile(zone, profile);
@@ -16339,7 +16361,7 @@ function buildAttrRows(asset, d) {
   return rows;
 }
 
-function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, onNavigate, contractors=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0, assessments=[], onAssessed }) {
+function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, propertyId, profile, serviceLogs, setServiceLogs, tasks, setTasks, planData, onUpgrade, onNavigate, contractors=[], people=[], pendingEditId=null, onClearPendingEdit, pendingWarrantyTracker=false, onClearPendingWarranty, pendingSelectedAsset=null, onClearPendingSelected, showWarrantyModule=false, setShowWarrantyModule, pendingNewAsset=null, onClearPendingNewAsset, resetSignal=0, assessments=[], onAssessed }) {
   const { locs: assetLocs, loaded: assetLocsLoaded } = useLocations(propertyId);
   // Recall-aware health: Dashboard already runs this same hook (it shares
   // the "sw_recall_cache" localStorage cache, so this normally reads that
@@ -16869,42 +16891,33 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
       title: "", status: "Scheduled", priority: "Medium", due_date: localISO(due),
       category: CATEGORIES.includes(asset.category) ? asset.category : (LEGACY_CATEGORY_ALIASES[asset.category] || "Other"),
       asset_id: asset.id, recurring: "",
+      ...(people.length>1 ? {assigned_to:null, assignee_ids:[]} : {}),
     });
   };
   const saveNewTask = async () => {
     if (!newTaskData) return;
     if (!newTaskData.title?.trim()) { toast("Please enter a task title","error"); return; }
     if (newTaskData.cost !== "" && newTaskData.cost != null && Number(newTaskData.cost) < 0) { toast("Cost can't be negative","error"); return; }
-    const payload = {
-      ...newTaskData,
-      title: newTaskData.title.trim(),
-      asset_id: newTaskData.asset_id || null,
-      cost: newTaskData.cost === "" || newTaskData.cost == null ? null : Number(newTaskData.cost),
-      user_id: userId, property_id: propertyId,
-    };
-    const {data, error} = await supabase.from("tasks").insert([payload]).select();
-    if (!error && data) {
-      setTasks(prev => [data[0], ...prev]);
-      toast("Task scheduled ✓ — find it on the Tasks tab");
+    const payload = { ...taskFormPayload(newTaskData), title: newTaskData.title.trim() };
+    const { res, lost } = await writeTaskWithFallback(payload, (pl) => supabase.from("tasks").insert([{...pl, user_id: userId, property_id: propertyId}]).select());
+    if (!res.error && res.data) {
+      setTasks(prev => [res.data[0], ...prev]);
+      pingNotifications();
+      toast("Task scheduled ✓ — find it on the Tasks tab" + lost, lost ? "error" : undefined);
       setNewTaskData(null);
     } else toast("Could not create task","error");
   };
 
   const saveTaskEdit = async () => {
     if (!editingTask) return;
-    if (taskEditData.cost && Number(taskEditData.cost) < 0) { toast("Cost can't be negative","error"); return; }
-    const payload = {
-      title:    taskEditData.title||"",
-      status:   taskEditData.status||"Scheduled",
-      priority: taskEditData.priority||"Medium",
-      due_date: taskEditData.due_date||null,
-      notes:    taskEditData.notes||"",
-      cost:     taskEditData.cost ? Number(taskEditData.cost) : null,
-    };
-    const {error} = await supabase.from("tasks").update(payload).eq("id",editingTask.id).eq("user_id",userId);
-    if (!error) {
-      setTasks(tasks.map(t => t.id===editingTask.id ? {...t,...payload} : t));
-      toast("Task updated ✓");
+    if (!taskEditData.title?.trim()) { toast("Please enter a task title","error"); return; }
+    if (taskEditData.cost !== "" && taskEditData.cost != null && Number(taskEditData.cost) < 0) { toast("Cost can't be negative","error"); return; }
+    const payload = taskFormPayload(taskEditData);
+    const { res, sent, lost } = await writeTaskWithFallback(payload, (pl) => supabase.from("tasks").update(pl).eq("id",editingTask.id).eq("property_id",propertyId));
+    if (!res.error) {
+      setTasks(tasks.map(t => t.id===editingTask.id ? {...t,...sent,id:editingTask.id} : t));
+      pingNotifications();
+      toast("Task updated ✓" + lost, lost ? "error" : undefined);
       setEditingTask(null);
     } else { toast("Could not update task","error"); }
   };
@@ -17582,27 +17595,12 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
         {/* Inline task edit modal */}
         {newTaskData && (
           <Modal title="Schedule Task" onClose={()=>setNewTaskData(null)} onSave={saveNewTask}>
-            <TaskForm data={newTaskData} onChange={setNewTaskData} assets={assets.filter(a=>a.id===newTaskData.asset_id||(!a.retired_at&&!a.warranty_only))} planData={planData} onUpgrade={onUpgrade} contractors={contractors}/>
+            <TaskForm data={newTaskData} onChange={setNewTaskData} assets={assets.filter(a=>a.id===newTaskData.asset_id||(!a.retired_at&&!a.warranty_only))} planData={planData} onUpgrade={onUpgrade} contractors={contractors} people={people}/>
           </Modal>
         )}
         {editingTask && (
-          <Modal title="Edit Scheduled Task" onClose={()=>setEditingTask(null)} onSave={saveTaskEdit}>
-            <div className="fg">
-              <div className="field s2"><label>Task</label><input value={taskEditData.title||""} onChange={e=>setTaskEditData(d=>({...d,title:e.target.value}))}/></div>
-              <div className="field"><label>Status</label>
-                <select value={taskEditData.status||"Scheduled"} onChange={e=>setTaskEditData(d=>({...d,status:e.target.value}))}>
-                  {["Scheduled","In Progress","Completed","Overdue"].map(s=><option key={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="field"><label>Due Date</label><input type="date" value={taskEditData.due_date||""} onChange={e=>setTaskEditData(d=>({...d,due_date:e.target.value}))}/></div>
-              <div className="field"><label>Priority</label>
-                <select value={taskEditData.priority||"Medium"} onChange={e=>setTaskEditData(d=>({...d,priority:e.target.value}))}>
-                  {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
-                </select>
-              </div>
-              <div className="field"><label>Est. Cost ($)</label><input type="number" min="0" value={taskEditData.cost||""} onChange={e=>setTaskEditData(d=>({...d,cost:e.target.value}))} placeholder="0"/></div>
-              <div className="field s2"><label>Notes</label><textarea value={taskEditData.notes||""} onChange={e=>setTaskEditData(d=>({...d,notes:e.target.value}))} placeholder="Details, technician, parts needed…"/></div>
-            </div>
+          <Modal title="Edit Task" onClose={()=>setEditingTask(null)} onSave={saveTaskEdit}>
+            <TaskForm data={taskEditData} onChange={setTaskEditData} assets={assets.filter(a=>a.id===taskEditData.asset_id||(!a.retired_at&&!a.warranty_only))} planData={planData} onUpgrade={onUpgrade} contractors={contractors} people={people}/>
           </Modal>
         )}
       </div>
@@ -28361,7 +28359,7 @@ export default function App() {
               {/* Always-mounted tabs — display:none preserves React state (modal open, form data) when switching tabs */}
               <div style={{display:tab==="dashboard"?"block":"none"}}><ForecastImportCard warranties={warranties} setWarranties={setWarranties} userId={uid} propertyId={activePropertyId} toast={toast}/><InspectionImportCard onOpen={()=>setInspOpen(true)} imported={warranties.some(w=>/Added from a home inspection report/.test(w.notes||"")) || tasks.some(t=>/From the home inspection report/.test(t.notes||""))}/><Dashboard key={activePropertyId} tasks={tasks} setTasks={setTasks} warranties={warranties} expenses={expenses} profile={profile} onNavigate={setTab} greeting={greeting} username={username} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} userId={uid} onLaunchSetup={()=>{setTab("profile");setAutoOpenSetup(true);}} projects={projects} contractors={contractors} people={people} onOpenTask={(id)=>{setPendingSelectedTask(id);setTab("tasks");}} onViewAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}} onOpenWarranties={()=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(true);}} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="tasks"?"block":"none"}}><Tasks key={activePropertyId} tasks={tasks} setTasks={setTasks} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} warranties={warranties} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} people={people} pendingSelectedTask={pendingSelectedTask} onClearPendingSelectedTask={()=>setPendingSelectedTask(null)} onOpenAsset={(id)=>{setPendingSelectedAsset(id);setTab("warranties");}}/></div>
-              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
+              <div style={{display:tab==="warranties"?"block":"none"}}><Assets key={activePropertyId} warranties={warranties} setWarranties={setWarranties} toast={toast} userId={uid} propertyId={activePropertyId} profile={profile} serviceLogs={serviceLogs} setServiceLogs={setServiceLogs} tasks={tasks} setTasks={setTasks} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onNavigate={setTab} contractors={contractors} people={people} pendingEditId={pendingAssetEdit} onClearPendingEdit={()=>setPendingAssetEdit(null)} pendingWarrantyTracker={pendingWarrantyTracker} onClearPendingWarranty={()=>setPendingWarrantyTracker(false)} pendingSelectedAsset={pendingSelectedAsset} onClearPendingSelected={()=>setPendingSelectedAsset(null)} showWarrantyModule={showWarrantyModule} setShowWarrantyModule={setShowWarrantyModule} pendingNewAsset={pendingNewAsset} onClearPendingNewAsset={()=>setPendingNewAsset(null)} resetSignal={assetsResetSignal} assessments={assessments} onAssessed={(row)=>setAssessments(prev=>[row,...prev.filter(r=>r.id!==row.id)])}/></div>
               <div style={{display:tab==="expenses"?"block":"none"}}><Expenses key={activePropertyId} expenses={expenses} setExpenses={setExpenses} toast={toast} userId={uid} propertyId={activePropertyId} serviceLogs={serviceLogs} planData={planData} onUpgrade={()=>setShowUpgrade(true)} contractors={contractors} projects={projects} setProjects={setProjects} warranties={warranties} onNavigate={setTab} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} homeValue={Number(profile?.zestimate)||0} propertyAddress={profile?.address||""} pendingSelectedExpense={pendingSelectedExpense} onClearPendingSelectedExpense={()=>setPendingSelectedExpense(null)} profile={profile} onOpenInsurance={()=>{setShowWarrantyModule(false);setTab("profile");window.dispatchEvent(new CustomEvent("sw:open-insurance"));}}/></div>
               <div style={{display:tab==="profile"?"block":"none"}}><Profile key={activePropertyId} emailUnverified={session?.user?.app_metadata?.email_verified === false} profile={profile} setProfile={setProfile} tasks={tasks} setTasks={setTasks} expenses={expenses} warranties={warranties} serviceLogs={serviceLogs} projects={projects} toast={toast} userId={uid} userEmail={session?.user?.email} propertyId={activePropertyId} onNavigate={setTab} planData={planData} onUpgrade={()=>setShowUpgrade(true)} onCheckout={startCheckout} onShowDocs={()=>setShowDocs(true)} onShowContractors={()=>setShowContractors(true)} contractors={contractors} autoOpenSetup={autoOpenSetup} onSetupOpened={()=>setAutoOpenSetup(false)} showSetup={showSetup} setShowSetup={setShowSetup} allProfiles={allProfiles} onSwitchProperty={switchProperty} onAddProperty={()=>setShowAddProperty(true)} onOpenPeople={()=>setPeopleOpen(true)} onHomeRemoved={handleHomeRemoved} onOpenWarrantyTracker={()=>setShowWarrantyModule(true)} onOpenAsset={(id)=>{setPendingAssetEdit(id);setTab("warranties");}} onOpenNewAsset={(prefill)=>{setPendingNewAsset(prefill);setTab("warranties");}} onOpenExpense={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedExpense(id);setTab("expenses");}} onViewAsset={(id)=>{setShowDocs(false);setShowContractors(false);setShowWarrantyModule(false);setPendingSelectedAsset(id);setTab("warranties");}} onExpenseAdded={(row)=>setExpenses(prev=>[row,...prev.filter(e=>e.id!==row.id)])} onAssetAdded={(row)=>setWarranties(prev=>[row,...prev.filter(w=>w.id!==row.id)])}/></div>
             </>
