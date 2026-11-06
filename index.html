@@ -1,6 +1,24 @@
 <!doctype html>
 <html lang="en">
   <head>
+<script>
+/* If a built file fails to load, clear the service worker and its caches, then reload once. */
+(function () {
+  function heal() {
+    try { if (sessionStorage.getItem("sw_heal")) return; sessionStorage.setItem("sw_heal", "1"); } catch (e) { return; }
+    var jobs = [];
+    if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+    if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+    Promise.all(jobs).catch(function () {}).then(function () { location.reload(); });
+  }
+  window.addEventListener("error", function (e) {
+    var t = e.target;
+    if (t && t.tagName === "SCRIPT" && t.src && t.src.indexOf(location.origin + "/assets/") === 0) heal();
+  }, true);
+  window.addEventListener("vite:preloadError", heal);
+})();
+</script>
+
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
