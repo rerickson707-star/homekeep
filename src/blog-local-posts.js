@@ -8,6 +8,73 @@
 
 export const BLOG_LOCAL_POSTS = [
   {
+    slug: "how-to-look-up-appliance-warranty",
+    title: "How to Look Up an Appliance Warranty",
+    description: "How to check whether an appliance is still under warranty: find the model and serial number, prove the purchase date, and contact the manufacturer.",
+    tag: "Appliances",
+    time: "5 min read",
+    date: "November 2026",
+    iso: "2026-11-06",
+    modified: "2026-11-06",
+    image: "",
+    // Manufacturer lookups below were checked on the manufacturers' own pages on 2026-11-06. Re-check before adding more brands.
+    content: `
+      <p>To check whether an appliance is still under warranty, you need three things: the model number, the serial number, and the date you bought it (or the date it was installed). With those, you can use the manufacturer's official support page or call its customer service to confirm what is covered and for how long.</p>
+      <p>Warranty terms differ by brand, by product, and sometimes by part, so always confirm against your own warranty document or with the manufacturer.</p>
+
+      <h2>Step 1: Find the model and serial number</h2>
+      <p>Both numbers are usually printed on a rating plate or nameplate. Where it sits depends on the appliance and the brand: inside a door frame, on the back or side, or inside a lid. Our guide to <a href="/blog/find-appliance-serial-number">finding an appliance's serial number</a> shows where to look for each type.</p>
+      <p>Take a clear photo of the plate. You will need it again for service calls and parts orders.</p>
+
+      <h2>Step 2: Find your proof of purchase</h2>
+      <p>Many manufacturer warranties run from the date of purchase. Whirlpool, for example, says its limited warranty typically lasts a year from the date of purchase, with the length depending on the appliance. For a new-construction home the start date can depend on how the builder sets it, so ask the builder. Look for:</p>
+      <ul>
+        <li>The store receipt or order confirmation email</li>
+        <li>Credit card or bank statements showing the purchase</li>
+        <li>The retailer's online purchase history</li>
+        <li>Your closing documents and the builder's appliance list, for a new home</li>
+        <li>A registration confirmation from the manufacturer, if you registered the product</li>
+      </ul>
+
+      <h2>Step 3: Check with the manufacturer</h2>
+      <p>Search for the brand name plus "warranty" and go to the manufacturer's official website, or call its customer service number. Some manufacturers let you look up coverage online. These are the ones we confirmed on their own pages on November 6, 2026:</p>
+      <ul>
+        <li><strong>Carrier.</strong> Its <a href="https://www.carrier.com/us/en/residential/homeowner-resources/warranty-lookup/" target="_blank" rel="noopener noreferrer">warranty lookup</a> takes a serial number and shows each coverage with its description, length and end date. Carrier notes that the results show general parts warranties only and that other warranties tied to your record may differ.</li>
+        <li><strong>Lennox.</strong> Its <a href="https://www.lennox.com/residential/owners/assistance/warranty/" target="_blank" rel="noopener noreferrer">warranty lookup</a> takes the serial number from the equipment label and shows your product's coverage. If nothing comes up, it suggests contacting your installing dealer.</li>
+        <li><strong>Rheem.</strong> Its <a href="https://rheem.com/warranty" target="_blank" rel="noopener noreferrer">warranty page</a> says your serial number is required to verify warranty terms and coverage.</li>
+        <li><strong>Whirlpool.</strong> Its <a href="https://producthelp.whirlpool.com/FAQ/Is_My_Appliance_in_Warranty%3F" target="_blank" rel="noopener noreferrer">warranty help page</a> says to use your model number to find the warranty information in its Owner's Center. Your owner's manual also lists the warranty terms.</li>
+      </ul>
+      <p>Not every brand has an online lookup, and these pages change, so treat this list as a starting point. Stick to the manufacturer's own site or phone line, and be cautious with third-party "warranty lookup" sites that ask for payment or personal information. When you contact the manufacturer, have ready the model number, serial number, purchase date, and a description of any problem.</p>
+
+      <h2>What manufacturer warranties usually cover</h2>
+      <p>Terms vary by brand and product, and some brands cover specific parts for longer than the rest of the appliance. Warranties typically exclude damage from misuse, improper installation, and normal wear. Your warranty document spells out the exact terms. If you no longer have it, ask the manufacturer for a copy.</p>
+
+      <h2>What if you have no receipt?</h2>
+      <p>Start with the retailer's purchase history, your card statements, or the builder's closing paperwork. If none of these exist, contact the manufacturer and ask what proof it accepts. Policies differ, so ask before you assume.</p>
+
+      <h2>Manufacturer warranty vs. home warranty</h2>
+      <p>A manufacturer warranty comes with the product and covers defects in that product for a set period. A home warranty is a separate service contract you pay for, and it covers repair or replacement of certain systems and appliances. Our guide to <a href="/blog/what-does-a-home-warranty-cover">what a home warranty covers</a> explains the difference.</p>
+
+      <h2>Keep your warranties in one place with Steadwell</h2>
+      <p>Warranty paperwork is easy to lose, and you usually need it at the worst time. Steadwell's <a href="/warranty-tracker">warranty tracker</a> is free on every plan. You enter each appliance's brand, model, serial number, purchase date and warranty length, and Steadwell emails you before the warranty ends and checks the item against federal recalls.</p>
+      <p>On Plus and Pro, <a href="/ai-scan">AI scanning</a> can read a receipt or appliance nameplate and fill in the record for you to review. Smart Fill can take a model number and suggest the typical warranty length from public data. That suggestion is a starting point, not a coverage check, so confirm the real terms with the manufacturer or your warranty document.</p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>How do I check if my appliance is still under warranty?</h3>
+      <p>Find the model and serial number on the appliance's rating plate, find your purchase date, and contact the manufacturer or use the support page on its official website.</p>
+      <h3>Can I look up a warranty by serial number?</h3>
+      <p>Some manufacturers offer it. Carrier and Lennox have online lookups that take a serial number, and Rheem says a serial number is required to verify its warranties. Others, like Whirlpool, point you to the model number and the owner's manual. Check the manufacturer's own site for your brand.</p>
+      <h3>Does a warranty start when I buy the appliance or when it was made?</h3>
+      <p>Many start on the purchase date. Whirlpool, for example, says its limited warranty typically lasts a year from the date of purchase. Check your warranty document for the exact start date.</p>
+      <h3>Do I need the receipt to make a warranty claim?</h3>
+      <p>Often yes, as proof of purchase. If you lost it, try the retailer's purchase history, card statements, or builder closing documents, and ask the manufacturer what else it accepts.</p>
+      <h3>Where is the serial number on an appliance?</h3>
+      <p>On the rating plate or nameplate. Its location varies by appliance and brand. See our <a href="/blog/find-appliance-serial-number">serial number guide</a>.</p>
+      <h3>Is a home warranty the same as a manufacturer warranty?</h3>
+      <p>No. A manufacturer warranty covers defects in a specific product. A home warranty is a paid service contract that covers repair or replacement of certain home systems and appliances.</p>
+    `,
+  },
+  {
     slug: "rental-property-maintenance-checklist",
     title: "Rental Property Maintenance Checklist: Seasonal and Turnover Tasks",
     description: "A practical rental property maintenance checklist: seasonal tasks, a turnover walkthrough, and the records to keep for every property you manage.",

@@ -1,4 +1,4 @@
-// Steadwell v451 — 2026-11-04
+// Steadwell v453 — 2026-11-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -6696,7 +6696,7 @@ function UserMenu({ user, profile, onSignOut, onFeedback, onExport, onPrivacySet
 
   const side = variant === "side";
   const isPro = planData?.plan === "pro";
-  const canAddHome = isPro && allProfiles.length < 3;
+  const canAddHome = canAddMoreHomes(planData, allProfiles);
   const showHomes = onSwitchProperty && (allProfiles.length >= 2 || canAddHome);
   const homeLabel = (p) => p?.name || p?.address?.split(",")[0] || "My Home";
   const acctName = accountName(profile, user);
@@ -24821,7 +24821,7 @@ function Profile({ emailUnverified=false, profile, setProfile, tasks, setTasks, 
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:".95rem 1rem",borderBottom:"1px solid var(--cream2)"}}>
             <div style={{display:"flex",alignItems:"center",gap:".55rem"}}><span style={{fontSize:"1.1rem"}}>🏠</span><span style={{fontSize:"1rem",fontWeight:700}}>My properties</span></div>
             <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
-              {planData?.plan==="pro"&&allProfiles.length<3&&<button className="btn btn-sm btn-primary" onClick={onAddProperty}>+ Add</button>}
+              {canAddMoreHomes(planData, allProfiles)&&<button className="btn btn-sm btn-primary" onClick={onAddProperty}>+ Add</button>}
               {planData?.plan!=="pro"&&<button onClick={onUpgrade} style={{fontSize:".72rem",fontWeight:700,color:"var(--pine)",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Pro — up to 3</button>}
             </div>
           </div>
@@ -26616,7 +26616,7 @@ function PropertySwitcher({ allProfiles, activePropertyId, onSwitch, onAdd, plan
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const isPro = planData?.plan === "pro";
-  const canAdd = isPro && allProfiles.length < 3;
+  const canAdd = canAddMoreHomes(planData, allProfiles);
   const active = allProfiles.find(p => p.id === activePropertyId) || allProfiles[0];
   const shortAddr = (p) => p?.name || p?.address?.split(",")[0] || "My Home";
 
@@ -37019,7 +37019,7 @@ const BLOG_ADDITIONS = {
     description: "How old is my house? Find the year built with the county assessor, permits and deeds, then check clues inside the house. Records vary by state.",
     modified: "2026-10-21",
     before: "what the age tells you to check",
-    section: `<p>The house is often older than its equipment. The water heater, furnace and air conditioner were usually replaced at some point, and their serial numbers date the unit, not the house. To read those, see <a href="/blog/find-appliance-serial-number">how to find an appliance serial number and read its date code</a> and the <a href="/blog/how-old-is-my-water-heater">water heater age guide</a>.</p>`,
+    section: `<p>The house is often older than its equipment. The water heater, furnace and air conditioner were usually replaced at some point, and their serial numbers date the unit, not the house. To read those, see <a href="/blog/find-appliance-serial-number">how to find an appliance serial number and read its date code</a> and the <a href="/blog/how-old-is-my-water-heater">water heater age guide</a>. The roof may also have been replaced since the house was built, so see <a href="/blog/roof-lifespan-when-to-replace">roof lifespan by material</a> for how long each type lasts.</p>`,
     faq: [
       ["How do I find the age of a house by address?", `<p>Search the website of the county assessor, appraisal district or property appraiser for your street address or parcel number. Most list the year built along with square footage and lot size. Then confirm it with the original building permit or certificate of occupancy from the local building department, since tax records can be estimates.</p>`],
       ["Can I look up building permits for my house online?", `<p>Often, but it depends on the city or county. Some building departments have an online permit search. New York City's Department of Buildings, for example, runs a Building Information Search for permits and certificates of occupancy, though filings in its newer DOB NOW system sit in a separate portal. Where nothing is online, call the permit office and ask how to request the records for your address.</p>`],
@@ -37037,12 +37037,52 @@ const BLOG_ADDITIONS = {
 <li><strong>Goodman.</strong> Goodman describes the serial number as a ten-digit code that identifies when the unit was produced, along with its model and many of its components, but its FAQ does not give the position-by-position breakdown. Many installers attach the traveler label from the shipping box to the owner's paperwork, so check your closing or installation file. <a href="https://www.goodmanmfg.com/resources/faq/registration/how-can-i-confirm-the-model-and-serial-numbers-for-my-cooling-system" target="_blank" rel="noopener noreferrer">Goodman's FAQ</a>.</li>
 <li><strong>Lennox.</strong> For a cooling system, Lennox says the model and serial numbers are on the nameplate sticker near the service panel. Its <a href="https://www.lennox.com/residential/owners/assistance/warranty/" target="_blank" rel="noopener noreferrer">warranty lookup</a> accepts the serial number printed on the equipment label.</li>
 </ul>
-<p>HVAC.com describes two patterns that many HVAC manufacturers use: the first four digits give the year, or the first two digits give the production week and the next two give the year, so a serial starting 3915 would read as week 39 of 2015. It does not say which brand uses which, so treat a decoded date as an estimate and confirm it with the manufacturer or an HVAC technician. <a href="https://www.hvac.com/expert-advice/how-old-is-my-ac-unit/" target="_blank" rel="noopener noreferrer">HVAC.com's guide</a> (March 2025).</p>`,
+<p>HVAC.com describes two patterns that many HVAC manufacturers use: the first four digits give the year, or the first two digits give the production week and the next two give the year, so a serial starting 3915 would read as week 39 of 2015. It does not say which brand uses which, so treat a decoded date as an estimate and confirm it with the manufacturer or an HVAC technician. <a href="https://www.hvac.com/expert-advice/how-old-is-my-ac-unit/" target="_blank" rel="noopener noreferrer">HVAC.com's guide</a> (March 2025).</p>
+<p>Once you have the serial number, you can also check the unit's coverage: see <a href="/blog/how-to-look-up-appliance-warranty">how to look up an appliance warranty</a>.</p>`,
     faq: [
       ["How can I tell how old my Carrier, Lennox or Goodman air conditioner or furnace is?", `<p>Check the rating plate for a printed manufacture date first. If there is none, the serial number usually encodes it, but these manufacturers do not publish the date code on their homeowner pages. Carrier and Lennox both offer a serial-number warranty lookup, Goodman describes the serial as a ten-digit code that identifies when the unit was produced, and an HVAC technician or the manufacturer's customer care can confirm the build date.</p>`],
       ["Where is the serial number on an air conditioner or furnace?", `<p>On the rating plate or nameplate. Trane puts it at the top right-rear of the outdoor unit, Goodman says it is generally slightly above the refrigerant valves on the back, and Lennox says the model and serial numbers on a cooling system are on the nameplate sticker near the service panel. On a furnace, check a side panel of the furnace or the front panel of the air handler. Photograph it so you do not have to go back.</p>`],
       ["Can I tell the age of an air conditioner or furnace from any serial number?", `<p>Not with one rule. Formats vary by brand and model line, and some manufacturers do not publish theirs. HVAC.com notes two common patterns, a four-digit year or a two-digit week followed by a two-digit year, but a decoded date is still an estimate. Confirm it with the manufacturer, your installation paperwork or an HVAC technician.</p>`],
     ],
+  },
+  "roof-lifespan-when-to-replace": {
+    description: "Roof lifespan by material, from asphalt and metal to tar and gravel and rolled roofing, plus replacement signs, 2026 costs and insurer rules by state.",
+    modified: "2026-11-06",
+    before: "what shortens a roof.s life",
+    section: `<h2>Flat roofs, rolled roofing and composite shingles</h2>
+<p>The table above covers the most common materials. Flat and low-slope roofs, outbuildings and composite products have their own ranges, and published figures vary, so read these as ranges rather than promises.</p>
+<ul>
+<li><strong>Tar and gravel (built-up roofing).</strong> <a href="https://www.ecowatch.com/roofing/types/tar-gravel-roof" target="_blank" rel="noopener noreferrer">EcoWatch</a> puts the average at 25 years, up to 30 with proper maintenance, within a wider range of 10 to 30 years. <a href="https://jmroofingsystems.com/youngstown-roof-tips-bitumen-vs-tar-and-gravel-roof-life-expectancy/" target="_blank" rel="noopener noreferrer">JM Roofing Systems</a> says 20 to 25 years on average and 30 or more with effective maintenance. EcoWatch also says that when more than 25% of a tar and gravel roof has been patched, experts recommend replacing it.</li>
+<li><strong>Modified bitumen (torch down).</strong> JM Roofing Systems says about 20 to 25 years. InterNACHI's standard chart lists 20 years, and its chart for Florida homes lists 10.</li>
+<li><strong>EPDM and TPO flat-roof membranes.</strong> InterNACHI's standard chart lists EPDM at 15 to 25 years and TPO at 7 to 20. Its Florida chart lists 10 to 15 for EPDM and 10 to 12 for TPO.</li>
+<li><strong>Rolled roofing.</strong> <a href="https://todayshomeowner.com/roofing/guides/rolled-roofing/" target="_blank" rel="noopener noreferrer">Today's Homeowner</a> says it typically lasts only five to eight years. It describes rolled roofing as a practical choice for sheds, garages and low-slope roofs, not an ideal one for homes, and says it deteriorates quickly in harsh weather.</li>
+<li><strong>Composite or synthetic shingles.</strong> <a href="https://homegeniusexteriors.com/genius-blog/how-long-does-a-roof-last/" target="_blank" rel="noopener noreferrer">Home Genius Exteriors</a> lists 20 to 50 years, saying budget composites may last up to about 30 years while premium ones can approach 50.</li>
+</ul>
+<h2>Why roof lifespan figures disagree</h2>
+<p>Sources do not agree on exact numbers. Home Genius Exteriors lists 15 to 25 years for 3-tab shingles and 25 to 35 for architectural, and <a href="https://www.servpro.com/resources/construction-services/how-long-does-roof-last" target="_blank" rel="noopener noreferrer">Servpro</a> says most homeowners with asphalt shingles can expect 20 to 30 years. <a href="https://www.bcoha.org/uploads/2/3/1/4/23149336/2021_capital_improvement_life_expectancy_tables.pdf" target="_blank" rel="noopener noreferrer">The standard chart attributed to InterNACHI</a> lists 20 and 30 years for 3-tab and architectural shingles, while <a href="https://www.nachi.org/florida-life-expectancy.htm" target="_blank" rel="noopener noreferrer">its chart for Florida homes</a> lists 10 to 12 and 15 to 20 years.</p>
+<p>Climate explains much of the gap. Home Genius Exteriors advises homeowners in areas with extreme weather to subtract 5 to 10 years from typical ranges, and says high UV exposure can wear asphalt shingles much faster in southern states. A roof's condition tells you more than any single number.</p>
+<h2>How to find out how old your roof is</h2>
+<p>Check your closing and inspection paperwork and any invoices for roof work. Your city or county building department may also have a record of a past reroof permit. If you cannot find the roof's age, start with the age of the house: see <a href="/blog/how-to-find-age-of-house">how to find the age of a house</a>. Once you know it, compare it with the ranges above, and see <a href="/blog/cost-of-deferred-maintenance">the cost of deferred maintenance</a> for why putting off roof work tends to cost more.</p>`,
+    faq: [
+      ["How long does a tar and gravel roof last?", `<p>Sources put the average at about 20 to 25 years, and 30 or more with good maintenance, though one guide gives a wider range of 10 to 30 years. InterNACHI's standard chart lists 30 years for built-up roofing, and its chart for Florida homes lists 5 to 15.</p>`],
+      ["How long does rolled roofing last?", `<p>Typically five to eight years, according to Today's Homeowner. That is why it is mostly used on sheds, garages and other low-slope outbuildings rather than main roofs.</p>`],
+      ["How long does a torch down (modified bitumen) roof last?", `<p>JM Roofing Systems says about 20 to 25 years. InterNACHI's standard chart lists 20 years and its chart for Florida homes lists 10, so climate and installation matter.</p>`],
+      ["How long do composite shingles last?", `<p>Home Genius Exteriors lists 20 to 50 years, with budget composites lasting up to about 30 years and premium products approaching 50. The product, its warranty and the installation all affect the result.</p>`],
+      ["How long does a 30-year shingle roof really last?", `<p>Often fewer years than the label suggests. Home Genius Exteriors says some modern asphalt products can fail sooner than their warranty periods imply, and advises homeowners in areas with extreme weather to subtract 5 to 10 years from typical lifespans. Architectural shingles in the table above are listed at 25 to 30 years.</p>`],
+      ["How can I find out how old my roof is?", `<p>Check your closing and inspection paperwork, invoices for roof work, and the city or county building department for a past reroof permit. If none of those turn it up, start with <a href="/blog/how-to-find-age-of-house">the age of the house</a> and ask a roofer to estimate from the roof's condition.</p>`],
+    ],
+  },
+  "home-maintenance-checklist": {
+    modified: "2026-11-06",
+    section: `<p>Roofs wear out on a different clock from most items on this list. See <a href="/blog/roof-lifespan-when-to-replace">how long a roof lasts by material</a> and the signs it is time to replace it.</p>`,
+  },
+  "cost-of-deferred-maintenance": {
+    modified: "2026-11-06",
+    section: `<p>For the roof specifically, see <a href="/blog/roof-lifespan-when-to-replace">how long a roof lasts by material and when to replace it</a>.</p>`,
+  },
+  "what-does-a-home-warranty-cover": {
+    modified: "2026-11-06",
+    section: `<p>A home warranty is different from the manufacturer warranty that comes with an appliance. To check what the manufacturer covers, see <a href="/blog/how-to-look-up-appliance-warranty">how to look up an appliance warranty</a>.</p>`,
   },
   "how-old-is-my-water-heater": {
     modified: "2026-10-21",
@@ -37182,6 +37222,7 @@ const BLOG_AUTOLINKS = [
   { re:/\b(roof(?:ing)? (?:lifespan|replacement))\b/i,            post:"roof-lifespan-when-to-replace" },
   { re:/\b(age of (?:a |your |the )?(?:house|home))\b/i,          post:"how-to-find-age-of-house" },
   { re:/\b(hvac (?:maintenance|system|filters?))\b/i,             post:"hvac-maintenance-schedule" },
+  { re:/\b(warranty look-?ups?|look(?:ing)? up (?:an? |your )?(?:appliance )?warrant(?:y|ies))\b/i, post:"how-to-look-up-appliance-warranty" },
   { re:/\b(home warranty|warranties)\b/i,                         href:"/warranty-tracker" },
   { re:/\b(recalls?)\b/i,                                         href:"/recall-alerts" },
   { re:/\b(utility bills?|energy bills?)\b/i,                     href:"/utility-bill-tracker" },
@@ -38054,8 +38095,15 @@ const PLANS = {
 
 function usePlan(profile) {
   const plan = profile?.plan || "free";
-  return { plan, ...PLANS[plan] || PLANS.free };
+  const base = { plan, ...PLANS[plan] || PLANS.free };
+  // profiles.property_limit lets one account have more homes than its plan includes (set by hand in the database).
+  const extra = Number(profile?.property_limit);
+  if (plan === "pro" && Number.isFinite(extra) && extra > base.maxProperties) base.maxProperties = Math.floor(extra);
+  return base;
 }
+// Homes this account owns. Homes shared with the person do not count toward their plan.
+const ownedHomeCount = (allProfiles) => (allProfiles || []).filter(h => !h._shared).length;
+const canAddMoreHomes = (planData, allProfiles) => planData?.plan === "pro" && ownedHomeCount(allProfiles) < (planData?.maxProperties ?? 3);
 
 // Free keeps a small file count; Plus and Pro are limited by total storage only.
 // The count covers vault files, asset photos and expense receipts (home photo is exempt, one slot).
