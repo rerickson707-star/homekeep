@@ -1,4 +1,4 @@
-// Steadwell v455 — 2026-11-06
+// Steadwell v456 — 2026-11-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -21820,6 +21820,14 @@ function tradesFromAssets(warranties) {
 const PHONE_OK = /^[0-9+\-.() ]{7,}$/;
 const MAX_EXTRA_PHONES = 5;
 const PHONE_LABELS = ["Office","Mobile","After hours","Dispatch","Fax"];
+// US numbers show as (555) 123-4567 (a leading 1 is dropped). Anything else, such as +44 numbers, is left as typed.
+const fmtPhone = (raw) => {
+  const t = String(raw || "").trim();
+  if (!t || t.startsWith("+")) return t;
+  let d = t.replace(/\D/g, "");
+  if (d.length === 11 && d[0] === "1") d = d.slice(1);
+  return d.length === 10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : t;
+};
 const cleanExt = (s) => String(s || "").replace(/^\s*(?:ext(?:ension)?\.?|x|#)\s*/i, "").replace(/[^0-9]/g, "").slice(0, 8);
 const extraPhonesOf = (c) => (Array.isArray(c?.extra_phones) ? c.extra_phones : []).filter(p => p && p.number);
 const phoneHref = (n) => "tel:" + String(n).replace(/[^0-9+]/g, "");
@@ -21829,11 +21837,11 @@ const MAX_EXTRA_EMAILS = 5;
 const EMAIL_LABELS = ["Office","Billing","Estimates","Scheduling","Personal"];
 const extraEmailsOf = (c) => (Array.isArray(c?.extra_emails) ? c.extra_emails : []).filter(e => e && e.email);
 const contractorEmails = (c) => [
-  ...(c?.email ? [{ label: "", email: c.email }] : []),
+  ...(c?.email ? [{ label: c.email_label || "", email: c.email }] : []),
   ...extraEmailsOf(c).map(e => ({ label: e.label || "", email: e.email })),
 ];
 const contractorNumbers = (c) => [
-  ...(c?.phone ? [{ label: "", number: c.phone, ext: c.phone_ext || "" }] : []),
+  ...(c?.phone ? [{ label: c.phone_label || "", number: c.phone, ext: c.phone_ext || "" }] : []),
   ...extraPhonesOf(c).map(p => ({ label: p.label || "", number: p.number, ext: p.ext || "" })),
 ];
 
@@ -21857,18 +21865,21 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
       </div>
       <div className="field s2">
         <label>Phone</label>
-        <div style={{display:"flex",gap:".5rem"}}>
-          <input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000" aria-label="Phone number" style={{flex:1,minWidth:0}}/>
-          <input type="text" inputMode="numeric" value={data.phone_ext||""} onChange={e=>f("phone_ext",e.target.value.replace(/[^0-9]/g,"").slice(0,8))} placeholder="Ext." aria-label="Extension" style={{width:84,flexShrink:0}}/>
+        <div style={{padding:".6rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",background:"var(--cream)",display:"flex",flexDirection:"column",gap:".4rem"}}>
+          <input type="text" list="cr-phone-labels" value={data.phone_label||""} onChange={e=>f("phone_label",e.target.value)} placeholder="Label (Office, Mobile…)" aria-label="Number label" maxLength={30}/>
+          <div style={{display:"flex",gap:".5rem"}}>
+            <input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} onBlur={e=>f("phone",fmtPhone(e.target.value))} placeholder="(555) 000-0000" aria-label="Phone number" style={{flex:1,minWidth:0}}/>
+            <input type="text" inputMode="numeric" value={data.phone_ext||""} onChange={e=>f("phone_ext",e.target.value.replace(/[^0-9]/g,"").slice(0,8))} placeholder="Ext." aria-label="Extension" style={{width:84,flexShrink:0}}/>
+          </div>
         </div>
         {extras.map((p,i)=>(
           <div key={i} style={{marginTop:".35rem",padding:".6rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",background:"var(--cream)",display:"flex",flexDirection:"column",gap:".4rem"}}>
             <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
-              <input type="text" list="cr-phone-labels" value={p.label||""} onChange={e=>setExtra(i,"label",e.target.value)} placeholder="Label (Office, Mobile, After hours…)" aria-label="Number label" maxLength={30} style={{flex:1,minWidth:0}}/>
+              <input type="text" list="cr-phone-labels" value={p.label||""} onChange={e=>setExtra(i,"label",e.target.value)} placeholder="Label (Office, Mobile…)" aria-label="Number label" maxLength={30} style={{flex:1,minWidth:0}}/>
               <button type="button" onClick={()=>delExtra(i)} aria-label="Remove this number" style={{width:34,height:34,flexShrink:0,borderRadius:"50%",border:"1.5px solid var(--stone)",background:"var(--white)",color:"#7A7370",cursor:"pointer",fontSize:".9rem",lineHeight:1}}>✕</button>
             </div>
             <div style={{display:"flex",gap:".5rem"}}>
-              <input type="tel" value={p.number||""} onChange={e=>setExtra(i,"number",e.target.value)} placeholder="(555) 000-0000" aria-label="Phone number" style={{flex:1,minWidth:0}}/>
+              <input type="tel" value={p.number||""} onChange={e=>setExtra(i,"number",e.target.value)} onBlur={e=>setExtra(i,"number",fmtPhone(e.target.value))} placeholder="(555) 000-0000" aria-label="Phone number" style={{flex:1,minWidth:0}}/>
               <input type="text" inputMode="numeric" value={p.ext||""} onChange={e=>setExtra(i,"ext",e.target.value.replace(/[^0-9]/g,"").slice(0,8))} placeholder="Ext." aria-label="Extension" style={{width:84,flexShrink:0}}/>
             </div>
           </div>
@@ -21880,11 +21891,14 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
       </div>
       <div className="field s2">
         <label>Email</label>
-        <input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com" aria-label="Email address"/>
+        <div style={{padding:".6rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",background:"var(--cream)",display:"flex",flexDirection:"column",gap:".4rem"}}>
+          <input type="text" list="cr-email-labels" value={data.email_label||""} onChange={e=>f("email_label",e.target.value)} placeholder="Label (Billing, Estimates…)" aria-label="Email label" maxLength={30}/>
+          <input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com" aria-label="Email address"/>
+        </div>
         {mails.map((m,i)=>(
           <div key={i} style={{marginTop:".35rem",padding:".6rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",background:"var(--cream)",display:"flex",flexDirection:"column",gap:".4rem"}}>
             <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
-              <input type="text" list="cr-email-labels" value={m.label||""} onChange={e=>setMail(i,"label",e.target.value)} placeholder="Label (Billing, Estimates, Office…)" aria-label="Email label" maxLength={30} style={{flex:1,minWidth:0}}/>
+              <input type="text" list="cr-email-labels" value={m.label||""} onChange={e=>setMail(i,"label",e.target.value)} placeholder="Label (Billing, Estimates…)" aria-label="Email label" maxLength={30} style={{flex:1,minWidth:0}}/>
               <button type="button" onClick={()=>delMail(i)} aria-label="Remove this email" style={{width:34,height:34,flexShrink:0,borderRadius:"50%",border:"1.5px solid var(--stone)",background:"var(--white)",color:"#7A7370",cursor:"pointer",fontSize:".9rem",lineHeight:1}}>✕</button>
             </div>
             <input type="email" value={m.email||""} onChange={e=>setMail(i,"email",e.target.value)} placeholder="name@company.com" aria-label="Extra email address"/>
@@ -22191,6 +22205,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     // and then wired straight into tel:/mailto: links — reject obviously
     // invalid values instead of storing them.
     if (editData.phone?.trim() && !PHONE_OK.test(editData.phone.trim())) { toast("Phone number doesn't look valid","error"); return; }
+    if (!editData.phone?.trim() && (editData.phone_label || "").trim()) { toast("Add the phone number for that label, or clear the label","error"); return; }
+    if (!editData.email?.trim() && (editData.email_label || "").trim()) { toast("Add the email address for that label, or clear the label","error"); return; }
     if (cleanExt(editData.phone_ext) && !editData.phone?.trim()) { toast("Add the phone number this extension belongs to","error"); return; }
     // Other numbers: skip rows left completely blank, and make every kept row a real number.
     const extras = [];
@@ -22199,7 +22215,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       if (!number && !ext && !label) continue;
       if (!number) { toast(`Add a number for "${label || "the extra line"}" or remove it`,"error"); return; }
       if (!PHONE_OK.test(number)) { toast(`"${number}" doesn't look like a phone number`,"error"); return; }
-      extras.push({ label, number, ext });
+      extras.push({ label, number: fmtPhone(number), ext });
     }
     if (extras.length > MAX_EXTRA_PHONES) { toast(`You can add up to ${MAX_EXTRA_PHONES} extra numbers`,"error"); return; }
     const mailsOut = [];
@@ -22230,11 +22246,13 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     // The two phone columns are new. Only send them when this contractor actually uses them (or already
     // has them), so a plain save never depends on them being there.
     const ext = cleanExt(editData.phone_ext);
-    delete payload.phone_ext; delete payload.extra_phones; delete payload.extra_emails;
-    const usesPhoneExtras = !!ext || extras.length > 0 || mailsOut.length > 0 || "phone_ext" in editData || "extra_phones" in editData || "extra_emails" in editData;
-    if (usesPhoneExtras) { payload.phone_ext = ext || null; payload.extra_phones = extras; payload.extra_emails = mailsOut; }
-    const stripExtras = (pl) => { const { phone_ext, extra_phones, extra_emails, ...rest } = pl; return rest; };
-    const missingPhoneCols = (e) => /phone_ext|extra_phones|extra_emails/.test(`${e?.message || ""} ${e?.details || ""}`);
+    const phoneLabel = (editData.phone_label || "").trim().slice(0, 30), emailLabel = (editData.email_label || "").trim().slice(0, 30);
+    delete payload.phone_ext; delete payload.extra_phones; delete payload.extra_emails; delete payload.phone_label; delete payload.email_label;
+    if (payload.phone) payload.phone = fmtPhone(payload.phone);
+    const usesPhoneExtras = !!ext || !!phoneLabel || !!emailLabel || extras.length > 0 || mailsOut.length > 0 || ["phone_ext","extra_phones","extra_emails","phone_label","email_label"].some(k => k in editData);
+    if (usesPhoneExtras) { payload.phone_ext = ext || null; payload.extra_phones = extras; payload.extra_emails = mailsOut; payload.phone_label = phoneLabel || null; payload.email_label = emailLabel || null; }
+    const stripExtras = (pl) => { const { phone_ext, extra_phones, extra_emails, phone_label, email_label, ...rest } = pl; return rest; };
+    const missingPhoneCols = (e) => /phone_ext|extra_phones|extra_emails|phone_label|email_label/.test(`${e?.message || ""} ${e?.details || ""}`);
     let savedWithoutExtras = false;
     if (editId) {
       let {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
@@ -22245,7 +22263,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       }
       if (error) { toast("Couldn't save this contractor. Please try again.","error"); return; }
       setContractors(contractors.map(c=>c.id===editId?{...c,...kept,id:editId}:c));
-      toast(savedWithoutExtras ? "Saved, but the extension, extra numbers and extra emails could not be stored yet. Please try again soon." : "Contractor updated ✓", savedWithoutExtras ? "error" : undefined);
+      toast(savedWithoutExtras ? "Saved, but the labels, extension and extra numbers or emails could not be stored yet. Please try again soon." : "Contractor updated ✓", savedWithoutExtras ? "error" : undefined);
     } else {
       let {data,error} = await supabase.from("contractors").insert([payload]).select();
       if (error && usesPhoneExtras && missingPhoneCols(error)) {
@@ -22254,7 +22272,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       }
       if (error || !data) { toast("Couldn't save this contractor. Please try again.","error"); return; }
       setContractors([...contractors,data[0]]);
-      toast(savedWithoutExtras ? "Saved, but the extension, extra numbers and extra emails could not be stored yet. Please try again soon." : "Contractor added ✓", savedWithoutExtras ? "error" : undefined);
+      toast(savedWithoutExtras ? "Saved, but the labels, extension and extra numbers or emails could not be stored yet. Please try again soon." : "Contractor added ✓", savedWithoutExtras ? "error" : undefined);
     }
     setModal(false);
   };
@@ -22311,13 +22329,13 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
             {/* Contact actions */}
             {(()=>{
               const nums = contractorNumbers(c);
-              const plain = nums.length===0 || (nums.length===1 && !nums[0].ext && !!c.phone);
+              const plain = nums.length===0 || (nums.length===1 && !nums[0].ext && !nums[0].label && !!c.phone);
               if (plain) return null;
               return (
                 <div style={{display:"flex",flexDirection:"column",gap:".4rem",marginBottom:".5rem"}}>
                   {nums.map((p,i)=>(
                     <div key={i} style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
-                      <a href={phoneHref(p.number)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {p.number}</a>
+                      <a href={phoneHref(p.number)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {fmtPhone(p.number)}</a>
                       {p.ext&&<span style={{fontSize:".78rem",fontWeight:700,color:"var(--dark)"}}>ext. {p.ext}</span>}
                       {p.label&&<span style={{fontSize:".74rem",color:"#7A7370"}}>{p.label}</span>}
                     </div>
@@ -22327,7 +22345,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
             })()}
             {(()=>{
               const ems = contractorEmails(c);
-              if (ems.length<=1) return null;
+              if (ems.length===0 || (ems.length===1 && !ems[0].label)) return null;
               return (
                 <div style={{display:"flex",flexDirection:"column",gap:".4rem",marginBottom:".5rem"}}>
                   {ems.map((m,i)=>(
@@ -22340,8 +22358,8 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
               );
             })()}
             <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
-              {c.phone&&contractorNumbers(c).length<=1&&!c.phone_ext&&<a href={phoneHref(c.phone)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {c.phone}</a>}
-              {c.email&&contractorEmails(c).length<=1&&<a href={`mailto:${c.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Email</a>}
+              {c.phone&&contractorNumbers(c).length<=1&&!c.phone_ext&&!c.phone_label&&<a href={phoneHref(c.phone)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {fmtPhone(c.phone)}</a>}
+              {c.email&&contractorEmails(c).length<=1&&!c.email_label&&<a href={`mailto:${c.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Email</a>}
               {c.website&&<a href={c.website} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Website</a>}
             </div>
             {c.notes&&<div style={{marginTop:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"8px",fontSize:".8rem",color:"#5A534B",lineHeight:1.55}}>{c.notes}</div>}
@@ -25117,7 +25135,7 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
     {
       name: "Contractors",
       count: contractors.length,
-      cols: ["name","company","trade","phone","phone_ext","other_numbers","email","other_emails","website","rating","would_hire_again","notes"],
+      cols: ["name","company","trade","phone_label","phone","phone_ext","other_numbers","email_label","email","other_emails","website","rating","would_hire_again","notes"],
       data: contractors.map(c => ({ ...c, other_numbers: extraPhonesOf(c).map(p => [p.label, p.number, p.ext ? `ext. ${p.ext}` : ""].filter(Boolean).join(" ")).join("; "), other_emails: extraEmailsOf(c).map(e => [e.label, e.email].filter(Boolean).join(" ")).join("; ") })),
     },
   ];
