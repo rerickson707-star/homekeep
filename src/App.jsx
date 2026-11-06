@@ -1,4 +1,4 @@
-// Steadwell v456 — 2026-11-06
+// Steadwell v457 — 2026-11-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -15899,7 +15899,11 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
   };
   const setTrait = (k, v) => setTraits(t => { const n = { ...t }; if (n[k] === v) delete n[k]; else n[k] = v; return n; });
   const busy = step === "working" || saving;
+  // On the review screen the AI's grade is not saved until "Confirm & save". The X and a tap outside the box used to throw it
+  // away silently (and the photos with it), so ask first. The Discard button is an explicit choice and still closes at once.
+  const [askDiscard, setAskDiscard] = useState(false);
   const closeIfIdle = () => { if (!busy) onClose(); };
+  const closeGuarded = () => { if (busy) return; if (step === "review" && prop) setAskDiscard(true); else onClose(); };
 
   const addPhoto = async (key, label, file) => {
     if (!file) return;
@@ -16316,9 +16320,25 @@ function AssessFlow({ asset, userId, propertyId, profile, tasks, planData, onClo
   }
 
   return (
-    <Modal title={`Assess: ${asset.item}`} onClose={closeIfIdle} onSave={() => {}} footer={footer}>
-      {body}
-    </Modal>
+    <>
+      <Modal title={`Assess: ${asset.item}`} onClose={closeGuarded} onSave={() => {}} footer={footer}>
+        {body}
+      </Modal>
+      {askDiscard && (
+        <div className="overlay" role="alertdialog" aria-modal="true" aria-labelledby="asm-discard-t" style={{zIndex:1200}} onClick={e => e.target === e.currentTarget && setAskDiscard(false)}>
+          <div className="modal" style={{maxWidth:360}}>
+            <div className="confirm-body">
+              <strong id="asm-discard-t">Close without saving?</strong>
+              <p>This assessment isn't saved yet. If you close now, the grade and photos are discarded and it still counts toward this month's assessments.</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => { setAskDiscard(false); onClose(); }}>Discard it</button>
+              <button className="btn btn-primary" onClick={() => setAskDiscard(false)}>Keep reviewing</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -27772,9 +27792,12 @@ export default function App() {
   const loadAssessments = async (pid) => {
     if (!pid) { setAssessments([]); return; }
     try {
-      const { data, error } = await supabase.from("asset_assessments").select("*").eq("property_id", pid).eq("status", "confirmed").order("created_at", { ascending: false }).limit(1000);
-      setAssessments(error ? [] : (data || []));   // table not created yet -> simply no assessments
-    } catch { setAssessments([]); }
+      const run = () => supabase.from("asset_assessments").select("*").eq("property_id", pid).eq("status", "confirmed").order("created_at", { ascending: false }).limit(1000);
+      let { data, error } = await run();
+      if (error) { await new Promise(r => setTimeout(r, 1200)); ({ data, error } = await run()); }
+      // A failed read must not make saved assessments vanish: keep what is already on screen and only replace it on success.
+      if (!error) setAssessments(data || []);
+    } catch { /* keep what is on screen */ }
   };
   setAssessmentIndex(assessments);   // read by getAssetHealth / forecast during this render
   const [expenses, setExpenses] = useState([]);
