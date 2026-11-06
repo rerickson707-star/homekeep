@@ -1,4 +1,4 @@
-// Steadwell v454 — 2026-11-06
+// Steadwell v455 — 2026-11-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -21823,6 +21823,15 @@ const PHONE_LABELS = ["Office","Mobile","After hours","Dispatch","Fax"];
 const cleanExt = (s) => String(s || "").replace(/^\s*(?:ext(?:ension)?\.?|x|#)\s*/i, "").replace(/[^0-9]/g, "").slice(0, 8);
 const extraPhonesOf = (c) => (Array.isArray(c?.extra_phones) ? c.extra_phones : []).filter(p => p && p.number);
 const phoneHref = (n) => "tel:" + String(n).replace(/[^0-9+]/g, "");
+// Same idea for email: the main address stays in `email`; other addresses are `extra_emails`: [{ label, email }].
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EXTRA_EMAILS = 5;
+const EMAIL_LABELS = ["Office","Billing","Estimates","Scheduling","Personal"];
+const extraEmailsOf = (c) => (Array.isArray(c?.extra_emails) ? c.extra_emails : []).filter(e => e && e.email);
+const contractorEmails = (c) => [
+  ...(c?.email ? [{ label: "", email: c.email }] : []),
+  ...extraEmailsOf(c).map(e => ({ label: e.label || "", email: e.email })),
+];
 const contractorNumbers = (c) => [
   ...(c?.phone ? [{ label: "", number: c.phone, ext: c.phone_ext || "" }] : []),
   ...extraPhonesOf(c).map(p => ({ label: p.label || "", number: p.number, ext: p.ext || "" })),
@@ -21834,6 +21843,10 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
   const setExtra = (i,k,v) => onChange({...data, extra_phones: extras.map((p,j)=>j===i?{...p,[k]:v}:p)});
   const addExtra = () => onChange({...data, extra_phones: [...extras, { label: "", number: "", ext: "" }]});
   const delExtra = (i) => onChange({...data, extra_phones: extras.filter((_,j)=>j!==i)});
+  const mails = Array.isArray(data.extra_emails) ? data.extra_emails : [];
+  const setMail = (i,k,v) => onChange({...data, extra_emails: mails.map((m,j)=>j===i?{...m,[k]:v}:m)});
+  const addMail = () => onChange({...data, extra_emails: [...mails, { label: "", email: "" }]});
+  const delMail = (i) => onChange({...data, extra_emails: mails.filter((_,j)=>j!==i)});
   return (
     <div className="fg">
       <div className="field s2"><label>Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. John Smith"/></div>
@@ -21865,7 +21878,23 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
         )}
         <datalist id="cr-phone-labels">{PHONE_LABELS.map(l=><option key={l} value={l}/>)}</datalist>
       </div>
-      <div className="field s2"><label>Email</label><input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com"/></div>
+      <div className="field s2">
+        <label>Email</label>
+        <input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com" aria-label="Email address"/>
+        {mails.map((m,i)=>(
+          <div key={i} style={{marginTop:".35rem",padding:".6rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",background:"var(--cream)",display:"flex",flexDirection:"column",gap:".4rem"}}>
+            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+              <input type="text" list="cr-email-labels" value={m.label||""} onChange={e=>setMail(i,"label",e.target.value)} placeholder="Label (Billing, Estimates, Office…)" aria-label="Email label" maxLength={30} style={{flex:1,minWidth:0}}/>
+              <button type="button" onClick={()=>delMail(i)} aria-label="Remove this email" style={{width:34,height:34,flexShrink:0,borderRadius:"50%",border:"1.5px solid var(--stone)",background:"var(--white)",color:"#7A7370",cursor:"pointer",fontSize:".9rem",lineHeight:1}}>✕</button>
+            </div>
+            <input type="email" value={m.email||""} onChange={e=>setMail(i,"email",e.target.value)} placeholder="name@company.com" aria-label="Extra email address"/>
+          </div>
+        ))}
+        {mails.length<MAX_EXTRA_EMAILS&&(
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addMail} style={{alignSelf:"flex-start",marginTop:".2rem",fontSize:".78rem"}}>+ Add another email</button>
+        )}
+        <datalist id="cr-email-labels">{EMAIL_LABELS.map(l=><option key={l} value={l}/>)}</datalist>
+      </div>
       <div className="field s2"><label>Website</label><input type="url" value={data.website||""} onChange={e=>f("website",e.target.value)} placeholder="https://…"/></div>
       <div className="field s2">
         <label>Rating</label>
@@ -21919,15 +21948,23 @@ function buildContractorLedger(contractors, serviceLogs=[], tasks=[], expenses=[
     return best ? best.c : null;
   };
   const push = (c, job) => { if (c) ledger[c.id].push(job); };
+  // A completed task that made a service log shows up as that log. Remember which task it was, so the row can open it.
+  const doneTaskByLog = {};
+  tasks.forEach(t => {
+    if ((t.status === "Completed" || t.status === "Done") && t.asset_id) {
+      const k = t.asset_id+"|"+String(t.title||"").trim().toLowerCase();
+      if (!doneTaskByLog[k]) doneTaskByLog[k] = t.id;
+    }
+  });
   serviceLogs.forEach(sl => {
-    push(exact(sl.vendor) || mention(sl.notes), { id:"log-"+sl.id, kind:"log", title:sl.description, date:sl.service_date, cost:Number(sl.cost||0), paid:true, planned:false, ...assetBits(sl.asset_id) });
+    push(exact(sl.vendor) || mention(sl.notes), { id:"log-"+sl.id, taskId:doneTaskByLog[(sl.asset_id||"")+"|"+String(sl.description||"").trim().toLowerCase()]||null, kind:"log", title:sl.description, date:sl.service_date, cost:Number(sl.cost||0), paid:true, planned:false, ...assetBits(sl.asset_id) });
   });
   const logged = new Set(serviceLogs.map(sl => (sl.asset_id||"")+"|"+String(sl.description||"").trim().toLowerCase()));
   tasks.forEach(t => {
     const c = exact(t.vendor); if (!c) return;
     const done = t.status === "Completed" || t.status === "Done";
     if (done && t.asset_id && logged.has(t.asset_id+"|"+String(t.title||"").trim().toLowerCase())) return;
-    push(c, { id:"task-"+t.id, kind:"task", title:t.title, date:t.due_date, cost:Number(t.cost||0), status:t.status, done, paid:done, planned:!done && t.status !== "Cancelled", ...assetBits(t.asset_id) });
+    push(c, { id:"task-"+t.id, taskId:t.id, kind:"task", title:t.title, date:t.due_date, cost:Number(t.cost||0), status:t.status, done, paid:done, planned:!done && t.status !== "Cancelled", ...assetBits(t.asset_id) });
   });
   expenses.forEach(e => {
     const c = exact(e.vendor); if (!c) return;
@@ -22128,7 +22165,7 @@ function ContractorSpendDetail({ jobs }) {
     </div>
   );
 }
-function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], expenses=[], toast, onBack }) {
+function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], expenses=[], toast, onBack, onOpenTask }) {
   const homeTrades = useMemo(() => tradesFromAssets(warranties), [warranties]);
   const ledger = useMemo(() => buildContractorLedger(contractors, serviceLogs, tasks, expenses, warranties), [contractors, serviceLogs, tasks, expenses, warranties]);
   const [modal, setModal]         = useState(false);
@@ -22165,6 +22202,15 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       extras.push({ label, number, ext });
     }
     if (extras.length > MAX_EXTRA_PHONES) { toast(`You can add up to ${MAX_EXTRA_PHONES} extra numbers`,"error"); return; }
+    const mailsOut = [];
+    for (const m of (Array.isArray(editData.extra_emails) ? editData.extra_emails : [])) {
+      const email = (m?.email || "").trim(), label = (m?.label || "").trim().slice(0, 30);
+      if (!email && !label) continue;
+      if (!email) { toast(`Add an email address for "${label}" or remove it`,"error"); return; }
+      if (!EMAIL_OK.test(email)) { toast(`"${email}" doesn't look like an email address`,"error"); return; }
+      mailsOut.push({ label, email });
+    }
+    if (mailsOut.length > MAX_EXTRA_EMAILS) { toast(`You can add up to ${MAX_EXTRA_EMAILS} extra email addresses`,"error"); return; }
     if (editData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.email.trim())) { toast("Email doesn't look valid","error"); return; }
     // Website was being stored verbatim, including non-http(s) schemes like
     // "javascript:alert(1)" — React blocked that as an href in-app, but the raw
@@ -22184,11 +22230,11 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     // The two phone columns are new. Only send them when this contractor actually uses them (or already
     // has them), so a plain save never depends on them being there.
     const ext = cleanExt(editData.phone_ext);
-    delete payload.phone_ext; delete payload.extra_phones;
-    const usesPhoneExtras = !!ext || extras.length > 0 || "phone_ext" in editData || "extra_phones" in editData;
-    if (usesPhoneExtras) { payload.phone_ext = ext || null; payload.extra_phones = extras; }
-    const stripExtras = (pl) => { const { phone_ext, extra_phones, ...rest } = pl; return rest; };
-    const missingPhoneCols = (e) => /phone_ext|extra_phones/.test(`${e?.message || ""} ${e?.details || ""}`);
+    delete payload.phone_ext; delete payload.extra_phones; delete payload.extra_emails;
+    const usesPhoneExtras = !!ext || extras.length > 0 || mailsOut.length > 0 || "phone_ext" in editData || "extra_phones" in editData || "extra_emails" in editData;
+    if (usesPhoneExtras) { payload.phone_ext = ext || null; payload.extra_phones = extras; payload.extra_emails = mailsOut; }
+    const stripExtras = (pl) => { const { phone_ext, extra_phones, extra_emails, ...rest } = pl; return rest; };
+    const missingPhoneCols = (e) => /phone_ext|extra_phones|extra_emails/.test(`${e?.message || ""} ${e?.details || ""}`);
     let savedWithoutExtras = false;
     if (editId) {
       let {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
@@ -22199,7 +22245,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       }
       if (error) { toast("Couldn't save this contractor. Please try again.","error"); return; }
       setContractors(contractors.map(c=>c.id===editId?{...c,...kept,id:editId}:c));
-      toast(savedWithoutExtras ? "Saved, but the extension and extra numbers could not be stored yet. Please try again soon." : "Contractor updated ✓", savedWithoutExtras ? "error" : undefined);
+      toast(savedWithoutExtras ? "Saved, but the extension, extra numbers and extra emails could not be stored yet. Please try again soon." : "Contractor updated ✓", savedWithoutExtras ? "error" : undefined);
     } else {
       let {data,error} = await supabase.from("contractors").insert([payload]).select();
       if (error && usesPhoneExtras && missingPhoneCols(error)) {
@@ -22208,7 +22254,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       }
       if (error || !data) { toast("Couldn't save this contractor. Please try again.","error"); return; }
       setContractors([...contractors,data[0]]);
-      toast(savedWithoutExtras ? "Saved, but the extension and extra numbers could not be stored yet. Please try again soon." : "Contractor added ✓", savedWithoutExtras ? "error" : undefined);
+      toast(savedWithoutExtras ? "Saved, but the extension, extra numbers and extra emails could not be stored yet. Please try again soon." : "Contractor added ✓", savedWithoutExtras ? "error" : undefined);
     }
     setModal(false);
   };
@@ -22279,9 +22325,23 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
                 </div>
               );
             })()}
+            {(()=>{
+              const ems = contractorEmails(c);
+              if (ems.length<=1) return null;
+              return (
+                <div style={{display:"flex",flexDirection:"column",gap:".4rem",marginBottom:".5rem"}}>
+                  {ems.map((m,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
+                      <a href={`mailto:${m.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none",maxWidth:"100%",overflowWrap:"anywhere",height:"auto",whiteSpace:"normal",textAlign:"left"}}>{m.email}</a>
+                      {m.label&&<span style={{fontSize:".74rem",color:"#7A7370"}}>{m.label}</span>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
               {c.phone&&contractorNumbers(c).length<=1&&!c.phone_ext&&<a href={phoneHref(c.phone)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {c.phone}</a>}
-              {c.email&&<a href={`mailto:${c.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Email</a>}
+              {c.email&&contractorEmails(c).length<=1&&<a href={`mailto:${c.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Email</a>}
               {c.website&&<a href={c.website} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Website</a>}
             </div>
             {c.notes&&<div style={{marginTop:".75rem",padding:".65rem .85rem",background:"var(--cream)",borderRadius:"8px",fontSize:".8rem",color:"#5A534B",lineHeight:1.55}}>{c.notes}</div>}
@@ -22302,7 +22362,9 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
                 <span style={{fontSize:".75rem"}}>Log a service or assign a task to "{c.name}" to track jobs here.</span>
               </div>
             ):jobs.map((j,i)=>(
-              <div key={j.id} style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".8rem 1rem",borderBottom:i<jobs.length-1?"1px solid var(--stone)":"none"}}>
+              <div key={j.id}
+                {...(j.taskId&&onOpenTask ? { role:"button", tabIndex:0, "aria-label":`Open task: ${j.title}`, onClick:()=>onOpenTask(j.taskId), onKeyDown:e=>{ if (e.key==="Enter"||e.key===" ") { e.preventDefault(); onOpenTask(j.taskId); } } } : {})}
+                style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".8rem 1rem",borderBottom:i<jobs.length-1?"1px solid var(--stone)":"none",cursor:(j.taskId&&onOpenTask)?"pointer":"default"}}>
                 <div style={{width:8,height:8,borderRadius:"50%",background:"var(--pine)",flexShrink:0,marginTop:5}}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:".85rem",fontWeight:600,color:"var(--dark)"}}>{j.title}</div>
@@ -22314,6 +22376,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
                   </div>
                 </div>
                 <div style={{fontSize:".85rem",fontWeight:600,color:j.cost>0?"var(--dark)":"#C8C0B8",flexShrink:0}}>{j.cost>0?`${j.planned?"~":""}$${Number(j.cost).toLocaleString()}`:"—"}</div>
+                {j.taskId&&onOpenTask&&<span aria-hidden="true" style={{color:"#B8AEA3",fontSize:"1.1rem",lineHeight:1,flexShrink:0,alignSelf:"center"}}>›</span>}
               </div>
             ))}
           </div>
@@ -25054,8 +25117,8 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
     {
       name: "Contractors",
       count: contractors.length,
-      cols: ["name","company","trade","phone","phone_ext","other_numbers","email","website","rating","would_hire_again","notes"],
-      data: contractors.map(c => ({ ...c, other_numbers: extraPhonesOf(c).map(p => [p.label, p.number, p.ext ? `ext. ${p.ext}` : ""].filter(Boolean).join(" ")).join("; ") })),
+      cols: ["name","company","trade","phone","phone_ext","other_numbers","email","other_emails","website","rating","would_hire_again","notes"],
+      data: contractors.map(c => ({ ...c, other_numbers: extraPhonesOf(c).map(p => [p.label, p.number, p.ext ? `ext. ${p.ext}` : ""].filter(Boolean).join(" ")).join("; "), other_emails: extraEmailsOf(c).map(e => [e.label, e.email].filter(Boolean).join(" ")).join("; ") })),
     },
   ];
 
@@ -28438,6 +28501,7 @@ export default function App() {
               expenses={expenses}
               toast={toast}
               onBack={()=>setShowContractors(false)}
+              onOpenTask={(id)=>{ setPendingSelectedTask(id); setShowContractors(false); setShowDocs(false); setShowWarrantyModule(false); setTab("tasks"); }}
             />
           ) : dataLoading ? (
             <div className="loading">
