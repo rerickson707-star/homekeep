@@ -1,4 +1,4 @@
-// Steadwell v453 — 2026-11-06
+// Steadwell v454 — 2026-11-06
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -21813,8 +21813,27 @@ function tradesFromAssets(warranties) {
   return TRADES.filter(t => seen.has(t));
 }
 
+// ─── CONTRACTOR PHONE NUMBERS ────────────────────────────────────────────────
+// The main number stays in `phone` (so older screens, exports and any copy of the app still open keep
+// working). Its extension is `phone_ext`. Other numbers (office, mobile, after hours...) are a list in
+// `extra_phones`: [{ label, number, ext }].
+const PHONE_OK = /^[0-9+\-.() ]{7,}$/;
+const MAX_EXTRA_PHONES = 5;
+const PHONE_LABELS = ["Office","Mobile","After hours","Dispatch","Fax"];
+const cleanExt = (s) => String(s || "").replace(/^\s*(?:ext(?:ension)?\.?|x|#)\s*/i, "").replace(/[^0-9]/g, "").slice(0, 8);
+const extraPhonesOf = (c) => (Array.isArray(c?.extra_phones) ? c.extra_phones : []).filter(p => p && p.number);
+const phoneHref = (n) => "tel:" + String(n).replace(/[^0-9+]/g, "");
+const contractorNumbers = (c) => [
+  ...(c?.phone ? [{ label: "", number: c.phone, ext: c.phone_ext || "" }] : []),
+  ...extraPhonesOf(c).map(p => ({ label: p.label || "", number: p.number, ext: p.ext || "" })),
+];
+
 function ContractorForm({ data, onChange, homeTrades=[] }) {
   const f = (k,v) => onChange({...data,[k]:v});
+  const extras = Array.isArray(data.extra_phones) ? data.extra_phones : [];
+  const setExtra = (i,k,v) => onChange({...data, extra_phones: extras.map((p,j)=>j===i?{...p,[k]:v}:p)});
+  const addExtra = () => onChange({...data, extra_phones: [...extras, { label: "", number: "", ext: "" }]});
+  const delExtra = (i) => onChange({...data, extra_phones: extras.filter((_,j)=>j!==i)});
   return (
     <div className="fg">
       <div className="field s2"><label>Name *</label><input value={data.name||""} onChange={e=>f("name",e.target.value)} placeholder="e.g. John Smith"/></div>
@@ -21823,8 +21842,30 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
         <label>Trade / Specialty</label>
         <CategorySelect value={data.trade||""} onChange={v=>f("trade",v)} groups={TRADE_GROUPS} suggested={homeTrades}/>
       </div>
-      <div className="field"><label>Phone</label><input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000"/></div>
-      <div className="field"><label>Email</label><input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com"/></div>
+      <div className="field s2">
+        <label>Phone</label>
+        <div style={{display:"flex",gap:".5rem"}}>
+          <input type="tel" value={data.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(555) 000-0000" aria-label="Phone number" style={{flex:1,minWidth:0}}/>
+          <input type="text" inputMode="numeric" value={data.phone_ext||""} onChange={e=>f("phone_ext",e.target.value.replace(/[^0-9]/g,"").slice(0,8))} placeholder="Ext." aria-label="Extension" style={{width:84,flexShrink:0}}/>
+        </div>
+        {extras.map((p,i)=>(
+          <div key={i} style={{marginTop:".35rem",padding:".6rem",border:"1px solid var(--stone)",borderRadius:"var(--r-sm)",background:"var(--cream)",display:"flex",flexDirection:"column",gap:".4rem"}}>
+            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+              <input type="text" list="cr-phone-labels" value={p.label||""} onChange={e=>setExtra(i,"label",e.target.value)} placeholder="Label (Office, Mobile, After hours…)" aria-label="Number label" maxLength={30} style={{flex:1,minWidth:0}}/>
+              <button type="button" onClick={()=>delExtra(i)} aria-label="Remove this number" style={{width:34,height:34,flexShrink:0,borderRadius:"50%",border:"1.5px solid var(--stone)",background:"var(--white)",color:"#7A7370",cursor:"pointer",fontSize:".9rem",lineHeight:1}}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:".5rem"}}>
+              <input type="tel" value={p.number||""} onChange={e=>setExtra(i,"number",e.target.value)} placeholder="(555) 000-0000" aria-label="Phone number" style={{flex:1,minWidth:0}}/>
+              <input type="text" inputMode="numeric" value={p.ext||""} onChange={e=>setExtra(i,"ext",e.target.value.replace(/[^0-9]/g,"").slice(0,8))} placeholder="Ext." aria-label="Extension" style={{width:84,flexShrink:0}}/>
+            </div>
+          </div>
+        ))}
+        {extras.length<MAX_EXTRA_PHONES&&(
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addExtra} style={{alignSelf:"flex-start",marginTop:".2rem",fontSize:".78rem"}}>+ Add another number</button>
+        )}
+        <datalist id="cr-phone-labels">{PHONE_LABELS.map(l=><option key={l} value={l}/>)}</datalist>
+      </div>
+      <div className="field s2"><label>Email</label><input type="email" value={data.email||""} onChange={e=>f("email",e.target.value)} placeholder="name@company.com"/></div>
       <div className="field s2"><label>Website</label><input type="url" value={data.website||""} onChange={e=>f("website",e.target.value)} placeholder="https://…"/></div>
       <div className="field s2">
         <label>Rating</label>
@@ -22112,7 +22153,18 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     // Phone/email were being saved as literally-typed text ("abc", "notanemail")
     // and then wired straight into tel:/mailto: links — reject obviously
     // invalid values instead of storing them.
-    if (editData.phone?.trim() && !/^[0-9+\-.() ]{7,}$/.test(editData.phone.trim())) { toast("Phone number doesn't look valid","error"); return; }
+    if (editData.phone?.trim() && !PHONE_OK.test(editData.phone.trim())) { toast("Phone number doesn't look valid","error"); return; }
+    if (cleanExt(editData.phone_ext) && !editData.phone?.trim()) { toast("Add the phone number this extension belongs to","error"); return; }
+    // Other numbers: skip rows left completely blank, and make every kept row a real number.
+    const extras = [];
+    for (const p of (Array.isArray(editData.extra_phones) ? editData.extra_phones : [])) {
+      const number = (p?.number || "").trim(), ext = cleanExt(p?.ext), label = (p?.label || "").trim().slice(0, 30);
+      if (!number && !ext && !label) continue;
+      if (!number) { toast(`Add a number for "${label || "the extra line"}" or remove it`,"error"); return; }
+      if (!PHONE_OK.test(number)) { toast(`"${number}" doesn't look like a phone number`,"error"); return; }
+      extras.push({ label, number, ext });
+    }
+    if (extras.length > MAX_EXTRA_PHONES) { toast(`You can add up to ${MAX_EXTRA_PHONES} extra numbers`,"error"); return; }
     if (editData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.email.trim())) { toast("Email doesn't look valid","error"); return; }
     // Website was being stored verbatim, including non-http(s) schemes like
     // "javascript:alert(1)" — React blocked that as an href in-app, but the raw
@@ -22129,12 +22181,34 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
       try { new URL(website); } catch { toast("Website doesn't look like a valid link","error"); return; }
     }
     const payload = {...editData, website: website || "", user_id:userId};
+    // The two phone columns are new. Only send them when this contractor actually uses them (or already
+    // has them), so a plain save never depends on them being there.
+    const ext = cleanExt(editData.phone_ext);
+    delete payload.phone_ext; delete payload.extra_phones;
+    const usesPhoneExtras = !!ext || extras.length > 0 || "phone_ext" in editData || "extra_phones" in editData;
+    if (usesPhoneExtras) { payload.phone_ext = ext || null; payload.extra_phones = extras; }
+    const stripExtras = (pl) => { const { phone_ext, extra_phones, ...rest } = pl; return rest; };
+    const missingPhoneCols = (e) => /phone_ext|extra_phones/.test(`${e?.message || ""} ${e?.details || ""}`);
+    let savedWithoutExtras = false;
     if (editId) {
-      const {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
-      if (!error) { setContractors(contractors.map(c=>c.id===editId?{...payload,id:editId}:c)); toast("Contractor updated ✓"); }
+      let {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
+      let kept = payload;
+      if (error && usesPhoneExtras && missingPhoneCols(error)) {
+        kept = stripExtras(payload); savedWithoutExtras = true;
+        ({error} = await supabase.from("contractors").update(kept).eq("id",editId).eq("user_id",userId));
+      }
+      if (error) { toast("Couldn't save this contractor. Please try again.","error"); return; }
+      setContractors(contractors.map(c=>c.id===editId?{...c,...kept,id:editId}:c));
+      toast(savedWithoutExtras ? "Saved, but the extension and extra numbers could not be stored yet. Please try again soon." : "Contractor updated ✓", savedWithoutExtras ? "error" : undefined);
     } else {
-      const {data,error} = await supabase.from("contractors").insert([payload]).select();
-      if (!error&&data) { setContractors([...contractors,data[0]]); toast("Contractor added ✓"); }
+      let {data,error} = await supabase.from("contractors").insert([payload]).select();
+      if (error && usesPhoneExtras && missingPhoneCols(error)) {
+        savedWithoutExtras = true;
+        ({data,error} = await supabase.from("contractors").insert([stripExtras(payload)]).select());
+      }
+      if (error || !data) { toast("Couldn't save this contractor. Please try again.","error"); return; }
+      setContractors([...contractors,data[0]]);
+      toast(savedWithoutExtras ? "Saved, but the extension and extra numbers could not be stored yet. Please try again soon." : "Contractor added ✓", savedWithoutExtras ? "error" : undefined);
     }
     setModal(false);
   };
@@ -22189,8 +22263,24 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
               </div>
             </div>
             {/* Contact actions */}
+            {(()=>{
+              const nums = contractorNumbers(c);
+              const plain = nums.length===0 || (nums.length===1 && !nums[0].ext && !!c.phone);
+              if (plain) return null;
+              return (
+                <div style={{display:"flex",flexDirection:"column",gap:".4rem",marginBottom:".5rem"}}>
+                  {nums.map((p,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
+                      <a href={phoneHref(p.number)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {p.number}</a>
+                      {p.ext&&<span style={{fontSize:".78rem",fontWeight:700,color:"var(--dark)"}}>ext. {p.ext}</span>}
+                      {p.label&&<span style={{fontSize:".74rem",color:"#7A7370"}}>{p.label}</span>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
-              {c.phone&&<a href={`tel:${c.phone}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {c.phone}</a>}
+              {c.phone&&contractorNumbers(c).length<=1&&!c.phone_ext&&<a href={phoneHref(c.phone)} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Call {c.phone}</a>}
               {c.email&&<a href={`mailto:${c.email}`} className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Email</a>}
               {c.website&&<a href={c.website} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:".78rem",textDecoration:"none"}}>Website</a>}
             </div>
@@ -24964,8 +25054,8 @@ function ExportModal({ tasks, warranties, expenses, serviceLogs, projects, contr
     {
       name: "Contractors",
       count: contractors.length,
-      cols: ["name","company","trade","phone","email","website","rating","would_hire_again","notes"],
-      data: contractors,
+      cols: ["name","company","trade","phone","phone_ext","other_numbers","email","website","rating","would_hire_again","notes"],
+      data: contractors.map(c => ({ ...c, other_numbers: extraPhonesOf(c).map(p => [p.label, p.number, p.ext ? `ext. ${p.ext}` : ""].filter(Boolean).join(" ")).join("; ") })),
     },
   ];
 
