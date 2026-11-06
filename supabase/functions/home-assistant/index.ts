@@ -50,14 +50,23 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
 // ─── small helpers ───────────────────────────────────────────────────────────
-const TASK_CATEGORIES = ["HVAC", "Plumbing", "Electrical", "Appliances", "Roofing", "Landscaping", "Structural", "Safety", "Other"];
+const TASK_CATEGORIES = [
+  "HVAC", "Plumbing", "Electrical", "Appliance", "Roofing", "Landscaping", "Structure", "Safety",
+  "Security", "Generator & Solar", "Septic & Well", "Fireplace & Chimney", "Gutters", "Irrigation", "Tree Service",
+  "Fencing & Gates", "Concrete & Driveway", "Pool & Spa", "Garage Door", "Pest Control", "Painting", "Flooring",
+  "Windows & Doors", "Mold & Water Damage", "Cleaning", "Handyman", "General Contractor",
+  "Car", "Boat", "Motorcycle", "RV & Trailer", "Other",
+];
 const DEFAULT_LIFESPAN: Record<string, number> = {
   HVAC: 20, Appliance: 12, Electronics: 5, Vehicle: 12, Tools: 15, Roofing: 25, Plumbing: 50, Electrical: 40,
   Structure: 50, Safety: 10, Landscaping: 15, "Jewelry & Valuables": 50, Outdoor: 15, Other: 15,
+  Car: 12, Boat: 15, Motorcycle: 12, "RV & Trailer": 20, Furniture: 15, "Fitness Equipment": 10, "Pool & Spa": 12, "Generator & Solar": 20,
 };
 const CAT_NORMALIZE: Record<string, string> = {
   Appliances: "Appliance", Structural: "Structure", Vehicles: "Vehicle", "Tools & Equipment": "Tools",
   Jewelry: "Jewelry & Valuables", "Outdoor & Garden": "Outdoor",
+  Cars: "Car", Boats: "Boat", Motorcycles: "Motorcycle", RV: "RV & Trailer", RVs: "RV & Trailer", Trailer: "RV & Trailer",
+  Fitness: "Fitness Equipment", Pool: "Pool & Spa", Generator: "Generator & Solar", Solar: "Generator & Solar",
 };
 const isoDate = (s: unknown) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + "T00:00:00Z"));
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
