@@ -8,7 +8,7 @@
 // else's home, or hasn't verified their email.
 //
 // Deploy:  npx supabase functions deploy onboarding-reminder --no-verify-jwt
-// Needs the secrets already used elsewhere: RESEND_API_KEY, SERVICE_ROLE_KEY, CRON_SECRET.
+// Needs the secrets RESEND_API_KEY and SERVICE_ROLE_KEY (already set) plus its own ONBOARDING_REMINDER_SECRET.
 // Run daily by a pg_cron job (see cron.sql). Callers must send the header x-cron-secret.
 //
 // Manual calls (send the same x-cron-secret header):
@@ -21,7 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL   = "https://hjkyameroqufaojuerns.supabase.co";
 const SERVICE_KEY    = Deno.env.get("SERVICE_ROLE_KEY")!;
-const CRON_SECRET    = Deno.env.get("CRON_SECRET") || "";
+const CRON_SECRET    = Deno.env.get("ONBOARDING_REMINDER_SECRET") || "";
 const FROM           = "Steadwell <hello@trysteadwell.app>";
 const APP_URL        = "https://www.trysteadwell.app";
 const TEST_TO        = "hello@trysteadwell.app";
