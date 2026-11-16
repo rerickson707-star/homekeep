@@ -1,4 +1,4 @@
-// Steadwell v457 — 2026-11-06
+// Steadwell v458 — 2026-11-15
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3994,6 +3994,7 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .wc-back{background:var(--cream);border:1.5px solid var(--stone);border-radius:10px;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0}
 .wc-title{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:500;line-height:1.15}
 .wc-sub{font-size:.72rem;color:#8A8178;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc-alt{background:var(--white);color:var(--pine);border:1.5px solid var(--pine);border-radius:10px;padding:.5rem .8rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
 .wc-add{background:var(--pine);color:#fff;border:none;border-radius:10px;padding:.5rem .95rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
 .wc-body{padding:1rem 1rem 3rem;width:100%;box-sizing:border-box}
 .wc-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
@@ -4341,6 +4342,10 @@ const fmt$ = v => "$" + Number(v||0).toLocaleString("en-US",{minimumFractionDigi
 const fmtD = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); return dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:00")-new Date())/86400000); };
 // Local-timezone YYYY-MM-DD (avoids UTC off-by-one from toISOString in evening hours)
+// Optional clock time on a task (tasks.due_time, "HH:MM" or "HH:MM:SS"): the home's own wall-clock time, so there is no timezone conversion.
+const timeKey = t => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t == null ? "" : t)); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+const fmtTime = t => { const k = timeKey(t); if (k === null || k > 1439) return ""; const h = Math.floor(k / 60); return (h % 12 || 12) + ":" + String(k % 60).padStart(2, "0") + " " + (h < 12 ? "AM" : "PM"); };
+const byTimeOfDay = (a, b) => { const x = timeKey(a && a.due_time), y = timeKey(b && b.due_time); return x === null && y === null ? 0 : x === null ? 1 : y === null ? -1 : x - y; };
 const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
 // One definition of "overdue" for the whole app: not finished AND (flagged Overdue OR due date
@@ -7885,6 +7890,14 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
       <div className="field"><label>Priority</label><select value={data.priority||""} onChange={e=>f("priority",e.target.value)}><option value="">Select…</option>{PRIORITY.map(p=><option key={p}>{p}</option>)}</select></div>
       <div className="field"><label>Status</label><select value={data.status||""} onChange={e=>f("status",e.target.value)}><option value="">Select…</option>{STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Due Date</label><input type="date" value={data.due_date||""} onChange={e=>f("due_date",e.target.value)} /></div>
+      <div className="field">
+        <label htmlFor="tf-time">Time <span style={{fontWeight:400,color:"#8A8178"}}>(optional)</span></label>
+        <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
+          <input id="tf-time" type="time" step="300" value={data.due_time ? String(data.due_time).slice(0,5) : ""} onChange={e=>f("due_time",e.target.value)} style={{flex:1,minWidth:0}} />
+          {data.due_time && <button type="button" className="btn btn-ghost btn-sm" aria-label="Clear time" onClick={()=>f("due_time","")}>Clear</button>}
+        </div>
+        <div style={{fontSize:".72rem",color:"#8A8178",marginTop:"3px"}}>Shown with the date wherever the task appears.</div>
+      </div>
       <div className="field">
         <label>🔁 Repeat {!canRecur && <span style={{fontSize:".65rem",color:"#3B5FBF",background:"#EEF4FF",padding:"1px 6px",borderRadius:"8px",marginLeft:"4px"}}>Plus</span>}</label>
         <select value={data.recurring||""} onChange={e=>f("recurring",e.target.value)}
@@ -12923,7 +12936,7 @@ function SearchBar({ tasks, warranties, expenses, serviceLogs=[], contractors=[]
             id:     t.id,
             icon:   CAT_ICONS[t.category] || "🔧",
             label:  t.title,
-            sub:    t.due_date ? (t.status === "Completed" ? `Done · ${fmtD(t.due_date)}` : d === 0 ? "Today" : d === 1 ? "Tomorrow" : isTaskOverdue(t) ? `${Math.abs(d)}d overdue` : `Due ${fmtD(t.due_date)}`) : t.status,
+            sub:    t.due_date ? (t.status === "Completed" ? `Done · ${fmtD(t.due_date)}` : d === 0 ? "Today" : d === 1 ? "Tomorrow" : isTaskOverdue(t) ? `${Math.abs(d)}d overdue` : `Due ${fmtD(t.due_date)}${fmtTime(t.due_time) ? " at " + fmtTime(t.due_time) : ""}`) : t.status,
             badge:  isTaskOverdue(t) ? "Overdue" : null,
             action: () => { onNavigate("tasks"); },
           };
@@ -13436,7 +13449,7 @@ function DayDetail({ date, events = [], tasks = [], people = [], userId, onClose
   const anyAssigned = tasks.some(t => taskAssignees(t).length > 0);
   const shownTasks = tasks
     .filter(t => !mineOnly || taskAssignees(t).includes(userId))
-    .sort((a, b) => (a.status === "Completed") - (b.status === "Completed"));
+    .sort((a, b) => ((a.status === "Completed") - (b.status === "Completed")) || byTimeOfDay(a, b));
   const others = events.filter(e => !String(e.type).startsWith("task") && e.type !== "seasonal");
   const OTHER_ICON = { warranty:"🛡️", warranty_warn:"🛡️", insurance:"📄", insurance_warn:"📄", service:"🔧" };
   const nothing = shownTasks.length === 0 && others.length === 0;
@@ -13473,6 +13486,7 @@ function DayDetail({ date, events = [], tasks = [], people = [], userId, onClose
                   <div style={{flex:1,minWidth:0}}>
                     <div className="cal-task-title" style={done ? {textDecoration:"line-through"} : undefined}>{t.title}</div>
                     <div className="cal-task-meta">
+                      {fmtTime(t.due_time) && <span style={{fontWeight:700,color:"var(--pine)"}}>{fmtTime(t.due_time)}</span>}
                       <span className="badge" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{stKey}</span>
                       {t.category && <span>{t.category}</span>}
                       {names.length > 0 && <span>👤 {names.length > 3 ? names.slice(0, 2).join(", ") + " +" + (names.length - 2) : names.join(", ")}</span>}
@@ -14522,7 +14536,7 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
       icon:   CAT_ICONS[t.category] || "🔧",
       iconBg: "#F7E0DA",
       title:  t.title,
-      sub:    `${t.category || "Task"} · due ${fmtD(t.due_date)}`,
+      sub:    `${t.category || "Task"} · due ${fmtD(t.due_date)}${fmtTime(t.due_time) ? " at " + fmtTime(t.due_time) : ""}`,
       badge:  d !== null ? `${Math.abs(d)}d overdue` : "Overdue",
       action: () => onNavigate("tasks"),
     });
@@ -14588,7 +14602,7 @@ function Dashboard({ tasks, setTasks, warranties, expenses, profile, onNavigate,
       icon:   CAT_ICONS[t.category] || "🔧",
       iconBg: "var(--ok-bg)",
       title:  t.title,
-      sub:    `${t.category || "Task"} · ${fmtD(t.due_date)}`,
+      sub:    `${t.category || "Task"} · ${fmtD(t.due_date)}${fmtTime(t.due_time) ? " at " + fmtTime(t.due_time) : ""}`,
       badge:  d === 0 ? "Today" : d === 1 ? "Tomorrow" : `${d}d`,
       action: () => onNavigate("tasks"),
     });
@@ -15111,18 +15125,25 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     else if ("assigned_to" in editData) payload.assigned_to = editData.assigned_to || null;
     // Who assigned a task, and when, is recorded by the database. The app never writes it.
     delete payload.assigned_by; delete payload.assigned_at;
+    // Time of day: "HH:MM", or null when cleared. A new task with no time sends nothing, so a database without tasks.due_time is untouched.
+    if ("due_time" in payload) { const tv = timeKey(payload.due_time) === null ? "" : String(payload.due_time).slice(0, 5); if (tv) payload.due_time = tv; else if (editId) payload.due_time = null; else delete payload.due_time; }
     // Try the full payload, then without the multi-person column, then without assignment at all, so a
     // database that has not had the newest SQL applied still saves the task.
     const variants = [payload];
     if ("assignee_ids" in payload) { const { assignee_ids: _i, ...p1 } = payload; variants.push(p1); }
     if ("assigned_to" in payload) { const { assignee_ids: _i, assigned_to: _a, ...p2 } = payload; variants.push(p2); }
+    // A database without tasks.due_time (the time SQL not run yet) still saves the task, just without its time.
+    const baseCount = variants.length;
+    if ("due_time" in payload) variants.push(...variants.slice(0, baseCount).map(({ due_time: _t, ...rest }) => rest));
+    const timeLost = (used) => "due_time" in payload && used >= baseCount;
     const attempt = async (run) => {
       let res = { error: true }, used = 0;
       for (; used < variants.length; used++) { res = await run(variants[used]); if (!res.error) break; }
       return { res, used };
     };
     const manyLost = (used) => used > 0 && !("assignee_ids" in variants[used]) && (payload.assignee_ids || []).length > 1;
-    const noteMsg = (used, ok) => used === 0 ? ok : (!("assigned_to" in variants[used]) && payload.assigned_to ? ok + ", but assignment could not be saved yet" : manyLost(used) ? ok + ", but only the first person was assigned" : ok);
+    const noteMsg0 = (used, ok) => used === 0 ? ok : (!("assigned_to" in variants[used]) && payload.assigned_to ? ok + ", but assignment could not be saved yet" : manyLost(used) ? ok + ", but only the first person was assigned" : ok);
+    const noteMsg = (used, ok) => { const a = noteMsg0(used, ok); return timeLost(used) ? (a === ok ? ok + ", but the time could not be saved yet" : a + " and the time could not be saved yet") : a; };
     if(editId) {
       const { res, used } = await attempt((pl) => supabase.from("tasks").update(pl).eq("id",editId).eq("property_id",propertyId));
       if(!res.error) { setTasks(tasks.map(t=>t.id===editId?{...t,...variants[used],id:editId}:t)); pingNotifications(); const m = noteMsg(used, "Task updated"); toast(used === 0 ? "Task updated ✓" : m, m.includes(", but") ? "error" : undefined); }
@@ -15167,6 +15188,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             user_id:   userId,
             property_id: propertyId,
           };
+          if (t.due_time) nextPayload.due_time = t.due_time;
           if (t.assigned_to) { nextPayload.assigned_to = t.assigned_to; if (taskAssignees(t).length > 1) nextPayload.assignee_ids = taskAssignees(t); if (t.assigned_by && t.assigned_at) { nextPayload.assigned_by = t.assigned_by; nextPayload.assigned_at = t.assigned_at; } }
           let { data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select();
           if (nextErr && nextPayload.assignee_ids) { delete nextPayload.assignee_ids; ({ data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select()); }
@@ -15260,7 +15282,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     return statusMatch && catMatch && dueMatch && textMatch && whoMatch;
   });
   filtered = [...filtered].sort((a,b) => {
-    if(sort==="due_date") return new Date(a.due_date||"9999")-new Date(b.due_date||"9999");
+    if(sort==="due_date") return (new Date(a.due_date||"9999")-new Date(b.due_date||"9999")) || byTimeOfDay(a,b);
     if(sort==="priority") return PRIORITY.indexOf(b.priority)-PRIORITY.indexOf(a.priority);
     if(sort==="title") return (a.title||"").localeCompare(b.title||"");
     if(sort==="cost") return Number(b.cost||0)-Number(a.cost||0);
@@ -15319,6 +15341,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
         </div>
         <div className="trow-right">
           <span style={{fontSize:".8rem",fontWeight:700,color:dateColor,whiteSpace:"nowrap"}}>{dateLabel}</span>
+          {!isDone && fmtTime(t.due_time) && <span style={{fontSize:".74rem",fontWeight:600,color:"var(--pine)",whiteSpace:"nowrap"}}>{fmtTime(t.due_time)}</span>}
           {showStatus && <span className="task-meta-pill" style={{background:STATUS_STYLE["In Progress"].bg,color:STATUS_STYLE["In Progress"].text}}>In progress</span>}
         </div>
         <div className="trow-menu" onMouseDown={e=>e.stopPropagation()}>
@@ -17091,7 +17114,7 @@ function Assets({ warranties: assets, setWarranties: setAssets, toast, userId, p
     const taskRow = (t) => {
       const d = daysTo(t.due_date);
       const isOverdue = d !== null && d < 0;
-      const dueTxt = d === 0 ? "Today" : d === 1 ? "Tomorrow" : isOverdue ? `${Math.abs(d)} days overdue` : t.due_date ? fmtD(t.due_date) : "No date";
+      const dueTxt = (d === 0 ? "Today" : d === 1 ? "Tomorrow" : isOverdue ? `${Math.abs(d)} days overdue` : t.due_date ? fmtD(t.due_date) : "No date") + (t.due_date && !isOverdue && fmtTime(t.due_time) ? " at " + fmtTime(t.due_time) : "");
       const sub = [t.status === "In Progress" ? "In progress" : null, t.notes && !t.notes.startsWith("[") ? t.notes.slice(0, 60) + (t.notes.length > 60 ? "…" : "") : null].filter(Boolean).join(". ");
       return (
         <button type="button" key={t.id} className="ad-row" onClick={() => openTaskEdit(t)}>
@@ -22310,7 +22333,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     const tradeMatch = tradeF==="All" || c.trade===tradeF;
     const searchMatch = !search || [c.name,c.company,c.trade].some(v=>v?.toLowerCase().includes(search.toLowerCase()));
     return tradeMatch && searchMatch;
-  });
+  }).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"en",{sensitivity:"base",numeric:true}));
 
   // Detail view
   if (selected) {
@@ -22435,6 +22458,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
           <div className="wc-title">Contractors</div>
           {contractors.length > 0 && <div className="wc-sub">{contractors.length} saved</div>}
         </div>
+        {contractors.length > 0 && <button className="wc-alt" onClick={()=>{ trackEvent("contractor_directory_open"); openContractorDirectory(contractors); }}>Directory</button>}
         <button className="wc-add" onClick={openNew}>+ Add</button>
       </div>
 
@@ -22881,6 +22905,96 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
     document.body.removeChild(a);
   }
   // Revoke after a short delay to allow the tab to load
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// ─── CONTRACTOR DIRECTORY ─────────────────────────────────────────────────────
+// A printable contact sheet of every contractor, A to Z. Opens as its own page (same way the home report does) with a
+// Print / Save as PDF button; sort and notes are chosen on that page. Ratings, spend and "would hire again" are left
+// off on purpose: the sheet is meant to be handed to a team. Everything typed by a person is HTML-escaped, and the
+// page's own script contains no user text.
+function openContractorDirectory(contractors = []) {
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const arr = x => Array.isArray(x) ? x : [];
+  const key = s => String(s == null ? "" : s).trim().toLowerCase();
+  const cmp = (a, b) => a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
+  const lbl = s => String(s || "").trim() ? '<span class="lbl">' + esc(String(s).trim()) + "</span> " : "";
+  const phoneLine = (num, ext, label) => {
+    const n = String(num || "").trim();
+    if (!n) return "";
+    const x = String(ext || "").trim();
+    return '<div class="ph">' + lbl(label) + '<span class="num">' + esc(n) + "</span>" + (x ? ' <span class="lbl">ext.&nbsp;' + esc(x) + "</span>" : "") + "</div>";
+  };
+  const mailLine = (addr, label) => String(addr || "").trim() ? '<div class="ph">' + lbl(label) + '<span class="brk">' + esc(String(addr).trim()) + "</span></div>" : "";
+
+  const list = [...(contractors || [])].filter(c => c && String(c.name || c.company || "").trim())
+    .sort((a, b) => cmp(key(a.name || a.company), key(b.name || b.company)));
+
+  const rows = list.map(c => {
+    const phones = [phoneLine(c.phone, c.phone_ext, c.phone_label), ...arr(c.extra_phones).map(p => phoneLine(p && p.number, p && p.ext, p && p.label))].filter(Boolean);
+    const mails = [mailLine(c.email, c.email_label), ...arr(c.extra_emails).map(m => mailLine(m && m.email, m && m.label))].filter(Boolean);
+    const site = String(c.website || "").trim().replace(/^https?:\/\//i, "").replace(/[\/?#].*$/, "");
+    const company = String(c.company || "").trim();
+    const name = String(c.name || "").trim();
+    const showCompany = company && key(company) !== key(name);
+    const notes = String(c.notes || "").trim();
+    return '<tr data-name="' + esc(key(name || company)) + '" data-company="' + esc(key(company)) + '" data-trade="' + esc(key(c.trade)) + '">' +
+      '<td class="who"><div class="nm">' + esc(name || company) + "</div>" + (showCompany ? '<div class="co">' + esc(company) + "</div>" : "") + "</td>" +
+      "<td>" + (c.trade ? esc(c.trade) : '<span class="none">&mdash;</span>') + "</td>" +
+      "<td>" + (phones.length ? phones.join("") : '<span class="none">&mdash;</span>') + "</td>" +
+      "<td>" + (mails.length ? mails.join("") : '<span class="none">&mdash;</span>') + "</td>" +
+      '<td class="brk">' + (site ? esc(site) : '<span class="none">&mdash;</span>') + "</td>" +
+      '<td class="nt">' + (notes ? esc(notes).replace(/\r?\n/g, "<br>") : "") + "</td></tr>";
+  }).join("");
+
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    "<title>Contractor directory</title><style>" +
+    "*{box-sizing:border-box;margin:0;padding:0}" +
+    "body{font-family:'Helvetica Neue',Arial,sans-serif;background:#F4EDDF;color:#2A2723;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    ".page{background:#fff;max-width:1000px;margin:20px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}" +
+    ".top{background:#234A3D;color:#F4EDDF;padding:26px 32px 22px}" +
+    ".top h1{font-size:24px;font-weight:700;line-height:1.2}" +
+    ".top p{font-size:13px;color:rgba(244,237,223,.65);margin-top:6px}" +
+    ".bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:14px 32px;border-bottom:1px solid #EDE5D5;background:#FBF7EE;font-size:13px;color:#5A534B}" +
+    ".bar select{font:inherit;padding:5px 8px;border:1.5px solid #D9CFBF;border-radius:8px;background:#fff;margin-left:6px}" +
+    ".bar label{display:flex;align-items:center;gap:6px}" +
+    ".bar button{margin-left:auto;background:#C16140;color:#fff;border:none;border-radius:8px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}" +
+    ".body{padding:8px 32px 20px}" +
+    "table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.45}" +
+    "th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A8178;padding:12px 10px 8px 0;border-bottom:2px solid #E8E0D0}" +
+    "td{vertical-align:top;padding:10px 12px 10px 0;border-bottom:1px solid #EDE5D5}" +
+    ".brk{overflow-wrap:anywhere}.num{white-space:nowrap}.ph+.ph{margin-top:3px}" +
+    ".c1{width:24%}.c2{width:13%}.c3{width:22%}.c4{width:25%}.c5{width:16%}.nt-col{display:none}table.shownotes .nt-col{display:table-column;width:22%}" +
+    "tr{page-break-inside:avoid}" +
+    ".nm{font-weight:700;color:#1F2A26}.co{color:#6E665D;font-size:12px;margin-top:1px}" +
+    ".lbl{color:#8A8178;font-size:11px}.none{color:#C8C0B8}" +
+    ".nt{display:none}table.shownotes .nt{display:table-cell}" +
+    ".foot{padding:12px 32px 18px;font-size:11px;color:#A8A09A}" +
+    "@page{size:landscape;margin:12mm}" +
+    "@media print{body{background:#fff}.page{margin:0;border-radius:0;box-shadow:none;max-width:100%}.bar{display:none}thead{display:table-header-group}.top{padding:0 0 12px;background:#fff;color:#1F2A26;border-bottom:3px solid #234A3D}.top p{color:#6E665D}.body,.foot{padding-left:0;padding-right:0}.body{padding-bottom:0}.foot{padding:6px 0 0}td{padding:7px 12px 7px 0}.page{overflow:visible}}" +
+    "@media(max-width:700px){.top,.bar,.body,.foot{padding-left:16px;padding-right:16px}.body{overflow-x:auto}table{min-width:700px}}" +
+    "</style></head><body><div class=\"page\">" +
+    '<div class="top"><h1>Contractor directory</h1><p>' + list.length + (list.length === 1 ? " contractor" : " contractors") + " &middot; " + esc(today) + "</p></div>" +
+    '<div class="bar"><label>Sort by<select id="sw-sort"><option value="name">Name</option><option value="company">Company</option><option value="trade">Trade</option></select></label>' +
+    '<label><input type="checkbox" id="sw-notes"> Include notes</label><button type="button" id="sw-print">Print / Save as PDF</button></div>' +
+    '<div class="body"><table id="sw-tbl"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="nt-col"></colgroup><thead><tr><th>Contractor</th><th>Trade</th><th>Phone</th><th>Email</th><th>Website</th><th class="nt">Notes</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+    '<div class="foot">Kept in Steadwell &middot; trysteadwell.app</div></div>' +
+    "<script>(function(){var tb=document.querySelector('#sw-tbl tbody'),sel=document.getElementById('sw-sort');" +
+    "function c(a,b){return a.localeCompare(b,'en',{sensitivity:'base',numeric:true});}" +
+    "sel.addEventListener('change',function(){var by=sel.value,r=[].slice.call(tb.rows);" +
+    "r.sort(function(a,b){var x=a.dataset[by]||'',y=b.dataset[by]||'';if(!x&&!y)return c(a.dataset.name,b.dataset.name);if(!x)return 1;if(!y)return -1;return c(x,y)||c(a.dataset.name,b.dataset.name);});" +
+    "r.forEach(function(x){tb.appendChild(x);});});" +
+    "document.getElementById('sw-notes').addEventListener('change',function(e){document.getElementById('sw-tbl').classList.toggle('shownotes',e.target.checked);});" +
+    "document.getElementById('sw-print').addEventListener('click',function(){window.print();});})();<\/script>" +
+    "</body></html>";
+
+  // Blob URL, the same way the home report is delivered (works on mobile Safari without popup permission).
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
