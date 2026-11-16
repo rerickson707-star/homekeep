@@ -1,4 +1,4 @@
-// Steadwell v459 — 2026-11-15
+// Steadwell v460 — 2026-11-15
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4311,6 +4311,7 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .asm-check b{font-weight:700}
 .asm-check input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;margin:2px 0 0;padding:0;width:18px;height:18px;min-width:18px;flex:0 0 18px;border-radius:4px;accent-color:var(--pine)}
 .wx-opt{text-transform:none;letter-spacing:normal;font-weight:500;color:var(--dark)}
+.cr-cb input[type=checkbox]{-webkit-appearance:auto;appearance:auto;padding:0;margin:2px 0 0;width:18px;height:18px;min-width:18px;flex:0 0 18px;border:none;border-radius:0;background:none;box-shadow:none;accent-color:var(--pine);cursor:pointer}
 .wx-opt input[type=checkbox],.wx-opt input[type=radio]{-webkit-appearance:auto;appearance:auto;padding:0;margin:0;border:none;border-radius:0;background:none;box-shadow:none;accent-color:var(--pine);cursor:pointer}
 .asm-type{background:#F4EFE6;border:1px solid var(--stone);border-radius:12px;padding:.7rem .8rem;margin-bottom:.9rem}
 .asm-type-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;font-size:.86rem;color:#4A443E}
@@ -21913,7 +21914,11 @@ const contractorNumbers = (c) => [
   ...extraPhonesOf(c).map(p => ({ label: p.label || "", number: p.number, ext: p.ext || "" })),
 ];
 
-function ContractorForm({ data, onChange, homeTrades=[] }) {
+// Which of the account's properties a contractor serves. all_properties is true unless the owner picks specific homes,
+// so a new property is covered automatically. A database without the columns (or an old row) reads as "all".
+const servesHome = (c, homeId) => !c || c.all_properties !== false || (Array.isArray(c.property_ids) && c.property_ids.includes(homeId));
+const homesServed = (c, homes) => c && c.all_properties === false ? homes.filter(h => Array.isArray(c.property_ids) && c.property_ids.includes(h.id)) : homes;
+function ContractorForm({ data, onChange, homeTrades=[], homes=[], defaultHomeId=null }) {
   const f = (k,v) => onChange({...data,[k]:v});
   const extras = Array.isArray(data.extra_phones) ? data.extra_phones : [];
   const setExtra = (i,k,v) => onChange({...data, extra_phones: extras.map((p,j)=>j===i?{...p,[k]:v}:p)});
@@ -21978,6 +21983,28 @@ function ContractorForm({ data, onChange, homeTrades=[] }) {
         <datalist id="cr-email-labels">{EMAIL_LABELS.map(l=><option key={l} value={l}/>)}</datalist>
       </div>
       <div className="field s2"><label>Website</label><input type="url" value={data.website||""} onChange={e=>f("website",e.target.value)} placeholder="https://…"/></div>
+      {homes.length >= 2 && (() => {
+        const allP = data.all_properties !== false, ids = Array.isArray(data.property_ids) ? data.property_ids : [];
+        const row = {display:"flex",alignItems:"flex-start",gap:".55rem",padding:".35rem 0",cursor:"pointer",fontWeight:500,fontSize:".86rem",color:"var(--dark)",textTransform:"none",letterSpacing:0};
+        return (
+          <div className="field s2" role="group" aria-labelledby="cr-props-l">
+            <label id="cr-props-l">Properties served</label>
+            <label className="cr-cb" style={row}>
+              <input type="checkbox" checked={allP} 
+                onChange={e=>onChange(e.target.checked ? {...data,all_properties:true,property_ids:[]} : {...data,all_properties:false,property_ids: ids.length ? ids : (defaultHomeId ? [defaultHomeId] : [])})}/>
+              <span>All my properties <span style={{color:"#8A8178",fontWeight:400}}>(including any I add later)</span></span>
+            </label>
+            {!allP && homes.map(h=>(
+              <label key={h.id} className="cr-cb" style={{...row,paddingLeft:"1.5rem"}}>
+                <input type="checkbox" checked={ids.includes(h.id)} 
+                  onChange={e=>onChange({...data,all_properties:false,property_ids: e.target.checked ? [...ids.filter(x=>x!==h.id),h.id] : ids.filter(x=>x!==h.id)})}/>
+                <span>{homeShortName(h)}{h.address && h.name ? <span style={{color:"#8A8178",fontWeight:400}}> · {h.address.split(",")[0]}</span> : null}</span>
+              </label>
+            ))}
+            {!allP && ids.length === 0 && <div style={{fontSize:".74rem",color:"var(--red)",marginTop:2}}>Pick at least one property, or choose All.</div>}
+          </div>
+        );
+      })()}
       <div className="field s2">
         <label>Rating</label>
         <div style={{display:"flex",gap:".4rem",marginTop:".25rem"}}>
@@ -22247,7 +22274,7 @@ function ContractorSpendDetail({ jobs }) {
     </div>
   );
 }
-function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], expenses=[], toast, onBack, onOpenTask }) {
+function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, tasks=[], warranties=[], expenses=[], toast, onBack, onOpenTask, allProfiles=[], propertyId=null, isShared=false }) {
   const homeTrades = useMemo(() => tradesFromAssets(warranties), [warranties]);
   const ledger = useMemo(() => buildContractorLedger(contractors, serviceLogs, tasks, expenses, warranties), [contractors, serviceLogs, tasks, expenses, warranties]);
   const [modal, setModal]         = useState(false);
@@ -22257,6 +22284,12 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
   const [selected, setSelected]   = useState(null); // contractor id for detail view
   const [tradeF, setTradeF]       = useState("All");
   const [search, setSearch]       = useState("");
+  // Properties this account owns. With two or more, contractors can be tagged to the ones they serve.
+  const homes = useMemo(() => (allProfiles || []).filter(h => !h._shared), [allProfiles]);
+  const multi = !isShared && homes.length >= 2;
+  const [propF, setPropF]         = useState("All");
+  // Someone invited to a single home only sees the contractors that serve it.
+  const visible = useMemo(() => isShared ? contractors.filter(c => servesHome(c, propertyId)) : contractors, [contractors, isShared, propertyId]);
 
   const openNew  = ()    => { setEditData({}); setEditId(null); setModal(true); };
   const openEdit = (c)   => { setEditData({...c}); setEditId(c.id); setModal(true); setSelected(null); };
@@ -22317,30 +22350,47 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     const phoneLabel = (editData.phone_label || "").trim().slice(0, 30), emailLabel = (editData.email_label || "").trim().slice(0, 30);
     delete payload.phone_ext; delete payload.extra_phones; delete payload.extra_emails; delete payload.phone_label; delete payload.email_label;
     if (payload.phone) payload.phone = fmtPhone(payload.phone);
+    // Properties served: only sent with two or more homes, or when the row already carries the columns, so a plain save never depends on them.
+    const usesProps = multi || "all_properties" in editData || "property_ids" in editData;
+    if (usesProps) {
+      const allP = editData.all_properties !== false;
+      const ids = (Array.isArray(editData.property_ids) ? editData.property_ids : []).filter(id => homes.some(h => h.id === id));
+      if (!allP && ids.length === 0 && multi) { toast("Pick at least one property for this contractor, or choose All","error"); return; }
+      payload.all_properties = allP || ids.length === 0;
+      payload.property_ids = payload.all_properties ? [] : ids;
+    } else { delete payload.all_properties; delete payload.property_ids; }
     const usesPhoneExtras = !!ext || !!phoneLabel || !!emailLabel || extras.length > 0 || mailsOut.length > 0 || ["phone_ext","extra_phones","extra_emails","phone_label","email_label"].some(k => k in editData);
     if (usesPhoneExtras) { payload.phone_ext = ext || null; payload.extra_phones = extras; payload.extra_emails = mailsOut; payload.phone_label = phoneLabel || null; payload.email_label = emailLabel || null; }
     const stripExtras = (pl) => { const { phone_ext, extra_phones, extra_emails, phone_label, email_label, ...rest } = pl; return rest; };
-    const missingPhoneCols = (e) => /phone_ext|extra_phones|extra_emails|phone_label|email_label/.test(`${e?.message || ""} ${e?.details || ""}`);
-    let savedWithoutExtras = false;
+    const stripProps = (pl) => { const { all_properties, property_ids, ...rest } = pl; return rest; };
+    const missingPhoneCols = (e) => /phone_ext|extra_phones|extra_emails|phone_label|email_label|all_properties|property_ids/.test(`${e?.message || ""} ${e?.details || ""}`);
+    // Full payload first; a database missing the newest columns still saves, dropping the property tags first (keeping the phone extras), then the extras too.
+    const saveVariants = [payload];
+    if (usesProps) saveVariants.push(stripProps(payload));
+    if (usesPhoneExtras) saveVariants.push(stripExtras(stripProps(payload)));
+    const lostProps = (v) => usesProps && !("all_properties" in v);
+    const lostExtras = (v) => usesPhoneExtras && !("phone_ext" in v);
+    const savedMsg = (v, ok) => lostExtras(v) ? "Saved, but the labels, extension and extra numbers or emails could not be stored yet. Please try again soon." : lostProps(v) ? ok + ", but the property selection could not be stored yet" : ok;
     if (editId) {
-      let {error} = await supabase.from("contractors").update(payload).eq("id",editId).eq("user_id",userId);
-      let kept = payload;
-      if (error && usesPhoneExtras && missingPhoneCols(error)) {
-        kept = stripExtras(payload); savedWithoutExtras = true;
-        ({error} = await supabase.from("contractors").update(kept).eq("id",editId).eq("user_id",userId));
+      let error = true, kept = payload;
+      for (const v of saveVariants) {
+        ({error} = await supabase.from("contractors").update(v).eq("id",editId).eq("user_id",userId));
+        kept = v;
+        if (!error || !missingPhoneCols(error)) break;
       }
       if (error) { toast("Couldn't save this contractor. Please try again.","error"); return; }
       setContractors(contractors.map(c=>c.id===editId?{...c,...kept,id:editId}:c));
-      toast(savedWithoutExtras ? "Saved, but the labels, extension and extra numbers or emails could not be stored yet. Please try again soon." : "Contractor updated ✓", savedWithoutExtras ? "error" : undefined);
+      const m = savedMsg(kept, "Contractor updated"); toast(m === "Contractor updated" ? "Contractor updated ✓" : m, m === "Contractor updated" ? undefined : "error");
     } else {
-      let {data,error} = await supabase.from("contractors").insert([payload]).select();
-      if (error && usesPhoneExtras && missingPhoneCols(error)) {
-        savedWithoutExtras = true;
-        ({data,error} = await supabase.from("contractors").insert([stripExtras(payload)]).select());
+      let data = null, error = true, kept = payload;
+      for (const v of saveVariants) {
+        ({data,error} = await supabase.from("contractors").insert([v]).select());
+        kept = v;
+        if (!error || !missingPhoneCols(error)) break;
       }
       if (error || !data) { toast("Couldn't save this contractor. Please try again.","error"); return; }
       setContractors([...contractors,data[0]]);
-      toast(savedWithoutExtras ? "Saved, but the labels, extension and extra numbers or emails could not be stored yet. Please try again soon." : "Contractor added ✓", savedWithoutExtras ? "error" : undefined);
+      const m = savedMsg(kept, "Contractor added"); toast(m === "Contractor added" ? "Contractor added ✓" : m, m === "Contractor added" ? undefined : "error");
     }
     setModal(false);
   };
@@ -22352,9 +22402,10 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
     toast("Contractor removed","error");
   };
 
-  const tradesUsed = new Set(contractors.map(c=>c.trade).filter(Boolean));
+  const tradesUsed = new Set(visible.map(c=>c.trade).filter(Boolean));
   const trades = ["All",...TRADES.filter(t=>tradesUsed.has(t)),...[...tradesUsed].filter(t=>!TRADES.includes(t)).sort()];
-  const filtered = contractors.filter(c=>{
+  const filtered = visible.filter(c=>{
+    if (multi && propF !== "All" && !servesHome(c, propF)) return false;
     const tradeMatch = tradeF==="All" || c.trade===tradeF;
     const searchMatch = !search || [c.name,c.company,c.trade].some(v=>v?.toLowerCase().includes(search.toLowerCase()));
     return tradeMatch && searchMatch;
@@ -22469,7 +22520,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
           </div>{/* /cr-detail */}
         </div>
         {confirm&&<Confirm message={`Remove ${c.name} from your rolodex?`} onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
-        {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData} homeTrades={homeTrades}/></Modal>}
+        {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData} homeTrades={homeTrades} homes={multi ? homes : []} defaultHomeId={propertyId}/></Modal>}
       </div>
     );
   }
@@ -22481,22 +22532,31 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         <button className="wc-back" onClick={onBack} aria-label="Back">←</button>
         <div style={{flex:1,minWidth:0}}>
           <div className="wc-title">Contractors</div>
-          {contractors.length > 0 && <div className="wc-sub">{contractors.length} saved</div>}
+          {visible.length > 0 && <div className="wc-sub">{visible.length} saved</div>}
         </div>
-        {contractors.length > 0 && <button className="wc-alt" onClick={()=>{ trackEvent("contractor_directory_open"); openContractorDirectory(contractors); }}>Directory</button>}
+        {visible.length > 0 && <button className="wc-alt" onClick={()=>{ trackEvent("contractor_directory_open"); openContractorDirectory(visible, { homes: multi ? homes.map(h => ({ id: h.id, label: homeShortName(h), address: h.address || "" })) : [], filterId: multi && propF !== "All" ? propF : "All" }); }}>Directory</button>}
         <button className="wc-add" onClick={openNew}>+ Add</button>
       </div>
 
       <div className="cr-scroll" style={{flex:1,overflowY:"auto",padding:".75rem 1rem",WebkitOverflowScrolling:"touch"}}>
         {/* Paid to contractors, by contractor or by asset */}
-        {contractors.length>0&&<ContractorSpendCard contractors={contractors} ledger={ledger}/>}
+        {visible.length>0&&<ContractorSpendCard contractors={visible} ledger={ledger}/>}
 
         {/* Search */}
-        {contractors.length>2&&(
+        {visible.length>2&&(
           <input className="cr-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contractors…"
             style={{width:"100%",padding:".5rem .85rem",border:"1.5px solid var(--stone)",borderRadius:"var(--r-sm)",fontFamily:"'Hanken Grotesk',sans-serif",fontSize:".84rem",color:"var(--dark)",background:"#fff",outline:"none",marginBottom:".65rem",boxSizing:"border-box"}}
             onFocus={e=>e.target.style.borderColor="var(--pine)"} onBlur={e=>e.target.style.borderColor="var(--stone)"}
           />
+        )}
+
+        {/* Property filter: only with two or more homes */}
+        {multi&&visible.length>0&&(
+          <div className="toolbar" style={{marginBottom:".5rem"}} role="group" aria-label="Filter by property">
+            {[{id:"All",label:"All properties"},...homes.map(h=>({id:h.id,label:homeShortName(h)}))].map(o=>(
+              <button key={o.id} className={`chip ${propF===o.id?"on":""}`} onClick={()=>setPropF(o.id)}>{o.label}</button>
+            ))}
+          </div>
         )}
 
         {/* Trade filter */}
@@ -22509,7 +22569,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         )}
 
         {/* Empty state */}
-        {contractors.length===0&&(
+        {visible.length===0&&(
           <div className="empty" style={{padding:"3rem 1rem"}}>
             <span className="ei" style={{fontSize:"2rem",opacity:.3}}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -22538,6 +22598,7 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
                   {c.trade&&<span style={{fontWeight:600,color:"var(--pine)"}}>{c.trade}</span>}
                   {c.company&&<span>{c.company}</span>}
                   {jobs.length>0&&<span>{jobs.length} job{jobs.length!==1?"s":""}</span>}
+                  {multi&&c.all_properties===false&&<span style={{color:"#8A8178"}}>· {homesServed(c,homes).map(homeShortName).join(", ")||"No property"}</span>}
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
@@ -22552,12 +22613,12 @@ function ContractorRolodex({ userId, contractors, setContractors, serviceLogs, t
         })}
         </div>
 
-        {filtered.length===0&&contractors.length>0&&(
+        {filtered.length===0&&visible.length>0&&(
           <div style={{textAlign:"center",padding:"2rem",fontSize:".84rem",color:"#A8A09A"}}>No contractors match your filter</div>
         )}
       </div>
 
-      {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData} homeTrades={homeTrades}/></Modal>}
+      {modal&&<Modal title={editId?"Edit Contractor":"Add Contractor"} onClose={()=>setModal(false)} onSave={save}><ContractorForm data={editData} onChange={setEditData} homeTrades={homeTrades} homes={multi ? homes : []} defaultHomeId={propertyId}/></Modal>}
       {confirm&&<Confirm message="Remove this contractor from your rolodex?" onConfirm={confirmDel} onCancel={()=>setConfirm(null)}/>}
     </div>
   );
@@ -22938,7 +22999,11 @@ async function generateHomeHistoryReport({ profile, warranties = [], serviceLogs
 // Print / Save as PDF button; sort and notes are chosen on that page. Ratings, spend and "would hire again" are left
 // off on purpose: the sheet is meant to be handed to a team. Everything typed by a person is HTML-escaped, and the
 // page's own script contains no user text.
-function openContractorDirectory(contractors = []) {
+function openContractorDirectory(contractors = [], opts = {}) {
+  // opts.homes: [{id,label,address}] when the account has two or more homes; opts.filterId: the home to start on, or "All".
+  const homes = Array.isArray(opts.homes) ? opts.homes.filter(h => h && h.id) : [];
+  const multi = homes.length >= 2;
+  const startId = multi && homes.some(h => h.id === opts.filterId) ? opts.filterId : "All";
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
   const arr = x => Array.isArray(x) ? x : [];
   const key = s => String(s == null ? "" : s).trim().toLowerCase();
@@ -22963,9 +23028,13 @@ function openContractorDirectory(contractors = []) {
     const name = String(c.name || "").trim();
     const showCompany = company && key(company) !== key(name);
     const notes = String(c.notes || "").trim();
-    return '<tr data-name="' + esc(key(name || company)) + '" data-company="' + esc(key(company)) + '" data-trade="' + esc(key(c.trade)) + '">' +
+    const everywhere = c.all_properties !== false;
+    const served = multi ? (everywhere ? homes : homes.filter(h => arr(c.property_ids).includes(h.id))) : [];
+    const servesTxt = everywhere ? "All properties" : (served.map(h => esc(h.label)).join(", ") || '<span class="none">&mdash;</span>');
+    return '<tr' + (multi ? ' data-all="' + (everywhere ? "1" : "0") + '" data-props="' + esc(served.map(h => h.id).join(" ")) + '"' : "") + ' data-name="' + esc(key(name || company)) + '" data-company="' + esc(key(company)) + '" data-trade="' + esc(key(c.trade)) + '">' +
       '<td class="who"><div class="nm">' + esc(name || company) + "</div>" + (showCompany ? '<div class="co">' + esc(company) + "</div>" : "") + "</td>" +
       "<td>" + (c.trade ? esc(c.trade) : '<span class="none">&mdash;</span>') + "</td>" +
+      (multi ? '<td class="sv">' + servesTxt + "</td>" : "") +
       "<td>" + (phones.length ? phones.join("") : '<span class="none">&mdash;</span>') + "</td>" +
       "<td>" + (mails.length ? mails.join("") : '<span class="none">&mdash;</span>') + "</td>" +
       '<td class="brk">' + (site ? esc(site) : '<span class="none">&mdash;</span>') + "</td>" +
@@ -22980,7 +23049,7 @@ function openContractorDirectory(contractors = []) {
     ".page{background:#fff;max-width:1000px;margin:20px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}" +
     ".top{background:#234A3D;color:#F4EDDF;padding:26px 32px 22px}" +
     ".top h1{font-size:24px;font-weight:700;line-height:1.2}" +
-    ".top p{font-size:13px;color:rgba(244,237,223,.65);margin-top:6px}" +
+    ".top p{font-size:13px;color:rgba(244,237,223,.65);margin-top:6px}.top p.for{font-size:15px;font-weight:600;color:#F4EDDF}" +
     ".bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:14px 32px;border-bottom:1px solid #EDE5D5;background:#FBF7EE;font-size:13px;color:#5A534B}" +
     ".bar select{font:inherit;padding:5px 8px;border:1.5px solid #D9CFBF;border-radius:8px;background:#fff;margin-left:6px}" +
     ".bar label{display:flex;align-items:center;gap:6px}" +
@@ -22995,21 +23064,27 @@ function openContractorDirectory(contractors = []) {
     ".nm{font-weight:700;color:#1F2A26}.co{color:#6E665D;font-size:12px;margin-top:1px}" +
     ".lbl{color:#8A8178;font-size:11px}.none{color:#C8C0B8}" +
     ".nt{display:none}table.shownotes .nt{display:table-cell}" +
+    ".sv-col{display:none}.sv{display:none}table.showserves .sv-col{display:table-column;width:13%}table.showserves .sv{display:table-cell}.sv{color:#4A443D}" +
     ".foot{padding:12px 32px 18px;font-size:11px;color:#A8A09A}" +
     "@page{size:landscape;margin:12mm}" +
-    "@media print{body{background:#fff}.page{margin:0;border-radius:0;box-shadow:none;max-width:100%}.bar{display:none}thead{display:table-header-group}.top{padding:0 0 12px;background:#fff;color:#1F2A26;border-bottom:3px solid #234A3D}.top p{color:#6E665D}.body,.foot{padding-left:0;padding-right:0}.body{padding-bottom:0}.foot{padding:6px 0 0}td{padding:7px 12px 7px 0}.page{overflow:visible}}" +
+    "@media print{body{background:#fff}.page{margin:0;border-radius:0;box-shadow:none;max-width:100%}.bar{display:none}thead{display:table-header-group}.top{padding:0 0 12px;background:#fff;color:#1F2A26;border-bottom:3px solid #234A3D}.top p{color:#6E665D}.top p.for{color:#1F2A26}.body,.foot{padding-left:0;padding-right:0}.body{padding-bottom:0}.foot{padding:6px 0 0}td{padding:7px 12px 7px 0}.page{overflow:visible}}" +
     "@media(max-width:700px){.top,.bar,.body,.foot{padding-left:16px;padding-right:16px}.body{overflow-x:auto}table{min-width:700px}}" +
     "</style></head><body><div class=\"page\">" +
-    '<div class="top"><h1>Contractor directory</h1><p>' + list.length + (list.length === 1 ? " contractor" : " contractors") + " &middot; " + esc(today) + "</p></div>" +
+    '<div class="top"><h1>Contractor directory</h1>' + (multi ? '<p class="for" id="sw-for"></p>' : "") + '<p id="sw-count" data-date="' + esc(today) + '">' + list.length + (list.length === 1 ? " contractor" : " contractors") + " &middot; " + esc(today) + "</p></div>" +
     '<div class="bar"><label>Sort by<select id="sw-sort"><option value="name">Name</option><option value="company">Company</option><option value="trade">Trade</option></select></label>' +
+    (multi ? '<label>Property<select id="sw-prop"><option value="All" data-sub="All properties">All properties</option>' + homes.map(h => '<option value="' + esc(h.id) + '" data-sub="' + esc(h.label + (h.address ? " \u00b7 " + h.address : "")) + '"' + (h.id === startId ? " selected" : "") + ">" + esc(h.label) + "</option>").join("") + "</select></label>" : "") +
     '<label><input type="checkbox" id="sw-notes"> Include notes</label><button type="button" id="sw-print">Print / Save as PDF</button></div>' +
-    '<div class="body"><table id="sw-tbl"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="nt-col"></colgroup><thead><tr><th>Contractor</th><th>Trade</th><th>Phone</th><th>Email</th><th>Website</th><th class="nt">Notes</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+    '<div class="body"><table id="sw-tbl"><colgroup><col class="c1"><col class="c2">' + (multi ? '<col class="sv-col">' : "") + '<col class="c3"><col class="c4"><col class="c5"><col class="nt-col"></colgroup><thead><tr><th>Contractor</th><th>Trade</th>' + (multi ? '<th class="sv">Serves</th>' : "") + '<th>Phone</th><th>Email</th><th>Website</th><th class="nt">Notes</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
     '<div class="foot">Kept in Steadwell &middot; trysteadwell.app</div></div>' +
     "<script>(function(){var tb=document.querySelector('#sw-tbl tbody'),sel=document.getElementById('sw-sort');" +
     "function c(a,b){return a.localeCompare(b,'en',{sensitivity:'base',numeric:true});}" +
     "sel.addEventListener('change',function(){var by=sel.value,r=[].slice.call(tb.rows);" +
     "r.sort(function(a,b){var x=a.dataset[by]||'',y=b.dataset[by]||'';if(!x&&!y)return c(a.dataset.name,b.dataset.name);if(!x)return 1;if(!y)return -1;return c(x,y)||c(a.dataset.name,b.dataset.name);});" +
     "r.forEach(function(x){tb.appendChild(x);});});" +
+    (multi ? "var ps=document.getElementById('sw-prop'),tbl=document.getElementById('sw-tbl'),cnt=document.getElementById('sw-count'),fr=document.getElementById('sw-for');" +
+      "function apply(){var id=ps.value,n=0;[].slice.call(tb.rows).forEach(function(r){var ok=id==='All'||r.dataset.all==='1'||(' '+(r.dataset.props||'')+' ').indexOf(' '+id+' ')>-1;r.style.display=ok?'':'none';if(ok)n++;});" +
+      "tbl.classList.toggle('showserves',id==='All');fr.textContent=ps.options[ps.selectedIndex].getAttribute('data-sub');cnt.textContent=n+(n===1?' contractor':' contractors')+' \u00b7 '+cnt.getAttribute('data-date');}" +
+      "ps.addEventListener('change',apply);apply();" : "") +
     "document.getElementById('sw-notes').addEventListener('change',function(e){document.getElementById('sw-tbl').classList.toggle('shownotes',e.target.checked);});" +
     "document.getElementById('sw-print').addEventListener('click',function(){window.print();});})();<\/script>" +
     "</body></html>";
@@ -28681,6 +28756,9 @@ export default function App() {
               expenses={expenses}
               toast={toast}
               onBack={()=>setShowContractors(false)}
+              allProfiles={allProfiles}
+              propertyId={activePropertyId}
+              isShared={!!profile?._shared}
               onOpenTask={(id)=>{ setPendingSelectedTask(id); setShowContractors(false); setShowDocs(false); setShowWarrantyModule(false); setTab("tasks"); }}
             />
           ) : dataLoading ? (
