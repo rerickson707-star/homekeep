@@ -1,4 +1,4 @@
-// Steadwell v458 — 2026-11-15
+// Steadwell v459 — 2026-11-15
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -4345,6 +4345,17 @@ const daysTo = d => { if(!d) return null; return Math.ceil((new Date(d+"T00:00:0
 // Optional clock time on a task (tasks.due_time, "HH:MM" or "HH:MM:SS"): the home's own wall-clock time, so there is no timezone conversion.
 const timeKey = t => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t == null ? "" : t)); return m ? (+m[1]) * 60 + (+m[2]) : null; };
 const fmtTime = t => { const k = timeKey(t); if (k === null || k > 1439) return ""; const h = Math.floor(k / 60); return (h % 12 || 12) + ":" + String(k % 60).padStart(2, "0") + " " + (h < 12 ? "AM" : "PM"); };
+const durKey = d => { const n = parseInt(d, 10); return Number.isFinite(n) && n > 0 && n <= 1440 ? n : null; };
+const fmtDur = m => { const n = durKey(m); if (n === null) return ""; const h = Math.floor(n / 60), r = n % 60; return (h ? h + " hr" : "") + (h && r ? " " : "") + (r ? r + " min" : ""); };
+// "9:00–11:00 AM" when a length is set, otherwise just the start time.
+const fmtSlot = t => {
+  const st = fmtTime(t && t.due_time); if (!st) return "";
+  const d = durKey(t.duration_min), k = timeKey(t.due_time); if (d === null) return st;
+  const e = fmtTime(String(Math.floor(((k + d) % 1440) / 60)) + ":" + String((k + d) % 60).padStart(2, "0"));
+  const sp = st.split(" "), ep = e.split(" ");
+  return sp[1] === ep[1] ? sp[0] + "–" + ep[0] + " " + ep[1] : st + "–" + e;
+};
+const DURATION_CHOICES = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480];
 const byTimeOfDay = (a, b) => { const x = timeKey(a && a.due_time), y = timeKey(b && b.due_time); return x === null && y === null ? 0 : x === null ? 1 : y === null ? -1 : x - y; };
 const localISO = (date = new Date()) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const offsetDate = (str, days) => { const d = new Date(str+"T00:00:00"); d.setDate(d.getDate()+days); return localISO(d); };
@@ -7891,12 +7902,20 @@ function TaskForm({ data, onChange, assets=[], planData, onUpgrade, contractors=
       <div className="field"><label>Status</label><select value={data.status||""} onChange={e=>f("status",e.target.value)}><option value="">Select…</option>{STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}</select></div>
       <div className="field"><label>Due Date</label><input type="date" value={data.due_date||""} onChange={e=>f("due_date",e.target.value)} /></div>
       <div className="field">
-        <label htmlFor="tf-time">Time <span style={{fontWeight:400,color:"#8A8178"}}>(optional)</span></label>
+        <label htmlFor="tf-time">Start time <span style={{fontWeight:400,color:"#8A8178"}}>(optional)</span></label>
         <div style={{display:"flex",gap:".4rem",alignItems:"center"}}>
-          <input id="tf-time" type="time" step="300" value={data.due_time ? String(data.due_time).slice(0,5) : ""} onChange={e=>f("due_time",e.target.value)} style={{flex:1,minWidth:0}} />
-          {data.due_time && <button type="button" className="btn btn-ghost btn-sm" aria-label="Clear time" onClick={()=>f("due_time","")}>Clear</button>}
+          <input id="tf-time" type="time" step="300" value={data.due_time ? String(data.due_time).slice(0,5) : ""} onChange={e=>onChange(e.target.value ? {...data,due_time:e.target.value} : {...data,due_time:"",duration_min:""})} style={{flex:1,minWidth:0}} />
+          {data.due_time && <button type="button" className="btn btn-ghost btn-sm" aria-label="Clear start time" onClick={()=>onChange({...data,due_time:"",duration_min:""})}>Clear</button>}
         </div>
-        <div style={{fontSize:".72rem",color:"#8A8178",marginTop:"3px"}}>Shown with the date wherever the task appears.</div>
+        {data.due_time && <>
+          <label htmlFor="tf-dur" style={{marginTop:".5rem"}}>Expected length <span style={{fontWeight:400,color:"#8A8178"}}>(optional)</span></label>
+          <select id="tf-dur" value={durKey(data.duration_min) || ""} onChange={e=>f("duration_min",e.target.value)}>
+            <option value="">Not set</option>
+            {DURATION_CHOICES.map(m=><option key={m} value={m}>{fmtDur(m)}</option>)}
+            {durKey(data.duration_min) && !DURATION_CHOICES.includes(durKey(data.duration_min)) && <option value={durKey(data.duration_min)}>{fmtDur(data.duration_min)}</option>}
+          </select>
+        </>}
+        <div style={{fontSize:".72rem",color:"#8A8178",marginTop:"3px"}}>Shown with the date wherever the task appears, so your team can see when it is booked.</div>
       </div>
       <div className="field">
         <label>🔁 Repeat {!canRecur && <span style={{fontSize:".65rem",color:"#3B5FBF",background:"#EEF4FF",padding:"1px 6px",borderRadius:"8px",marginLeft:"4px"}}>Plus</span>}</label>
@@ -13486,7 +13505,7 @@ function DayDetail({ date, events = [], tasks = [], people = [], userId, onClose
                   <div style={{flex:1,minWidth:0}}>
                     <div className="cal-task-title" style={done ? {textDecoration:"line-through"} : undefined}>{t.title}</div>
                     <div className="cal-task-meta">
-                      {fmtTime(t.due_time) && <span style={{fontWeight:700,color:"var(--pine)"}}>{fmtTime(t.due_time)}</span>}
+                      {fmtSlot(t) && <span style={{fontWeight:700,color:"var(--pine)"}}>{fmtSlot(t)}</span>}
                       <span className="badge" style={{background:sc.bg,color:sc.text,borderColor:sc.border}}>{stKey}</span>
                       {t.category && <span>{t.category}</span>}
                       {names.length > 0 && <span>👤 {names.length > 3 ? names.slice(0, 2).join(", ") + " +" + (names.length - 2) : names.join(", ")}</span>}
@@ -15127,6 +15146,8 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     delete payload.assigned_by; delete payload.assigned_at;
     // Time of day: "HH:MM", or null when cleared. A new task with no time sends nothing, so a database without tasks.due_time is untouched.
     if ("due_time" in payload) { const tv = timeKey(payload.due_time) === null ? "" : String(payload.due_time).slice(0, 5); if (tv) payload.due_time = tv; else if (editId) payload.due_time = null; else delete payload.due_time; }
+    // Expected length in minutes: only meaningful with a start time. Same rule: cleared on edit -> null, empty on a new task -> not sent.
+    if ("duration_min" in payload || "due_time" in payload) { const dv = payload.due_time ? durKey(payload.duration_min) : null; if (dv) payload.duration_min = dv; else if (editId) payload.duration_min = null; else delete payload.duration_min; }
     // Try the full payload, then without the multi-person column, then without assignment at all, so a
     // database that has not had the newest SQL applied still saves the task.
     const variants = [payload];
@@ -15134,8 +15155,12 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     if ("assigned_to" in payload) { const { assignee_ids: _i, assigned_to: _a, ...p2 } = payload; variants.push(p2); }
     // A database without tasks.due_time (the time SQL not run yet) still saves the task, just without its time.
     const baseCount = variants.length;
-    if ("due_time" in payload) variants.push(...variants.slice(0, baseCount).map(({ due_time: _t, ...rest }) => rest));
-    const timeLost = (used) => "due_time" in payload && used >= baseCount;
+    // A database that has the time column but not the length column (v459 SQL not run yet) keeps the time.
+    if ("duration_min" in payload) variants.push(...variants.slice(0, baseCount).map(({ duration_min: _d, ...rest }) => rest));
+    const afterDur = variants.length;
+    if ("due_time" in payload) variants.push(...variants.slice(0, afterDur).map(({ due_time: _t, duration_min: _d, ...rest }) => rest));
+    const timeLost = (used) => ("due_time" in payload && !("due_time" in variants[used])) || ("duration_min" in payload && !("duration_min" in variants[used]));
+    const lostWhat = (used) => ("due_time" in payload && !("due_time" in variants[used])) ? "time" : "length";
     const attempt = async (run) => {
       let res = { error: true }, used = 0;
       for (; used < variants.length; used++) { res = await run(variants[used]); if (!res.error) break; }
@@ -15143,7 +15168,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
     };
     const manyLost = (used) => used > 0 && !("assignee_ids" in variants[used]) && (payload.assignee_ids || []).length > 1;
     const noteMsg0 = (used, ok) => used === 0 ? ok : (!("assigned_to" in variants[used]) && payload.assigned_to ? ok + ", but assignment could not be saved yet" : manyLost(used) ? ok + ", but only the first person was assigned" : ok);
-    const noteMsg = (used, ok) => { const a = noteMsg0(used, ok); return timeLost(used) ? (a === ok ? ok + ", but the time could not be saved yet" : a + " and the time could not be saved yet") : a; };
+    const noteMsg = (used, ok) => { const a = noteMsg0(used, ok); return timeLost(used) ? (a === ok ? ok + ", but the " + lostWhat(used) + " could not be saved yet" : a + " and the " + lostWhat(used) + " could not be saved yet") : a; };
     if(editId) {
       const { res, used } = await attempt((pl) => supabase.from("tasks").update(pl).eq("id",editId).eq("property_id",propertyId));
       if(!res.error) { setTasks(tasks.map(t=>t.id===editId?{...t,...variants[used],id:editId}:t)); pingNotifications(); const m = noteMsg(used, "Task updated"); toast(used === 0 ? "Task updated ✓" : m, m.includes(", but") ? "error" : undefined); }
@@ -15188,7 +15213,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
             user_id:   userId,
             property_id: propertyId,
           };
-          if (t.due_time) nextPayload.due_time = t.due_time;
+          if (t.due_time) { nextPayload.due_time = t.due_time; if (durKey(t.duration_min)) nextPayload.duration_min = t.duration_min; }
           if (t.assigned_to) { nextPayload.assigned_to = t.assigned_to; if (taskAssignees(t).length > 1) nextPayload.assignee_ids = taskAssignees(t); if (t.assigned_by && t.assigned_at) { nextPayload.assigned_by = t.assigned_by; nextPayload.assigned_at = t.assigned_at; } }
           let { data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select();
           if (nextErr && nextPayload.assignee_ids) { delete nextPayload.assignee_ids; ({ data: created, error: nextErr } = await supabase.from("tasks").insert([nextPayload]).select()); }
@@ -15341,7 +15366,7 @@ function Tasks({ tasks, setTasks, toast, userId, propertyId, profile, warranties
         </div>
         <div className="trow-right">
           <span style={{fontSize:".8rem",fontWeight:700,color:dateColor,whiteSpace:"nowrap"}}>{dateLabel}</span>
-          {!isDone && fmtTime(t.due_time) && <span style={{fontSize:".74rem",fontWeight:600,color:"var(--pine)",whiteSpace:"nowrap"}}>{fmtTime(t.due_time)}</span>}
+          {!isDone && fmtTime(t.due_time) && <span style={{fontSize:".74rem",fontWeight:600,color:"var(--pine)",whiteSpace:"nowrap"}}>{fmtSlot(t)}</span>}
           {showStatus && <span className="task-meta-pill" style={{background:STATUS_STYLE["In Progress"].bg,color:STATUS_STYLE["In Progress"].text}}>In progress</span>}
         </div>
         <div className="trow-menu" onMouseDown={e=>e.stopPropagation()}>
