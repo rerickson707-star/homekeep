@@ -3925,7 +3925,7 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .xr-meta{font-size:.78rem;color:#8A8178;display:flex;flex-wrap:wrap;gap:.1rem .3rem;align-items:center;margin-top:.15rem;min-width:0}
 .xr-meta>span{flex-shrink:0}
 .xr-meta>.xr-ctx{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.xr-clip{border:none;background:none;padding:0 .1rem;cursor:pointer;font-size:.8rem;line-height:1;flex-shrink:0}
+.xr-clip{border:none;background:none;padding:.2rem;cursor:pointer;font-size:.8rem;line-height:1;flex-shrink:0;display:inline-flex;align-items:center;color:var(--pine)}
 .xr-tags{grid-area:tags;display:flex;gap:.4rem;flex-wrap:wrap;min-height:0}
 .xr-tags:empty{display:none}
 .xr-pill{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
@@ -4461,6 +4461,15 @@ function StoredLink({ url, children, onClick, ...rest }) {
       onClick={e => { e.preventDefault(); e.stopPropagation(); if (onClick) onClick(e); openStoredFile(url); }}>
       {children}
     </a>
+  );
+}
+
+// Paperclip icon (outline, matches the other line icons). Colour follows the surrounding text.
+function PaperclipIcon({ size = 15 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
+      <path d="M21 11.5 12.5 20a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.9 1.9 0 0 1-2.6-2.6l8.3-8.3" />
+    </svg>
   );
 }
 
@@ -11190,7 +11199,7 @@ function ExpenseFileUpload({ userId, expenseId, currentUrl, onUploaded, label="R
             <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem",border:"1.5px dashed var(--stone)",borderRadius:"var(--r-sm)",padding:".75rem .5rem",cursor:"pointer",background:"var(--white)",transition:"all .15s",WebkitTapHighlightColor:"transparent"}}
               onTouchStart={e=>{e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="var(--rust-light)";}}
               onTouchEnd={e=>{e.currentTarget.style.borderColor="var(--stone)";e.currentTarget.style.background="var(--white)";}}>
-              <span style={{fontSize:"1.3rem"}}>📎</span>
+              <span style={{display:"inline-flex",color:"#8A8178"}}><PaperclipIcon size={22}/></span>
               <span style={{fontSize:".72rem",fontWeight:700,color:"#8A8178"}}>Choose file</span>
               <input type="file" accept={IMAGE_ACCEPT + ",.pdf"} style={{position:"absolute",width:1,height:1,opacity:0,overflow:"hidden",clip:"rect(0,0,0,0)"}} onChange={e=>handleFile(e.target.files[0])}/>
             </label>
@@ -14341,7 +14350,7 @@ function EmailInboxModal({ captures, profile, userId, onClose, onUpdate, project
                   {selected.attachment_urls.map((a, i) => (
                     <button key={i} onClick={() => openAttachment(a)}
                       style={{display:"flex",alignItems:"center",gap:".5rem",width:"100%",textAlign:"left",background:"var(--white)",border:"1px solid var(--stone)",borderRadius:8,padding:".5rem .7rem",marginBottom:".35rem",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem",color:"var(--dark)"}}>
-                      <span aria-hidden="true">📎</span>
+                      <span style={{display:"inline-flex",color:"#8A8178"}}><PaperclipIcon size={15}/></span>
                       <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.filename || "Attachment"}</span>
                       <span style={{color:"var(--pine)",fontWeight:700,fontSize:".72rem"}}>View</span>
                     </button>
@@ -18169,7 +18178,7 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
         <div className="field s2">
           <label>Bill copy</label>
           <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap"}}>
-            <StoredLink url={data.file_url} style={{fontSize:".86rem",fontWeight:700,color:"var(--pine)",textDecoration:"none"}}>📎 View the bill</StoredLink>
+            <StoredLink url={data.file_url} style={{display:"inline-flex",alignItems:"center",gap:".4rem",fontSize:".86rem",fontWeight:700,color:"var(--pine)",textDecoration:"none"}}><PaperclipIcon size={16}/>View the bill</StoredLink>
             <button type="button" className="btn btn-ghost btn-sm" onClick={()=>onChange({...data,file_url:null,file_type:null})}>Detach</button>
           </div>
           <div style={{fontSize:".72rem",color:"#8A8178",marginTop:"3px"}}>Detaching only removes it from this bill. The file stays in Documents.</div>
@@ -20456,7 +20465,7 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
             {isServiceLog && e._assetName && <span className="xr-ctx">· {e._assetName}</span>}
             {e.file_url && (
               <button type="button" className="xr-clip" aria-label="View receipt" title="View receipt"
-                onClick={ev=>{ev.stopPropagation(); if(isImage) setLightbox(e.file_url); else openStoredFile(e.file_url);}}>📎</button>
+                onClick={ev=>{ev.stopPropagation(); if(isImage) setLightbox(e.file_url); else openStoredFile(e.file_url);}}><PaperclipIcon size={15}/></button>
             )}
           </div>
         </div>
