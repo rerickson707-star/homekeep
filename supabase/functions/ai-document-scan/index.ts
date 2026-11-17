@@ -52,21 +52,40 @@ Return only the JSON. No markdown, no explanation.`,
 
     case "utility_bill":
       return {
-        max_tokens: 600,
-        prompt: `You are reading a utility bill (electric, gas, water, internet, etc).
+        max_tokens: 700,
+        prompt: `You are reading a utility bill (electric, gas, water, internet, etc). It may be a PDF, a screenshot or a phone photo, so read the numbers carefully. Today's date is {{TODAY}}.
 
 Return ONLY a JSON object:
 {
   "utility_name": "name of the utility company (e.g. Duke Energy, Florida City Gas)",
   "utility_type": "electric | gas | water | internet | trash | sewer | bundle | other — use bundle when ONE bill charges for two or more of water, sewer, trash and stormwater, as many city utility bills do",
-  "bill_date": "YYYY-MM-DD — use the statement date, due date, or billing period end date. Must be a full date.",
-  "amount": total amount due as a number (not string),
-  "usage": usage amount as a number if shown (kWh, therms, gallons, etc) or null,
+  "bill_date": "YYYY-MM-DD — see the date rules below",
+  "amount": number — see the amount rules below,
+  "usage": number or null — see the usage rules below,
   "usage_unit": "kWh | therms | gallons | Mcf | other unit shown" or null,
   "account_number": "account number if visible" or null,
   "notes": "billing period if shown, e.g. Apr 1 – Apr 30",
-  "line_items": {"water": number, "sewer": number, "trash": number, "stormwater": number, "other": number} or null
+  "line_items": {"water": number, "sewer": number, "trash": number, "stormwater": number, "other": number} or null,
+  "uncertain": ["names of any fields above that you could not read clearly or had to guess"]
 }
+
+Date rules:
+- bill_date is the date the bill was issued, labeled "Bill Date", "Statement Date", "Date Billed" or "Invoice Date".
+- NEVER use the due date, the "pay by" date or the late-fee date.
+- Use the last day of the billing period only if the bill shows no bill, statement or invoice date at all.
+- A two-digit year is in the 2000s: 10/09/26 is 2026-10-09. Dates are month/day/year unless the bill clearly shows otherwise. Return a full date or null.
+
+Amount rules:
+- amount is what this bill charges for THIS billing period only. Use the line labeled "Total Current Charges", "Current Charges", "New Charges" or "Current Amount".
+- Do NOT use "Total Amount Due", "Amount Due" or "Balance" when it includes a previous balance, balance forward, past-due amount, late fee or unapplied payment. Ignore payments and credits from earlier bills.
+- If the bill shows a single total and no previous balance, use that total.
+- Use a plain number with no currency symbol or commas.
+
+Usage rules:
+- usage is the TOTAL used during this billing period, in the unit the bill uses (kWh, therms, gallons, etc).
+- Do NOT use a daily or per-day average, a "daily usage comparison", the "same period last year" figure, a 12-month history or a meter reading. If the bill shows only a daily average and no period total, use null.
+- Water: use the total gallons for the period (for example the consumption column, 3,800 gallons). If the meter shows hundreds or thousands of gallons, convert it to gallons using the consumption shown. If there are several meters, add the drinking (potable) water meters and leave out reclaimed or irrigation-only meters.
+- Electric: total kWh for the period. Gas: total therms (or Mcf) for the period.
 
 Rules for line_items:
 - Fill it only when this one bill charges for two or more of water, sewer (wastewater), trash (garbage, recycling, sanitation, solid waste) and stormwater (drainage). Otherwise use null.
@@ -74,6 +93,8 @@ Rules for line_items:
 - water = water service or usage charges. sewer = sewer or wastewater. trash = trash, garbage, recycling, sanitation or solid waste. stormwater = stormwater or drainage. other = every other charge on the bill, such as reclaimed water, taxes, franchise or public service fees, and other fees.
 - Leave out a key when the bill has no such charge. Use plain dollar amounts as numbers, with no symbols.
 - The values must add up to "amount". If you cannot make them add up, use null.
+
+If a value is hidden, cut off or blurry, return null for it and list it in "uncertain". Do not guess.
 
 Return only the JSON. No markdown, no explanation.`,
       };
@@ -210,7 +231,33 @@ Return only the JSON. No markdown, no explanation.`,
 const UTILITY_TYPES = ["electric", "gas", "water", "internet", "trash", "sewer", "bundle", "other"];
 const SPLIT_KEYS = ["water", "sewer", "trash", "stormwater", "other"];
 
+// Drop values that cannot be right, so the form is left blank instead of filled with a wrong number.
+function sanitizeUtilityBill(fields: Record<string, unknown>) {
+  const dropped: string[] = [];
+  // Bill date: a real calendar date, not in the future (a due date is the usual cause).
+  const bd = String(fields.bill_date ?? "");
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(bd);
+  let okDate = false;
+  if (m) {
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    okDate = d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3]
+      && +m[1] >= 2000 && d.getTime() <= Date.now() + 3 * 86_400_000;
+  }
+  if (!okDate) { if (fields.bill_date != null && bd !== "") dropped.push("bill_date"); fields.bill_date = null; }
+  // Amount: a positive number of a sensible size.
+  const amt = Number(fields.amount);
+  if (!Number.isFinite(amt) || amt <= 0 || amt >= 100_000) { if (fields.amount != null) dropped.push("amount"); fields.amount = null; }
+  else fields.amount = Math.round(amt * 100) / 100;
+  // Usage: positive and finite.
+  const use = Number(fields.usage);
+  if (fields.usage == null || !Number.isFinite(use) || use <= 0 || use >= 100_000_000) { if (fields.usage != null) dropped.push("usage"); fields.usage = null; fields.usage_unit = fields.usage_unit ?? null; }
+  else fields.usage = use;
+  const unc = Array.isArray(fields.uncertain) ? (fields.uncertain as unknown[]).map(String).filter(Boolean) : [];
+  fields.uncertain = Array.from(new Set([...unc, ...dropped]));
+}
+
 function cleanUtilityBill(fields: Record<string, unknown>) {
+  sanitizeUtilityBill(fields);
   const raw = fields.line_items;
   delete fields.line_items;
   let status = "none";
@@ -290,7 +337,10 @@ serve(async (req) => {
       }
     }
 
-    const { prompt, max_tokens } = getPrompt(scanType || "document");
+    const { prompt: rawPrompt, max_tokens } = getPrompt(scanType || "document");
+    const prompt = rawPrompt.replace("{{TODAY}}", new Date().toISOString().slice(0, 10));
+    // Bills are the hardest thing to read (small print, photos, city bills with many lines), so they use the stronger model.
+    const model = scanType === "utility_bill" ? "claude-sonnet-5-5" : "claude-haiku-4-5";
 
     const isPdfRequest = mimeType === "application/pdf";
 
@@ -302,7 +352,7 @@ serve(async (req) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5",
+        model,
         max_tokens,
         messages: [{
           role: "user",
