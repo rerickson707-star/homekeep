@@ -52,7 +52,7 @@ Return only the JSON. No markdown, no explanation.`,
 
     case "utility_bill":
       return {
-        max_tokens: 700,
+        max_tokens: 4000,
         prompt: `You are reading a utility bill (electric, gas, water, internet, etc). It may be a PDF, a screenshot or a phone photo, so read the numbers carefully. Today's date is {{TODAY}}.
 
 Return ONLY a JSON object:
@@ -344,7 +344,7 @@ serve(async (req) => {
 
     const isPdfRequest = mimeType === "application/pdf";
 
-    const aiResp = await fetch(ANTHROPIC_API, {
+    const callModel = (useModel: string) => fetch(ANTHROPIC_API, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -352,8 +352,10 @@ serve(async (req) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model,
+        model: useModel,
         max_tokens,
+        // Sonnet 5.5 thinks by default. Keep it short for reading a bill; the thinking tokens count toward max_tokens.
+        ...(useModel === "claude-sonnet-5-5" ? { output_config: { effort: "low" } } : {}),
         messages: [{
           role: "user",
           content: [
@@ -380,15 +382,33 @@ serve(async (req) => {
       }),
     });
 
-    if (!aiResp.ok) {
+    // Take the text blocks by type, not by position: newer models can open with a thinking block.
+    type Block = { type?: string; text?: unknown };
+    const textOf = (j: { content?: unknown }) => {
+      const bl: Block[] = Array.isArray(j?.content) ? (j.content as Block[]) : [];
+      return bl.filter(b => b && b.type === "text" && typeof b.text === "string").map(b => String(b.text)).join("\n");
+    };
+
+    let aiResp = await callModel(model);
+    let aiJson: { content?: unknown; stop_reason?: string } | null = null;
+    let rawText = "";
+    if (aiResp.ok) { aiJson = await aiResp.json(); rawText = textOf(aiJson!); }
+    // Safety net: if the stronger model errors or returns no text, retry once on the model that was in use before.
+    if ((!aiResp.ok || !rawText.trim()) && model !== "claude-haiku-4-5") {
+      console.error("ai-document-scan: fallback to haiku", { status: aiResp.status, stop_reason: aiJson?.stop_reason ?? null });
+      aiResp = await callModel("claude-haiku-4-5");
+      aiJson = null; rawText = "";
+      if (aiResp.ok) { aiJson = await aiResp.json(); rawText = textOf(aiJson!); }
+    }
+
+    if (!aiResp.ok || !aiJson) {
       const err = await aiResp.text();
       return new Response(JSON.stringify({ ok: false, error: `AI error: ${err}` }), {
         headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
       });
     }
 
-    const aiJson  = await aiResp.json();
-    const rawText = aiJson.content?.[0]?.text || "";
+    const blocks: Block[] = Array.isArray(aiJson.content) ? (aiJson.content as Block[]) : [];
     const cleaned = rawText.replace(/```json\n?|```\n?/g, "").trim();
 
     let fields: Record<string, unknown>;
@@ -397,7 +417,7 @@ serve(async (req) => {
     } catch {
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (!match) {
-        return new Response(JSON.stringify({ ok: false, error: "Could not parse response", raw: rawText.slice(0, 200) }), {
+        return new Response(JSON.stringify({ ok: false, error: "Could not parse response", raw: rawText.slice(0, 200), stop_reason: aiJson.stop_reason ?? null, block_types: blocks.map(b => b?.type ?? "?") }), {
           headers: { ...CORS, "Content-Type": "application/json" }, status: 500,
         });
       }
