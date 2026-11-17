@@ -1,4 +1,4 @@
-// Steadwell v460 — 2026-11-15
+// Steadwell v461 — 2026-11-15
 import { useState, useEffect, useRef, useMemo, useCallback, Component, createContext, useContext } from "react";
 import { supabase } from "./supabase";
 import { lookupProperty } from "./services/property";
@@ -3629,7 +3629,7 @@ button.ad-row:hover,a.ad-row:hover{background:var(--cream)}
 .ut-bill-d{font-size:.9rem;color:var(--dark);white-space:nowrap}
 .ut-bill-u{font-size:.84rem;color:#4A443E;min-width:0}
 .ut-bill-u em{font-style:normal;color:#6E665D;margin-left:.6rem}
-.ut-bill-f{color:#6E665D;display:inline-flex;min-width:15px}
+.ut-bill-f{color:#6E665D;display:inline-flex;min-width:15px}.ut-bill-f[role=link]{color:var(--pine);cursor:pointer;padding:6px;margin:-6px;border-radius:8px}.ut-bill-f[role=link]:hover{background:var(--cream2)}.ut-bill-f[role=link]:focus-visible{outline:2px solid var(--pine)}
 .ut-bill-a{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1rem;min-width:3.8rem;text-align:right;color:var(--dark)}
 .ut-more{display:block;width:100%;padding:.7rem;background:var(--cream);border:none;border-top:1px solid var(--cream2);font-family:inherit;font-size:.84rem;font-weight:700;color:var(--pine);cursor:pointer}
 .ut-add{margin-top:.9rem}
@@ -11006,12 +11006,15 @@ function AIScanButton({ onScanComplete, label="Scan with AI", description, scanT
             notifyStorageChanged();
             const { data: urlData } = supabase.storage.from("expense-files").getPublicUrl(path);
             const docCategory = scanType === "insurance" || scanType === "additional_policy" ? "insurance" : "other";
-            const docName = data.fields?.ins_company || data.fields?.company || `Scanned ${scanType.replace("_"," ")}`;
+            const isBill = scanType === "utility_bill";
+            const docName = isBill
+              ? `${data.fields?.company || data.fields?.vendor || data.fields?.utility_name || "Utility"} bill${data.fields?.bill_date ? " " + data.fields.bill_date : ""}`
+              : (data.fields?.ins_company || data.fields?.company || `Scanned ${scanType.replace("_"," ")}`);
             const { data: docRow, error: docErr } = await insertHomeDocument({
                 user_id:     currentUserId,
                 name:        docName,
                 category:    docCategory,
-                description: "Saved automatically from a policy scan",
+                description: isBill ? "Saved from a scanned utility bill" : "Saved automatically from a policy scan",
                 expiry_date: data.fields?.ins_renewal_date || data.fields?.renewal_date || null,
                 file_url:    urlData.publicUrl + "?t=" + Date.now(),
                 file_type:   mimeType,
@@ -18111,8 +18114,11 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
   const f = (k,v) => onChange({...data,[k]:v});
   const ut = UTIL_TYPES[utility?.type] || UTIL_TYPES.electric;
 
-  const handleBillScan = (fields) => {
+  const handleBillScan = (fields, savedDoc) => {
     const updates = {};
+    // Keep the scanned original on this bill, so it opens from the bill itself (it is also in Documents).
+    if (savedDoc && savedDoc.file_url) { updates.file_url = savedDoc.file_url; updates.file_type = savedDoc.file_type || null; }
+    else window.dispatchEvent(new CustomEvent("sw:toast", { detail: { msg: "Scanned, but a copy of the bill could not be kept. You can still save the numbers.", type: "error" } }));
     // Map all relevant fields from the utility_bill scan
     if (fields.amount)      updates.amount     = fields.amount;
     if (fields.bill_date)   updates.bill_date  = fields.bill_date;
@@ -18159,6 +18165,16 @@ function BillForm({ data, onChange, utility, userId, planData, onUpgrade, onDele
       )}
       {utility?.type==="bundle" && <UtilSplitEditor data={data} onChange={onChange} />}
       <div className="field s2"><label>Notes</label><textarea value={data.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Billing period, account notes…" /></div>
+      {data.file_url && (
+        <div className="field s2">
+          <label>Bill copy</label>
+          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap"}}>
+            <StoredLink url={data.file_url} style={{fontSize:".86rem",fontWeight:700,color:"var(--pine)",textDecoration:"none"}}>📎 View the bill</StoredLink>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={()=>onChange({...data,file_url:null,file_type:null})}>Detach</button>
+          </div>
+          <div style={{fontSize:".72rem",color:"#8A8178",marginTop:"3px"}}>Detaching only removes it from this bill. The file stays in Documents.</div>
+        </div>
+      )}
       {onDelete && (
         <div className="field s2"><button type="button" className="btn btn-ghost btn-sm" style={{color:"var(--red)",alignSelf:"flex-start"}} onClick={onDelete}>Delete this bill</button></div>
       )}
@@ -19615,8 +19631,9 @@ function UtilitiesView({ utilities, bills, yr, onAddBill, onEditBill, onEditUtil
                               {Number(b.usage) > 0 ? <>{Number(b.usage).toLocaleString()} {unit}{r != null && <em>{utilFmtRate(r, unit)}</em>}</> : ""}
                               {items.length > 0 && <span className="ut-bill-li">{items.map(x => x.label + " " + fmt$(x.v)).join(" · ")}</span>}
                             </span>
-                            <span className="ut-bill-f" title={b.file_url ? "Bill attached" : undefined}>
-                              {b.file_url && (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="Bill attached"><path d="M21 11.5 12.5 20a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.9 1.9 0 0 1-2.6-2.6l8.3-8.3" /></svg>)}
+                            <span className="ut-bill-f" title={b.file_url ? "Open the bill" : undefined}
+                              {...(b.file_url ? { role:"link", tabIndex:0, "aria-label":`Open the bill from ${fmtD(b.bill_date)}`, onClick: ev => { ev.stopPropagation(); openStoredFile(b.file_url); }, onKeyDown: ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ev.stopPropagation(); openStoredFile(b.file_url); } } } : {})}>
+                              {b.file_url && (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 11.5 12.5 20a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.9 1.9 0 0 1-2.6-2.6l8.3-8.3" /></svg>)}
                             </span>
                             <span className="ut-bill-a">{fmt$(b.amount)}</span>
                           </button>
@@ -20214,14 +20231,23 @@ function Expenses({ expenses, setExpenses, toast, userId, propertyId, serviceLog
     payload.usage = Number.isFinite(usageNum) ? usageNum : null;
     payload.usage_unit = payload.usage != null ? (String(billEditData.usage_unit||"").trim() || UTIL_TYPES[activeUtil?.type]?.unit || null) : null;
     // A failed save keeps the form open with everything typed or scanned, and says what the database refused.
+    // The bill copy (file_url / file_type) is new. A database without those columns still saves the numbers.
+    const noFile = (pl) => { const { file_url, file_type, ...rest } = pl; return rest; };
+    const fileColMissing = (e) => /file_url|file_type/.test(`${(e && e.message) || ""} ${(e && e.details) || ""}`);
+    const hasFile = "file_url" in payload || "file_type" in payload;
+    let fileLost = false;
     if(billEditId) {
-      const {error} = await supabase.from("utility_bills").update(payload).eq("id",billEditId);
+      let used = payload, {error} = await supabase.from("utility_bills").update(used).eq("id",billEditId);
+      if(error && hasFile && fileColMissing(error)) { used = noFile(payload); fileLost = !!payload.file_url; ({error} = await supabase.from("utility_bills").update(used).eq("id",billEditId)); }
       if(error) { toast(`Couldn't save this bill: ${error.message || "unknown error"}`,"error"); return; }
-      setBills(bills.map(b=>b.id===billEditId?{...payload,id:billEditId}:b)); toast("Bill updated ✓");
+      setBills(bills.map(b=>b.id===billEditId?{...used,id:billEditId}:b));
+      if(fileLost) toast("Bill updated, but the bill copy could not be attached yet. It is in Documents.","error"); else toast("Bill updated ✓");
     } else {
-      const {data,error} = await supabase.from("utility_bills").insert([{...payload,user_id:userId}]).select();
+      let used = {...payload,user_id:userId}, {data,error} = await supabase.from("utility_bills").insert([used]).select();
+      if(error && hasFile && fileColMissing(error)) { used = noFile(used); fileLost = !!payload.file_url; ({data,error} = await supabase.from("utility_bills").insert([used]).select()); }
       if(error || !data || !data[0]) { toast(`Couldn't save this bill: ${(error && error.message) || "no row was returned"}`,"error"); return; }
-      setBills([...bills,data[0]]); toast("Bill logged ✓");
+      setBills([...bills,data[0]]);
+      if(fileLost) toast("Bill logged, but the bill copy could not be attached yet. It is in Documents.","error"); else toast("Bill logged ✓");
     }
     setBillModal(false);
   };
