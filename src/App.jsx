@@ -5002,6 +5002,43 @@ const LANDING_FAQ = [
   ["What is Ask Steadwell?","Ask Steadwell is an AI assistant built into Steadwell. Ask a question in plain English and it answers from your own records: assets, warranties, tasks, service history, expenses and documents. It can suggest tasks, but nothing is saved until you add it. Free accounts get 3 questions to try; Plus includes 30 a month and Pro 150."],
 ];
 
+// Two free tools that work without an account. Shown high on the homepage so a visitor can try Steadwell before signing up.
+function FreeToolsSection() {
+  const tools = [
+    { key: "forecast", href: "/home-replacement-forecast", title: "Home replacement forecast",
+      text: "Enter the ages of your roof, heating and cooling and appliances to see what may need replacing in the next 5 years, and about what it costs.",
+      cta: "Try the forecast",
+      icon: <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></> },
+    { key: "estimator", href: "/home-projects#estimate", title: "Project cost and return estimator",
+      text: "Pick a renovation project to see the typical cost range with a contractor or DIY, and the share usually recovered at resale.",
+      cta: "Try the estimator",
+      icon: <><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></> },
+  ];
+  return (
+    <section id="free-tools" style={{padding:"clamp(48px,7vw,84px) 0 clamp(8px,2vw,24px)"}}>
+      <div className="wrap">
+        <div className="head center rv" style={{marginBottom:"clamp(24px,4vw,40px)"}}>
+          <h2 className="h2">Try it before you sign up</h2>
+          <p className="sub">Two free tools that work without an account or a credit card.</p>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,320px),1fr))",gap:16}}>
+          {tools.map(t => (
+            <div key={t.key} style={{background:"var(--pine)",borderRadius:20,padding:"clamp(1.4rem,3.5vw,2rem)",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:".9rem"}}>
+              <span aria-hidden="true" style={{width:44,height:44,borderRadius:12,background:"rgba(244,237,223,.1)",color:"#F0CE7A",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{t.icon}</svg>
+              </span>
+              <h3 style={{fontFamily:"var(--display)",fontWeight:500,fontSize:"clamp(1.25rem,3vw,1.5rem)",color:"#F4EDDF",lineHeight:1.2,margin:0,letterSpacing:"-.01em"}}>{t.title}</h3>
+              <p style={{fontSize:".95rem",color:"rgba(244,237,223,.74)",lineHeight:1.6,margin:0,flexGrow:1}}>{t.text}</p>
+              <a href={t.href} onClick={() => trackEvent("free_tool_click", { tool: t.key, location: "home" })}
+                style={{display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".8rem 1.5rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>{t.cta} <span aria-hidden="true">→</span></a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function LandingPage({ onSignIn, onSignUp }) {
   const [scrolled, setScrolled] = useState(false);
   const [typed, setTyped] = useState("1420 Maple Grove Dr");
@@ -5304,6 +5341,7 @@ function LandingPage({ onSignIn, onSignUp }) {
               <button className="btn btn-ghost" onClick={() => scrollTo("features")}>See how it works</button>
             </div>
             <p className="hero-micro"><b>Free forever plan.</b> No credit card required. Set up in about 10 minutes.</p>
+            <p className="hero-micro" style={{marginTop:".4rem"}}>Not ready to sign up? <a href="#free-tools" onClick={e => { e.preventDefault(); trackEvent("free_tool_click", { tool: "section", location: "hero" }); scrollTo("free-tools"); }} style={{color:"rgba(244,237,223,.9)",textDecoration:"underline",textUnderlineOffset:3}}>Try a free tool first.</a></p>
           </div>
           <div className="hero-vis rv" style={{ transitionDelay: ".14s" }}>
             <div className="blob" aria-hidden="true"/>
@@ -5358,6 +5396,9 @@ function LandingPage({ onSignIn, onSignUp }) {
           </div>
         </div>
       </section>
+
+      {/* ── FREE TOOLS ── */}
+      <FreeToolsSection/>
 
       {/* ── EDITORIAL STATEMENT ── */}
       <section className="band">
@@ -5541,20 +5582,6 @@ function LandingPage({ onSignIn, onSignUp }) {
             </div>
           </div>
           <p style={{textAlign:"center",marginTop:"1.5rem"}}><a href="/pricing" style={{color:"var(--terracotta)",textDecoration:"none",fontWeight:600,fontSize:".92rem"}}>Compare every plan in detail →</a></p>
-        </div>
-      </section>
-
-      {/* ── FREE FORECAST TOOL ── */}
-      <section className="block" id="free-forecast" style={{paddingTop:0}}>
-        <div className="wrap">
-          <div style={{background:"var(--pine)",borderRadius:20,padding:"clamp(1.5rem,4vw,2.25rem) clamp(1.25rem,4vw,2.5rem)",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"1.25rem 2rem"}}>
-            <div style={{flex:"1 1 320px",minWidth:0}}>
-              <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#D2876A",marginBottom:8}}>Free tool</div>
-              <h2 style={{fontFamily:"var(--display)",fontWeight:500,fontSize:"clamp(1.4rem,3.4vw,1.9rem)",color:"#F4EDDF",lineHeight:1.2,margin:"0 0 .5rem",letterSpacing:"-.01em"}}>What will your home need in the next 5 years?</h2>
-              <p style={{fontSize:".95rem",color:"rgba(244,237,223,.72)",lineHeight:1.6,margin:0,maxWidth:"34rem"}}>Enter the age of your roof, heating and cooling and appliances to see what may need replacing and about what it costs. No account needed.</p>
-            </div>
-            <a href="/home-replacement-forecast" style={{flexShrink:0,display:"inline-block",background:"#C16140",color:"#fff",textDecoration:"none",padding:".85rem 1.6rem",borderRadius:12,fontWeight:700,fontSize:".95rem"}}>Try the free forecast →</a>
-          </div>
         </div>
       </section>
 
@@ -35973,6 +36000,76 @@ const PROJECTS_FAQ = [
 ];
 
 // ─── PROJECTS PAGE ────────────────────────────────────────────────────────────
+// Free project estimator on /home-projects (no account). A link can open one project with ?project=kitchen
+// and can scroll to it with #estimate.
+const ESTIMATOR_PROJECTS = [
+              {key:"kitchen",label:"Kitchen remodel",scope:"Mid-range update",roi:76,contractor:"$25k – $50k",diy:"$12k – $25k"},
+              {key:"bathroom",label:"Bathroom remodel",scope:"Full renovation",roi:66,contractor:"$20k – $40k",diy:"$9k – $18k"},
+              {key:"deck",label:"Deck addition",scope:"Standard deck",roi:80,contractor:"$12k – $25k",diy:"$5k – $12k"},
+              {key:"roof",label:"Roof replacement",scope:"Full tear-off",roi:68,contractor:"$20k – $45k",diy:null},
+              {key:"windows",label:"Window replacement",scope:"Full house",roi:85,contractor:"$15k – $30k",diy:"$7k – $15k"},
+              {key:"garage",label:"Garage door",scope:"Standard replacement",roi:194,contractor:"$1.2k – $2.5k",diy:"$700 – $1.5k"},
+              {key:"entry",label:"Entry door",scope:"Steel replacement",roi:136,contractor:"$800 – $1.8k",diy:"$400 – $900"},
+              {key:"siding",label:"Siding replacement",scope:"Full exterior",roi:114,contractor:"$12k – $25k",diy:"$5k – $12k"},
+            ];
+function ProjectEstimator() {
+  const [sel, setSel] = useState(null);
+  useEffect(() => {
+    try {
+      const want = new URLSearchParams(window.location.search).get("project");
+      if (want && ESTIMATOR_PROJECTS.some(x => x.key === want)) setSel(want);
+      if (window.location.hash === "#estimate") setTimeout(() => { const el = document.getElementById("estimate"); if (el) el.scrollIntoView({ block: "start" }); }, 60);
+    } catch { /* no window while pre-rendering */ }
+  }, []);
+  const pick = (key) => {
+    const next = key === sel ? null : key;
+    setSel(next);
+    if (next) trackEvent("estimator_project_select", { project: next });
+  };
+  const active = ESTIMATOR_PROJECTS.find(p => p.key === sel);
+  return (
+    <div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:20}}>
+        {ESTIMATOR_PROJECTS.map(p => (
+          <button key={p.key} onClick={() => pick(p.key)} aria-pressed={sel === p.key}
+            style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${sel===p.key?"#234A3D":"#E6DECF"}`,background:sel===p.key?"#234A3D":"#fff",color:sel===p.key?"#F4EDDF":"#2A2723",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {active && (
+        <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:14,padding:"24px 28px",maxWidth:480,margin:"0 auto 24px"}}>
+          <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C16140",marginBottom:6}}>{active.scope}</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#234A3D",marginBottom:16}}>{active.label}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
+            <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,color:"#234A3D"}}>{active.roi}%</div>
+              <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Avg ROI</div>
+            </div>
+            <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:"#234A3D",lineHeight:1.2}}>{active.contractor}</div>
+              <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Contractor</div>
+            </div>
+            <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10,opacity:active.diy?1:.5}}>
+              <div style={{fontFamily:"'Fraunces',serif",fontSize:active.diy?".95rem":".8rem",fontWeight:600,color:"#234A3D",lineHeight:1.2}}>{active.diy||"Pro install"}</div>
+              <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>DIY</div>
+            </div>
+          </div>
+          <p style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.6,margin:"0 0 16px"}}>The finished result adds the same value to your home whether you hire a contractor or do it yourself. DIY means lower spend — so the same value added produces a higher return.</p>
+          <a href="/?action=signup" onClick={() => trackEvent("estimator_cta_click", { project: active.key })}
+            style={{display:"block",textAlign:"center",background:"#C16140",color:"#fff",textDecoration:"none",padding:"12px",borderRadius:10,fontWeight:700,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Track this project free →</a>
+          <p style={{fontSize:".74rem",color:"#8A8178",textAlign:"center",lineHeight:1.5,margin:"10px 0 0"}}>Project tracking is free. The ROI calculator with your own numbers is on Plus.</p>
+        </div>
+      )}
+      {!active && (
+        <div style={{textAlign:"center",color:"#A8A09A",fontSize:".88rem",marginBottom:24}}>Select a project above to see the estimate</div>
+      )}
+      <p style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",lineHeight:1.6}}>Based on national Cost vs. Value Report averages. Actual returns vary by region and project quality.</p>
+      <p style={{fontSize:".8rem",color:"#7A7370",textAlign:"center",lineHeight:1.6,margin:"14px 0 0"}}>Also free, no account: <a href="/home-replacement-forecast" onClick={() => trackEvent("free_tool_click", { tool: "forecast", location: "estimator" })} style={{color:"#234A3D",fontWeight:700}}>what your home may need in the next 5 years</a>.</p>
+    </div>
+  );
+}
+
 function HomeProjectsPage() {
   const seoPath = "/home-projects";
   const seoDesc = "Track renovations with budgets, timelines and a Cost vs. Value ROI calculator. When the work is done, AI reviews your before and after photos.";
@@ -36096,64 +36193,13 @@ function HomeProjectsPage() {
           <LPSectionHead h2="Common questions"/>
           <LPFAQ items={PROJECTS_FAQ}/>
         </LPSection>
-        <LPSection narrow>
+        <LPSection narrow id="estimate">
           <div style={{textAlign:"center",marginBottom:32}}>
             <div style={{fontSize:".72rem",fontWeight:700,letterSpacing:".16em",textTransform:"uppercase",color:"#C16140",marginBottom:12}}>Free estimate — no account required</div>
             <h2 style={{fontFamily:"'Fraunces',serif",fontWeight:500,fontSize:"clamp(1.6rem,3vw,2.2rem)",color:"#234A3D",letterSpacing:"-.02em",marginBottom:12}}>What will your project return?</h2>
             <p style={{fontSize:"1rem",color:"#7A7370",maxWidth:"34rem",margin:"0 auto 28px",lineHeight:1.6}}>Pick a project type below and see the typical cost range and resale value return — then sign up to run the full calculator with your own numbers.</p>
           </div>
-          {(()=>{
-            const [sel,setSel]=useState(null);
-            const projects=[
-              {key:"kitchen",label:"Kitchen remodel",scope:"Mid-range update",roi:76,contractor:"$25k – $50k",diy:"$12k – $25k"},
-              {key:"bathroom",label:"Bathroom remodel",scope:"Full renovation",roi:66,contractor:"$20k – $40k",diy:"$9k – $18k"},
-              {key:"deck",label:"Deck addition",scope:"Standard deck",roi:80,contractor:"$12k – $25k",diy:"$5k – $12k"},
-              {key:"roof",label:"Roof replacement",scope:"Full tear-off",roi:68,contractor:"$20k – $45k",diy:null},
-              {key:"windows",label:"Window replacement",scope:"Full house",roi:85,contractor:"$15k – $30k",diy:"$7k – $15k"},
-              {key:"garage",label:"Garage door",scope:"Standard replacement",roi:194,contractor:"$1.2k – $2.5k",diy:"$700 – $1.5k"},
-              {key:"entry",label:"Entry door",scope:"Steel replacement",roi:136,contractor:"$800 – $1.8k",diy:"$400 – $900"},
-              {key:"siding",label:"Siding replacement",scope:"Full exterior",roi:114,contractor:"$12k – $25k",diy:"$5k – $12k"},
-            ];
-            const active = projects.find(p=>p.key===sel);
-            return (
-              <div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:20}}>
-                  {projects.map(p=>(
-                    <button key={p.key} onClick={()=>setSel(p.key===sel?null:p.key)}
-                      style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${sel===p.key?"#234A3D":"#E6DECF"}`,background:sel===p.key?"#234A3D":"#fff",color:sel===p.key?"#F4EDDF":"#2A2723",fontSize:".82rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-                {active && (
-                  <div style={{background:"#fff",border:"1.5px solid #234A3D",borderRadius:14,padding:"24px 28px",maxWidth:480,margin:"0 auto 24px"}}>
-                    <div style={{fontSize:".7rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"#C16140",marginBottom:6}}>{active.scope}</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.4rem",fontWeight:500,color:"#234A3D",marginBottom:16}}>{active.label}</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
-                      <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10}}>
-                        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.5rem",fontWeight:600,color:"#234A3D"}}>{active.roi}%</div>
-                        <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Avg ROI</div>
-                      </div>
-                      <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10}}>
-                        <div style={{fontFamily:"'Fraunces',serif",fontSize:".95rem",fontWeight:600,color:"#234A3D",lineHeight:1.2}}>{active.contractor}</div>
-                        <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>Contractor</div>
-                      </div>
-                      <div style={{textAlign:"center",padding:"12px 8px",background:"#F4EDDF",borderRadius:10,opacity:active.diy?1:.5}}>
-                        <div style={{fontFamily:"'Fraunces',serif",fontSize:active.diy?".95rem":".8rem",fontWeight:600,color:"#234A3D",lineHeight:1.2}}>{active.diy||"Pro install"}</div>
-                        <div style={{fontSize:".65rem",color:"#A8A09A",textTransform:"uppercase",letterSpacing:".06em",marginTop:2}}>DIY</div>
-                      </div>
-                    </div>
-                    <p style={{fontSize:".8rem",color:"#7A7370",lineHeight:1.6,margin:"0 0 16px"}}>The finished result adds the same value to your home whether you hire a contractor or do it yourself. DIY means lower spend — so the same value added produces a higher return.</p>
-                    <a href="/" style={{display:"block",textAlign:"center",background:"#C16140",color:"#fff",textDecoration:"none",padding:"12px",borderRadius:10,fontWeight:700,fontSize:".9rem",fontFamily:"'Hanken Grotesk',sans-serif"}}>Run the full calculator free →</a>
-                  </div>
-                )}
-                {!active && (
-                  <div style={{textAlign:"center",color:"#A8A09A",fontSize:".88rem",marginBottom:24}}>Select a project above to see the estimate</div>
-                )}
-                <p style={{fontSize:".72rem",color:"#A8A09A",textAlign:"center",lineHeight:1.6}}>Based on national Cost vs. Value Report averages. Actual returns vary by region and project quality.</p>
-              </div>
-            );
-          })()}
+          <ProjectEstimator/>
         </LPSection>
         <LPRelated hrefs={["/home-expense-tracker","/home-condition-assessment","/home-document-vault","/contractor-tracker"]}/>
         <LPCTA h2="Renovate smarter." sub="Track every project, know the ROI, and build a complete renovation history for your home." btnLabel="Start for free →"/>
@@ -38242,6 +38288,39 @@ function BlogToc({ items }) {
   );
 }
 
+// A short pointer from related blog posts to the free tools. One tool per post.
+const BLOG_FREE_TOOL = {
+  forecast: {
+    href: "/home-replacement-forecast",
+    title: "See what your home may need in the next 5 years",
+    text: "Enter the ages of your roof, heating and cooling and appliances. The forecast shows what may need replacing and about what it costs. Free, no account needed.",
+    cta: "Try the forecast",
+    slugs: ["roof-lifespan-when-to-replace","how-old-is-my-water-heater","hvac-maintenance-schedule","home-appliance-lifespan-guide","find-appliance-serial-number","how-to-find-age-of-house","cost-of-deferred-maintenance","hidden-costs-of-homeownership","what-home-inspection-missed"],
+  },
+  estimator: {
+    href: "/home-projects#estimate",
+    title: "See what a project typically costs and returns",
+    text: "Pick a renovation project to see the typical cost range and the share usually recovered at resale. Free, no account needed.",
+    cta: "Try the estimator",
+    slugs: ["diy-vs-hire-pro-home-repair","prepare-home-for-sale-maintenance-checklist"],
+  },
+};
+function FreeToolCallout({ slug }) {
+  const key = Object.keys(BLOG_FREE_TOOL).find(k => BLOG_FREE_TOOL[k].slugs.includes(slug));
+  if (!key) return null;
+  const t = BLOG_FREE_TOOL[key];
+  return (
+    <aside aria-label="Free tool" style={{marginTop:"2.5rem",padding:"1.3rem 1.4rem",background:"#fff",border:"1px solid #E6DECF",borderRadius:16,display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:"1rem 1.5rem"}}>
+      <div style={{flex:"1 1 280px",minWidth:0}}>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.15rem",fontWeight:500,color:"#1F3D32",lineHeight:1.3,marginBottom:".35rem"}}>{t.title}</div>
+        <div style={{fontSize:".92rem",color:"#5E574F",lineHeight:1.6}}>{t.text}</div>
+      </div>
+      <a href={t.href} onClick={() => trackEvent("free_tool_click", { tool: key, location: "blog", slug })}
+        style={{flexShrink:0,display:"inline-block",background:"#234A3D",color:"#F4EDDF",textDecoration:"none",padding:".7rem 1.4rem",borderRadius:10,fontWeight:700,fontSize:".92rem"}}>{t.cta} <span aria-hidden="true">→</span></a>
+    </aside>
+  );
+}
+
 function BlogPostView({ post, posts, url, slug }) {
   const iso = post ? blogIsoDate(post.iso || post.date) : "";
   const modified = post ? (blogIsoDate(post.modified) || iso) : "";
@@ -38336,6 +38415,7 @@ function BlogPostView({ post, posts, url, slug }) {
               </details>
             )}
             <div className="bp-body" dangerouslySetInnerHTML={{__html: body}}/>
+            <FreeToolCallout slug={post.slug}/>
             {/* CTA */}
             <div style={{marginTop:"3rem",padding:"1.6rem",background:"#234A3D",borderRadius:16,textAlign:"center"}}>
               <div style={{fontFamily:"'Fraunces',serif",fontSize:"1.3rem",color:"#F4EDDF",marginBottom:".5rem"}}>Track this in Steadwell</div>
