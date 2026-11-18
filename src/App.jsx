@@ -35460,9 +35460,9 @@ const AISCAN_FAQ = [
 // ─── AI SCAN PAGE ─────────────────────────────────────────────────────────────
 function AIScanPage() {
   const seoPath = "/ai-scan";
-  const seoDesc = "Scan receipts, appliance nameplates, utility bills and insurance documents with your camera. Steadwell AI fills in the details so you don't have to type.";
+  const seoDesc = "Photograph an appliance nameplate and Steadwell AI fills in the brand, model, serial number and dates. Also reads receipts, bills and insurance papers.";
   useSEO({
-    title:"AI Nameplate Scanner for Appliances & Receipts",
+    title:"AI Nameplate Scanner: Read Model & Serial Number",
     description:seoDesc,
     canonical:`https://www.trysteadwell.app${seoPath}`,
     jsonLd: lpJsonLd({
